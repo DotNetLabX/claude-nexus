@@ -1,32 +1,28 @@
 #!/usr/bin/env node
 /**
- * Nexus SessionStart hook: re-injects the active agent persona after
- * clear/compact/resume so the role survives a context reset.
+ * Nexus SessionStart hook: session-aware persona restore.
  *
- * Reads .claude/.current-agent (written by the persona commands in the host
- * project), loads that agent's full body from the plugin's own agents/ folder,
- * and injects it as SessionStart additionalContext. In a plugin the agent file
- * is NOT at .claude/agents/, and ${CLAUDE_PLUGIN_ROOT} does not expand inside
- * command/agent markdown — so a bare "re-read the agent file" reminder is
- * un-actionable. Injecting the body directly is the only reliable mechanism.
+ * Personas are tracked per session in the HOST project's .claude/.personas.json:
+ *     { "<session_id>": { "agent": "architect", "ts": <epoch-ms> }, ... }
+ * written by register-persona.js when a /<agent> command sets the role.
  *
- * Plugin root is derived from __dirname (hooks/scripts/ -> two levels up),
- * which is robust against the version-keyed cache path and needs no env var.
+ * Restore policy (decided deliberately — see the persona design notes):
+ *   compact -> restore: re-inject the full agent body (the summary dropped it)
+ *   clear   -> forget THIS session's persona (clear is the exit)
+ *   startup -> nothing (a fresh session_id has no entry — clean slate for free)
+ *   resume  -> nothing (the transcript, persona included, is reloaded verbatim)
+ * Entries older than 16h are pruned on every run so abandoned sessions self-expire.
+ *
+ * In a plugin the agent file is NOT at .claude/agents/ and ${CLAUDE_PLUGIN_ROOT} does not
+ * expand in command/agent markdown, so we inject the agent body directly from the plugin's
+ * own agents/ folder (resolved from __dirname — robust against the version-keyed cache path).
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
 
+const TTL_MS = 16 * 60 * 60 * 1000;
 const VALID = ['architect', 'developer', 'reviewer', 'team-lead', 'po', 'critic', 'learner', 'solo'];
-
-function readCurrentAgent() {
-  try {
-    const p = path.join(process.cwd(), '.claude', '.current-agent');
-    return fs.readFileSync(p, 'utf8').trim() || null;
-  } catch {
-    return null;
-  }
-}
 
 function stripFrontmatter(md) {
   return md.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').trim();
@@ -41,8 +37,40 @@ function readAgentBody(agent) {
   }
 }
 
-function main() {
-  const agent = readCurrentAgent();
+let raw = '';
+process.stdin.on('data', (c) => (raw += c));
+process.stdin.on('end', () => {
+  let sid = '', source = '';
+  try { const e = JSON.parse(raw || '{}'); sid = e.session_id || ''; source = e.source || ''; } catch { /* ignore */ }
+
+  const root = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const file = path.join(root, '.claude', '.personas.json');
+
+  let reg = {};
+  try { reg = JSON.parse(fs.readFileSync(file, 'utf8')) || {}; } catch { /* no registry yet */ }
+
+  // Prune expired entries.
+  const now = Date.now();
+  let changed = false;
+  for (const k of Object.keys(reg)) {
+    const e = reg[k];
+    if (!e || typeof e.ts !== 'number' || now - e.ts > TTL_MS) { delete reg[k]; changed = true; }
+  }
+
+  // /clear is the exit: drop this session's persona so a later compact won't resurrect it.
+  if (source === 'clear' && sid && reg[sid]) { delete reg[sid]; changed = true; }
+
+  if (changed) {
+    try {
+      const tmp = `${file}.${process.pid}.tmp`;
+      fs.writeFileSync(tmp, JSON.stringify(reg, null, 2));
+      fs.renameSync(tmp, file);
+    } catch { /* best-effort */ }
+  }
+
+  // Restore ONLY on compact.
+  if (source !== 'compact' || !sid) process.exit(0);
+  const agent = reg[sid] && reg[sid].agent;
   if (!agent || !VALID.includes(agent)) process.exit(0);
 
   const body = readAgentBody(agent);
@@ -53,12 +81,7 @@ function main() {
       `could not be loaded from the plugin. Ask the user to re-run the /${agent} command.`;
 
   process.stdout.write(JSON.stringify({
-    hookSpecificOutput: {
-      hookEventName: 'SessionStart',
-      additionalContext: context
-    }
+    hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: context }
   }));
   process.exit(0);
-}
-
-main();
+});

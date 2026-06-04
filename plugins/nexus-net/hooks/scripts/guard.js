@@ -3,20 +3,27 @@
  * Nexus PreToolUse security guard (SYNCHRONOUS — can block).
  *
  * Posture comes from ${user_config.security_mode} (passed as argv[2]):
- *   open      (default) — block catastrophic actions only: root/home deletes, sudo,
+ *   open      (default) — block catastrophic actions: root/home deletes, sudo,
  *                         force-push, reset --hard, remote-pipe-to-shell, publish/push,
- *                         secret-file access, writes outside the project root.
+ *                         secret-file access, writes outside the project root, AND a
+ *                         non-code pipeline role editing application source.
  *   hardened           — open PLUS: no git push at all, no network package installs,
  *                         no network fetches.
  *   off                — no enforcement (audit-logger still records).
  *
  * Blocks by emitting a PreToolUse "deny" decision. Otherwise stays silent and exits 0,
- * letting the normal permission flow proceed (it never auto-approves).
+ * letting the normal permission flow proceed (it never auto-approves). Fail-open on any
+ * uncertainty (bad JSON, unreadable registry) so it can never wedge a run, including -p.
  */
 'use strict';
 const path = require('path');
+const fs = require('fs');
 
 const mode = (process.argv[2] || 'open').toLowerCase();
+
+// Pipeline roles that must never edit application source — they route code changes to the
+// developer (write findings/instructions instead). Code roles (developer, solo) are absent.
+const NONCODE_ROLES = new Set(['architect', 'reviewer', 'po', 'critic', 'team-lead', 'learner']);
 
 let input = '';
 process.stdin.setEncoding('utf8');
@@ -30,26 +37,61 @@ process.stdin.on('end', () => {
   const ti = data.tool_input || {};
   const cwd = data.cwd || process.cwd();
 
-  const reason = evaluate(tool, ti, cwd, mode);
+  const reason = evaluate(tool, ti, cwd, mode, data);
   if (reason) return deny(reason);
   return allow();
 });
 
-function evaluate(tool, ti, cwd, mode) {
+function evaluate(tool, ti, cwd, mode, data) {
   const fp = ti.file_path || ti.path || ti.notebook_path || '';
   const isFileTool = /^(Read|Edit|Write|NotebookEdit|MultiEdit)$/.test(tool);
+  const isWriteTool = /^(Edit|Write|NotebookEdit|MultiEdit)$/.test(tool);
 
   if (fp && isFileTool && isSecret(fp)) {
     return `access to a secret file (${fp})`;
   }
-  if (fp && /^(Edit|Write|NotebookEdit|MultiEdit)$/.test(tool) && isAbsoluteOutside(fp, cwd)) {
+  if (fp && isWriteTool && isAbsoluteOutside(fp, cwd)) {
     return `write outside the project root (${fp})`;
+  }
+  // Persona scope: a non-code pipeline role must not edit application source code.
+  if (fp && isWriteTool && isCodeFile(fp)) {
+    const role = activeRole(data);
+    if (NONCODE_ROLES.has(role)) {
+      return `the ${role} role editing application source (${fp}); non-code roles route code changes ` +
+             `to the developer — write findings/instructions instead of editing the file`;
+    }
   }
   if (tool === 'Bash') {
     const bad = badBash(ti.command || '', mode);
     if (bad) return bad;
   }
   return null;
+}
+
+// Active pipeline role for this tool call. Subagent calls carry agent_type; the main-thread
+// persona is recorded per-session in .claude/.personas.json. Either may be namespaced
+// (e.g. "nexus:architect") — take the final segment. Unknown -> "main" (never blocked).
+function activeRole(data) {
+  const a = data.agent_type || readSessionPersona(data.session_id, data.cwd) || 'main';
+  return String(a).toLowerCase().split(/[:/]/).pop();
+}
+
+function readSessionPersona(sid, cwd) {
+  if (!sid) return null;
+  try {
+    const root = process.env.CLAUDE_PROJECT_DIR || cwd || process.cwd();
+    const reg = JSON.parse(fs.readFileSync(path.join(root, '.claude', '.personas.json'), 'utf8'));
+    return reg[sid] && reg[sid].agent;
+  } catch { return null; }
+}
+
+// Application source by extension. Markdown/JSON/YAML/config are NOT code here — pipeline
+// roles legitimately write plan.md/review.md/specs and configs. docs/ and .claude/ are
+// always allowed (system/doc areas).
+function isCodeFile(fp) {
+  const p = String(fp).replace(/\\/g, '/').toLowerCase();
+  if (/(^|\/)(docs|\.claude)\//.test(p)) return false;
+  return /\.(cs|ts|tsx|js|jsx|mjs|cjs|vue|css|scss|sass|less|py|go|java|kt|rb|rs|php|c|h|cpp|hpp|cc|swift|sql|sh|ps1|razor|cshtml)$/.test(p);
 }
 
 function isSecret(fp) {

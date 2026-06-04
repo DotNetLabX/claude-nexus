@@ -1,9 +1,11 @@
 // Phase 3: compose nexus-net agents = core agent body + inlined .NET/Vue stack conventions.
 // File->file. Convention source of truth = build-src/conventions/ (copied from fokus, verified leak-free).
 import { mkdirSync, cpSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const REPO = 'D:/src/nexus';
+// Location-independent: repo root = one level up from scripts/ (works in nexus and omni checkouts).
+const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CORE_AGENTS = join(REPO, 'plugins', 'nexus', 'agents');
 const DOT_AGENTS = join(REPO, 'plugins', 'nexus-net', 'agents');
 const FOKUS_CONV = 'D:/src/fokus/docs/conventions';

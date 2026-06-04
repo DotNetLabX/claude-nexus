@@ -24,6 +24,10 @@ For each plan step:
 3. **Locate referenced patterns** — open the example files the plan points to.
 4. If the plan contradicts itself or a guardrail, **stop and ask** via questions.md.
 
+## Coding Conventions (read first)
+
+Before writing any code, **read `docs/conventions/coding-conventions.md` if it exists**, then read every file it lists. These are binding project standards — follow them like plan steps. If the project defines no such file, proceed without it. (A stack extension plugin may ship these convention files for the project to place under `docs/conventions/`.)
+
 ## Skill Authority
 
 Skills are the authoritative source for implementation patterns. Follow them exactly. If a skill is missing something, build it and note the gap in lessons.md.

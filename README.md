@@ -34,30 +34,85 @@ User → PO (spec) → Architect (plan) → Developer (implement)
 
 ## Plugins
 
-Nexus ships as two plugins. **Install exactly one** — `nexus-net` is a self-contained superset of `nexus`, not an add-on.
+Nexus ships as **three plugins** in the `claude-nexus` marketplace:
 
-| Plugin | Scope | Skills | Install id |
-|--------|-------|--------|------------|
-| **nexus** | Stack-agnostic core | 9 process skills | `nexus@claude-nexus` |
-| **nexus-net** | .NET / Vue superset | 38 skills (9 core + 29 stack) | `nexus-net@claude-nexus` |
+| Plugin | Scope | Skills | Install id | How to install |
+|--------|-------|--------|------------|----------------|
+| **nexus** | Stack-agnostic core | 9 process | `nexus@claude-nexus` | Standalone |
+| **nexus-net** | .NET / Vue superset (conventions inlined into agents) | 38 (9 + 29 stack) | `nexus-net@claude-nexus` | **Instead of** `nexus` |
+| **nexus-dotnet** | .NET / Vue thin extension (Read-Index model) | 29 stack | `nexus-dotnet@claude-nexus` | **Alongside** `nexus` — auto-pulls it |
 
-`nexus-net` carries the same pipeline plus .NET / ASP.NET Core / EF Core / CQRS / DDD / FastEndpoints / Vue / Pinia / Tailwind conventions inlined into the code-touching agents, and adds 29 stack code-pattern skills (service/module/aggregate scaffolding, CQRS, persistence, gRPC, Vue, …).
+There are two ways to get the .NET / Vue stack on top of the same pipeline:
 
-## Install
+- **`nexus-net` — the superset.** One self-contained install. The .NET / ASP.NET Core / EF Core / CQRS / DDD / FastEndpoints / Vue / Pinia / Tailwind conventions are inlined into the code-touching agents, plus 29 stack code-pattern skills (service/module/aggregate scaffolding, CQRS, persistence, gRPC, Vue, …). Install it *instead of* `nexus`.
+- **`nexus` + `nexus-dotnet` — the thin model.** The core engine plus a dependency-based extension that ships the 29 stack skills and the convention *files* the core agents read from `docs/conventions/`. `nexus-dotnet` declares `dependencies: ["nexus"]`, so installing it pulls `nexus` automatically.
+
+Generic / non-.NET stacks use **`nexus` alone**.
+
+## Install & lifecycle
+
+Every command runs two ways — **in-session** as a slash command (`/plugin …`) or in the **terminal** as `claude plugin …`. They're equivalent. Shortcuts: `/plugin market` = `/plugin marketplace`, `rm` = `remove`.
+
+### 1. Add + install
+
+Add the marketplace once, then install the plugin for your stack:
 
 ```
-claude plugin marketplace add ldumit/claude-nexus
-claude plugin install nexus-net@claude-nexus   # .NET / Vue projects
-claude plugin install nexus@claude-nexus        # any other stack
+/plugin marketplace add DotNetLabX/claude-nexus     # GitHub owner/repo
+/plugin install nexus@claude-nexus              # generic stack
 ```
 
-Pick a security mode when prompted, then **fully restart Claude Code** — plugin load state is latched per session.
+.NET / Vue — pick one model (see [Plugins](#plugins)):
+
+```
+/plugin install nexus-net@claude-nexus          # superset — instead of nexus
+/plugin install nexus-dotnet@claude-nexus       # thin extension — auto-pulls nexus
+```
+
+Pick a security mode when prompted, then run `/reload-plugins` (or restart Claude Code) to activate.
+
+Other `add` sources: a full git URL (`…/claude-nexus.git`, optionally `#branch`) or a local path (`./claude-nexus`). Terminal form, with install scope:
+
+```
+claude plugin marketplace add DotNetLabX/claude-nexus
+claude plugin install nexus@claude-nexus --scope user   # user (default) | project | local
+```
+
+### 2. Update
+
+Updating is **two steps** — refresh the catalog, then update the installed plugin:
+
+```
+/plugin marketplace update claude-nexus     # pull latest marketplace.json + versions
+/plugin update nexus@claude-nexus           # update the plugin
+/reload-plugins                             # apply (or restart)
+```
+
+> **Version-gated.** A plugin update is pulled only when its `version` in `plugin.json` is bumped — if the resolved version matches what you already have, `/plugin update` skips it. (Plugins with no `version` fall back to the git commit SHA, so every commit counts as an update.)
+
+Terminal: `claude plugin marketplace update claude-nexus` (omit the name to refresh all marketplaces). Or enable **auto-update** per marketplace in `/plugin` → **Marketplaces**, which refreshes and updates at startup, then prompts you to `/reload-plugins`.
+
+### 3. Remove
+
+```
+/plugin uninstall nexus@claude-nexus        # uninstall one plugin
+/plugin disable  nexus@claude-nexus         # stop loading it, keep it installed
+/plugin enable   nexus@claude-nexus         # re-enable later
+```
+
+Remove the whole marketplace — this **uninstalls every plugin installed from it**:
+
+```
+/plugin marketplace remove claude-nexus
+```
+
+Inspect state any time with `/plugin list` (`--enabled` / `--disabled`) or the `/plugin` → **Installed** tab.
 
 ## Usage
 
 Two ways to drive an agent:
 
-- **Persona** — `/nexus:architect`, `/nexus:developer`, … (or `/nexus-net:<agent>`). The main thread *adopts* the role for the session. Survives `/compact`, `/clear`, and resume — the `restore-agent` hook re-injects the persona after a context reset.
+- **Persona** — `/nexus:architect`, `/nexus:developer`, … (or `/nexus-net:<agent>`). The main thread *adopts* the role, tracked per-session in `.claude/.personas.json`. The `restore-agent` hook re-injects the role on `/compact` (the one event that silently drops it); `/clear` exits the persona; abandoned sessions expire after 16h. Concurrent sessions each keep their own role.
 - **Subagent** — the team-lead spawns agents via the pipeline. They hand off through files and route messages hub-and-spoke.
 
 **Entry points:** `backlog` (triage) → `team-lead` (orchestrate) → `architect` (plan) → `developer` (implement) → `architect` (done-check) → `reviewer` (review). Use `po` to shape a spec, `critic` to cross-check, `learner` to consolidate lessons, `solo` for a quick 1–3 file change.

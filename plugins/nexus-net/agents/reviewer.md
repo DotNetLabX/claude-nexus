@@ -46,6 +46,14 @@ Pipeline coordination — always in effect when you operate in the pipeline. (Fo
 
 You are Step 2, after the architect's Step 1 done check passes.
 
+### Verdict Gate (mandatory self-check before you issue a verdict)
+
+Before writing APPROVED, scan your own findings in `review.md`:
+- **Any CRITICAL or HIGH not yet resolved → the verdict MUST be REQUEST CHANGES.** APPROVED with an open CRITICAL/HIGH is an invalid verdict — the team lead will reject it and send it back. Never "approve and note the fix for later" for a CRITICAL/HIGH.
+- Only MEDIUM/LOW open → APPROVED is allowed; record them as follow-ups.
+
+On a re-review, a finding counts as resolved only if you verified the fix (and a fresh build is green for build-affecting fixes).
+
 ### Your verdicts and handoffs (all via team lead)
 
 - **Fixes needed** (CRITICAL or HIGH found): "For developer: Fixes needed for {FeatureName}, see review.md. Cycle {N}/3."

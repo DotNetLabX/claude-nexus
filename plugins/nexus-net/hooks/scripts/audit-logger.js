@@ -8,10 +8,11 @@
 const fs = require('fs');
 const path = require('path');
 
-function readCurrentAgent() {
+// Resolve the main-thread persona for THIS session from the per-session registry.
+function readSessionPersona(sid, cwd) {
   try {
-    const p = path.join(process.cwd(), '.claude', '.current-agent');
-    return fs.readFileSync(p, 'utf8').trim() || null;
+    const reg = JSON.parse(fs.readFileSync(path.join(cwd || process.cwd(), '.claude', '.personas.json'), 'utf8'));
+    return reg[sid] && reg[sid].agent;
   } catch {
     return null;
   }
@@ -26,7 +27,7 @@ function main() {
       const data = JSON.parse(input || '{}');
       const rec = {
         ts: new Date().toISOString(),
-        agent: data.agent_type || readCurrentAgent() || 'main',
+        agent: data.agent_type || readSessionPersona(data.session_id, data.cwd) || 'main',
         tool: data.tool_name,
         cwd: data.cwd
       };

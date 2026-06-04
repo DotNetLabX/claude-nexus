@@ -19,7 +19,7 @@ It ships a coordinated team of specialized agents, always-on behavioral rules, r
 ## Two ways to use an agent
 
 1. **Subagent (native)** — the pipeline spawns agents via the Task tool. The team-lead orchestrates; agents hand off through files (`docs/specs/{slug}/...`) and route messages hub-and-spoke.
-2. **Persona (`/nexus:<agent>`)** — the main thread *adopts* a role for the session (e.g. `/nexus:architect`). The command writes `.claude/.current-agent` and inlines the full role. `restore-agent` re-injects it after `/compact`, `/clear`, or resume so the persona survives a context reset.
+2. **Persona (`/nexus:<agent>`)** — the main thread *adopts* a role for the session (e.g. `/nexus:architect`). The command records the role per-session in `.claude/.personas.json` (keyed by session id, so concurrent sessions don't collide). `restore-agent` re-injects the full role on `/compact` — the one event that drops it; `/clear` exits the persona, and entries older than 16h are pruned automatically.
 
 Pipeline entry points: `backlog` (triage) → `team-lead` (orchestrate) → `architect` (plan) → `developer` (implement) → `architect` done-check → `reviewer` (code review). `solo` is the lightweight path for 1–3 file changes. `po` shapes specs; `critic` cross-checks specs/plans; `learner` consolidates lessons.
 

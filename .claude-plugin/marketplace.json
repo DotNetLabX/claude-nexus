@@ -15,6 +15,10 @@
     {
       "name": "nexus-net",
       "source": "./plugins/nexus-net"
+    },
+    {
+      "name": "nexus-dotnet",
+      "source": "./plugins/nexus-dotnet"
     }
   ]
 }
