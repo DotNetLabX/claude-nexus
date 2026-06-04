@@ -1,0 +1,20 @@
+{
+  "name": "claude-nexus",
+  "owner": {
+    "name": "ldumit"
+  },
+  "metadata": {
+    "description": "Nexus — a multi-agent team pipeline for Claude Code.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "nexus",
+      "source": "./plugins/nexus"
+    },
+    {
+      "name": "nexus-net",
+      "source": "./plugins/nexus-net"
+    }
+  ]
+}

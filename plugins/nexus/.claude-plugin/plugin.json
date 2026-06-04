@@ -1,0 +1,15 @@
+{
+  "name": "nexus",
+  "version": "0.1.0",
+  "description": "Nexus core — a stack-agnostic multi-agent team pipeline (architect, developer, reviewer, PO, critic, learner, team-lead, solo) with always-on rules, persona commands, process skills, and a security guard.",
+  "author": { "name": "ldumit" },
+  "keywords": ["agents", "pipeline", "team", "workflow", "code-review", "planning"],
+  "userConfig": {
+    "security_mode": {
+      "type": "string",
+      "title": "Security mode",
+      "description": "Install posture: open (block catastrophic actions only — recommended) | hardened (strict, for teams/CI) | off (no guard).",
+      "default": "open"
+    }
+  }
+}
