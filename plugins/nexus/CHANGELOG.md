@@ -1,5 +1,13 @@
 # nexus — Changelog
 
+## [1.0.2] — 2026-06-06
+Hotfix: revert the implementer agents off the 1M-context model.
+
+- **`developer`, `reviewer`, `solo` moved back to the `sonnet` alias** (from `sonnet[1m]`).
+  Sonnet 1M context requires usage credits on every plan, which blocked Developer Phase 1 with a
+  1M-context credit error. The plain `sonnet` alias (200K, subscription-covered) avoids the cost.
+  `effort: max` is retained — effort does not incur the 1M credit charge.
+
 ## [1.0.1] — 2026-06-06
 Pipeline-orchestration fixes: spawn mode and review-mode timing (committed in `024fcf2`
 without a bump; this release carries it to users).
