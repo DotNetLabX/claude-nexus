@@ -233,20 +233,54 @@ block). One knob keeps it usable.
 ---
 
 ## ADR-9 — Build & release pipeline
+**Context.** The release flow was originally prose in this ADR with **no owner or automation**. The
+result: a behavioral edit to `team-lead.md`/`architect.md` shipped without a version bump, so the
+version-keyed cache (constraint #3) made `/plugin update` a no-op and no installed user saw it. The
+version bump is the single most forgettable mandatory step.
+
 **Decision.** The only generated artifacts are persona **commands** (`gen-commands.mjs`, agents →
-commands) and the **omni twin** (`gen-omni.mjs`). Release flow:
+commands) and the **omni twin** (`gen-omni.mjs`). The release flow is **owned by the `release-plugin`
+skill + `scripts/bump-plugin.mjs`** (not loose prose) — it classifies the change to a semver tier,
+bumps `plugin.json` + a per-plugin `CHANGELOG.md` **in the same commit as the change**, regenerates,
+validates, and (on publish) tags. Reordered flow:
 
 ```
-edit plugin → node scripts/gen-commands.mjs nexus → node scripts/gen-omni.mjs
-            → claude plugin validate <each plugin> → bump version in plugin.json
-            → claude plugin tag --push
+edit plugin files
+  → release-plugin skill (node scripts/bump-plugin.mjs):
+       classify change → bump plugin.json + CHANGELOG.md
+       → node scripts/gen-commands.mjs <plugin>   (if agents changed)
+       → node scripts/gen-omni.mjs                (syncs the twin; runs AFTER the bump)
+       → claude plugin validate plugins/<plugin> --strict
+       → COMMIT content + bump + CHANGELOG + regenerated commands as ONE commit
+  → publish: from inside plugins/<plugin>/,  claude plugin tag --push   (→ <plugin>--v<version>)
 ```
 
-**Why.** Fewer build steps = fewer ways to forget one. `claude plugin validate` is the CI gate the
-best-maintained marketplaces use. The version bump is mandatory because the cache is version-keyed
-(constraint #3): no bump → users never see the change.
+**Why.** Fewer build steps = fewer ways to forget one — and an *owned* procedure can't be forgotten
+the way prose can. The version bump is mandatory because the cache is version-keyed (constraint #3):
+no bump → users never see the change. Semver policy is MAJOR-leaning: the payload is agent behavior
+and the cache is version-keyed, so almost every change must reach users (full policy:
+`plugins/nexus/skills/release-plugin/SKILL.md`; design rationale: `docs/proposals/`).
 
-**Rejected.** *Codegen-composed supersets* (ADR-3). *Hand-mirroring* (ADR-6).
+**Verified against the docs (June 2026), correcting/extending the old prose:**
+- There is **no `claude plugin bump`** — bumping is editing `plugin.json`'s `version`; `bump-plugin.mjs`
+  is that missing piece.
+- `claude plugin tag` does more than tag: it **validates contents, checks `plugin.json` and the
+  marketplace entry agree on the version, and requires a clean tree** — so the bump **must be committed
+  before tagging** (hence the reorder). Tag name: `<plugin-name>--v<version>`.
+- `claude plugin validate` supports `--strict` ("warnings → errors; use it in CI").
+- The `version` field is **optional**: resolution is `plugin.json` → marketplace entry → git commit
+  SHA → `unknown`. Omitting it makes every commit a new version — the documented model for
+  internal/active-dev plugins (an option for the private `omni` twin; the public plugins keep explicit
+  versions). Versions live only in `plugin.json`; marketplace entries stay version-less.
+
+**Backstop.** No session hook (a release concern is the wrong granularity for PreToolUse, and the user
+prefers none). The optional net is CI: `.github/workflows/plugin-release-check.yml` runs
+`node scripts/bump-plugin.mjs --check` (fails a PR when a behavior-surface change lacks a bump) plus
+`claude plugin validate --strict`.
+
+**Rejected.** *Codegen-composed supersets* (ADR-3). *Hand-mirroring* (ADR-6). *A "Plugin-Writer" agent*
+— releasing is a procedure (a skill), not a persona; an agent would duplicate Solo and can't be
+preloaded into other agents (ADR-2/ADR-4).
 
 ---
 
@@ -297,9 +331,10 @@ Pre-existing tradeoffs, retained:
   in the project's `.claude/skills/`, and there is no documented runtime "list skills" API — so the
   inventory under-reports plugin-provided skills. Fix: have those skills use the skills surfaced in
   the agent's context rather than a directory glob.
-- **CI gate.** A GitHub Actions workflow running `claude plugin validate` on every push is
-  recommended but not yet added. A lint for dangling `*-format`/skill references would catch the exact
-  class of bug behind ADR-4.
+- **CI gate.** Added: `.github/workflows/plugin-release-check.yml` runs the version-bump check
+  (`bump-plugin.mjs --check`, hard gate) and `claude plugin validate --strict` (advisory until CI auth
+  for the `claude` CLI is confirmed, then flip to required). Still future: a lint for dangling
+  `*-format`/skill references would catch the exact class of bug behind ADR-4.
 
 ---
 

@@ -1,3 +1,8 @@
+---
+name: service-registration
+description: Service DI registration — layer structure, where each dependency type goes, Host composition for modular monolith. Loaded when registering dependencies, adding services to the Host, or modifying DependencyInjection.cs files.
+---
+
 # service-registration
 
 Service DI registration — layer structure, where each dependency type goes, Host composition for modular monolith. Loaded when registering dependencies, adding services to the Host, or modifying DependencyInjection.cs files.

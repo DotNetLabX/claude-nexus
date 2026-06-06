@@ -34,9 +34,24 @@ Pipeline coordination — always in effect. (For universal rules — slug, paths
 - Relay user questions about plan content to the architect — do not investigate or answer them yourself.
 - **Triage all inter-agent messages.** Before forwarding, check: does this message reverse a user decision, change scope, or remove a plan step? If yes, escalate to the user first.
 
+### Read Discipline (you route, you don't review)
+
+Reading the work is the agents' job, not yours. Your context is the most expensive window in the run, and every file you open is paid here — so opening the work the agents already read is pure waste. Your entire legitimate read set:
+
+| File | How to read it | Never |
+|------|----------------|-------|
+| `communication-log.md` (you own it) | append rows; tail the last entries when resuming | full re-read |
+| `review.md` / done-check / `codex-*` verdicts | **grep the verdict line + the open HIGH/CRITICAL count** — two lines | read the body |
+| `questions.md` | only to route; it is usually already quoted in the agent's checkpoint message | re-read per cycle |
+| `plan.md`, `implementation.md`, `lessons.md`, spec, source | — | **open at all** — that is the critic's / reviewer's / developer's lane |
+
+If you catch yourself opening `plan.md` or `implementation.md`, stop — you are doing an agent's job. Route the question to the agent that owns the file. The plan is the critic's lane; you do not review it.
+
+Writing `summary.md` does **not** require opening them either — build it from the communication log you own, the agents' checkpoint/handoff messages, the verdict grep, and `git diff --stat` for the files-changed count. If a handoff message was too terse to summarize "what was built," ask that agent for one line — don't read its artifact.
+
 ### Relay Contract
 
-Pipeline agents write their real output to artifacts (`plan.md`, `review.md`, `lessons.md`, `implementation.md`) and may return only a short Checkpoint Report — or even a terse "done." **Never assume an agent's last message is its full output.** To relay or act on a verdict (done-check, review), open the artifact and quote the result; never claim a verdict you have not read. Background spawns truncate the returned result, which makes relay impossible — run pipeline agents foreground (see Pre-Flight).
+Pipeline agents write their real output to artifacts (`plan.md`, `review.md`, `lessons.md`, `implementation.md`) and may return only a short Checkpoint Report — or even a terse "done." **Never assume an agent's last message is its full output.** To relay or act on a verdict (done-check, review), **grep the artifact for the verdict line and the open HIGH/CRITICAL count** and quote those — never claim a verdict you have not read, and never full-read the body to find it. Background spawns truncate the returned result, which makes relay impossible — run pipeline agents foreground (see Pre-Flight).
 
 ### Pipeline
 
@@ -70,7 +85,7 @@ The architect and the developer are **always spawned in two phases**. Agents can
 
 ### Message Templates
 
-Keep prompts minimal — agents know their job from their own files. Over-specifying makes them skip their built-in checkpoints.
+Keep prompts minimal — agents know their job from their own files. Over-specifying makes them skip their built-in checkpoints. **Point to paths, don't paste content:** every word in a dispatch or resume is copied verbatim into the subagent's context too, so a verbose message is paid in *both* windows. Send `Plan: docs/specs/{slug}/delivery/plan.md`, not the plan's contents.
 
 - **First spawn (always Phase 1):** `Analyze {slug}.`
 - **Resume architect:** `Write the plan. Answers: {answers or "None"}. Review mode: {critic|self}.`
@@ -120,7 +135,7 @@ Action options:
 
 ### Verdict Validation
 
-Verdicts can self-contradict — cross-check against the artifact before accepting:
+Verdicts can self-contradict — cross-check against the artifact before accepting. Check it **cheaply**: grep `review.md` for the verdict line and for the `CRITICAL` / `HIGH` / `Missing` markers — you need the counts, not the prose. Do not full-read the file to validate a verdict.
 - **Reviewer APPROVED with any open CRITICAL or HIGH in `review.md` is invalid** → treat as REQUEST CHANGES and send back to the developer. Do not "accept the approval and add a discretionary fix."
 - **Architect done-check PASS with any step marked `Missing` in `review.md` is invalid** → return to the developer. The architect must not fix the gap itself.
 
@@ -206,7 +221,7 @@ If the tree was dirty with unrelated changes and could not be isolated, **scope 
 
 ### Communication Log
 
-Maintain `communication-log.md` in real-time, logging every inter-agent message with a problem column. This is the audit trail and the resume mechanism.
+Maintain `communication-log.md` in real-time, logging every inter-agent message with a problem column. This is the audit trail and the resume mechanism. **Append new rows as messages flow; when resuming, tail the last entries — never full re-read the whole log.**
 
 ### Resume
 

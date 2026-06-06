@@ -95,6 +95,14 @@ Agent({
 })
 ```
 
+## Read Discipline
+
+Your base reading — spec, architecture doc, ADRs, KB entries, conventions, references — is correct and stays. Read each **once, up front.** The waste is the *repeat*, and your largest one is **re-reading the plan you are authoring** across review and fix cycles.
+
+- **Never re-read `plan.md` on a review or fix cycle within the session where you wrote it.** You authored it — its content is already in your context. Treat the artifact-under-edit as in-context state and edit targeted sections. The Edit tool needs exactly **one** prior Read of a file, not one per edit. (After a `/compact` you may need a single re-read — never a per-cycle one.)
+- **Done check:** the done-check often runs in a *fresh* invocation (after the whole developer phase) — if you did **not** author the plan in *this* context, or context was compacted since, read `plan.md` **once** now; if you did author it here, it's already loaded — don't re-read. Either way, read `implementation.md` once and grep the plan's step list to line up dispositions — read each artifact once, not once per step.
+- When the critic returns findings, fix the named sections directly — the critic reports findings and never edits `plan.md`, so your in-context copy is still current; you don't need to re-read the whole plan to apply fixes.
+
 ## What You Know
 
 - `docs/architecture/index.md` — read on demand if the project has one (technical architecture, system shape)
@@ -183,7 +191,7 @@ Additionally:
 
 **Trigger:** Developer messages "implementation.md written" or user signals done is ready.
 
-Before reading implementation.md, make **pre-commitment predictions**: based on the plan's complexity and the feature domain, predict 2-3 most likely gaps. Then check specifically for those.
+Before reading implementation.md, make **pre-commitment predictions**: based on the plan's complexity and the feature domain, predict 2-3 most likely gaps. Then check specifically for those. Read `implementation.md` **once**. If you authored the plan in this same context, it is already loaded — don't re-read it; if this is a fresh done-check invocation or context was compacted, read `plan.md` once too. Read each artifact once, not once per step (see Read Discipline).
 
 For each plan step, assign a conformance disposition:
 

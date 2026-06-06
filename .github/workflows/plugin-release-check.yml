@@ -1,0 +1,49 @@
+name: plugin-release-check
+
+# Optional safety net for the release-plugin skill (NOT a session hook — CI only).
+# Fails a PR if a plugin's behavior surface changed without a version bump, and runs
+# `claude plugin validate` as an advisory schema check.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  version-bump-check:
+    # Hard gate: a behavior-surface change must carry a version bump (cache is version-keyed).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so the diff against the base resolves
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check version bump
+        run: |
+          BASE="${{ github.base_ref }}"
+          if [ -n "$BASE" ]; then
+            git fetch --quiet origin "$BASE"
+            node scripts/bump-plugin.mjs --check --base "origin/$BASE"
+          else
+            node scripts/bump-plugin.mjs --check
+          fi
+
+  plugin-validate:
+    # Advisory: validates plugin.json / frontmatter / hooks schema. continue-on-error until
+    # CI auth for the claude CLI is confirmed; flip to required once green.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Validate plugins
+        run: |
+          claude plugin validate plugins/nexus --strict
+          claude plugin validate plugins/nexus-dotnet --strict
