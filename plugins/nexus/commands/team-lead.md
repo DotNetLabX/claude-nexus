@@ -79,6 +79,8 @@ The architect and the developer are **always spawned in two phases**. Agents can
 2. **Triage.** Read the Phase-1 output. Route questions (architect → PO → user; developer → architect). For the architect, settle review mode (see Architect Questions Checkpoint).
 3. **Phase 2 — Resume.** Resume the **same** agent (SendMessage to its agent id) with a Phase-2 verb (`Write the plan…` / `Implement…`).
 
+**Foreground, always.** Spawn and resume pipeline agents (architect, developer, reviewer, PO, critic) in the **foreground** — never set `run_in_background: true`. A background spawn truncates the returned result (breaking the Relay Contract + Verdict Validation) and leaves no live agent to `SendMessage`-resume for Phase 2. Background is only ever for throwaway discovery spawns (Explore, general-purpose), never for a pipeline role. The `pipeline-gate` hook enforces this — a backgrounded pipeline spawn is denied.
+
 **State for the gate:** before each spawn/resume, write `.claude/.pipeline-state` as `{agent}:{phase}` — `architect:analyze` then `architect:plan`; `developer:analyze` then `developer:implement`. The `pipeline-gate` hook reads this to block a plan or source written during an analyze phase (the collapse). Keep it current; a stale value makes the gate fail open.
 
 **Never send a combined "analyze and write/implement" prompt, and never open with a Phase-2 verb.** Handing `write the plan` or `implement` on the first spawn makes the agent skip Phase 1 — that is the collapse that destroys the checkpoints. The first message to architect/developer is always `Analyze {slug}.`
@@ -143,13 +145,13 @@ Verdicts can self-contradict — cross-check against the artifact before accepti
 
 ### Pre-Flight (before any launch)
 
-Apply safe defaults silently; **ask only on the genuinely meaningful choices** (team mode, review mode).
+Apply safe defaults silently; **ask only on the genuinely meaningful choices** (team mode). Review mode is **not** a launch-time question — it is chosen later, at the post-Phase-1 Architect Questions Checkpoint.
 
 1. **Dirty tree** — `git status`. If uncommitted changes are intermingled with the work, **offer to isolate** (new branch or worktree) before starting — don't silently build on a tree you won't be able to commit cleanly.
 2. **Branch** — Stay on current unless isolating per #1. Inform: "Working on `{branch}`."
 3. **Jira** — Fetch if the user mentioned a key. Otherwise skip.
 4. **Team mode** — Standard by default. If Codex is available, **ask**: Fast / Standard / Standard+Codex. Use ad-hoc complexity to recommend.
-5. **Review mode** — settled at the architect checkpoint: attended → **ask** critic vs self-review; unattended → self-review.
+5. **Review mode** — **do NOT ask at launch.** Deferred to the post-Phase-1 Architect Questions Checkpoint (you can't choose a review depth before the architect has analyzed and recommended one). Attended → ask critic vs self-review *there*; unattended → self-review.
 6. **Spawn mode** — **foreground for pipeline agents** (background truncates results and breaks verdict relay). Resume via SendMessage across phases.
 7. **Plan approval** — auto-approve after review passes with no open questions (see Plan Approval). Don't ask.
 

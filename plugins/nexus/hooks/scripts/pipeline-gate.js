@@ -11,6 +11,9 @@
  *      collapse. Blocked.
  *   2) Verdict integrity. A review.md written with an APPROVED verdict while it still lists
  *      an unresolved CRITICAL or HIGH finding is an invalid verdict. Blocked.
+ *   3) Spawn mode. A pipeline subagent (architect/developer/reviewer/PO/critic/learner) spawned
+ *      with run_in_background truncates the relayed result (breaking verdict relay) and leaves no
+ *      live agent to resume for Phase 2 (ADR-10). Blocked.
  *
  * Design rules (so it never wedges a run, including unattended -p):
  *   - Fail open on ANY uncertainty (bad JSON, missing state file, ambiguous content).
@@ -21,6 +24,9 @@
 const fs = require('fs');
 const path = require('path');
 
+// Pipeline roles whose subagents must run foreground (ADR-10).
+const PIPELINE_ROLES = new Set(['architect', 'developer', 'reviewer', 'po', 'critic', 'learner']);
+
 let input = '';
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', d => (input += d));
@@ -29,9 +35,25 @@ process.stdin.on('end', () => {
   try { data = JSON.parse(input || '{}'); } catch { return allow(); }
 
   const tool = data.tool_name || '';
+  const ti = data.tool_input || {};
+
+  // (3) Spawn mode: a pipeline subagent must run foreground (ADR-10). Background truncates the
+  //     relayed result (breaking verdict relay) and leaves no live agent to resume for Phase 2.
+  if (/^(Task|Agent)$/.test(tool)) {
+    const role = String(ti.subagent_type || '').toLowerCase().split(/[:/]/).pop();
+    const bg = ti.run_in_background === true || ti.run_in_background === 'true';
+    if (bg && PIPELINE_ROLES.has(role)) {
+      return deny(
+        `the ${role} pipeline agent is being spawned in the background. Pipeline agents must run ` +
+        'foreground — a background spawn truncates the returned result (breaking verdict relay) and ' +
+        'leaves no live agent to SendMessage-resume for Phase 2. Re-spawn without run_in_background.'
+      );
+    }
+    return allow();
+  }
+
   if (!/^(Write|Edit|MultiEdit)$/.test(tool)) return allow();
 
-  const ti = data.tool_input || {};
   const fp = String(ti.file_path || ti.path || '').replace(/\\/g, '/');
   if (!fp) return allow();
 

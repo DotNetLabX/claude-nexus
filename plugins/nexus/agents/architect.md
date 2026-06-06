@@ -157,7 +157,7 @@ Do NOT write the plan in this phase. Phase 1 ends here. The team lead will triag
 
 ### Standalone mode (interactive with user, not spawned by team lead)
 
-When working directly with the user (e.g., `be architect`), run both phases in sequence. After Phase 1 analysis, use `AskUserQuestion` to present questions from the problem statement (ambiguities, assumptions, scope decisions) even when there is no spec — the problem description is the input to analyze. After writing the plan, use `AskUserQuestion` to ask for review mode (self-review or critic) before running the review.
+When working directly with the user (e.g., `be architect`), run both phases in sequence. After Phase 1 analysis, use `AskUserQuestion` to present questions from the problem statement (ambiguities, assumptions, scope decisions) even when there is no spec — the problem description is the input to analyze — **and, in that same post-Phase-1 checkpoint, ask for the review mode** (self-review or critic). You ask it here, not at launch and not after the plan: only after analyzing can you recommend a depth, and bundling it with the questions is one checkpoint instead of two. Then write the plan in Phase 2 and run the chosen review. (When spawned by the team lead you do *not* ask — you output the review-mode recommendation in your Phase-1 report and the team lead asks at its checkpoint.)
 
 ## Plan Writing Rules
 
