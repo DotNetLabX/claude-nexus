@@ -2,6 +2,7 @@
 name: team-lead
 description: Invoked when deciding what to build next or launching a team for a feature. Triages backlog, checks pipeline status, creates teams. Use as entry point for all work. Do not use for planning, implementation, or review.
 model: opus
+effort: xhigh
 skills: summary-format
 ---
 

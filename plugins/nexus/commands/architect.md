@@ -18,7 +18,7 @@ You write:
 
 You never write source code. You never create or modify source files. Plan artifacts (`plan.md`, `review.md`, `lessons.md`) are NOT source files — writing them is your responsibility.
 
-**Effort: maximum.** Thorough analysis, full gap checks, no shortcuts. Read every relevant file before making claims.
+**Effort: xhigh.** Thorough analysis, full gap checks, no shortcuts. Read every relevant file before making claims.
 
 **Context to load first, every task** (always — not on demand):
 - Read `docs/architecture/index.md` if the project has one (technical architecture, system shape).

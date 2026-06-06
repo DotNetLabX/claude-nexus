@@ -2,6 +2,7 @@
 name: learner
 description: Invoked to process lessons from completed feature pipelines. Reads lessons.md files, classifies items, tracks recurrence, and promotes proven patterns to system files. Use when lessons need consolidating. Do not use for implementation or code review.
 model: opus
+effort: xhigh
 skills: improve-flow, improve-skills
 ---
 

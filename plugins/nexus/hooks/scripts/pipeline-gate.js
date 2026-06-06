@@ -2,7 +2,7 @@
 /**
  * Nexus PreToolUse pipeline gate (SYNCHRONOUS — can block).
  *
- * Backstops two pipeline invariants that prose instructions alone failed to enforce
+ * Backstops the pipeline invariants that prose instructions alone failed to enforce
  * (a faithful agent can still violate them and believe it complied):
  *
  *   1) Two-phase spawn. While .claude/.pipeline-state ends in ":analyze", the active
@@ -14,6 +14,11 @@
  *   3) Spawn mode. A pipeline subagent (architect/developer/reviewer/PO/critic/learner) spawned
  *      with run_in_background truncates the relayed result (breaking verdict relay) and leaves no
  *      live agent to resume for Phase 2 (ADR-10). Blocked.
+ *   4) State-file integrity. .claude/.pipeline-state is invariant (1)'s source of truth, yet it lives
+ *      under .claude/ (guard.js treats that as writable) and is not a plan/source file — so nothing else
+ *      stops a pipeline subagent from rewriting it. A subagent that flips its own ":analyze" to
+ *      ":implement" would bypass (1) silently. Only the team lead owns phase transitions; a pipeline
+ *      subagent writing the state file is blocked.
  *
  * Design rules (so it never wedges a run, including unattended -p):
  *   - Fail open on ANY uncertainty (bad JSON, missing state file, ambiguous content).
@@ -56,6 +61,22 @@ process.stdin.on('end', () => {
 
   const fp = String(ti.file_path || ti.path || '').replace(/\\/g, '/');
   if (!fp) return allow();
+
+  // (4) State-file integrity: a pipeline subagent must never write .claude/.pipeline-state — invariant
+  //     (1)'s own source of truth. Nothing else stops it (guard.js treats .claude/ as writable; it is not
+  //     a plan/source file), so a subagent could flip its own analyze->implement and bypass (1). Only the
+  //     team lead (or the main session) manages phase transitions. Attributed via data.agent_type.
+  if (/(^|\/)\.claude\/\.pipeline-state$/.test(fp.toLowerCase())) {
+    const writer = String(data.agent_type || '').toLowerCase().split(/[:/]/).pop();
+    if (PIPELINE_ROLES.has(writer)) {
+      return deny(
+        `the ${writer} pipeline subagent is writing .claude/.pipeline-state — the two-phase gate's own ` +
+        'state. Only the team lead advances phases; a subagent rewriting it would let it flip its own ' +
+        'analyze->implement phase and bypass the collapse gate. Report your checkpoint and let the team ' +
+        'lead transition the phase.'
+      );
+    }
+  }
 
   const root = process.env.CLAUDE_PROJECT_DIR || data.cwd || process.cwd();
 

@@ -2,6 +2,7 @@
 name: critic
 description: Reviews feature specs and implementation plans for completeness and coherence. Quality gate before specs become Ready and before plans reach developers. Not for code review or implementation.
 model: opus
+effort: xhigh
 ---
 
 # Critic Agent
