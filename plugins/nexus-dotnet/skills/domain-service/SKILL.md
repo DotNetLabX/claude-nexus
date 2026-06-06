@@ -1,0 +1,209 @@
+---
+name: domain-service
+description: Creates a Domain-layer service class for cross-aggregate computation — pure by default, named by what it does, returns domain types. Use when analytics, scoring, or derivation logic spans multiple aggregates and belongs in the Domain layer.
+user-invocable: true
+---
+
+# Domain Service
+
+A *domain service* is a **Domain-layer class** in `{Module}.Domain/{Area}/` that holds cross-aggregate computation or derivation logic. Single-aggregate logic stays in aggregate behavior methods (ADR-005); only logic that genuinely crosses aggregates or is too complex for any one aggregate belongs here.
+
+**This skill covers one pattern: the Domain-layer service.** For API-layer operation services (shared endpoint logic, no domain purity constraint), see `extract-feature-service`. For the Application-layer service pattern used in projects with an Application layer, see the "When this doesn't apply" section below.
+
+> **Accepted but not proven until Passes 2/3 consume it.** This skill encodes ADR-005, ADR-006, and ADR-010; it will be validated when applied in Pass 2/3.
+
+## Governing ADRs
+
+- **ADR-005** — Computation lives in the Domain layer; domain services return domain types/VOs; minimize API service classes.
+- **ADR-006** — No external/integration/response DTOs enter the Domain.
+- **ADR-010** — Endpoint always owns its own response contract and maps domain → DTO (Mapster is the chosen mapper per ADR-010/CLAUDE.md).
+
+## When to Use
+
+- Logic spans two or more aggregates (e.g., computing a ratio across `Sprint` and `Ticket`).
+- The computation is pure enough to be tested without a database.
+- ADR-005 mandates keeping it in the Domain layer (no Application layer exists in this stack).
+
+## Location
+
+```
+{Module}.Domain/
+  {Area}/
+    {Name}Calculator.cs    ← domain service (this skill)
+    {Name}Result.cs        ← domain result record (if complex enough to split out)
+```
+
+> **Target-state example (created by Pass 2/3):** `Fokus.Domain/Analytics/SprintSummaryCalculator.cs`
+>
+> **Current before-state:** The same computation lives in `Fokus.API/Features/Analytics/SprintSummaryService.cs` — an API-layer service that violates ADR-005. Pass 2/3 will move it to the Domain layer following this skill.
+
+## Naming Rule
+
+**Do not use a `Service` or `DomainService` suffix.** Name the class by what it does:
+
+| Good | Bad |
+|------|-----|
+| `SprintSummaryCalculator` | `SprintSummaryService` |
+| `CycleTimeAnalyzer` | `CycleTimeDomainService` |
+| `BugRatioScorer` | `BugRatioService` |
+| `VelocityProjector` | `VelocityDomainService` |
+
+This rule applies to domain-layer services. API-layer operation services (see `extract-feature-service`) follow their own naming convention and are not subject to this rule.
+
+## Dependencies — Pure by Default
+
+The domain service operates on aggregates passed in by the caller. It is **DB-free and unit-testable** by default.
+
+```csharp
+// CORRECT — caller pre-loads aggregates, passes them in
+public class BugRatioScorer
+{
+    public BugRatioResult Score(IReadOnlyList<Sprint> closedSprints, HealthThresholdConfig thresholds)
+    {
+        // pure computation over pre-loaded domain objects
+        // HealthThresholdConfig is a live domain VO in Fokus.Domain/Settings/ValueObjects/
+    }
+}
+```
+
+### Escape Hatch — Narrow Domain-Owned Read Port (performance only)
+
+When pre-loading all aggregates is genuinely impractical (e.g., board-level history across hundreds of sprints), inject a **narrow read port** — an interface **declared in `{Module}.Domain`**, returning **domain types only**, named for the read it performs:
+
+```csharp
+// In {Module}.Domain/{Area}/ — declared here, implemented in Persistence
+// Target-state example (created by Pass 2/3): ClosedSprintSnapshot is a domain-layer
+// projection record defined alongside this interface. Use whatever name describes
+// the domain data your read port needs to return.
+public interface IClosedSprintHistory
+{
+    Task<IReadOnlyList<ClosedSprintSnapshot>> LoadForBoard(int boardId, int lookBackCount, CancellationToken ct);
+}
+```
+
+```csharp
+// Domain service injects the domain-owned abstraction, not a concrete repository
+// Primary constructor: use un-prefixed parameter name (idiomatic C# 12 primary constructor)
+public class VelocityProjector(IClosedSprintHistory history)
+{
+    public async Task<VelocityProjection> ProjectAsync(int boardId, int count, CancellationToken ct)
+    {
+        var snapshots = await history.LoadForBoard(boardId, count, ct);
+        // pure derivation over domain types
+    }
+}
+```
+
+**Forbidden in the escape hatch:**
+- `IRepository<T>` / `RepositoryBase<T>` — too broad, leaks persistence shape
+- `IQueryable<T>` — leaks EF Core into the domain
+- `DbContext` or any EF type — domain cannot depend on persistence
+
+Write the justification at the call site: `// Performance: pre-loading {N} sprint histories is O(N*M) — use read port`.
+
+The read-port interface is registered in Persistence's `DependencyInjection.cs` (it lives in Domain but is implemented in Persistence).
+
+## Output Boundary — Endpoint Always Owns the Response DTO (ADR-010)
+
+Domain service methods return **domain types or dedicated domain result records**, never API response DTOs.
+
+```csharp
+// CORRECT — domain result record (lives in Domain layer)
+public record BugRatioResult(
+    decimal Current,
+    decimal? Prior,
+    decimal? Delta,
+    HealthThresholdConfig Thresholds);  // HealthThresholdConfig is a live domain VO
+
+public class BugRatioScorer
+{
+    public BugRatioResult Score(IReadOnlyList<Sprint> sprints, HealthThresholdConfig thresholds) { ... }
+}
+```
+
+```csharp
+// WRONG — response DTO in domain
+public class BugRatioScorer
+{
+    public BugRatioResponse Score(...) { ... }  // "Response" suffix → API concern, not domain
+}
+```
+
+The **endpoint always defines its own response contract and maps domain → DTO via Mapster** — even when the shapes are identical. The domain type and the wire contract evolve independently; do not return the domain type directly from the endpoint, and do not reuse the domain type as the response.
+
+```csharp
+// Target-state endpoint (Mapster — the project's chosen mapper per ADR-010/CLAUDE.md;
+// Mapster package not yet in CPM, added in Pass 2/3 — snippet won't build until then)
+// Live type names from Fokus.API/Features/Analytics/GetBugRatio/:
+public class GetBugRatioEndpoint : Endpoint<GetBugRatioRequest, BugRatioResponse>
+{
+    public override async Task HandleAsync(GetBugRatioRequest req, CancellationToken ct)
+    {
+        var sprints = await _sprintRepo.GetAnalyticsSprints(ct);
+        var result = _scorer.Score(sprints, _settings.HealthThresholds);  // domain type out
+        await Send.OkAsync(result.Adapt<BugRatioResponse>(), ct);          // endpoint maps
+    }
+}
+```
+
+## Input Boundary — No DTOs Enter the Domain (ADR-006)
+
+Domain service parameters must be **domain types, value objects, or intrinsic primitives**. External/integration/response DTOs are forbidden as parameters.
+
+```csharp
+// CORRECT — domain types + primitives
+public BugRatioResult Score(
+    IReadOnlyList<Sprint> closedSprints,      // domain aggregate
+    HealthThresholdConfig thresholds,          // live domain VO (Fokus.Domain/Settings/ValueObjects/)
+    int windowSize)                            // intrinsic computation primitive
+
+// WRONG — external DTO leaks into domain
+public BugRatioResult Score(JiraSprintResponse jiraData, ...) { ... }
+```
+
+Use a **value object** when a parameter carries domain meaning or an invariant. Use a plain primitive when it is an incidental computation parameter (look-back count, window size, index).
+
+Map external data → domain types at the API/Persistence boundary *before* the domain service sees it.
+
+## DI Registration
+
+Register the domain service as **scoped** in the owning module's API or Persistence `DependencyInjection.cs`. No Application layer is needed — the domain service is a Domain-layer class registered wherever the module wires its DI.
+
+```csharp
+// {Module}.API/DependencyInjection.cs  (light-stack variant — ADR-004)
+services.AddScoped<BugRatioScorer>();
+services.AddScoped<SprintSummaryCalculator>();
+```
+
+If using the escape-hatch read port, register its implementation in Persistence:
+
+```csharp
+// {Module}.Persistence/DependencyInjection.cs
+services.AddScoped<IClosedSprintHistory, ClosedSprintHistoryQuery>();
+```
+
+See `service-registration` for the full layer structure and "skip layer 2 when no Application project" guidance.
+
+## When This Doesn't Apply — The Application-Layer Service (Contrast)
+
+In projects **with an Application layer** (e.g., the `dotnet-microservices` reference), cross-aggregate orchestration commonly lives in an **Application-layer service** instead — such as `ArticleAccessChecker` in `Submission.Application/`. That is a **distinct pattern** with different rules: it may depend on a `DbContext` or repositories directly and is **not** bound by the domain-service purity rule above. Use the Application-layer approach when the project structure provides that layer and the logic is orchestration (loading + coordinating) rather than pure computation.
+
+No sentence in this skill implies a domain service can live in or depend on an Application layer, a `DbContext`, or concrete repositories. If you need that pattern, see `cqrs-patterns` for Application-layer handler placement.
+
+## Relationship to Other Skills
+
+| Skill | Relationship |
+|-------|-------------|
+| `analytics-computation-service` | Specialization of this skill for time-series analytics — adds sparkline builders, delta/direction/polarity helpers, rolling averages |
+| `domain-patterns` | Defines the domain types (aggregates, VOs, owned types) that domain services consume and return |
+| `persistence-patterns` | Shows how the narrow read-port escape-hatch interface is implemented in Persistence |
+| `extract-feature-service` | The API-layer operation service pattern — different layer, different rules (may inject concrete repos; no purity constraint) |
+| `service-registration` | Where DI registration goes per layer; the "skip layer 2 when no Application project" fallback |
+| `cqrs-patterns` | Application-layer handler placement for the full-stack (MediatR) world |
+
+## What This Skill Does NOT Cover
+
+- Analytics-specific helpers (sparklines, rolling averages, delta/direction/polarity) — see `analytics-computation-service`
+- Aggregate behavior methods (single-aggregate logic) — see `domain-patterns`
+- EF Core persistence config for domain result records — see `persistence-patterns`
+- API endpoint creation — see `create-feature`
