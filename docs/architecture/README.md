@@ -20,6 +20,7 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-7 — Pipeline enforcement: failures must be unreachable, not merely discouraged
 - ADR-8 — Security guard as a synchronous hook
 - ADR-9 — Build & release pipeline
+- ADR-10 — Spawn mode: foreground for pipeline agents
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -246,6 +247,35 @@ best-maintained marketplaces use. The version bump is mandatory because the cach
 (constraint #3): no bump → users never see the change.
 
 **Rejected.** *Codegen-composed supersets* (ADR-3). *Hand-mirroring* (ADR-6).
+
+---
+
+## ADR-10 — Spawn mode: foreground for pipeline agents
+**Context.** The team lead is the sole coordination hub. To relay or act on a verdict it must **read
+and quote** the agent's result — the done-check PASS/FAIL, the reviewer's APPROVE/REQUEST-CHANGES, the
+severity findings in `review.md` (Relay Contract + Verdict Validation, ADR-7). It also drives the
+**two-phase Analyze→Resume** cycle by resuming the *same live agent* via `SendMessage` to its agent
+id. Nexus originally defaulted spawn mode to **`Background`** (initial commit `cfb7a64`, Pre-Flight
+item #5).
+
+**Decision.** Spawn pipeline agents (architect, developer, reviewer, PO) **foreground**, and resume
+across phases via `SendMessage`. Reserve background for fire-and-forget / test spawns only. The
+original `Background` default was reversed during the pipeline-enforcement pass (`50c5247`).
+
+**Why.** A background spawn **truncates the subagent's returned result**. The team lead's Relay
+Contract and Verdict Validation depend on reading the *full* verdict; a truncated result makes relay
+impossible and lets self-contradicting verdicts (APPROVED-with-open-HIGH, PASS-with-Missing) slip
+through unchecked. The mandatory two-phase spawn additionally needs a live, addressable agent to
+resume (`Analyze {slug}` → `Write the plan…` / `Implement…`). Foreground satisfies both; background
+defeats both.
+
+**Tradeoffs.** Foreground serializes the pipeline — no parallel agent execution. This is consistent
+with the existing serial-pipeline decision (features are 3–10 steps; coordination overhead exceeds the
+saving). The user waits on each agent rather than firing and forgetting.
+
+**Rejected.** *Background default* — the original `cfb7a64` value; truncates results and silently
+breaks relay + verdict validation. It still survives in the superseded `nexus-net` superset (ADR-3),
+which is the source of cross-plugin confusion about the default.
 
 ---
 
