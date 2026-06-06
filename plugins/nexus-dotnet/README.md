@@ -1,14 +1,13 @@
 # nexus-dotnet
 
-A **thin .NET / Vue stack extension** for the `nexus` core pipeline — the dependency-based alternative
-to the self-contained `nexus-net` superset.
+A **thin .NET / Vue stack extension** for the `nexus` core pipeline. It declares `dependencies: ["nexus"]`,
+so installing it auto-installs and enables `nexus`, then layers the stack on top.
 
-Unlike `nexus-net` (which inlines stack conventions into its own full copy of every agent), `nexus-dotnet`
-ships **no agents, rules, commands, or hooks**. It depends on `nexus` for the entire engine and adds only:
+It ships **no agents, rules, commands, or hooks** — those come from `nexus`. It adds only:
 
 | Component | Count | Notes |
 |-----------|-------|-------|
-| **Skills** | 29 | The .NET/Vue stack code-pattern skills (services, modules, aggregates, CQRS, EF, gRPC, Vue, Pinia, Tailwind, …). The 9 process skills come from `nexus`. |
+| **Skills** | 29 | The .NET/Vue stack code-pattern skills (services, modules, aggregates, CQRS, EF, gRPC, Vue, Pinia, Tailwind, …). The process + artifact-format skills come from `nexus`. |
 | **Conventions** | 6 | `csharp`, `ef-core`, `vue`, `testing`, `project-rules`, `coding-conventions` — scaffold source for the Read-Index pattern. |
 | **Template** | 1 | `templates/CLAUDE.md` — a .NET/Vue project starter. |
 
@@ -41,5 +40,4 @@ The stack conventions are **not** inlined into agents here. Instead they live as
 ## When to use which
 
 - **Generic / non-.NET project** → `nexus` alone.
-- **.NET project, prefer one self-contained install** → `nexus-net` (superset; conventions inlined into agents).
-- **.NET project, prefer the thin/dependency model** → `nexus` + `nexus-dotnet` (this plugin).
+- **.NET / Vue project** → `nexus-dotnet` (this plugin); it pulls in `nexus` automatically via `dependencies`.

@@ -34,20 +34,17 @@ User → PO (spec) → Architect (plan) → Developer (implement)
 
 ## Plugins
 
-Nexus ships as **three plugins** in the `claude-nexus` marketplace:
+Nexus ships as **two plugins** in the `claude-nexus` marketplace — a stack-agnostic core and a thin stack extension that **depends on** it:
 
 | Plugin | Scope | Skills | Install id | How to install |
 |--------|-------|--------|------------|----------------|
-| **nexus** | Stack-agnostic core | 9 process | `nexus@claude-nexus` | Standalone |
-| **nexus-net** | .NET / Vue superset (conventions inlined into agents) | 38 (9 + 29 stack) | `nexus-net@claude-nexus` | **Instead of** `nexus` |
-| **nexus-dotnet** | .NET / Vue thin extension (Read-Index model) | 29 stack | `nexus-dotnet@claude-nexus` | **Alongside** `nexus` — auto-pulls it |
+| **nexus** | Stack-agnostic core (pipeline agents, rules, process skills, security guard) | 14 (9 process + 5 artifact-format) | `nexus@claude-nexus` | Standalone |
+| **nexus-dotnet** | .NET / Vue stack extension | 29 stack | `nexus-dotnet@claude-nexus` | `dependencies: ["nexus"]` — installing it **auto-installs `nexus`** |
 
-There are two ways to get the .NET / Vue stack on top of the same pipeline:
+- **Generic / non-.NET stacks** → install **`nexus`** alone. Its code-touching agents read the project's `docs/conventions/` if present (Read-Index), so the pipeline adapts to any stack.
+- **.NET / Vue stacks** → install **`nexus-dotnet`**. It declares `dependencies: ["nexus"]`, so Claude Code pulls and enables `nexus` automatically and layers the 29 .NET / ASP.NET Core / EF Core / CQRS / DDD / FastEndpoints / Vue / Pinia / Tailwind code-pattern skills plus the stack convention files on top.
 
-- **`nexus-net` — the superset.** One self-contained install. The .NET / ASP.NET Core / EF Core / CQRS / DDD / FastEndpoints / Vue / Pinia / Tailwind conventions are inlined into the code-touching agents, plus 29 stack code-pattern skills (service/module/aggregate scaffolding, CQRS, persistence, gRPC, Vue, …). Install it *instead of* `nexus`.
-- **`nexus` + `nexus-dotnet` — the thin model.** The core engine plus a dependency-based extension that ships the 29 stack skills and the convention *files* the core agents read from `docs/conventions/`. `nexus-dotnet` declares `dependencies: ["nexus"]`, so installing it pulls `nexus` automatically.
-
-Generic / non-.NET stacks use **`nexus` alone**.
+> **Why a dependency, not a superset?** Plugin dependencies auto-install, auto-enable, and layer their components, so a thin extension reuses the core's agents/rules/hooks at runtime instead of shipping a hand-composed copy. This removes the most error-prone build step.
 
 ## Install & lifecycle
 
@@ -62,11 +59,10 @@ Add the marketplace once, then install the plugin for your stack:
 /plugin install nexus@claude-nexus              # generic stack
 ```
 
-.NET / Vue — pick one model (see [Plugins](#plugins)):
+.NET / Vue projects — install the stack extension (it auto-installs `nexus`):
 
 ```
-/plugin install nexus-net@claude-nexus          # superset — instead of nexus
-/plugin install nexus-dotnet@claude-nexus       # thin extension — auto-pulls nexus
+/plugin install nexus-dotnet@claude-nexus       # pulls + enables nexus automatically
 ```
 
 Pick a security mode when prompted, then run `/reload-plugins` (or restart Claude Code) to activate.
@@ -112,7 +108,7 @@ Inspect state any time with `/plugin list` (`--enabled` / `--disabled`) or the `
 
 Two ways to drive an agent:
 
-- **Persona** — `/nexus:architect`, `/nexus:developer`, … (or `/nexus-net:<agent>`). The main thread *adopts* the role, tracked per-session in `.claude/.personas.json`. The `restore-agent` hook re-injects the role on `/compact` (the one event that silently drops it); `/clear` exits the persona; abandoned sessions expire after 16h. Concurrent sessions each keep their own role.
+- **Persona** — `/nexus:architect`, `/nexus:developer`, …. The main thread *adopts* the role, tracked per-session in `.claude/.personas.json`. The `restore-agent` hook re-injects the role on `/compact` (the one event that silently drops it); `/clear` exits the persona; abandoned sessions expire after 16h. Concurrent sessions each keep their own role.
 - **Subagent** — the team-lead spawns agents via the pipeline. They hand off through files and route messages hub-and-spoke.
 
 **Entry points:** `backlog` (triage) → `team-lead` (orchestrate) → `architect` (plan) → `developer` (implement) → `architect` (done-check) → `reviewer` (review). Use `po` to shape a spec, `critic` to cross-check, `learner` to consolidate lessons, `solo` for a quick 1–3 file change.
@@ -123,12 +119,12 @@ A plugin can't auto-load `rules/` or `@`-import bundled files into subagents, so
 
 | Layer | Mechanism | Purpose |
 |-------|-----------|---------|
-| **Rules** (10) | Injected every session by the `inject-rules` hook | Universal behavioral constraints — guardrails, KB navigation, pipeline rules |
+| **Rules** (11) | Injected every session by the `inject-rules` hook | Universal behavioral constraints — guardrails, KB navigation, pipeline rules, engineering discipline |
 | **Agent conventions** | Inlined into each agent file at build time | Coordination protocol + per-agent boundaries travel *with* the subagent |
-| **Skills** (9 / 38) | Invoked on demand by name | Reusable recipes — planning, specs, reviews, lessons, TDD, plus stack scaffolding in `nexus-net` |
+| **Skills** (14 core + 29 stack) | Auto-discovered (model-invoked by `description` + task context; none disable model invocation), and also pinned by name — and preloaded via each agent's `skills:` frontmatter — where the pipeline wants determinism | Reusable recipes — planning, specs, reviews, lessons, TDD, artifact-format schemas, plus stack scaffolding in `nexus-dotnet` |
 | **Project docs** | Read at start *if present* (`docs/architecture/`, `docs/conventions/`, `docs/kb/`) | Stack-agnostic by design; absent files are skipped |
 
-DRY is preserved at **build time** — the `nexus-net` agents are generated from the core agent bodies plus the convention sources in `build-src/conventions/` (see `scripts/`).
+The stack extension (`nexus-dotnet`) layers on at runtime via `dependencies: ["nexus"]` — no build-time agent composition. The only generated artifacts are the persona commands (`gen-commands.mjs`, agents → commands) and the `nexus-dotnet` payload (`gen-nexus-dotnet.mjs`, skills + conventions).
 
 ## Security
 
@@ -151,13 +147,14 @@ Intentional tradeoffs that reviewers frequently flag — not oversights.
 | Agent boundary rules repeated per agent | Agents are self-contained — each defines its own "never do" without cross-referencing others. A missed guardrail is the highest-impact failure; duplication is cheaper than the miss. |
 | Team-lead as sole message hub | Auditability + user-decision interception. Scope changes can't bypass the user. Single point of failure is the accepted tradeoff. |
 | Serial pipeline, no parallelism | Features are 3–10 steps. Parallel coordination overhead exceeds the time saved at this scale. |
-| `nexus-net` is a superset, not a dependency | A plugin can only inline conventions into *its own* agents, and subagents receive only their own agent file. So the .NET edition ships a complete agent set with conventions inlined, rather than layering onto `nexus` at runtime. |
+| Stack support is a dependency extension, not a superset | Plugin dependencies auto-install, auto-enable, and layer components at runtime, so `nexus-dotnet` reuses the core's agents/rules/hooks instead of shipping a hand-composed copy. This removes the fragile build-time agent composition; the core's code-touching agents read `docs/conventions/` (Read-Index), which the extension supplies. |
 | Rules injected every session | Missing a guardrail mid-implementation costs more than the ~150 lines of context. Solo sessions pay a small tax. |
 
 ## Details
 
+- [Architecture & Decision Record](docs/architecture/README.md) — why Nexus is built the way it is: source of truth, dependency model, knowledge delivery, pipeline enforcement, build & release
 - [nexus core README](plugins/nexus/README.md) — components, persona vs subagent, where conventions live, full security table
-- [nexus-net README](plugins/nexus-net/README.md) — the 29 stack skills, why superset, project template
+- [nexus-dotnet README](plugins/nexus-dotnet/README.md) — the 29 stack skills, the dependency model, project template
 
 ## License
 

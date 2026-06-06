@@ -25,6 +25,12 @@ Programming conventions for C# / .NET. Inlined into the developer, reviewer, and
 
 - The solution file uses `.slnx` format (XML-based, .NET 10 default). Adding projects means adding `<Project Path="...">` entries under the appropriate `<Folder>` element.
 
+## Framework Currency
+
+- Target the **latest stable** stack — currently **.NET 10**. Use current framework APIs, never deprecated ones.
+- FastEndpoints: `Send.*` (e.g. `Send.OkAsync`), never the legacy `SendOkAsync`.
+- **Central package management is mandatory** — every .NET solution declares versions in `src/Directory.Packages.props` (`<PackageReference>` carries no `Version`).
+
 ---
 
 ## Method Design

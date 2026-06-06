@@ -4,7 +4,7 @@ The stack-agnostic, self-contained core of **Nexus** — a multi-agent feature p
 
 > **Name alternatives considered:** Gravity, Blade — in case of future rename.
 
-It ships a coordinated team of specialized agents, always-on behavioral rules, reusable process skills, persona commands, and a configurable security guard. Nothing in here assumes a particular tech stack — the companion **nexus-net** plugin layers .NET / Vue / EF code-pattern skills on top.
+It ships a coordinated team of specialized agents, always-on behavioral rules, reusable process skills, persona commands, and a configurable security guard. Nothing in here assumes a particular tech stack — the companion **nexus-dotnet** plugin (which depends on this one) layers .NET / Vue / EF code-pattern skills on top.
 
 ## What's inside
 
@@ -12,7 +12,7 @@ It ships a coordinated team of specialized agents, always-on behavioral rules, r
 |-----------|-------|-------|
 | **Agents** | 8 | architect, po, critic, learner, team-lead (`opus`); developer, reviewer, solo (`sonnet`) |
 | **Rules** | 10 | Always-on, injected at SessionStart (plugins have no auto-loaded `rules/`) |
-| **Skills** | 9 | Process recipes: planning, specs, reviews, lessons, TDD, debugging, cleanup, KB schema |
+| **Skills** | 14 | 9 process recipes (planning, specs, reviews, lessons, TDD, debugging, cleanup, KB schema) + 5 artifact-format schemas (implementation/questions/review/summary/lessons) |
 | **Commands** | 9 | 8 persona activators + `backlog` |
 | **Hooks** | 4 | `inject-rules`, `restore-agent` (SessionStart); `guard`, `audit-logger` (PreToolUse) |
 
@@ -53,4 +53,4 @@ Pick a security mode when prompted, then fully restart Claude Code (plugin load 
 
 ## Stack-specific work
 
-For .NET / ASP.NET / EF Core / CQRS / DDD / FastEndpoints / Vue / Pinia / Tailwind patterns, install **nexus-net**, which depends on this plugin and adds the stack code-pattern skills plus filled-in conventions.
+For .NET / ASP.NET / EF Core / CQRS / DDD / FastEndpoints / Vue / Pinia / Tailwind patterns, install **nexus-dotnet**, which declares `dependencies: ["nexus"]` (so it auto-installs this plugin) and adds the stack code-pattern skills plus convention files.

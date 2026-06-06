@@ -1,6 +1,6 @@
 // Generates the 8 persona commands from the agent files.
 // Single source of truth = the agent .md; command = activation wrapper + inlined body.
-// Run: node scripts/gen-commands.mjs [pluginName]   (default: omni; pass "nexus-net" for the stack plugin)
+// Run: node scripts/gen-commands.mjs [pluginName]   (default: nexus)
 // Paths resolve relative to this file — location-independent.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';

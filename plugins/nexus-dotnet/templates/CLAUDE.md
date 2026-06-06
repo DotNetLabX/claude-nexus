@@ -1,9 +1,9 @@
 # CLAUDE.md
 
-> Starter `CLAUDE.md` for a .NET / Vue project using the **nexus-net** plugin.
+> Starter `CLAUDE.md` for a .NET / Vue project using the **nexus-dotnet** plugin (which pulls in **nexus**).
 > Copy this to your repo root and fill in the TBD sections (app prefix, service indices, domain).
-> The plugin's agents already carry the coding conventions inline — this file captures
-> *project-specific* architecture, structure, and stack decisions.
+> Place this plugin's `conventions/` under `docs/conventions/` — the nexus agents read them (Read-Index).
+> This file captures *project-specific* architecture, structure, and stack decisions.
 
 ## Architecture
 
