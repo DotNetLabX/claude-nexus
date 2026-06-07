@@ -5,6 +5,13 @@ description: Format spec for the review artifact — severity ratings, verdict, 
 
 # Review Format
 
+`review.md` carries **two labeled sections** — one per review step — written by different agents at different times. No other verdict files exist for this purpose (`done-check.md` and `plan-review.md` do NOT exist). The critic produces no durable file — its findings go via message only.
+
+- **`## Step 1 — Done-Check`** — written by the architect. Contains step dispositions and a single PASS/FAIL verdict line.
+- **`## Step 2 — Code Review`** — written by the reviewer. Contains severity findings and a single APPROVED/REQUEST CHANGES verdict line.
+
+The team lead greps **named sections**, not bare `Verdict:` lines, to avoid stacked-verdict ambiguity.
+
 ## Review Checklist
 
 ### Step 1: Done check (architect, no code reading)
@@ -39,15 +46,30 @@ description: Format spec for the review artifact — severity ratings, verdict, 
 
 ## Review Output Format
 
-Reviewer saves to `docs/specs/{slug}/delivery/review.md`.
+Both steps write to `docs/specs/{slug}/delivery/review.md` under their own labeled section.
+
+**Step 1 — Done-Check section (architect writes):**
 
 ```
-# {Feature Name} — Review
+## Step 1 — Done-Check
+
+| Step | Disposition | Notes |
+|------|-------------|-------|
+| 1 — {step name} | Implemented / Deviated / Missing / Superseded / N/A | {reason if not Implemented} |
+...
+
+**Verdict: PASS** (or **Verdict: FAIL — step N missing**)
+```
+
+**Step 2 — Code Review section (reviewer writes):**
+
+```
+## Step 2 — Code Review
 
 ## Reviewed By
 [Who performed this review: reviewer, /review (skill), an external review tool, or a combination]
 
-## Verdict: APPROVE | REQUEST CHANGES | COMMENT
+## Verdict: APPROVED | REQUEST CHANGES | COMMENT
 
 ## Pre-commitment Predictions
 - [What you expected to find vs what you found]
@@ -81,11 +103,14 @@ Reviewer saves to `docs/specs/{slug}/delivery/review.md`.
 - **Severity inflation.** Style preferences, naming choices, and minor inconsistencies are LOW by definition. Flagging them as HIGH inflates the fix burden and trains the developer to ignore severity ratings. When in doubt, write it as LOW or move to Open Questions.
 - **Approving without fresh build output.** "Should work" is not evidence. Every approval must include a build check row in the Evidence table with actual command output. Claiming the build passes without running it is grounds for REQUEST CHANGES on the review itself.
 - **Rubber-stamping fix cycles.** On cycles 2 and 3, re-check the areas adjacent to each fix — not just the exact lines changed. A fix that introduces a regression in a nearby call site is still a failed review.
+- **Writing a critic verdict to review.md.** The critic returns findings by message only — it does not write to any file. Do not create `plan-review.md` or `done-check.md` — these files do not exist in the Nexus artifact model.
+- **Stacked verdicts.** Never put more than one verdict line in a single section. The Step 1 and Step 2 sections each carry exactly one verdict line — their own.
 
 ## Consumers
 
 | Agent | What they read | Action taken |
 |-------|---------------|-------------|
-| Developer | All findings (CRITICAL/HIGH first) | Fixes each finding, notes in implementation.md |
-| Architect (escalation) | All sections | Decides plan wrong vs code wrong |
-| Team Lead | Verdict line | Routes to developer (REQUEST CHANGES) or closes (APPROVE) |
+| Developer | Step 2 findings (CRITICAL/HIGH first) | Fixes each finding, notes in implementation.md |
+| Architect (done check) | Writes Step 1 section | Adds step dispositions + PASS/FAIL |
+| Architect (escalation) | Step 2 findings | Decides plan wrong vs code wrong |
+| Team Lead | `## Step 1 — Done-Check` section for `Missing` marker; `## Step 2 — Code Review` section for verdict line | Routes to developer (REQUEST CHANGES) or closes (APPROVED) |

@@ -29,6 +29,34 @@ docs/specs/{epic-slug}/{issue-slug}/delivery/
 ```
 Ad-hoc work has no `definition/` folder — only `delivery/`.
 
+`communication-log.md` is the **canonical filename** for the inter-agent message log. A consumer project preferring another name is their concern — the plugin always uses this name.
+
+## Pipeline State (`.claude/.pipeline-state`)
+
+The team lead is the **sole writer** of `.claude/.pipeline-state`. Every phase transition writes the next token before the spawn or resume. The `pipeline-gate` hook reads this file to enforce the two-phase discipline. Per gate invariant 3, no pipeline subagent may write this file.
+
+**Complete vocabulary (these exact tokens):**
+
+| `.pipeline-state` value | Phase meaning | Written by team-lead before |
+|---|---|---|
+| *(absent / file missing)* | No pipeline active, solo, or leaderless run | — |
+| `po:shape` | PO shaping the spec | Spawning PO |
+| `architect:analyze` | Architect Phase-1 analyze-and-stop | Spawning architect Phase 1 |
+| `architect:plan` | Architect Phase-2 writing the plan | Resuming architect Phase 2 |
+| `architect:donecheck` | Architect Step-1 done check | Resuming architect for done check |
+| `critic:review` | Critic reviewing spec or plan | Spawning critic |
+| `developer:analyze` | Developer Phase-1 analyze-and-stop | Spawning developer Phase 1 |
+| `developer:implement` | Developer Phase-2 implementing | Resuming developer Phase 2 |
+| `reviewer:review` | Reviewer Step-2 code review | Spawning reviewer |
+| `learner:process` | Learner consolidating lessons | Spawning learner |
+
+**Gate contract (source of truth is the gate decision table in `pipeline-gate.js`):**
+- A developer source-write is allowed **only** under `developer:implement`; any other present token, or an unrecognized token, denies it.
+- A plan.md write is blocked under any token ending in `:analyze`.
+- An absent file fails open (solo / leaderless / unattended runs are never wedged).
+
+**Session lifecycle:** `.pipeline-state` is cleared by `restore-agent.js` on SessionStart `startup` and `clear` events, mirroring the persona registry. A token from a prior closed session cannot block a new session.
+
 ## Communication Model: Hub-and-Spoke
 
 All agent messages go through the team lead. Agents never message each other directly.

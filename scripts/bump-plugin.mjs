@@ -3,15 +3,21 @@
 // affected plugin(s)' version + CHANGELOG, or (in --check mode) verify a bump exists.
 //
 // Owned procedure behind the `release-plugin` skill (plugins/nexus/skills/release-plugin/).
-// Policy: docs/proposals/plugin-authoring-and-versioning.md §4.
+// Policy: PATCH-default; owner escalates. See plugins/nexus/skills/release-plugin/SKILL.md.
 //
 // Usage:
-//   node scripts/bump-plugin.mjs            apply: classify working-tree changes, bump + changelog
+//   node scripts/bump-plugin.mjs            apply: PATCH-bump any plugin whose shipped files changed
+//   node scripts/bump-plugin.mjs --minor    apply, but escalate the bump to MINOR (owner's call)
+//   node scripts/bump-plugin.mjs --major    apply, but escalate the bump to MAJOR (owner's call)
 //   node scripts/bump-plugin.mjs --dry-run  classify only, print the decision, change nothing
-//   node scripts/bump-plugin.mjs --check    CI: exit 1 if a plugin's behavior surface changed
-//                                           (vs --base) without a version bump. Changes nothing.
+//   node scripts/bump-plugin.mjs --check    CI: exit 1 if a plugin's shipped surface changed
+//                                           (vs --base) without ANY version bump. Changes nothing.
 //   --base <ref>   base ref for --check (default: origin/main, fallback HEAD~1)
 //   --staged       apply/dry-run over staged changes only (default: staged + unstaged + untracked)
+//
+// Tiering: PATCH is the default for every shipped-file change (the install cache is version-keyed, so
+// even a patch reaches users). The tool NEVER auto-escalates by file type — the owner escalates to
+// MINOR/MAJOR with --minor/--major.
 //
 // Stack-agnostic: if there is no .claude-plugin/marketplace.json at the repo root, this is a
 // consuming project (not the plugin repo) and the script no-ops with exit 0.
@@ -29,6 +35,8 @@ const valOf = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : 
 const MODE = has('--check') ? 'check' : has('--dry-run') ? 'dry-run' : 'apply';
 const STAGED_ONLY = has('--staged');
 const BASE = valOf('--base');
+// Owner escalation: default is PATCH; --minor / --major raise the bump for every changed plugin.
+const OVERRIDE_TIER = has('--major') ? TIER.MAJOR : has('--minor') ? TIER.MINOR : null;
 
 function git(...a) {
   return execFileSync('git', a, { encoding: 'utf8' }).trim();
@@ -86,39 +94,36 @@ function fileAtBase(relPath) {
 }
 
 function classify(pluginRel, name, fullPath) {
-  // pluginRel is the path within the plugin (e.g. "agents/team-lead.md")
+  // Default tier for ANY shipped-file change is PATCH; the owner escalates with --minor/--major.
+  // This only decides PATCH-vs-NONE (does the change reach a session at all?) plus a descriptive label.
   const seg = pluginRel.replace(/\\/g, '/');
-  if (seg.startsWith('agents/')) return [TIER.MAJOR, 'agent instruction/behavior change'];
-  if (seg.startsWith('rules/')) return [TIER.MAJOR, 'rule (injected every session)'];
-  if (seg.startsWith('hooks/')) return [TIER.MAJOR, 'hook behavior/enforcement change'];
-  if (seg.startsWith('commands/')) return [TIER.MAJOR, 'shipped command changed/renamed'];
-  if (/^\.(mcp|lsp)\.json$/.test(seg) || seg === 'settings.json') return [TIER.MAJOR, 'runtime config surface'];
-  if (seg.startsWith('skills/')) {
-    const sm = seg.match(/^skills\/([^/]+)\//);
-    const skillName = sm ? sm[1] : '';
-    if (/-format$/.test(skillName)) return [TIER.MAJOR, `artifact-format skill (${skillName}) — machinery contract`];
-    // new skill (its SKILL.md didn't exist at base) → additive → MINOR; else can't prove additive → MAJOR
-    const skillMd = `plugins/${name}/skills/${skillName}/SKILL.md`;
-    const existed = fileAtBase(skillMd) !== null;
-    return existed
-      ? [TIER.MAJOR, `existing skill edit (${skillName}) — escalated; downgrade to minor only if provably additive`]
-      : [TIER.MINOR, `new skill (${skillName}) — additive`];
-  }
+
+  // Plugin-root doc/meta (CHANGELOG.md, README.md, LICENSE, …) is not shipped to sessions → no bump.
+  if (!seg.includes('/')) return [TIER.NONE, `plugin-root doc/meta (${seg})`];
+
+  // plugin.json: a version-only diff IS the bump (no-op); any other manifest edit is shipped metadata.
   if (seg === '.claude-plugin/plugin.json') {
     const before = fileAtBase(`plugins/${name}/.claude-plugin/plugin.json`);
-    if (before === null) return [TIER.MAJOR, 'new plugin manifest'];
+    if (before === null) return [TIER.PATCH, 'new plugin manifest'];
     let a, b;
-    try { a = JSON.parse(before); b = JSON.parse(readFileSync(fullPath, 'utf8')); } catch { return [TIER.MINOR, 'plugin.json changed (unparseable)']; }
-    const depsChanged = JSON.stringify(a.dependencies ?? null) !== JSON.stringify(b.dependencies ?? null);
-    if (depsChanged) return [TIER.MAJOR, 'dependency graph change'];
-    // ignore version-only diffs (that IS the bump)
+    try { a = JSON.parse(before); b = JSON.parse(readFileSync(fullPath, 'utf8')); }
+    catch { return [TIER.PATCH, 'plugin.json changed (unparseable)']; }
     const stripV = (o) => { const c = { ...o }; delete c.version; return JSON.stringify(c); };
     if (stripV(a) === stripV(b)) return [TIER.NONE, 'version-only (the bump itself)'];
-    return [TIER.MINOR, 'discovery metadata (description/keywords/userConfig)'];
+    return [TIER.PATCH, 'plugin.json metadata change'];
   }
-  // plugin-root doc/meta files (CHANGELOG.md, README.md, LICENSE, …) are not shipped to sessions
-  if (!seg.includes('/')) return [TIER.NONE, `plugin-root doc/meta (${seg})`];
-  return [TIER.MAJOR, `other plugin payload (${seg}) — conservative`];
+
+  // Everything else under plugins/{name}/ is shipped payload → PATCH (owner escalates if it's bigger).
+  const skill = (seg.match(/^skills\/([^/]+)\//) || [])[1];
+  const label =
+    seg.startsWith('agents/') ? 'agent instruction/behavior change' :
+    seg.startsWith('rules/') ? 'rule (injected every session)' :
+    seg.startsWith('hooks/') ? 'hook behavior/enforcement change' :
+    seg.startsWith('commands/') ? 'shipped command changed' :
+    skill ? `skill change (${skill})` :
+    (/^\.(mcp|lsp)\.json$/.test(seg) || seg === 'settings.json') ? 'runtime config surface' :
+    `plugin payload (${seg})`;
+  return [TIER.PATCH, label];
 }
 
 // ── aggregate per plugin ─────────────────────────────────────────────────────
@@ -135,6 +140,16 @@ for (const p of paths) {
   if (tier > cur.tier) cur.tier = tier;
   if (tier > TIER.NONE) cur.reasons.add(reason);
   perPlugin.set(name, cur);
+}
+
+// Owner escalation: --minor / --major raises every changed plugin to that tier (default stays PATCH).
+if (OVERRIDE_TIER) {
+  for (const cur of perPlugin.values()) {
+    if (cur.tier > TIER.NONE) {
+      cur.tier = OVERRIDE_TIER;
+      cur.reasons.add(`owner-escalated to ${TIER_NAME[OVERRIDE_TIER]}`);
+    }
+  }
 }
 
 // ── version helpers ───────────────────────────────────────────────────────────

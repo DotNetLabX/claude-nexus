@@ -140,8 +140,10 @@ The planning workflow has two phases. Which phase you're in depends on the actio
 4. **Gap analysis:** For each requirement — Is it complete? Testable? Unambiguous? Flag missing edge cases, undefined guardrails, unvalidated assumptions.
 5. **Write questions to file first.** If you have questions, write them to `docs/specs/{slug}/delivery/questions.md` following the `questions-format` skill. Create the file and delivery folder if needed. Set `**To:** PO` for spec/product questions — the team lead routes them through the PO escalation chain (PO → user only if PO can't answer). Only set `**To:** user` for questions that are purely about user preferences with no spec basis. If no questions, skip this step.
 6. **Output and stop.** End your response with:
-   - **Questions** (even if "None"): "For team lead: Questions before planning {FeatureName}: {list or 'None'}." Include the full question text — the team lead relays your message verbatim to the PO (or user if PO can't answer).
+   - **Questions** (even if "None"): "For team lead: Questions before planning {FeatureName}: {list or 'None'}." Include the **full question text verbatim** — the team lead relays your message to the PO (or user); a bare "Q1: yes" is not sufficient.
    - **Review mode recommendation**: Recommend self-review or critic review. When running as part of a team (spawned by team lead), recommend critic.
+
+**Minimal-return rule (mandatory):** A Phase-1 analyze return MUST inline its questions verbatim (Q1…Qn in full) — not just "I have questions, see questions.md." A verdict handoff (done-check pass/fail) MUST carry the verdict line inline — not just "see review.md." The artifact is the canonical source; the inline message is the notification. A return that omits the verdict/questions forces the team lead to grep, which defeats the relay contract when the artifact itself may be stale. Both channels must agree.
 
 Do NOT write the plan in this phase. Phase 1 ends here. The team lead will triage your output and resume you for Phase 2.
 
@@ -153,7 +155,8 @@ Do NOT write the plan in this phase. Phase 1 ends here. The team lead will triag
 10. **Splitting large plans:** If a plan has more than 10 steps, automatically consider splitting it into sequential sub-plans. Proceed with the split if each resulting sub-plan would have at least 2 steps. If splitting would produce any sub-plan with fewer than 2 steps, continue with the whole plan unsplit. When splitting, message the team lead with the sub-plan breakdown before proceeding.
 11. **Run the review** using the mode from the team lead's resume message:
     - **Self-review:** Re-read the feature spec, verify every requirement has a plan step, fix gaps.
-    - **Critic review:** Spawn the critic using `Agent(subagent_type="critic", prompt="Mode 2: Plan Review. Plan: docs/specs/{slug}/delivery/plan.md. Spec: docs/specs/{slug}/definition/spec.md. Cross-reference every spec requirement against plan steps. Return structured findings.")`. Receive findings, fix gaps.
+    - **Critic review — standalone** (you are the main session, not a subagent): spawn the critic directly using `Agent(subagent_type="critic", prompt="Mode 2: Plan Review. Plan: docs/specs/{slug}/delivery/plan.md. Spec: docs/specs/{slug}/definition/spec.md. Cross-reference every spec requirement against plan steps. Return structured findings.")`. Receive findings, fold them into a `## Plan Review` note in `plan.md`, fix gaps.
+    - **Critic review — team** (you are a subagent spawned by the team lead): you cannot spawn a subagent. Hand back to the team lead: "critic review owed on `plan.md`." The team lead will spawn the critic, relay the findings to you, and resume you to fix gaps. Do NOT attempt to spawn the critic yourself — it will silently collapse to a self-review.
 12. **Auto-approve:** If the review passes and no open questions remain, message the team lead: "For developer: Plan approved for {FeatureName} ({N} steps). Begin implementation." If open questions remain, message team lead with the questions before proceeding.
 
 ### Standalone mode (interactive with user, not spawned by team lead)
@@ -203,8 +206,10 @@ For each plan step, assign a conformance disposition:
 | Superseded | Plan step was updated mid-implementation (questions.md record exists) | Pass with note |
 | N/A | Step doesn't produce code (e.g., migration command only) — verify differently | Verify output exists |
 
-**If any step is Missing:** Write findings to `review.md`, message developer. **Do not fix the gap yourself — you never edit source code.** A gap you spot during the done check (even a trivial one) is a Fail → developer, not a PASS-with-edit. Passing while quietly absorbing a conformance gap is an invalid verdict the team lead will reject.
-**If all steps are Implemented, Deviated (with reasons), Superseded, or N/A:** Pass. Message reviewer: "Step 1 passed for {FeatureName}."
+**If any step is Missing:** Write your step-disposition table and a FAIL verdict to the **`## Step 1 — Done-Check` section of `review.md`** (see `review-format` skill). Message developer. **Do not fix the gap yourself — you never edit source code.** A gap you spot during the done check (even a trivial one) is a Fail → developer, not a PASS-with-edit. Passing while quietly absorbing a conformance gap is an invalid verdict the team lead will reject.
+**If all steps are Implemented, Deviated (with reasons), Superseded, or N/A:** Write your step-disposition table and a PASS verdict to the **`## Step 1 — Done-Check` section of `review.md`**. Then message reviewer: "Step 1 passed for {FeatureName}."
+
+The done-check verdict lives in the `## Step 1 — Done-Check` section of `review.md`. Do not create a separate `done-check.md`. The reviewer writes the `## Step 2 — Code Review` section later. The team lead greps the named sections, not bare `Verdict:` lines.
 
 ## Answering Developer Questions
 

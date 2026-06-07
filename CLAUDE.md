@@ -11,10 +11,13 @@ the plugin's `version` never reaches users (`/plugin update` is a no-op). So:
 
 - **Editing `plugins/{name}/**`** (agents, rules, hooks, skills, commands)? Run the
   **`release-plugin`** skill — or directly `node scripts/bump-plugin.mjs --dry-run` then
-  `node scripts/bump-plugin.mjs` — to classify the bump tier and bump `plugin.json` +
-  `CHANGELOG.md`, and **commit the bump in the same commit as the change.**
-- Semver is **MAJOR-leaning** (the payload is agent behavior; most changes must reach users).
-  Full policy: `plugins/nexus/skills/release-plugin/SKILL.md`.
+  `node scripts/bump-plugin.mjs` — to bump `plugin.json` + `CHANGELOG.md`, and **commit the bump
+  in the same commit as the change.**
+- Semver: **PATCH by default** — the tool proposes a PATCH for any shipped-file change (a
+  version-keyed cache means even a patch reaches users, so "must reach users" never forces a higher
+  tier). **The owner escalates** to MINOR (`--minor`, new capability) or MAJOR (`--major`, breaking /
+  behavior reversal); the tool never auto-escalates by file type. Full policy:
+  `plugins/nexus/skills/release-plugin/SKILL.md`.
 - After editing an `agents/*.md`, regenerate its command: `node scripts/gen-commands.mjs {plugin}`.
 - The CI workflow `.github/workflows/plugin-release-check.yml` fails a PR if a behavior-surface
   change has no bump — it is the backstop, but bump locally to avoid the round-trip.

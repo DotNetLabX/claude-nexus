@@ -23,12 +23,15 @@ lives in `scripts/bump-plugin.mjs`. You orchestrate it and apply judgment where 
 allows a downgrade.
 
 ```
-node scripts/bump-plugin.mjs --dry-run   # print the classification + proposed bump, change nothing
-node scripts/bump-plugin.mjs             # apply: bump plugin.json + prepend CHANGELOG (does NOT commit)
-node scripts/bump-plugin.mjs --check     # CI: exit 1 if a behavior-surface change has no bump
+node scripts/bump-plugin.mjs --dry-run   # print the proposed PATCH bump + reasons, change nothing
+node scripts/bump-plugin.mjs             # apply: PATCH-bump plugin.json + prepend CHANGELOG (no commit)
+node scripts/bump-plugin.mjs --minor     # apply, escalated to MINOR (new capability)
+node scripts/bump-plugin.mjs --major     # apply, escalated to MAJOR (breaking / behavior reversal)
+node scripts/bump-plugin.mjs --check     # CI: exit 1 if a shipped-file change has NO bump
 ```
 
-Always run `--dry-run` first, read the reasons, then apply.
+Always run `--dry-run` first, read the reasons, then apply — adding `--minor`/`--major` only when the
+owner says the change is bigger than a patch.
 
 ## Procedure
 
@@ -36,19 +39,19 @@ Always run `--dry-run` first, read the reasons, then apply.
 0. PRECONDITION   .claude-plugin/marketplace.json present? If not → no-op, say so.
 
 1. CLASSIFY       node scripts/bump-plugin.mjs --dry-run
-                  Read the per-plugin tier + one-line reasons. This is the EVALUATION —
-                  surfaced, not silent.
+                  Shows which plugins changed + the proposed PATCH bump + one-line reasons.
+                  This is the EVALUATION — surfaced, not silent.
 
-2. JUDGMENT       The script escalates anything it can't prove additive (see Policy).
-                  You may DOWNGRADE an "existing skill edit" from major→minor ONLY if the
-                  edit is provably additive (new optional section / clarified step, no
-                  changed contract). State why. Never downgrade agents/rules/hooks/
-                  *-format/security — those are major floors. Never escalate below what
-                  the script reports.
+2. JUDGMENT       Default is PATCH. The OWNER decides if the change is bigger:
+                  MINOR for a new user-facing capability, MAJOR for a breaking change or a
+                  reversal of documented behavior. The tool never auto-escalates by file type.
+                  When unsure, ASK the owner — don't silently pick a higher tier.
 
-3. BUMP           node scripts/bump-plugin.mjs   (applies plugin.json + CHANGELOG.md)
-                  For a downgrade, edit the version by hand to the lower tier and fix the
-                  CHANGELOG entry to match, noting the additive justification.
+3. BUMP           node scripts/bump-plugin.mjs            (PATCH — the default)
+                  node scripts/bump-plugin.mjs --minor    (owner escalates: new capability)
+                  node scripts/bump-plugin.mjs --major    (owner escalates: breaking / reversal)
+                  Applies plugin.json + CHANGELOG.md, then edit the generated CHANGELOG entry
+                  to describe the actual change (the stub line is just a placeholder).
 
 4. REGENERATE     If any agents/*.md changed:  node scripts/gen-commands.mjs {plugin}
                   (commands are generated from agents; stage the regenerated commands too.)
@@ -71,29 +74,30 @@ Always run `--dry-run` first, read the reasons, then apply.
                   release driver is pre-authorized.
 ```
 
-## Versioning policy (semver — MAJOR-leaning)
+## Versioning policy (semver — PATCH-default, owner escalates)
 
-The payload is **agent behavior** and the cache is **version-keyed**, so the question is:
-*must installed users re-pull to get correct behavior?* If yes → at least MINOR, and since
-almost everything here changes behavior, **MAJOR is the default**. The only way to skip a bump
-is to prove the change never reaches a running session.
+The install cache is **version-keyed**, so *any* bump — including a PATCH — reaches users on
+`/plugin update`. "Must reach users" therefore never forces a higher tier; it only means a shipped
+change must bump **something**. The tier reflects the **semantic size** of the change, and that is the
+**owner's** call, not the file type:
 
-| Change | Tier |
-|--------|------|
-| `agents/*.md` body, `rules/*.md`, `hooks/**`, `.mcp.json`/`.lsp.json`/`settings.json`, `commands/**` | **MAJOR** |
-| Security guard (`guard.js`, `pipeline-gate.js`, `security_mode`) | **MAJOR** (floor — never less) |
-| `*-format` skill (machinery parses the shape) | **MAJOR** |
-| `dependencies` change; command rename/removal | **MAJOR** |
-| New agent | **MAJOR** |
-| New non-format skill | **MINOR** (purely additive) |
-| Additive edit to an existing non-format skill (no contract change) | **MINOR** (judgment — else MAJOR) |
-| Discovery metadata in `plugin.json` (description/keywords/userConfig) | **MINOR** |
-| Bug fix moving behavior toward the *unchanged* intended contract | **PATCH** (rare) |
-| `docs/**`, top-level `README.md`, `CHANGELOG.md`, comments, `scripts/*` (unchanged output) | **none** (no bump) |
+- **PATCH** — the default the tool proposes for *every* shipped-file change (`agents/`, `rules/`,
+  `hooks/`, `commands/`, `skills/`, `plugin.json` metadata, runtime config). Bug fixes, wording,
+  tightening, behavior tweaks that stay within intent.
+- **MINOR** (`--minor`) — owner's call: a **new user-facing capability** (new agent, new skill, new
+  config) that is purely additive.
+- **MAJOR** (`--major`) — owner's call: a **breaking change** or a **reversal of documented behavior**
+  (e.g. flipping a default the docs commit to).
 
-Rules: **highest tier wins**; **ambiguity escalates, never de-escalates**; **security never
-de-escalates**. Versions are kept only in `plugin.json` (marketplace entries stay version-less,
-so `claude plugin tag`'s version-agreement check is trivially satisfied).
+What gets **no bump**: `docs/**`, top-level `README.md`, a plugin's own `CHANGELOG.md`, `scripts/*`,
+comments — nothing a running session loads. A **version-only** `plugin.json` diff is the bump itself,
+not a change.
+
+The tool **never auto-escalates by file type.** (It used to floor agents/hooks/security at MAJOR, which
+produced a major on nearly every edit — removed.) It proposes PATCH and, in `--check`, only verifies
+that *a* bump exists; the owner adds `--minor`/`--major` when the change warrants it. Versions live only
+in `plugin.json` (marketplace entries stay version-less, so `claude plugin tag`'s version-agreement
+check is trivially satisfied).
 
 ## Multi-plugin
 

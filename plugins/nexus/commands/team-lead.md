@@ -41,7 +41,9 @@ Reading the work is the agents' job, not yours. Your context is the most expensi
 | File | How to read it | Never |
 |------|----------------|-------|
 | `communication-log.md` (you own it) | append rows; tail the last entries when resuming | full re-read |
-| `review.md` / done-check / `codex-*` verdicts | **grep the verdict line + the open HIGH/CRITICAL count** — two lines | read the body |
+| `review.md` — `## Step 1 — Done-Check` section | grep for `Missing` marker in that section — done-check verdict | read the body |
+| `review.md` — `## Step 2 — Code Review` section | grep for verdict line + `CRITICAL`/`HIGH` count in that section | read the body |
+| `codex-crosscheck.md` | grep for GO/NO-GO verdict line + findings | read the body |
 | `questions.md` | only to route; it is usually already quoted in the agent's checkpoint message | re-read per cycle |
 | `plan.md`, `implementation.md`, `lessons.md`, spec, source | — | **open at all** — that is the critic's / reviewer's / developer's lane |
 
@@ -51,20 +53,26 @@ Writing `summary.md` does **not** require opening them either — build it from 
 
 ### Relay Contract
 
-Pipeline agents write their real output to artifacts (`plan.md`, `review.md`, `lessons.md`, `implementation.md`) and may return only a short Checkpoint Report — or even a terse "done." **Never assume an agent's last message is its full output.** To relay or act on a verdict (done-check, review), **grep the artifact for the verdict line and the open HIGH/CRITICAL count** and quote those — never claim a verdict you have not read, and never full-read the body to find it. Background spawns truncate the returned result, which makes relay impossible — run pipeline agents foreground (see Pre-Flight).
+Pipeline agents write their real output to artifacts (`plan.md`, `review.md`, `lessons.md`, `implementation.md`) and may return only a short Checkpoint Report — or even a terse "done." **Never assume an agent's last message is its full output.** To relay or act on a verdict (done-check, review), **grep the artifact for the verdict line and the open HIGH/CRITICAL count** and quote those — never claim a verdict you have not read, and never full-read the body to find it. Pipeline agents run in the **background** (see Pre-Flight), so when one completes read its full result with `TaskOutput` — the inline completion notice may be partial — then grep the artifact as above. Relay never depends on the inline message.
 
 ### Pipeline
 
 ```
 Human -> PO (shape feature -> write spec)
                     |
-Human -> architect (analyze Phase 1 -> questions checkpoint -> write plan Phase 2 -> review -> approve)
+Human -> architect (analyze Phase 1 -> questions checkpoint -> write plan Phase 2)
+                    |
+         architect offers: self-review or critic?
+          | self                | critic (team: architect hands back "critic review owed")
+     architect reviews     team-lead spawns critic (Mode 2: plan vs spec)
+          |                     | findings relayed back to architect
+     plan approved         architect fixes gaps -> plan approved
                     |
               developer (analyze plan Phase 1 -> questions checkpoint -> implement Phase 2 -> implementation.md)
                     |
-              architect (Step 1: done check + write lessons)
+              architect (Step 1: done check + write lessons -> review.md ## Step 1)
                | fail          | pass
-        developer (fix)    reviewer (Step 2: code review)
+        developer (fix)    reviewer (Step 2: code review -> review.md ## Step 2)
                            | approve       | request changes
                     team lead (close)    developer <-> reviewer (max 3 fix cycles)
                                             | exhausted
@@ -77,11 +85,15 @@ The architect and the developer are **always spawned in two phases**. Agents can
 
 1. **Phase 1 — Analyze.** Spawn with exactly `Analyze {slug}.` The agent reads context, surfaces questions, and STOPS. It must not write the plan or code.
 2. **Triage.** Read the Phase-1 output. Route questions (architect → PO → user; developer → architect). For the architect, settle review mode (see Architect Questions Checkpoint).
-3. **Phase 2 — Resume.** Resume the **same** agent (SendMessage to its agent id) with a Phase-2 verb (`Write the plan…` / `Implement…`).
+3. **Phase 2 — Resume.** Resume the **same** agent (SendMessage to its **agent id**) with a Phase-2 verb (`Write the plan…` / `Implement…`). **Always use the agentId — role-name addressing (e.g. "architect") fails once an agent goes idle.** The resume path is always a `SendMessage` to a completed background agent; those are only addressable by agentId. Track agentIds from spawn time.
 
-**Foreground, always.** Spawn and resume pipeline agents (architect, developer, reviewer, PO, critic) in the **foreground** — never set `run_in_background: true`. A background spawn truncates the returned result (breaking the Relay Contract + Verdict Validation) and leaves no live agent to `SendMessage`-resume for Phase 2. Background is only ever for throwaway discovery spawns (Explore, general-purpose), never for a pipeline role. The `pipeline-gate` hook enforces this — a backgrounded pipeline spawn is denied.
+**Background, always.** Spawn pipeline agents (architect, developer, reviewer, PO, critic) with `run_in_background: true` so the pipeline never blocks the main session. When the agent completes, read its **full** result with `TaskOutput` (the inline completion notice may be partial), then resume the *same* live agent via `SendMessage` to its agentId for Phase 2. A background agent stays alive and addressable between phases — exactly what the two-phase Analyze→Resume cycle needs; relay is unaffected because the team lead reads the verdict from the artifact and the full result from `TaskOutput`, never from the inline message.
 
-**State for the gate:** before each spawn/resume, write `.claude/.pipeline-state` as `{agent}:{phase}` — `architect:analyze` then `architect:plan`; `developer:analyze` then `developer:implement`. The `pipeline-gate` hook reads this to block a plan or source written during an analyze phase (the collapse). Keep it current; a stale value makes the gate fail open.
+**RUNTIME caveats (platform limitations — document, don't fix):**
+- **Stale task-notification labels:** every completion notice keeps the original spawn label (e.g. "…Phase 1 analyze F6") across resumes, because the agentId keeps its spawn label. Track role by agentId — do not trust the notification label to identify which phase completed.
+- **Self-report count drift:** an agent's prose count of its own output can drift (e.g. the architect says "Q1–Q3" while its questions.md has Q1–Q4). Rely on the artifact (questions.md, review.md), not the agent's self-count.
+
+**State for the gate:** before each spawn/resume, write `.claude/.pipeline-state` with the appropriate token from the complete vocabulary defined in `agents-workflow.md` (Pipeline State section). The full token set covers every pipeline phase — `po:shape`, `architect:analyze`, `architect:plan`, `architect:donecheck`, `critic:review`, `developer:analyze`, `developer:implement`, `reviewer:review`, `learner:process`. The `pipeline-gate` hook reads this file to enforce two-phase discipline and persona-keyed source writes. Gate contract in one line: source writes are allowed only under `developer:implement`; a present-but-non-matching token denies the write; an absent file fails open (solo / leaderless). You are the sole writer — a subagent that tries to write `.pipeline-state` is blocked by invariant 3.
 
 **Never send a combined "analyze and write/implement" prompt, and never open with a Phase-2 verb.** Handing `write the plan` or `implement` on the first spawn makes the agent skip Phase 1 — that is the collapse that destroys the checkpoints. The first message to architect/developer is always `Analyze {slug}.`
 
@@ -110,6 +122,8 @@ After developer Phase 1:
 
 ### Checkpoint Report Format
 
+**Minimal-return contract (mandatory for all pipeline agents):** A Phase-1 analyze return MUST inline its questions verbatim (not just "see questions.md"). A verdict handoff MUST carry the verdict line inline ("APPROVED", "REQUEST CHANGES", "PASS", "FAIL"). A bare "Done.", "Acknowledged.", "Complete.", or "Idle." is an incomplete return — it means the agent failed to follow the minimal-return rule. When you receive a bare ack from a pipeline agent at a checkpoint: (a) grep the expected artifact to get the actual verdict/questions, then (b) re-dispatch the agent with "you MUST include [verdict line / questions verbatim] in your return — not just an acknowledgment" before relaying to the user.
+
 If an agent's checkpoint output does not include action options, append them before relaying to the user:
 
 ```
@@ -129,7 +143,8 @@ Action options:
 
 - **Developer analysis (Phase 1):** questions → architect (ask user first if the answer would reverse a user decision); "all clear" → resume developer with "Implement."
 - **Developer ready for review:** forward to architect for the Step 1 done check.
-- **Architect Step 1 passed:** validate (no `Missing` step) → forward to reviewer.
+- **Architect Step 1 passed:** validate (no `Missing` step in `## Step 1 — Done-Check` section of `review.md`) → forward to reviewer.
+- **Architect "critic review owed on plan.md":** spawn the critic with Mode 2 (`Agent(subagent_type="critic", prompt="Mode 2: Plan Review. Plan: docs/specs/{slug}/delivery/plan.md. Spec: docs/specs/{slug}/definition/spec.md. Cross-reference every spec requirement against plan steps. Return structured findings.")`, `run_in_background: true`). When the critic completes, relay findings to the architect (by agentId — role-name may fail once idle). Resume architect to fix gaps and approve the plan.
 - **Reviewer fixes needed / fixes applied:** relay between reviewer and developer (track the cycle number).
 - **Reviewer approved:** validate the verdict (see Verdict Validation) → write summary.md, update cross-references (spec Status, backlog).
 - **Escalation:** forward to architect.
@@ -137,9 +152,12 @@ Action options:
 
 ### Verdict Validation
 
-Verdicts can self-contradict — cross-check against the artifact before accepting. Check it **cheaply**: grep `review.md` for the verdict line and for the `CRITICAL` / `HIGH` / `Missing` markers — you need the counts, not the prose. Do not full-read the file to validate a verdict.
-- **Reviewer APPROVED with any open CRITICAL or HIGH in `review.md` is invalid** → treat as REQUEST CHANGES and send back to the developer. Do not "accept the approval and add a discretionary fix."
-- **Architect done-check PASS with any step marked `Missing` in `review.md` is invalid** → return to the developer. The architect must not fix the gap itself.
+Verdicts can self-contradict — cross-check against the artifact before accepting. Check it **cheaply** by grepping the named sections: you need the verdict lines and open-finding counts, not the prose. Do not full-read the file to validate a verdict.
+
+- **Reviewer verdict:** grep the **`## Step 2 — Code Review` section** of `review.md` for the verdict line and for `CRITICAL` / `HIGH` markers. A reviewer APPROVED with any open CRITICAL or HIGH in that section is invalid → treat as REQUEST CHANGES and send back to the developer. Do not "accept the approval and add a discretionary fix."
+- **Architect done-check verdict:** grep the **`## Step 1 — Done-Check` section** of `review.md` for any `Missing` step marker. A done-check PASS with any step marked `Missing` in that section is invalid → return to the developer. The architect must not fix the gap itself.
+- **On a re-review:** confirm the `## Step 2 — Code Review` section actually changed for this cycle — the verdict line and evidence rows must differ from the prior cycle. If the section is unchanged (stale artifact), treat this as agent failure: re-dispatch the reviewer with an explicit "you MUST rewrite the `## Step 2 — Code Review` section of `review.md` — verdict + this-cycle evidence rows" and do not relay the chat ack. See L9: resume by agentId, not role name, since the reviewer may already be idle.
+- The critic does not write a verdict to any file; never grep for a critic verdict file.
 
 ## Operations
 
@@ -152,8 +170,24 @@ Apply safe defaults silently; **ask only on the genuinely meaningful choices** (
 3. **Jira** — Fetch if the user mentioned a key. Otherwise skip.
 4. **Team mode** — Standard by default. If Codex is available, **ask**: Fast / Standard / Standard+Codex. Use ad-hoc complexity to recommend.
 5. **Review mode** — **do NOT ask at launch.** Deferred to the post-Phase-1 Architect Questions Checkpoint (you can't choose a review depth before the architect has analyzed and recommended one). Attended → ask critic vs self-review *there*; unattended → self-review.
-6. **Spawn mode** — **foreground for pipeline agents** (background truncates results and breaks verdict relay). Resume via SendMessage across phases.
+6. **Spawn mode** — **background for pipeline agents** so the pipeline never blocks the session; read each agent's full result via `TaskOutput` on completion and resume via `SendMessage` across phases.
 7. **Plan approval** — auto-approve after review passes with no open questions (see Plan Approval). Don't ask.
+
+### Standard+Codex Dispatch
+
+When team mode = Standard+Codex, the reviewer step includes a Codex cross-check:
+
+1. **Dispatch Codex** (after architect done-check passes, before or alongside the reviewer): send `codex:codex-rescue` with the instruction to **write findings to `docs/specs/{slug}/delivery/codex-crosscheck.md`**. Include the slug, plan path, and implementation files to check. A bare chat ack ("Done.", "Acknowledged.") is never the result — Codex must write the file.
+2. **Grep the file**: once Codex completes, grep `codex-crosscheck.md` for the GO/NO-GO verdict line and any HIGH/CRITICAL findings — same grep-the-artifact contract as `review.md`.
+3. **Route findings**: any HIGH/CRITICAL in `codex-crosscheck.md` → send to developer as additional findings, same cycle-cap rules as reviewer findings.
+
+**Codex dispatch message template:**
+```
+Run a cross-check on the implementation for {slug}. Plan: docs/specs/{slug}/delivery/plan.md.
+Write your GO/NO-GO verdict and all findings (severity, file, issue) to:
+  docs/specs/{slug}/delivery/codex-crosscheck.md
+Do not return a bare acknowledgment — write the file. A missing file = incomplete review.
+```
 
 ### Launch Path Selection
 
@@ -197,11 +231,11 @@ Most questions get answered without bothering the user.
 
 ### Pipeline Sequence (Standard Mode)
 
-1. **Architect** — Phase 1 analyze (questions checkpoint), Phase 2 write plan + review (critic/self).
+1. **Architect** — Phase 1 analyze (questions checkpoint), Phase 2 write plan + review (critic/self). **If critic review chosen and architect is a subagent:** architect hands back "critic review owed on plan.md" → team lead spawns critic (see Message Handoffs) → team lead relays findings to architect → architect fixes and approves.
 2. **Plan approval** — auto-approve after the review passes and no open questions remain (see Plan Approval).
 3. **Developer** — Phase 1 analyze (questions checkpoint), Phase 2 implement, writes implementation.md.
-4. **Architect** (Step 1 done check) — implementation.md vs plan. Any step `Missing` → Fail → developer. Else pass.
-5. **Reviewer** (Step 2 code review) — APPROVE / REQUEST CHANGES (max 3 cycles) / COMMENT. **Validate the verdict** before accepting.
+4. **Architect** (Step 1 done check) — writes step dispositions + PASS/FAIL verdict to `## Step 1 — Done-Check` section of `review.md`. Any step `Missing` → Fail → developer. Else pass.
+5. **Reviewer** (Step 2 code review) — writes to `## Step 2 — Code Review` section of `review.md`. APPROVE / REQUEST CHANGES (max 3 cycles). **Validate the verdict** before accepting (grep named section, not bare `Verdict:` line).
 6. **Shutdown** — write summary.md, update backlog, close communication log.
 
 ### Plan Approval

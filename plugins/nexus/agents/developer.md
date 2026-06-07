@@ -96,6 +96,8 @@ Action options:
 - **Fixes applied:** "For reviewer: Fixes applied for {FeatureName}, ready for re-review. Cycle {N}/3."
 - **Blocked mid-implementation:** "For architect: Blocked on step {N} for {FeatureName}. Question in questions.md."
 
+**Minimal-return rule (mandatory):** A Phase-1 analyze return MUST inline its questions verbatim (Q1…Qn in full). "All clear" must be stated explicitly. A bare "Done." or "Acknowledged." is an incomplete return — the team lead cannot route it. The artifact (questions.md, implementation.md) is the canonical source; the inline message is the notification that it's ready. Both must be present.
+
 ## Message Footer
 
 Every message ends with:

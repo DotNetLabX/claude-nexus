@@ -20,8 +20,9 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-7 — Pipeline enforcement: failures must be unreachable, not merely discouraged
 - ADR-8 — Security guard as a synchronous hook
 - ADR-9 — Build & release pipeline
-- ADR-10 — Spawn mode: foreground for pipeline agents
+- ADR-10 — Spawn mode: foreground for pipeline agents *(superseded by ADR-12)*
 - ADR-11 — Token consumption audit (opt-in)
+- ADR-12 — Spawn mode: background for pipeline agents (supersedes ADR-10)
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -286,6 +287,11 @@ preloaded into other agents (ADR-2/ADR-4).
 ---
 
 ## ADR-10 — Spawn mode: foreground for pipeline agents
+> **Superseded by ADR-12.** Pipeline agents now spawn **background**. The foreground rationale below
+> did not survive the current platform: `TaskOutput` returns an agent's full result regardless of spawn
+> mode, and a background agent stays alive to `SendMessage`-resume — so neither relay nor two-phase
+> resume actually requires foreground. Kept for the record.
+
 **Context.** The team lead is the sole coordination hub. To relay or act on a verdict it must **read
 and quote** the agent's result — the done-check PASS/FAIL, the reviewer's APPROVE/REQUEST-CHANGES, the
 severity findings in `review.md` (Relay Contract + Verdict Validation, ADR-7). It also drives the
@@ -345,6 +351,41 @@ file — async, observe-only, never blocks.
 growth curve that answers "how does the agent grow its own context." *A new standalone hook* — needless;
 `audit-logger` already runs per call with agent attribution. *Always-on capture* — imposes a
 transcript read on every tool call for installs that never analyze; opt-in keeps the default free.
+
+---
+
+## ADR-12 — Spawn mode: background for pipeline agents (supersedes ADR-10)
+**Context.** ADR-10 made pipeline spawns foreground to protect verdict relay and two-phase resume. In
+practice that **blocks the main session** for the whole run — the user can do nothing while an agent
+works. The repo owner's original default (initial commit `cfb7a64`) and repeatedly-stated preference
+(three times across sessions) was **background**; foreground was experienced as a recurring bug, not a
+feature, and kept being "re-fixed" back to foreground because three layers (instruction, gate, this ADR)
+all asserted it.
+
+**Decision.** Spawn pipeline agents (architect, developer, reviewer, PO, critic) with
+`run_in_background: true`. The team lead reads each agent's **full** result with `TaskOutput` on
+completion, then resumes the *same* live agent via `SendMessage` for Phase 2. The `pipeline-gate`
+foreground-enforcement (former invariant 3) is removed; spawn mode is no longer hook-gated.
+
+**Why.** Both ADR-10 fears fail on the current platform. (a) **Relay is not truncated** — the team
+lead's Relay Contract already greps the *artifact* (`review.md`) for the verdict, and `TaskOutput`
+returns the agent's full output regardless of spawn mode; the inline completion notice was never the
+source of truth. (b) **Resume still works** — a background agent stays **alive and addressable** between
+phases, which is exactly what the two-phase Analyze→Resume cycle needs; if anything a *foreground* agent
+that has already returned is the one whose liveness is in doubt. (c) ADR-10's "background truncates the
+returned result" was **reconstructed from the agent file, never measured**, and does not hold against
+`TaskOutput`.
+
+**Tradeoffs.** The pipeline stays **serial by design** (Inherited decisions) — background does not add
+parallelism; the team lead still waits for each agent's completion before resuming. What changes is that
+the **main session is no longer blocked**: the user can watch progress and intervene mid-run. The team
+lead must read `TaskOutput` for the full result rather than trust the inline notice — captured in the
+Relay Contract and Two-Phase Spawn rules.
+
+**Rejected.** *Keep foreground (ADR-10)* — blocks the session for no correctness gain. *Restore a
+launch-time background/foreground question* — it was the original "second Pre-Flight question," but a
+single fixed default the owner already chose beats re-asking every run; a power user can still background
+or foreground a one-off spawn manually.
 
 ---
 

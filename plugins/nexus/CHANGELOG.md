@@ -1,5 +1,31 @@
 # nexus — Changelog
 
+
+## [1.2.0] — 2026-06-07
+- MINOR bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (injected every session)
+  - skill change (release-plugin)
+  - skill change (review-format)
+  - owner-escalated to minor
+## [1.1.1] — 2026-06-07
+Spawn mode reversed to **background** for pipeline agents (ADR-12, supersedes ADR-10). Also flips the
+release policy to **PATCH-default** (owner escalates to MINOR/MAJOR) — see `release-plugin` skill.
+
+- **Pipeline agents now spawn in the background.** The team lead spawns architect/developer/reviewer/PO/
+  critic with `run_in_background: true` so the pipeline no longer blocks the main session — restoring the
+  original `cfb7a64` default and the repo owner's standing preference. It reads each agent's full result
+  via `TaskOutput` on completion and resumes the same live agent via `SendMessage` for Phase 2.
+- **`pipeline-gate.js` foreground enforcement removed** (former invariant 3). Spawn mode is no longer
+  hook-gated; the gate keeps the two-phase-collapse, verdict-integrity, and state-file invariants (now
+  numbered 1–3). The 1.0.1 rationale (background "truncates" the relayed result) did not hold: relay
+  reads the verdict from the artifact and the full result from `TaskOutput`, never the inline message,
+  and a background agent stays alive to resume.
+- **Docs:** ADR-10 marked superseded; ADR-12 records the reversal and why the foreground fears don't
+  hold on the current platform.
+
 ## [1.1.0] — 2026-06-07
 Token consumption audit — opt-in, off by default (ADR-11).
 

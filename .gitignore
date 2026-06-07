@@ -1,0 +1,45 @@
+# =============================================================================
+# Nexus plugin dev repo — .gitignore
+#
+# This repo is the source of truth for the nexus / nexus-dotnet plugins. The
+# entries below are LOCAL RUNTIME STATE generated while developing or testing
+# the plugins in-place. Real artifacts that live in the same trees (pipeline
+# specs under docs/specs/**, hook tests under plugins/**/__tests__/) are NOT
+# ignored — they must be committed.
+# =============================================================================
+
+# --- Claude Code + Nexus pipeline local state -------------------------------
+# Session/persona state written by the persona commands and pipeline hooks.
+# Ignore the specific local files, not the whole .claude/ dir, so a shared
+# .claude/settings.json (Claude Code convention) can still be tracked.
+# NOTE: this does NOT match .claude-plugin/ (the tracked marketplace manifest).
+.claude/.current-agent
+.claude/.pipeline-state
+.claude/.personas.json
+.claude/settings.local.json
+
+# --- oh-my-claudecode (OMC) tooling state -----------------------------------
+# Per-developer orchestration state — never shared.
+.omc/
+
+# --- Token-consumption audit output (ADR-11) --------------------------------
+# Raw per-run capture read by the consumption-report skill. Regenerated each run.
+docs/audit/
+
+# --- Node (scripts/*.mjs may gain dependencies) -----------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- Editor / IDE -----------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*~
+
+# --- OS noise ---------------------------------------------------------------
+.DS_Store
+Thumbs.db
+Desktop.ini

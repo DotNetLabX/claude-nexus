@@ -22,8 +22,18 @@ regenerated and the `omni` twin synced.
 ## Scope
 
 **In scope:** H1, H2, H3 (HIGH); **H4 — `.pipeline-state` liveness/deadlock-prevention (surfaced live during
-this planning session; folded into Step 2)**; M4, M5, M6, M7 (MED); L8, L9 (LOW); the two RUNTIME items as
+this planning session; folded into Step 2)**; **H0 — team-lead read-lane enforcement and H2b — gate
+markdown blind spot (both surfaced when a live team run executed against this self-hosting repo; folded
+into Step 2)**; M4, M5, M6, M7 (MED); L8, L9 (LOW); the two RUNTIME items as
 documentation. One MINOR release bundling these with the already-in-tree work (below).
+
+**H0 / H2b origin (live run, this repo).** A team-lead run executed Phase 1–2 here and exposed two holes the
+spoke-only findings missed: (H2b) the collapse gate keys on real-code extensions, but **this** repo's pipeline
+source *is* markdown, so the developer collapsed into implementation during `analyze` and the gate let every
+`.md` write through (only the `.js` steps were caught); (H0) the team-lead left its router lane — it opened the
+authored artifacts (plan/implementation), which both **usurps an agent's judging role** and **inflates the
+team-lead's context**. Both are the same class this pass targets (a prose-only guardrail ignored under load),
+so both get *enforced*, not just re-stated. They are dev-repo machinery fixes; consuming projects are unaffected.
 
 **Explicitly out of scope:**
 - **Token-audit fidelity** (per-turn-sampling, under-reported peak, off-by-one output in ADR-11 /
@@ -46,7 +56,7 @@ These ride along in the same release; they are not part of this scope and must n
 | Step | Skill | Disposition | Feature-Specific Inputs | Gap? |
 |------|-------|-------------|------------------------|------|
 | 1 | (none) | — | `.pipeline-state` vocabulary + gate-behavior table; rules + team-lead | M7 — no skill governs pipeline state vocabulary |
-| 2 | (none) | — | Gate decision table (`pipeline-gate.js`) + H4 state liveness (`restore-agent.js` SessionStart clear) | Hook logic — no covering skill |
+| 2 | (none) | — | Gate decision table (`pipeline-gate.js`) + H4 state liveness (`restore-agent.js` SessionStart clear) + H2b dev-repo markdown source guard + H0 team-lead read-lane (`hooks.json` matcher + gate Read/Grep branch) | Hook logic — no covering skill |
 | 3 | review-format (edit) | None | Fokus parity: critic message-only (no file); done-check + code-review = labeled sections in `review.md`; no new files | Editing the format skill itself |
 | 4 | (none) | — | Reviewer re-review postcondition + team-lead per-cycle staleness check | Agent-prose enforcement |
 | 5 | (none) | — | Critic spawn = current hub (standalone: architect; team: team-lead); review-mode question UNCHANGED | Agent-prose coordination |
@@ -112,7 +122,7 @@ team-lead is named as sole writer. **Dependency:** none (Step 2 references this 
 
 ---
 
-### Step 2 — Gate phase enforcement: present⇒strict, absent⇒open + state liveness (H2 + H4 deadlock-prevention)
+### Step 2 — Gate enforcement: present⇒strict/absent⇒open + state liveness + dev-repo source coverage + team-lead read-lane (H2 + H4 + H2b + H0)
 
 **Do:** Replace the gate's analyze-only block (`pipeline-gate.js:66-80`, `phaseIsAnalyze` at `:103-108`)
 with persona-keyed strict enforcement keyed on the Step-1 vocabulary. **Keep invariants 2 and 3 as-is**
@@ -162,24 +172,107 @@ subagents; there is **no `SessionEnd` hook**, so SessionStart is the correct —
 A within-session stale token, e.g. team-lead forgets to advance, is recoverable: the main session rewrites
 the token and the deny reason says so; only *cross-session* leakage was unrecoverable without this fix.)
 
+**Dev-repo source coverage — H2b (collapse gate is blind to this repo's real source).** The collapse gate
+treats only real-code extensions as "source" (and excludes anything under `docs/`); markdown is docs in a
+*consuming* project, so that is correct there. But **this** repo's pipeline source IS markdown
+(`plugins/*/{agents,rules,skills,commands}/**`), so the developer's analyze-collapse wrote those files
+straight through the gate. **Fix: add a dev-repo-scoped source check** — when the project root is itself a
+nexus plugin repo, treat a write under `plugins/*/{agents,rules,skills,commands,hooks}/**` as a guarded
+source write for the developer collapse rule, in addition to the existing code-extension check.
+**Marker must identify THIS repo specifically, not "any repo with a plugin folder"** (MINOR-3 — a consuming
+monorepo that vendors a nexus plugin, or hosts other Claude plugins, would also have a
+`plugins/*/.claude-plugin/plugin.json`). Require **both**: (a) the marker resolves at the
+`CLAUDE_PROJECT_DIR` **root** (`<root>/plugins/<name>/.claude-plugin/plugin.json`, not a nested/vendored
+path), and (b) that `plugin.json`'s `name` is `nexus` or `nexus-dotnet`. Only then does the `plugins/*`
+source case arm. **Scope it to that test** so no consuming project ever has its `.md`/doc writes blocked
+during `analyze` — the guard activates only when the root IS the nexus plugin dev repo. (The existing
+`docs/` and `.claude/` exclusions stay; this adds the `plugins/*` developer-source case for the dev repo
+only.)
+
+**Team-lead read-lane — H0 (the hub must stay a router; enforce it).** Prose says the team-lead routes and
+must never open `plan.md`/`implementation.md`/`lessons.md`/source — and that prose was ignored under load
+(the live run's team-lead opened `implementation.md` and grep-read large stretches of `plan.md`), which both
+**usurped the agent's judging role** and **bloated the team-lead's context**. Convert the rule into an
+enforced lane: **extend the PreToolUse gate to also see `Read`/`Grep`**, and when the actor is the
+team-lead, deny opening the authored artifacts/source.
+
+**Persona detection — use the session-keyed signal, NOT `.current-agent` (MAJOR-1).** `.current-agent` is a
+flat, host-repo-scoped, single-value file written once per persona command and **never cleared by any hook**
+(only `register-persona.js` writes it; `restore-agent.js` clears `.pipeline-state` and prunes
+`.personas.json` but never touches it) — so it goes stale and would either **false-positive-wedge** the main
+session (it still says `team-lead` after the user switched to `be solo`/`be architect`) or **silently no-op**
+in a consuming project that never ran `/team-lead`. Using it here would reproduce the exact unhygienic-state
+class H4 just fixed. **Detect the team-lead from `.personas.json[data.session_id].agent === 'team-lead'`**
+(the PreToolUse payload carries `session_id`; the registry is 16h-TTL-pruned and cleared-on-exit) **AND** no
+subagent `agent_type` (a subagent carries `agent_type`, so it cannot pose as the main-session team-lead).
+**Absent/disagreeing signal ⇒ allow (fail open, per ADR-7)** — never wedge an unattended or non-team-lead
+session.
+
+**What is denied vs allowed — encode the team-lead's own Read Discipline table exactly (MINOR-4), no more,
+no less:**
+- **Deny** `Read` (and `Grep`) of `plan.md`, `implementation.md`, `lessons.md`, and any code/markdown
+  *source* under `plugins/**`/`src/**`.
+- **Allow** `Read` of `communication-log.md`, `questions.md`, and **`docs/backlog.md`** (the team-lead's own
+  coordination ledger — triage reads it, and "update backlog/spec Status" at shutdown forces a read-before-
+  edit; omitting it wedges the hub's headline job). All are legitimate router reads; mirror them into
+  `team-lead.md`'s Read Discipline table (add the `backlog.md` row — the table was incomplete, which is why
+  this surfaced only once H0 made the table binding).
+- **Allow** a **structurally-bounded** `Grep` of `review.md` / `codex-crosscheck.md` only — *not* an
+  intent-based "targeted" grep (MINOR-1: a `Grep` with `output_mode: content` + broad pattern or large
+  `-C`/`head_limit` reads as much as a full `Read`). Machine-checkable rule: allow `Grep` **only when** the
+  path ∈ {`review.md`, `codex-crosscheck.md`} **and** (`output_mode` ∈ {`files_with_matches`,`count`} **or**
+  context is small — `-C`/`-A`/`-B` ≤ 3 and no `head_limit: 0`); **deny** `Grep` on
+  `plan.md`/`implementation.md`/`lessons.md`/source outright (those carry no verdict to grep).
+- `git diff --stat` (summary construction) is a **Bash** call, not `Read`/`Grep` — unaffected; do not
+  over-block it.
+
+The deny reason self-corrects: *"you route, you don't read — forward this to the architect (done-check) or
+reviewer; resume the owning agent by agentId."* This is the same enforce-don't-restate move as the rest of
+this pass, applied to the hub the pass otherwise skipped.
+
 **Files:**
 - `plugins/nexus/hooks/scripts/pipeline-gate.js` — generalize `phaseIsAnalyze` into a state-reader returning
   the raw token; rewrite the invariant-1 block per the table; use `data.agent_type` for the writer persona
-  (same source invariant 3 already uses at `:53`); update the header doc comment (`:6-23`) to describe
-  present⇒strict / absent⇒open. `isCodeFile` (`:110-114`) is reused unchanged.
+  (same source invariant 3 already uses at `:53`); update the header doc comment to describe
+  present⇒strict / absent⇒open. **H2b:** extend `isCodeFile` (or add an `isDevRepoPluginSource(fp, root)`
+  helper) so a developer write under `plugins/*/{agents,rules,skills,commands,hooks}/**` counts as source
+  **only when** the root-anchored marker `<root>/plugins/<name>/.claude-plugin/plugin.json` exists **and**
+  its `name` is `nexus`/`nexus-dotnet` (MINOR-3 — not any nested/vendored plugin). **H0:** add a
+  `Read`/`Grep` branch that detects the team-lead via `.personas.json[data.session_id].agent==='team-lead'`
+  + no subagent `agent_type` (NOT `.current-agent` — MAJOR-1), fails open on absent/disagreeing signal, and
+  applies the deny/allow allowlist above (deny plan/impl/lessons/`plugins/**`+`src/**` source; allow
+  comm-log + `questions.md` Read; allow only structurally-bounded `Grep` of `review.md`/`codex-crosscheck.md`
+  per MINOR-1); emit the self-correcting "you route, you don't read" deny reason. **Restructure the
+  early-return (MINOR-2):** the H0 branch must run **before** `pipeline-gate.js:59`
+  (`if (!/^(Write|Edit|MultiEdit)$/…) return allow()`), which today hard-allows every non-Write tool — a
+  branch added after it is dead code. Keep the common case cheap: a non-team-lead `Read`/`Grep` must still
+  fast-path to `allow()` immediately.
+- `plugins/nexus/hooks/hooks.json` — **H0:** widen the `pipeline-gate.js` PreToolUse matcher to also include
+  `Read|Grep` (today it is `Write|Edit|MultiEdit|Task|Agent`) so the read-lane branch is reached. The widening
+  is **isolated to the pipeline-gate matcher block** — `guard.js`/`audit-logger.js` are separate blocks
+  (already all-tools) and are unaffected; confirm, do not modify them.
 - `plugins/nexus/hooks/scripts/restore-agent.js` — extend the existing SessionStart cleanup (`:52-69`):
   alongside the `.personas.json` prune, **delete `.claude/.pipeline-state` on `startup` and `clear`** (keep
   on `compact`/`resume`), reusing the same `source`-discrimination the persona restore already applies
   (`:60,71`). Document why (`.pipeline-state` must not outlive its session).
+- `plugins/nexus/agents/team-lead.md` — **H0:** in Read Discipline, note the lane is now hook-enforced (not
+  prose-only): opening the authored artifacts/source is denied; the team-lead reads the comm-log +
+  `questions.md` and greps verdicts (`review.md`/`codex-crosscheck.md`) only. The hook allowlist must match
+  this table exactly (MINOR-4). Cross-ref the deny reason.
 
 **Acceptance:** with `.pipeline-state`=`developer:analyze`, a developer source-write is **denied**; with
 `developer:implement`, allowed; with the file absent, allowed; with an unrecognized token, a developer
 source-write is denied. **And (H4): a `.pipeline-state` left by a prior/closed session does NOT block a new
 session** — `restore-agent.js` clears it on `startup`, so the next session begins gate-open until the
-team-lead sets fresh state. Proven by Step 9 tests, not assumed. **Dependency:** Step 1 (vocabulary).
+team-lead sets fresh state. **And (H2b): with a plugin-repo marker present, a developer write to a
+`plugins/*/agents/*.md` under `developer:analyze` is denied** (the self-hosting collapse hole is closed),
+while the same write in a marker-less consuming project is allowed. **And (H0): a team-lead-persona `Read`
+of `plan.md`/`implementation.md` is denied, while a targeted verdict `Grep` of `review.md` and a `Read` of
+`communication-log.md` are allowed.** Proven by Step 9 tests, not assumed. **Dependency:** Step 1 (vocabulary).
 **Confidence:** medium — the persona-keyed asymmetry (strict source, collapse-only plan) is a refinement
 of the brief's "conservative-deny"; the developer should implement the table exactly and surface any case
-it doesn't cover.
+it doesn't cover. H0/H2b are dev-repo-scoped — the developer must verify the marker gate so no consuming
+project is affected.
 
 ---
 
@@ -375,21 +468,39 @@ crafted PreToolUse JSON to `pipeline-gate.js` via `child_process` and asserts th
 8. **(H4)** `restore-agent.js` on a SessionStart payload with `source:"startup"` (and `"clear"`) **deletes**
    a pre-existing `.claude/.pipeline-state`; with `source:"compact"` (and `"resume"`) it **keeps** it. Proves
    a prior/closed session's token cannot block a new session.
+9. **(H2b)** developer write to `plugins/nexus/agents/x.md` under `developer:analyze`, with a **root-anchored
+   `name:nexus`** marker present → **deny**; same write with **no marker** (consuming project) → **allow**;
+   same write with a marker whose **`name` ≠ nexus** (vendored/unrelated plugin, MINOR-3) → **allow**. Proves
+   the self-hosting markdown hole is closed and scoped to this repo only.
+10. **(H0)** team-lead detected via `.personas.json[session_id].agent==='team-lead'` + no `agent_type`:
+    `Read` of `plan.md`/`implementation.md` → **deny**; `Read` of `communication-log.md`/`questions.md`/
+    `docs/backlog.md` and a **bounded** `Grep` of `review.md` (`output_mode: files_with_matches`) → **allow**;
+    a **broad-context** `Grep` of `plan.md` (e.g. `-C 200`) → **deny** (MINOR-1). And **absent/disagreeing
+    persona signal** (no `.personas.json` entry for this session) on a `Read` of `plan.md` → **allow**
+    (MAJOR-1 fail-open). Proves the router lane is enforced AND does not wedge the team-lead's own triage or a
+    non-team-lead/solo session.
 
 **Files:** `plugins/nexus/hooks/scripts/__tests__/pipeline-gate.test.mjs` and
-`…/__tests__/restore-agent.test.mjs` (case 8), run with bare
-`node --test plugins/nexus/hooks/scripts/__tests__/`. **No `package.json` exists anywhere in the repo**
-(verified) — add no `test` script entry; `node --test` needs none.
+`…/__tests__/restore-agent.test.mjs` (case 8). **Run command (MAJOR-2 — verified on this repo's Node
+v24):** `node --test "plugins/nexus/hooks/scripts/__tests__/*.test.mjs"`. Do **not** use the bare-directory
+form `node --test …/__tests__/` — on Node v24 it throws `MODULE_NOT_FOUND` and runs **zero** tests (it
+treats the dir as a module entrypoint). **No `package.json` exists anywhere in the repo** (verified) — add no
+`test` script entry; `node --test` needs none. **Cases 1–8 already exist in the working tree** from the
+halted run (`pipeline-gate.test.mjs` 1–7, `restore-agent.test.mjs` 8) and pass — this step **adds cases 9
+and 10** (and their sub-cases) and is otherwise a reuse, *if* that in-tree work is kept (owner's
+validate-vs-redo decision); on a clean redo, author all of them.
 
 **Also document AND run once** (not auto-testable at the hook layer): the H1 team-lead staleness check (a
 re-review that doesn't update `review.md` is caught). Write the procedure to a delivery note **and record
 its one live-run result** (PASS/FAIL + the re-dispatch evidence) **before Step 10** — a documented-but-unrun
 check does not meet the brief's "proven to fire live" bar.
 
-**Acceptance:** `node --test` (or the script) passes all eight cases; the three cross-cutting live-fire
-guarantees (developer source in analyze denied; subagent `.pipeline-state` write denied; reviewer stale
-`review.md` caught) are each demonstrably covered (1, 6, and the documented H1 check); H4 cross-session
-non-blocking is covered by case 8.
+**Acceptance:** `node --test "plugins/nexus/hooks/scripts/__tests__/*.test.mjs"` passes every scenario above;
+the three cross-cutting live-fire guarantees (developer source in analyze denied; subagent `.pipeline-state`
+write denied; reviewer stale `review.md` caught) are each demonstrably covered (1, 6, and the documented H1
+check); H4 cross-session non-blocking is covered by case 8; H2b dev-repo markdown coverage (incl. the
+vendored-plugin allow) by case 9; H0 team-lead read-lane (incl. broad-grep deny + absent-persona fail-open)
+by case 10.
 **Dependency:** Steps 1, 2 (gate behavior + H4), 3 (review.md sections). **Confidence:** medium — no
 precedent test harness in-repo; use `node:test` (no `package.json` exists, verified) driving the hooks via
 `child_process` + stdin.
@@ -402,26 +513,31 @@ precedent test harness in-repo; use `node:test` (no `package.json` exists, verif
 **one** MINOR release. Follow `release-plugin`.
 
 **Sequence (Follow `release-plugin` / ADR-9):**
-1. `node scripts/gen-commands.mjs nexus` — regenerate `commands/*.md` from the edited `agents/*.md`.
-2. `node scripts/bump-plugin.mjs --minor` — bump `plugin.json` + `CHANGELOG.md` (owner-escalated MINOR).
-3. `node scripts/gen-omni.mjs` — sync the omni twin (runs **after** the bump so the twin's version rides along).
-4. `claude plugin validate plugins/nexus --strict`.
-5. Commit content + bump + CHANGELOG + regenerated commands as **one** commit.
+1. `node --test "plugins/nexus/hooks/scripts/__tests__/*.test.mjs"` — **all gate/restore tests green first**
+   (MAJOR-2: the glob form, not the bare-dir form which runs zero on Node v24). Release ships only on green.
+2. `node scripts/gen-commands.mjs nexus` — regenerate `commands/*.md` from the edited `agents/*.md`.
+3. `node scripts/bump-plugin.mjs --minor` — bump `plugin.json` + `CHANGELOG.md` (owner-escalated MINOR).
+4. `node scripts/gen-omni.mjs` — sync the omni twin (runs **after** the bump so the twin's version rides along).
+5. `claude plugin validate plugins/nexus --strict`.
+6. Commit content + bump + CHANGELOG + regenerated commands as **one** commit.
 
 **Files:** `plugins/nexus/hooks/scripts/__tests__/pipeline-gate.test.mjs` +
 `…/__tests__/restore-agent.test.mjs` (new, from Step 9 — list explicitly),
 `plugins/nexus/hooks/scripts/restore-agent.js` (H4 change, Step 2),
+`plugins/nexus/hooks/scripts/pipeline-gate.js` + `plugins/nexus/hooks/hooks.json` (H2b/H0 change, Step 2),
 `plugins/nexus/.claude-plugin/plugin.json`, `plugins/nexus/CHANGELOG.md`,
 `plugins/nexus/commands/*.md` (generated), the omni twin (generated).
 
 **Acceptance:** one commit contains every behavior change + the MINOR bump + regenerated commands; `claude
-plugin validate --strict` passes; CHANGELOG entry enumerates H1–H4, M4–M7, L8–L9. **Dependency:** Steps 1-9 complete.
+plugin validate --strict` passes; CHANGELOG entry enumerates H0, H1–H4, H2b, M4–M7, L8–L9. **Dependency:** Steps 1-9 complete.
 **Confidence:** high (owned, scripted flow). **Follow `release-plugin`.**
 
 ## Testing Strategy
 
-- **Gate (Step 9):** eight-case suite over crafted hook payloads — the only way to *prove* deny/allow
-  without a live run. Covers H2, the H4 SessionStart clear, and regression-guards invariants 2 & 3.
+- **Gate (Step 9):** the scenario suite over crafted hook payloads — the only way to *prove* deny/allow
+  without a live run. Covers H2, the H4 SessionStart clear, H2b dev-repo markdown coverage (incl. vendored-
+  plugin scoping), the H0 team-lead read-lane (incl. broad-grep deny + absent-persona fail-open), and
+  regression-guards invariants 2 & 3. Run via the glob form (MAJOR-2), never the bare-dir form.
 - **Live-fire (manual, documented):** developer source-write blocked mid-`analyze`; subagent
   `.pipeline-state` write blocked; reviewer stale-`review.md` re-dispatch — the three cross-cutting #1
   guarantees, run once on a live pipeline by the owner.
@@ -456,3 +572,35 @@ MINOR); all resolved in this plan. Per the message-only critic model (Steps 3 & 
 - **MINOR-3:** dead `package.json` branch + test file missing from commit list. → Resolved — Steps 9 & 10.
 - **MINOR-4 (M4):** `done-check.md` format not asserted. → Moot under Fokus parity (no `done-check.md`; the
   `review.md` section shape is asserted in Step 3 instead).
+
+### Second critic pass — after the H0/H2b additions (CHANGES → all resolved)
+
+A second Mode-2 critic review ran on the revised plan (standalone). Verdict **CHANGES (2 MAJOR, 5 MINOR)** —
+all resolved in-place:
+
+- **MAJOR-1 — H0 keyed persona-detection on `.current-agent`, which no hook ever clears** (it would
+  false-positive-wedge the main session or no-op in consumers — the exact unhygienic-state class H4 fixes). →
+  Resolved — Step 2 now detects via session-keyed `.personas.json[session_id]` + no `agent_type`, with
+  absent/disagreeing ⇒ fail-open (ADR-7); Step 9 case 10 adds the absent-persona allow case.
+- **MAJOR-2 — Step 9's bare-dir `node --test …/__tests__/` runs ZERO tests on Node v24** (MODULE_NOT_FOUND).
+  → Resolved — pinned to the verified glob form `node --test "…/__tests__/*.test.mjs"` in Steps 9 & 10; the
+  test run is now Step 10 sequence item 1 (release ships only on green).
+- **MINOR-1 — "targeted grep" was intent-based, not machine-checkable.** → Resolved — Step 2 makes the
+  `Grep` allow-rule structural (path-allowlist + bounded `output_mode`/context); Step 9 adds a broad-grep
+  deny case.
+- **MINOR-2 — matcher widening would be dead code after the `:59` early-return; no fast-path stated.** →
+  Resolved — Step 2 Files note requires the H0 branch before `:59` and a non-team-lead fast-path; confirms
+  the matcher widening is isolated from `guard.js`/`audit-logger.js`.
+- **MINOR-3 — H2b marker would misfire on a vendored plugin in a consumer monorepo.** → Resolved — marker
+  tightened to root-anchored + `name`∈{nexus,nexus-dotnet}; Step 9 case 9 adds the vendored-plugin allow.
+- **MINOR-4 — H0 allow-list diverged from team-lead.md's Read Discipline table (silent on `questions.md`).**
+  → Resolved — Step 2 mirrors the table exactly (allow comm-log + `questions.md`; `git diff --stat` is Bash,
+  unaffected).
+- **MINOR-5 — "ten cases" count + cases 1–8 already in-tree read as all-future.** → Resolved — Step 9 notes
+  1–8 already exist (reuse if kept; author all on a clean redo) and reworded the count to "scenarios."
+
+Critic also confirmed (no action): invariants 2 & 3 untouched, ADR-7 fail-open intact (conditional on
+MAJOR-1, now fixed), subagent-masquerade correctly blocked by the `agent_type` half, and Steps 1/3/4/5/6/7/8
+prose matches the working tree with no regressions. **Note:** the critic again returned terse (verdict only)
+and the full findings had to be recovered from its transcript — live M6 recurrence (third time this
+feature), reinforcing Step 7.
