@@ -1,6 +1,6 @@
 {
   "name": "nexus",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Nexus core — a stack-agnostic multi-agent team pipeline (architect, developer, reviewer, PO, critic, learner, team-lead, solo) with always-on rules, persona commands, process skills, and a security guard.",
   "author": {
     "name": "ldumit"
@@ -19,6 +19,12 @@
       "title": "Security mode",
       "description": "Install posture: open (block catastrophic actions only — recommended) | hardened (strict, for teams/CI) | off (no guard).",
       "default": "open"
+    },
+    "token_audit": {
+      "type": "boolean",
+      "title": "Token consumption audit",
+      "description": "When on, the audit-logger additionally records per-agent token usage (input/output/cache/context) to docs/audit/token-usage.jsonl on each tool call, for analysis via the consumption-report skill. Default off — zero extra work when disabled.",
+      "default": false
     }
   }
 }

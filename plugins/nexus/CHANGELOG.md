@@ -1,5 +1,18 @@
 # nexus — Changelog
 
+## [1.1.0] — 2026-06-07
+Token consumption audit — opt-in, off by default (ADR-11).
+
+- **`token_audit` userConfig flag** (default off). When on, the `audit-logger` hook additionally
+  records per-agent token usage to `docs/audit/token-usage.jsonl` (`{ts, agent, tool, input, output,
+  cache_read, cache_creation, context}`), reading the last completed turn's `usage` from the
+  transcript (a one-turn lag, fine for a growth curve). Off by default — zero extra work when
+  disabled; the existing `tool-calls.log` trace is unchanged.
+- **`consumption-report` skill** — aggregates that log into a per-agent table: peak context, output
+  generated, tool-call count, and context growth (first → peak), so you can see which agent burns the
+  most tokens and tie its growth back to what it re-read. Dedups same-turn rows so output isn't
+  multi-counted.
+
 ## [1.0.2] — 2026-06-06
 Hotfix: revert the implementer agents off the 1M-context model.
 

@@ -21,6 +21,7 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-8 — Security guard as a synchronous hook
 - ADR-9 — Build & release pipeline
 - ADR-10 — Spawn mode: foreground for pipeline agents
+- ADR-11 — Token consumption audit (opt-in)
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -310,6 +311,40 @@ saving). The user waits on each agent rather than firing and forgetting.
 **Rejected.** *Background default* — the original `cfb7a64` value; truncates results and silently
 breaks relay + verdict validation. It still survives in the superseded `nexus-net` superset (ADR-3),
 which is the source of cross-plugin confusion about the default.
+
+---
+
+## ADR-11 — Token consumption audit (opt-in)
+**Context.** The pipeline's payload is agent behavior, and that behavior has a token cost: each agent
+grows its own context (re-reading `plan.md`, the spec, the comm log) and generates output. The
+consumption evaluation that motivated several pipeline fixes was done **by hand** from transcripts —
+there was no built-in way to measure per-agent consumption in a live run.
+
+**Decision.** An **opt-in** audit, **off by default**. A `token_audit` userConfig flag (default
+`false`) that, when on, has the existing `audit-logger` hook additionally append per-agent token
+readings to `docs/audit/token-usage.jsonl` (`{ts, agent, tool, input, output, cache_read,
+cache_creation, context}`), plus a `consumption-report` skill that aggregates that log into a
+per-agent table (peak context, output generated, tool-call count, growth curve). This **ships to
+consumers** — unlike the release tooling (ADR-9), it is runtime observability for the pipeline, which
+runs in consuming projects.
+
+**Why.** (a) **Fold capture into the existing always-on `audit-logger`** rather than add a hook — it
+already attributes each tool call to an agent (`agent_type` / persona registry), so the only addition
+is reading the transcript's last completed-turn `usage`. (b) **Off by default** so installs that don't
+measure pay nothing — the flag short-circuits before any transcript read. (c) The data already lives
+in transcripts, but a per-project append-only JSONL gives durable, in-project history independent of
+transcript rotation, and the consuming project may not surface transcript paths conveniently.
+
+**Tradeoffs.** A PreToolUse hook cannot see the **in-flight** turn's usage (not written yet), so it
+records the **last completed** turn — a one-turn lag, immaterial for a growth curve. Several tool calls
+in one turn carry the same usage tuple; the report **dedups consecutive tuples** so output is not
+multi-counted (tool-call count still counts every call). When on, every tool call reads the transcript
+file — async, observe-only, never blocks.
+
+**Rejected.** *A dedicated `Stop`/`SubagentStop` hook* for end-of-run totals — loses the per-call
+growth curve that answers "how does the agent grow its own context." *A new standalone hook* — needless;
+`audit-logger` already runs per call with agent attribution. *Always-on capture* — imposes a
+transcript read on every tool call for installs that never analyze; opt-in keeps the default free.
 
 ---
 
