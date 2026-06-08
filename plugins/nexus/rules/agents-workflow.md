@@ -55,6 +55,11 @@ The team lead is the **sole writer** of `.claude/.pipeline-state`. Every phase t
 - A plan.md write is blocked under any token ending in `:analyze`.
 - An absent file fails open (solo / leaderless / unattended runs are never wedged).
 
+**The gate keys on the token, not on conversational intent — three recurring failure modes:**
+- **Inline user override mid-session.** When the user inline-approves a phase transition ("skip the checkpoint, write the plan"), the agent's `.pipeline-state` still says `…:analyze`, so the gate *correctly* blocks the write. The fix is **not** an agent workaround — it is the **team lead advancing the token to the next phase before the agent proceeds**. The team lead is the sole writer; a user "go" is the team lead's cue to write `architect:plan` (or `developer:implement`), then resume the agent.
+- **No self-advance / no bypass.** A pipeline subagent must **never** advance its own phase — not via the Write/Edit path (the gate blocks it, invariant 3) and not via the side doors a faithful agent reaches for when blocked: `printf …> .claude/.pipeline-state` in Bash, or writing `plan-draft.md` and `mv`-ing it to `plan.md`. These defeat the gate silently. If blocked, report the checkpoint and let the team lead transition — do not engineer around the gate.
+- **Foreign-repo deliverables are a blind spot.** The gate watches the working tree at `CLAUDE_PROJECT_DIR`. For a pass whose deliverables land in a **separate repo** (e.g. editing the Nexus plugin source from a consumer project), the gate sees no plan/source writes in the repo it watches and cannot enforce the analyze→implement boundary at all — it fails open. The team lead must enforce the checkpoint **manually** for such passes (don't rely on the gate), and the plan must headline the foreign deliverable path so the done-check and review read the right repo. *(Making the gate two-repo-aware — watch a plan-declared foreign path, or honor a developer-written phase marker — is a tracked `pipeline-gate.js` improvement, not yet implemented.)*
+
 **Session lifecycle:** `.pipeline-state` is cleared by `restore-agent.js` on SessionStart `startup` and `clear` events, mirroring the persona registry. A token from a prior closed session cannot block a new session.
 
 ## Communication Model: Hub-and-Spoke

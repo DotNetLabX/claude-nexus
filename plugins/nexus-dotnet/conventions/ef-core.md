@@ -16,6 +16,7 @@ Programming conventions for EF Core. Inlined into the developer and reviewer age
 
 - `dotnet ef migrations remove --force` works cleanly when the migration has not been applied to a database. No need to delete files manually.
 - When running `dotnet ef migrations add` with FastEndpoints and no endpoints are registered yet, the host startup fails. Add `IDesignTimeDbContextFactory` in the Persistence project to bypass this.
+- **A generated `DropColumn` + `AddColumn` pair for the same logical data destroys existing rows — hand-edit it to `RenameColumn`.** EF Core scaffolds drop+add (not a rename) whenever it can't detect that a column was renamed across a schema change — e.g. when flat scalars are regrouped into a `ComplexProperty`/owned VO and the column prefix changes (`BugRatioTarget` → `BugRatio_Target`). Drop+add wipes the values; on a seeded singleton (sync/Xray config) that silently resets production data on deploy. **Read every generated migration immediately after `dotnet ef migrations add`, before declaring the step done** — if it contains `DropColumn` + `AddColumn` for the same data, replace them with `migrationBuilder.RenameColumn(...)`. The green build does not prove the migration is rename-not-drop; that is the one failure that silently destroys data.
 
 ## Migration Defaults
 

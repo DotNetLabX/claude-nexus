@@ -98,6 +98,21 @@ Two approaches:
 - `OwnsOne` (owned entity type): `builder.OwnsOne(p => p.Email, ...)`
 - `ComplexProperty` (complex type): `builder.ComplexProperty(a => a.Email, ...)`
 
+### Mapping a Command onto a Tracked Entity (Mapster — the write path)
+
+For the **inbound** direction — applying a request/command onto an already-loaded, change-tracked entity (a partial update, e.g. `req.Adapt(existing)`) — two Mapster facts are routinely gotten backwards. Both have caused **silent no-op writes** that pass every existence/shape grep:
+
+- **`IgnoreNonMapped(true)` is a whitelist, not a shield.** It turns OFF name-convention matching and restricts mapping to explicit `.Map()` resolvers only. A config with `IgnoreNonMapped(true)` and **zero** `.Map()` calls maps **nothing** — `req.Adapt(existing)` becomes a no-op and the update silently fails to persist. Do not add it expecting it to "protect" unmatched fields.
+- **`.Adapt(onto existing)` already leaves unmatched destination members untouched.** Mapster's default adapt-onto-existing never nulls a destination member that has no matching source. So a name-aligned partial update needs **no** guard at all: register **nothing** and just call `req.Adapt(existing)`.
+
+Net rule: **for a name-aligned `Command → Entity` partial update, register nothing and call `req.Adapt(existing)`** — no `IgnoreNonMapped`, no per-field `.Map()`.
+
+**Exception — `ComplexProperty`/owned VOs on a tracked entity: assign explicitly.** `.Adapt(existing)` does not reliably propagate change-tracking for complex/owned-type members, and `DbContext.Entry(existing).CurrentValues.SetValues(source)` does **not** deep-copy them either — any manual reassignment block already present for JSON/owned members is the signal that newly-grouped VOs need the same treatment (`existing.BugRatio = source.BugRatio;`). Match the existing explicit-assignment pattern (`SaveXraySettings`, `SaveCycleTimeBoundaries`); it is slightly more verbose but EF-safe and unambiguous.
+
+**Verification that actually catches a no-op write:** a silent no-write is invisible to existence/shape greps *and* to "does it leave other fields alone?" reasoning. The only check that catches it is **save → reload → assert the value changed** (or a unit test on the mapping). Any done-check or review of a write path must include a positive-write assertion, not just a non-clobber argument.
+
+See `create-feature` (Mappings workflow) for the Mapster eligibility test and the **outbound** domain→DTO direction.
+
 ## DbContext Setup
 
 **File:** `src/BuildingBlocks/Blocks.EntityFrameworkCore/ApplicationDbContext.cs`

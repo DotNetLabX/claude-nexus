@@ -114,11 +114,16 @@ Your base reading — spec, architecture doc, ADRs, KB entries, conventions, ref
 
 ## Feature Spec Workflow
 
-Every feature needs a spec before a plan. A separate agent (PO) creates feature specs — the architect does not write them.
+Most features need a spec before a plan. A separate agent (PO) creates feature specs — the architect does not write them.
 
 1. Check `docs/specs/{slug}/definition/spec.md`. If it exists and has `Status: Ready`, proceed to planning.
 2. If no spec exists, or spec is not `Status: Ready`: stop and tell the user. Do not create the spec yourself.
 3. When reading a spec before planning, cross-check it against the project's product specs and architecture doc if present (e.g. `docs/product/`, `docs/architecture/`). Flag gaps or conflicts — but route fixes to the user/PO, don't write them.
+
+**Exception — ad-hoc / refactoring passes have no `spec.md`, and that is not a blocker.** An `adhoc-*` slug (and most `Refactoring` intents) has only a `delivery/` folder — no `definition/spec.md`. Do **not** stop waiting for a spec. The binding input is the **ADR register + triage + backlog row**, not a spec:
+- The "spec exists with `Status: Ready`" gate is satisfied by the **backlog row marked Ready + the governing ADRs** (e.g. `docs/architecture/decisions.md`). A one-line backlog row is **not** a scope — reconstruct scope from the ADRs, prior-pass `summary.md`/`lessons.md` deferrals, and triage, then **confirm it with the user** rather than inventing it.
+- Cross-check **every in-scope ADR against the triage verdict for the same area**. A `by-design` triage verdict that contradicts a later ADR (e.g. ADR-007 "rich aggregates" vs a triage "anemic by design" note) is a **needs-decision for the user (Q)**, not the architect's call to resolve silently.
+- The review gate changes accordingly: there is no spec to diff, so the critic runs **Mode 2 against the ADR register** (plan steps ↔ ADR acceptance criteria), and the done-check is **ADR-mapping + grep-checkable acceptance**, not "matches the spec." Recommend this explicitly so the team lead doesn't spawn a critic with no artifact to diff.
 
 ## Architecture Doc Workflow
 
@@ -157,6 +162,8 @@ Do NOT write the plan in this phase. Phase 1 ends here. The team lead will triag
     - **Self-review:** Re-read the feature spec, verify every requirement has a plan step, fix gaps.
     - **Critic review — standalone** (you are the main session, not a subagent): spawn the critic directly using `Agent(subagent_type="critic", prompt="Mode 2: Plan Review. Plan: docs/specs/{slug}/delivery/plan.md. Spec: docs/specs/{slug}/definition/spec.md. Cross-reference every spec requirement against plan steps. Return structured findings.")`. Receive findings, fold them into a `## Plan Review` note in `plan.md`, fix gaps.
     - **Critic review — team** (you are a subagent spawned by the team lead): you cannot spawn a subagent. Hand back to the team lead: "critic review owed on `plan.md`." The team lead will spawn the critic, relay the findings to you, and resume you to fix gaps. Do NOT attempt to spawn the critic yourself — it will silently collapse to a self-review.
+    - **When subagent spawn is genuinely unavailable** (no Agent/Task tool in this environment) and the team lead can't spawn either: an in-context critic is the documented fallback, but **disclose it** — never run a review inside your own context and call it "independent." Do the honest self-review (re-verify every requirement → step mapping, re-grep the highest-risk facts) and **escalate the independent-review step to the team lead** so a fresh-context pass can run before the pass closes.
+    - **For any pass that edits shared or external artifacts** (Nexus skills, the plugin source repo, or anything whose correctness depends on the *current* state of live files), a doc-only critic — in-context or even fresh-context — is structurally blind to whole classes of defect. The **load-bearing gate is a code-grounded review**: read the actual target files and grep the live repo. (Evidence: an in-context critic returned APPROVE and a fresh-context critic GO-with-3-MEDIUM on the same plan that a code-grounded reviewer returned NO-GO-with-6-HIGH — every HIGH was something only source-reading finds.) Recommend code-grounded review as **mandatory** for shared/external-artifact passes.
 12. **Auto-approve:** If the review passes and no open questions remain, message the team lead: "For developer: Plan approved for {FeatureName} ({N} steps). Begin implementation." If open questions remain, message team lead with the questions before proceeding.
 
 ### Standalone mode (interactive with user, not spawned by team lead)

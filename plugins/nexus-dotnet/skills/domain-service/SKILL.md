@@ -131,6 +131,8 @@ public class BugRatioScorer
 
 The **endpoint always defines its own response contract and maps domain → DTO via Mapster** — even when the shapes are identical. The domain type and the wire contract evolve independently; do not return the domain type directly from the endpoint, and do not reuse the domain type as the response.
 
+> **Discriminated `*Response` envelopes are wire-only — never mirror them into the domain.** Many analytics features wrap two compute shapes in a `{ Mode, Multi?, Single? }` `*Response` envelope. That envelope is a **transport construct**: the calculator returns the two shapes **separately** (as domain result records) and the **endpoint assembles** the envelope. Do not add a `Mode`/`Multi`/`Single` wrapper type to the Domain layer (a wire-name leak / ADR-010 violation), and do not list it in a domain rename table when planning a migration. State this explicitly for any service whose response is a discriminated wrapper.
+
 ```csharp
 // Target-state endpoint (Mapster — the project's chosen mapper per ADR-010/CLAUDE.md;
 // Mapster package not yet in CPM, added in Pass 2/3 — snippet won't build until then)

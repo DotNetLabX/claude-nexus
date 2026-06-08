@@ -1,6 +1,13 @@
 # nexus — Changelog
 
 
+## [1.2.3] — 2026-06-08
+Learner consolidation from Passes 0–3c-B — proven (2+ occurrence) flow lessons promoted into the plan skill, the architect, and the coordination rules.
+
+- **`create-implementation-plan`**: new **Refactoring & Type-Move Plan Rules** section — (a) a "fix/split/replace every file matching P" step must derive its file list from the *exact* acceptance grep (definition-line, not usage); (b) enumerate ALL consumer/DI/injection sites from a repo-wide grep before a removal; (c) "grep before delete" is a hard numbered sub-step for shared-type deletions; (d) "replace all X" needs file:line + DO-NOT-TOUCH carve-outs for non-call homonyms (the `"neutral"` literal, `HttpClient`/SignalR `SendAsync`, Mapster `.Adapt<T>()`); (e) type-move/rename needs an explicit old→new table + wire-stability invariants (`DataMember(Order)`, property/JSON-key names, wire-only `*Response` envelopes); (f) project-reference removal must grep dependent `GlobalUsings` + property/field/return types, not just `.csproj`.
+- **`architect.md`**: the Feature Spec Workflow now handles **ad-hoc / refactoring passes that have no `spec.md`** — gate on backlog row + ADR register + triage, cross-check every ADR against its triage verdict (conflicts → user Q), and review via critic **Mode 2 against the ADR register**. Also: when subagent spawn is unavailable, an in-context critic must be **disclosed** (never called "independent"), and shared/external-artifact passes (skills, the plugin repo) require a **code-grounded** review as the load-bearing gate, not a doc-only critic.
+- **`agents-workflow.md`** (Pipeline State): documented the three recurring `pipeline-gate` failure modes — inline user override (team lead must advance the token, not the agent), no self-advance / no Bash-`printf`/`mv` bypass, and the **foreign-repo blind spot** (the working-tree gate fails open for deliverables in another repo; the team lead enforces the checkpoint manually). The two-repo-aware `pipeline-gate.js` change remains a tracked, unimplemented improvement.
+
 ## [1.2.2] — 2026-06-08
 Standard+Codex review made explicit and deterministic.
 

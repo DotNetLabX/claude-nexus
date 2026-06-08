@@ -29,6 +29,7 @@ user-invocable: true
 - `Entity<TPrimaryKey>` with `Id` property and equality by ID
 - `IsNew` returns true when ID is default value
 - Transient entities (both `IsNew`) are never considered equal
+- **Encapsulating an entity's setters?** Do not write `required` + `private set` together — that is a CS9032 compile error (a `required` member must be at least as visible as its setter). For an entity whose behavior methods mutate the property after construction (e.g. `Person.UpdateFromGoogle`), drop `required` and add a private constructor (the factory is then the only construction path, making `required` redundant); use `init` only when nothing mutates it post-construction. Full rule + remedies: `conventions/csharp.md` → Type Conventions.
 
 ## Value Objects
 

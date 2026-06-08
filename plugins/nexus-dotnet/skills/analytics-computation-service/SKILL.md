@@ -108,6 +108,8 @@ var result = _scorer.Score(sprints, settings.HealthThresholds, windowSize);  // 
 await Send.OkAsync(result.Adapt<BugRatioResponse>(), ct); // endpoint maps to its own response
 ```
 
+> **The `{ Mode, Multi?, Single? }` `*Response` envelope is wire-only — the endpoint assembles it.** Each analytics feature wraps its multi-period and single-period shapes in a discriminated `*Response` envelope. The calculator returns the two shapes **separately** as domain result records; the **endpoint** builds the `{Mode, Multi, Single}` wrapper. Never add the envelope type to the Domain layer and never put it in a domain rename table when migrating a calculator — see `domain-service` → Output Boundary.
+
 ## Key Patterns
 
 ### Delta / Direction / Polarity Triplet

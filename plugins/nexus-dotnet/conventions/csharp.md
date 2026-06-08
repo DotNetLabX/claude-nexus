@@ -20,6 +20,7 @@ Programming conventions for C# / .NET. Inlined into the developer, reviewer, and
 
 - Use `sealed record` for DTOs, value objects, and domain events.
 - Use `required init` properties for entity creation when no business rules or domain events are involved.
+- **`required` + `private set` is a compile error (CS9032)** — a `required` member must be at least as visible as its setter. When encapsulating an entity whose behavior methods mutate a property after construction, you cannot keep `required` and tighten to `private set` together. Choose one: (a) drop `required` + add a private constructor (the factory becomes the only construction path, making `required` redundant) for entities with mutating behavior methods like `Person.UpdateFromGoogle`; or (b) use `init` instead of `private set` when nothing mutates the property post-construction. Never write `required` alongside `private set` in the same plan or class.
 
 ## Solution Format
 
@@ -30,6 +31,10 @@ Programming conventions for C# / .NET. Inlined into the developer, reviewer, and
 - Target the **latest stable** stack — currently **.NET 10**. Use current framework APIs, never deprecated ones.
 - FastEndpoints: `Send.*` (e.g. `Send.OkAsync`), never the legacy `SendOkAsync`.
 - **Central package management is mandatory** — every .NET solution declares versions in `src/Directory.Packages.props` (`<PackageReference>` carries no `Version`).
+
+## Build Verification
+
+- **On Windows under the Bash tool, never prefix a build with `cd /d <path> && …`.** The Bash tool runs under bash, not cmd.exe; `/d` is a cmd flag, so bash reads it as an extra `cd` argument and fails with *"too many arguments"* — the build never runs, and the pipe's exit-code-1 masquerades as a compiler failure. Pass the absolute solution path directly instead: `dotnet build "D:\…\SprintRituals.slnx"` (no `cd` — the Bash tool resets cwd between calls anyway). A shell/setup error here is easy to misread as a real compile error, so confirm the compiler actually ran before declaring a build red.
 
 ---
 
