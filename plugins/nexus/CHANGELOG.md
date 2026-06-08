@@ -1,6 +1,22 @@
 # nexus — Changelog
 
 
+## [1.2.4] — 2026-06-08
+Independent review gate for the learner — promotions now get a critic pass before close.
+
+- **`critic.md`: new Mode 3 — Promotion Review** (code-grounded). The critic reads the *actual*
+  promoted/edited files on disk + the source `lessons.md` and flags distortion, **over-promotion**
+  (a 1-occurrence item promoted with no build-breaking/data-loss justification), **mis-routing**
+  (ADR-1: stack-agnostic content in an extension, or stack-specific detail in the agnostic core),
+  conflicts/duplication, and **artifact drift** (an edited `agents/*.md` with a stale `commands/*.md`,
+  or a shipped change with no bump/CHANGELOG). The learner is added as a critic spawner (standalone →
+  direct; team → via team lead), and folds the findings like the architect folds a plan review.
+- **`learner.md`: a Mode-3 critic review is now a mandatory close step.** Promotions edit shared source
+  that shapes every future run (highest blast radius), so they get an independent review exactly like a
+  plan. An adversarial second opinion (`omc:critic` / Codex) is an opt-in add-on for large
+  consolidations — never required (nexus depends on neither). Release machinery stays out of the shipped
+  learner (dev-repo concern); the Mode-3 artifact-drift check backstops a skipped `gen-commands`.
+
 ## [1.2.3] — 2026-06-08
 Learner consolidation from Passes 0–3c-B — proven (2+ occurrence) flow lessons promoted into the plan skill, the architect, and the coordination rules.
 
