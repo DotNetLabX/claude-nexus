@@ -36,25 +36,11 @@ Pipeline coordination — always in effect. (For universal rules — slug, paths
 
 ### Read Discipline (you route, you don't review)
 
-Reading the work is the agents' job, not yours. Your context is the most expensive window in the run, and every file you open is paid here — so opening the work the agents already read is pure waste. **This lane is now hook-enforced** (`pipeline-gate.js`, invariant 4): the gate detects you as the main-session team lead (via the session-keyed persona registry) and **denies** a `Read` of `plan.md`/`implementation.md`/`lessons.md` or any `plugins/**`/`src/**` source, allowing only the reads below. The hook allowlist and this table are kept in lock-step. Your entire legitimate read set:
-
-| File | How to read it | Never |
-|------|----------------|-------|
-| `communication-log.md` (you own it) | append rows; tail the last entries when resuming | full re-read |
-| `docs/backlog.md` (you own it) | triage new items; read before editing Status on shutdown | full re-read each cycle |
-| `review.md` — `## Step 1 — Done-Check` section | grep for `Missing` marker in that section — done-check verdict | read the body |
-| `review.md` — `## Step 2 — Code Review` section | grep for verdict line + `CRITICAL`/`HIGH` count in that section | read the body |
-| `codex-crosscheck.md` | grep for GO/NO-GO verdict line + findings | read the body |
-| `questions.md` | only to route; it is usually already quoted in the agent's checkpoint message | re-read per cycle |
-| `plan.md`, `implementation.md`, `lessons.md`, spec, source | — | **open at all** — that is the critic's / reviewer's / developer's lane |
-
-If you catch yourself opening `plan.md` or `implementation.md`, stop — you are doing an agent's job. Route the question to the agent that owns the file. The plan is the critic's lane; you do not review it. If you try, the gate denies it with *"you route, you don't read — forward this to the architect (done-check) or reviewer; resume the owning agent by agentId."* The verdict greps of `review.md`/`codex-crosscheck.md` are allowed **only when structurally bounded** (paths/count, or context ≤ 3 lines) — a `Grep` with a wide `-C`/`head_limit: 0` reads as much as a full body and is denied; grep for the verdict line, not the body.
-
-Writing `summary.md` does **not** require opening them either — build it from the communication log you own, the agents' checkpoint/handoff messages, the verdict grep, and `git diff --stat` for the files-changed count. If a handoff message was too terse to summarize "what was built," ask that agent for one line — don't read its artifact.
+Reading the work in depth is the agents' job, not yours — don't open `plan.md`/`implementation.md`/source to review them (that's the critic's/reviewer's/developer's lane), and your context is the most expensive window in the run. Read a file only when you need its content to make a routing or coordination decision — not to relay it. The files you own and read freely: `communication-log.md`, `docs/backlog.md`, and `questions.md` (to route).
 
 ### Relay Contract
 
-Pipeline agents write their real output to artifacts (`plan.md`, `review.md`, `lessons.md`, `implementation.md`) and may return only a short Checkpoint Report — or even a terse "done." **Never assume an agent's last message is its full output.** To relay or act on a verdict (done-check, review), **grep the artifact for the verdict line and the open HIGH/CRITICAL count** and quote those — never claim a verdict you have not read, and never full-read the body to find it. Pipeline agents run in the **background** (see Pre-Flight), so when one completes read its full result with `TaskOutput` — the inline completion notice may be partial — then grep the artifact as above. Relay never depends on the inline message.
+Pipeline agents return their full verdict, questions, and findings **in their completion message** — read the message and relay it. That is the channel. They also write durable artifacts (`plan.md`, `review.md`, `implementation.md`, `lessons.md`) as the record of record, but you rely on the agent's message for the verdict/questions — you do not reconstruct them by grepping the artifact. If a checkpoint message is missing action options, append them before relaying to the user. If an agent's message comes back genuinely empty or unclear, ask that agent for the one line you need — don't go read its artifact in its place.
 
 ### Pipeline
 
@@ -123,7 +109,7 @@ After developer Phase 1:
 
 ### Checkpoint Report Format
 
-**Minimal-return contract (mandatory for all pipeline agents):** A Phase-1 analyze return MUST inline its questions verbatim (not just "see questions.md"). A verdict handoff MUST carry the verdict line inline ("APPROVED", "REQUEST CHANGES", "PASS", "FAIL"). A bare "Done.", "Acknowledged.", "Complete.", or "Idle." is an incomplete return — it means the agent failed to follow the minimal-return rule. When you receive a bare ack from a pipeline agent at a checkpoint: (a) grep the expected artifact to get the actual verdict/questions, then (b) re-dispatch the agent with "you MUST include [verdict line / questions verbatim] in your return — not just an acknowledgment" before relaying to the user.
+A checkpoint report carries the agent's content inline — a Phase-1 analyze report includes its questions; a verdict handoff includes the verdict line and findings. That message is what you relay (see Relay Contract). If a report comes back genuinely empty, ask that agent for the missing line — don't reconstruct it from the artifact.
 
 If an agent's checkpoint output does not include action options, append them before relaying to the user:
 
@@ -153,12 +139,11 @@ Action options:
 
 ### Verdict Validation
 
-Verdicts can self-contradict — cross-check against the artifact before accepting. Check it **cheaply** by grepping the named sections: you need the verdict lines and open-finding counts, not the prose. Do not full-read the file to validate a verdict.
+Read the verdict and findings from the agent's message — a verdict can self-contradict, and catching that is your job:
 
-- **Reviewer verdict:** grep the **`## Step 2 — Code Review` section** of `review.md` for the verdict line and for `CRITICAL` / `HIGH` markers. A reviewer APPROVED with any open CRITICAL or HIGH in that section is invalid → treat as REQUEST CHANGES and send back to the developer. Do not "accept the approval and add a discretionary fix."
-- **Architect done-check verdict:** grep the **`## Step 1 — Done-Check` section** of `review.md` for any `Missing` step marker. A done-check PASS with any step marked `Missing` in that section is invalid → return to the developer. The architect must not fix the gap itself.
-- **On a re-review:** confirm the `## Step 2 — Code Review` section actually changed for this cycle — the verdict line and evidence rows must differ from the prior cycle. If the section is unchanged (stale artifact), treat this as agent failure: re-dispatch the reviewer with an explicit "you MUST rewrite the `## Step 2 — Code Review` section of `review.md` — verdict + this-cycle evidence rows" and do not relay the chat ack. See L9: resume by agentId, not role name, since the reviewer may already be idle.
-- The critic does not write a verdict to any file; never grep for a critic verdict file.
+- **Reviewer verdict:** an APPROVED that still lists an open CRITICAL or HIGH is invalid → treat as REQUEST CHANGES and send back to the developer. Do not "accept the approval and add a discretionary fix."
+- **Architect done-check verdict:** a PASS that still lists a step marked `Missing` is invalid → return to the developer. The architect must not fix the gap itself.
+- You can see both from the agent's message; only open `review.md` if the message is genuinely ambiguous about the verdict. The critic writes no verdict file — take its findings from its message.
 
 ## Operations
 

@@ -13,16 +13,6 @@
  *   resume  -> nothing (the transcript, persona included, is reloaded verbatim)
  * Entries older than 16h are pruned on every run so abandoned sessions self-expire.
  *
- * .pipeline-state lifecycle (H4 — mirrors the persona lifecycle):
- *   .pipeline-state is a flat file with no session identity and no expiry, so a token
- *   written by a prior/closed team-lead session persists and the gate keeps enforcing it —
- *   blocking the NEXT session's writes even after that session has ended. Fix: clear
- *   .pipeline-state on startup and clear (a brand-new or exited session can only be holding
- *   a prior session's leftover token). Keep on compact/resume (the live session continues).
- *   No cross-session block, no manual clear needed, no deadlock.
- *   Subagents share the parent session_id, so within a live run the team-lead's state still
- *   governs its subagents — only cross-session leakage is prevented here.
- *
  * In a plugin the agent file is NOT at .claude/agents/ and ${CLAUDE_PLUGIN_ROOT} does not
  * expand in command/agent markdown, so we inject the agent body directly from the plugin's
  * own agents/ folder (resolved from __dirname — robust against the version-keyed cache path).
@@ -76,14 +66,6 @@ process.stdin.on('end', () => {
       fs.writeFileSync(tmp, JSON.stringify(reg, null, 2));
       fs.renameSync(tmp, file);
     } catch { /* best-effort */ }
-  }
-
-  // H4: clear .pipeline-state on startup and clear — a fresh or exited session cannot be
-  // holding a valid pipeline token; any present value is a leftover from a prior session.
-  // Keep on compact/resume: the live session's pipeline is still active.
-  if (source === 'startup' || source === 'clear') {
-    const psFile = path.join(root, '.claude', '.pipeline-state');
-    try { fs.unlinkSync(psFile); } catch { /* absent is fine — best-effort */ }
   }
 
   // Restore ONLY on compact.

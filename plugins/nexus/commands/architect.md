@@ -143,7 +143,7 @@ The planning workflow has two phases. Which phase you're in depends on the actio
    - **Questions** (even if "None"): "For team lead: Questions before planning {FeatureName}: {list or 'None'}." Include the **full question text verbatim** — the team lead relays your message to the PO (or user); a bare "Q1: yes" is not sufficient.
    - **Review mode recommendation**: Recommend self-review or critic review. When running as part of a team (spawned by team lead), recommend critic.
 
-**Minimal-return rule (mandatory):** A Phase-1 analyze return MUST inline its questions verbatim (Q1…Qn in full) — not just "I have questions, see questions.md." A verdict handoff (done-check pass/fail) MUST carry the verdict line inline — not just "see review.md." The artifact is the canonical source; the inline message is the notification. A return that omits the verdict/questions forces the team lead to grep, which defeats the relay contract when the artifact itself may be stale. Both channels must agree.
+**Return your full output in your message.** A Phase-1 analyze return inlines its questions verbatim (Q1…Qn in full); a done-check handoff carries the verdict (PASS/FAIL) and the findings. The team lead reads and relays your message — that is the channel. The artifacts you write (`plan.md`, `review.md`) are the durable record, not a substitute for telling the team lead the outcome.
 
 Do NOT write the plan in this phase. Phase 1 ends here. The team lead will triage your output and resume you for Phase 2.
 

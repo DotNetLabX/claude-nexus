@@ -1,15 +1,33 @@
 # nexus — Changelog
 
 
+## [1.2.1] — 2026-06-08
+Reverts the 1.2.0 pipeline-hardening experiment. The hardening regressed the thing that actually
+worked — agents relaying their output to the team lead — without buying correctness the simple gate
+didn't already give. Confirmed against a real run that shipped clean with the gate not even firing,
+and against the `cfb7a64` / fokus baseline that "worked fine."
+
+- **Restored the message-first relay model** (the `cfb7a64` model). Pipeline agents return their full
+  verdict, questions, and findings **in their completion message**, and the team lead reads and relays
+  that message. Reverted the 1.2.0 "minimal-return contract / never trust the agent's last message /
+  grep the artifact for the verdict" machinery in `team-lead.md`, `architect.md`, `developer.md`, and
+  `reviewer.md`. Artifacts (`plan.md`, `review.md`, `implementation.md`, `lessons.md`) remain the durable
+  record — the team lead no longer reconstructs verdicts/questions from them.
+- **Simplified `pipeline-gate.js` back to the load-bearing invariants** — (1) analyze-phase collapse
+  (no `plan.md`/source written during an `:analyze` phase), (2) review.md verdict integrity (no APPROVED
+  with an open CRITICAL/HIGH), (3) state-file integrity (a pipeline subagent can't rewrite
+  `.pipeline-state`). Dropped the 1.2.0 additions: the team-lead read-lane (H0) and the dev-repo markdown
+  source guard (H2b). Spawns pass through untouched (background by design, ADR-12).
+- **Reverted `restore-agent.js`** (dropped the SessionStart `.pipeline-state` liveness-clearing, H4) and
+  the hooks matcher (back to `Write|Edit|MultiEdit|Task|Agent`, no `Read`/`Grep`). Removed the gate/restore
+  unit tests added with the experiment.
+
 ## [1.2.0] — 2026-06-07
-- MINOR bump.
-  - agent instruction/behavior change
-  - shipped command changed
-  - hook behavior/enforcement change
-  - rule (injected every session)
-  - skill change (release-plugin)
-  - skill change (review-format)
-  - owner-escalated to minor
+Pipeline-gate hardening experiment — **reverted in 1.2.1**, see above. Tightened the team lead's read
+lane (H0, hook-enforced), added a dev-repo markdown source guard (H2b) and a `.pipeline-state`
+liveness clear (H4), and added a "minimal-return / grep-the-artifact" relay contract across the
+pipeline agents. The relay changes regressed message relay and the extra gate lanes added no
+correctness the simple gate lacked; all of it was rolled back in 1.2.1.
 ## [1.1.1] — 2026-06-07
 Spawn mode reversed to **background** for pipeline agents (ADR-12, supersedes ADR-10). Also flips the
 release policy to **PATCH-default** (owner escalates to MINOR/MAJOR) — see `release-plugin` skill.

@@ -66,7 +66,7 @@ On a re-review, a finding counts as resolved only if you verified the fix (and a
 - **Escalation** (3 fix cycles exhausted OR architecture decision needed): "For architect: ESCALATION for {FeatureName}: {reason}."
 - Non-blocking findings (MEDIUM/LOW) don't block approval — note them as follow-ups.
 
-**Minimal-return rule (mandatory):** A verdict handoff MUST carry the verdict line inline — "APPROVED" or "REQUEST CHANGES" — not just "see review.md." The team lead must be able to read the verdict from your message without grepping (grep is the backstop, not the primary channel). A bare "Done." or "Acknowledged." is an incomplete return.
+**Return your full output in your message.** A verdict handoff carries the verdict line — "APPROVED" or "REQUEST CHANGES" — and the findings, inline. The team lead reads the verdict from your message; `review.md` is the durable record, not a place for the team lead to go dig the verdict out of.
 
 ### Fix cycle cap
 

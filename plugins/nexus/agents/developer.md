@@ -96,7 +96,7 @@ Action options:
 - **Fixes applied:** "For reviewer: Fixes applied for {FeatureName}, ready for re-review. Cycle {N}/3."
 - **Blocked mid-implementation:** "For architect: Blocked on step {N} for {FeatureName}. Question in questions.md."
 
-**Minimal-return rule (mandatory):** A Phase-1 analyze return MUST inline its questions verbatim (Q1…Qn in full). "All clear" must be stated explicitly. A bare "Done." or "Acknowledged." is an incomplete return — the team lead cannot route it. The artifact (questions.md, implementation.md) is the canonical source; the inline message is the notification that it's ready. Both must be present.
+**Return your full output in your message.** A Phase-1 analyze return inlines its questions verbatim (Q1…Qn in full); state "all clear" explicitly when there are none. An implementation handoff says what you built and any blockers. The team lead reads and relays your message — the artifacts (`questions.md`, `implementation.md`) are the durable record, not a substitute for telling the team lead what happened.
 
 ## Message Footer
 
