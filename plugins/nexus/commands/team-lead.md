@@ -161,17 +161,17 @@ Apply safe defaults silently; **ask only on the genuinely meaningful choices** (
 
 ### Standard+Codex Dispatch
 
-When team mode = Standard+Codex, the reviewer step includes a Codex cross-check:
+When team mode = Standard+Codex, Step 2 runs **two reviewers — the nexus reviewer AND Codex — in parallel.** Codex is an additional, independent cross-check; it **never replaces the reviewer.** Run them independently: dispatch both off the same implementation and do not feed either one's findings to the other — the independent second opinion is the whole point.
 
-1. **Dispatch Codex** (after architect done-check passes, before or alongside the reviewer): send `codex:codex-rescue` with the instruction to **write findings to `docs/specs/{slug}/delivery/codex-crosscheck.md`**. Include the slug, plan path, and implementation files to check. A bare chat ack ("Done.", "Acknowledged.") is never the result — Codex must write the file.
-2. **Grep the file**: once Codex completes, grep `codex-crosscheck.md` for the GO/NO-GO verdict line and any HIGH/CRITICAL findings — same grep-the-artifact contract as `review.md`.
-3. **Route findings**: any HIGH/CRITICAL in `codex-crosscheck.md` → send to developer as additional findings, same cycle-cap rules as reviewer findings.
+1. **Dispatch both, in parallel** (after the architect's Step-1 done-check passes): spawn the reviewer for Step 2 (→ `review.md` `## Step 2`) and, alongside it, send `codex:codex-rescue` to **write its GO/NO-GO verdict + findings to `docs/specs/{slug}/delivery/review-codex.md`**. Codex is external (it has no nexus message channel), so its file IS its channel — a bare chat ack ("Done.", "Acknowledged.") is never the result; a missing file = incomplete review.
+2. **Read both verdicts**: the reviewer's from its message (per the Relay Contract); Codex's by reading `review-codex.md` (GO/NO-GO + any HIGH/CRITICAL).
+3. **Merge into ONE fix-list**: combine the reviewer's and Codex's findings, dedupe overlaps, and send the developer a **single** consolidated list — the developer never reads either review file. Codex HIGH/CRITICAL block, same cycle-cap rules as reviewer findings. Reconcile a verdict conflict (reviewer APPROVED vs Codex NO-GO) **finding-by-finding**, never by trusting one wholesale.
 
 **Codex dispatch message template:**
 ```
 Run a cross-check on the implementation for {slug}. Plan: docs/specs/{slug}/delivery/plan.md.
 Write your GO/NO-GO verdict and all findings (severity, file, issue) to:
-  docs/specs/{slug}/delivery/codex-crosscheck.md
+  docs/specs/{slug}/delivery/review-codex.md
 Do not return a bare acknowledgment — write the file. A missing file = incomplete review.
 ```
 

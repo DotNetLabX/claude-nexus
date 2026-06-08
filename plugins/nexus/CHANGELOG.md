@@ -1,6 +1,17 @@
 # nexus — Changelog
 
 
+## [1.2.2] — 2026-06-08
+Standard+Codex review made explicit and deterministic.
+
+- **`team-lead.md`: Standard+Codex now mandates *both* reviewers run in parallel** — the nexus reviewer
+  (Step 2) **and** Codex, independently (neither sees the other's findings). Codex never replaces the
+  reviewer. The team lead **merges both into one deduped fix-list** for the developer (who never reads
+  either review file) and reconciles a verdict conflict (reviewer APPROVED vs Codex NO-GO)
+  finding-by-finding. The prior wording ("Codex before or alongside the reviewer") could be misread as
+  Codex-only.
+- **Renamed the Codex artifact `codex-crosscheck.md` → `review-codex.md`** so it pairs with `review.md`.
+
 ## [1.2.1] — 2026-06-08
 Reverts the 1.2.0 pipeline-hardening experiment. The hardening regressed the thing that actually
 worked — agents relaying their output to the team lead — without buying correctness the simple gate
