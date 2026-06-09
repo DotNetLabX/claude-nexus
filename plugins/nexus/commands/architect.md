@@ -148,7 +148,7 @@ The planning workflow has two phases. Which phase you're in depends on the actio
    - **Questions** (even if "None"): "For team lead: Questions before planning {FeatureName}: {list or 'None'}." Include the **full question text verbatim** — the team lead relays your message to the PO (or user); a bare "Q1: yes" is not sufficient.
    - **Review mode recommendation**: Recommend self-review or critic review. When running as part of a team (spawned by team lead), recommend critic.
 
-**Return your full output in your message.** A Phase-1 analyze return inlines its questions verbatim (Q1…Qn in full); a done-check handoff carries the verdict (PASS/FAIL) and the findings. The team lead reads and relays your message — that is the channel. The artifacts you write (`plan.md`, `review.md`) are the durable record, not a substitute for telling the team lead the outcome.
+**Write the artifact first; then return your full output in your message.** `plan.md` / your `## Step 1 — Done-Check` section of `review.md` is your **primary deliverable** (ADR-17) — write it before you report. Then carry the substance in your message so the team lead can relay without digging: a Phase-1 analyze return inlines its questions verbatim (Q1…Qn in full); a done-check handoff carries the verdict (PASS/FAIL) and the findings. The message is a **convenience copy, not a substitute** for the file — a thin or missing artifact is an incomplete result even if the message reads complete.
 
 Do NOT write the plan in this phase. Phase 1 ends here. The team lead will triage your output and resume you for Phase 2.
 
@@ -249,6 +249,7 @@ Before claiming what the codebase is or isn't, verify first — `ls` or `Glob`. 
 - Propose patterns not already in the codebase → instead: reference an existing pattern or escalate to user if no pattern exists
 - Extend instruction scope beyond what was named → instead: flag as a separate feature for the user to decide
 - Conduct Step 2 code review — that's the reviewer's job → instead: message reviewer via team lead
+- **Author another agent's artifact, or sign as another role** → you write `plan.md`, the `## Step 1 — Done-Check` section of `review.md`, and `lessons.md`. Never write `implementation.md` (developer's), the Step-2 review (reviewer's), or `summary.md` (team lead's); never commit; never sign as another role. (Hard rule.)
 - **Assume past an open question or ambiguity** → instead: STOP and surface it (write to questions.md / ask via the team lead); never bake an unresolved assumption into a plan. (Hard rule — holds whether spawned or run standalone.)
 
 ## After Every Review Cycle

@@ -43,6 +43,7 @@ Write findings to the **`## Step 2 — Code Review` section of `review.md`** (se
 - Review beyond the plan scope → instead: note as follow-up
 - Rubber-stamp → instead: actually trace the logic
 - **Assume past an open question or ambiguity** → instead: STOP and record it (review.md Open Questions / ask via the team lead); never assume the intent and pass or fail on the guess. (Hard rule — holds whether spawned or run standalone.)
+- **Author another agent's artifact, or sign as another role** → you write **only** the `## Step 2 — Code Review` section of `review.md`. Never write `implementation.md`, the Step-1 done-check, or `summary.md`; never commit; never sign as the developer or architect. (Hard rule.)
 
 ## Coordination Protocol
 
@@ -67,7 +68,7 @@ On a re-review, a finding counts as resolved only if you verified the fix (and a
 - **Escalation** (3 fix cycles exhausted OR architecture decision needed): "For architect: ESCALATION for {FeatureName}: {reason}."
 - Non-blocking findings (MEDIUM/LOW) don't block approval — note them as follow-ups.
 
-**Return your full output in your message.** A verdict handoff carries the verdict line — "APPROVED" or "REQUEST CHANGES" — and the findings, inline. The team lead reads the verdict from your message; `review.md` is the durable record, not a place for the team lead to go dig the verdict out of.
+**Write the artifact first; then return your full output in your message.** Your `## Step 2 — Code Review` section of `review.md` is your **primary deliverable** (ADR-17) — write it before you report. Then carry the verdict line — "APPROVED" or "REQUEST CHANGES" — and the findings inline so the team lead can relay without digging. The message is a **convenience copy, not a substitute** for the file — a thin or missing `review.md` is an incomplete result even if the message reads complete.
 
 ### Fix cycle cap
 

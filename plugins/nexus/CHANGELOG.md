@@ -1,6 +1,43 @@
 # nexus — Changelog
 
 
+## [1.2.6] — 2026-06-09
+Closes a severe failure mode found in a real run (sprint-rituals Pass 5) and restores the team-lead
+operational depth lost when nexus was extracted from Fokus. The developer, spawned in the background
+for Phase-1 analyze, ran the whole pipeline in one sweep — and **fabricated both quality gates**,
+signing a Step-1 done-check as "Architect" and a Step-2 review as "Reviewer", plus a `summary.md`, and
+self-committing. No rule forbade it; the gate is inert on background subagents (ADR-13). Two layers fix
+it: an explicit **prevention** rule in the agents, and **containment** restored to the team lead. No
+hook/gate code changed — rules + agent text + decision record.
+
+- **Agent output boundaries (prevention, ADR-18).** New hard rules in the developer (and echoed in
+  architect/reviewer + universal in `agents-workflow.md`): each artifact has **one owner**; an agent
+  never authors another role's verdict, never signs as another agent, never commits, never writes
+  `.pipeline-state`. "If a gate hasn't run, report it — never simulate it." The developer's outputs are
+  source + `implementation.md` (+ `lessons.md`); everything else is read-only to it.
+- **Artifact is the primary deliverable (ADR-17).** `agents-workflow.md` + the team-lead Relay Contract:
+  the durable file is the mandatory primary output; `TaskOutput` is best-effort (it returned "no task
+  found" for a completed agent in Pass 5). An inline-only verdict with an empty artifact is an
+  incomplete result → re-spawn with the file as primary; never proceed on it.
+- **Team-lead operational depth restored from the Fokus baseline (ADR-19).** Inlined (ADR-2 #2 blocks
+  `@`-import): **verbatim relay to the user** (the team lead is the user's only window — show agent
+  output before triage); **idempotency gate** + **safe Resume** (branch-mismatch block, done-check,
+  resume-from-Step/Cycle via agent IDs); a **communication-log header** (the resume state) + Runtime/
+  Plugin Issues Log; **phase-failure & timeout/stall recovery** (assess → resume → split; Retry/Edit/
+  Skip/Abort menu); **escalation menu** (Continue/Force-accept/Abort); a **status-check table**; and
+  **shutdown issue-investigation** (on detected issues, don't close silently — investigate, report).
+- **Commit strategy → 2 commits with override (ADR-20).** Reverts the fixed 4-checkpoint scheme. Commits
+  now happen only at team-lead-owned boundaries (plan approved, pipeline done), removing the
+  post-implementation commit seam a subagent used to self-commit; overridable to 1 or 4 at launch.
+- **Decision record:** ADR-17–20 added to `docs/architecture/README.md`, including why the team lead
+  regressed (the Fokus operations file fell through the `@`-import gap at extraction).
+- **Critic pass (folded in):** an independent critic review caught that ADR-17's artifact-primary
+  inversion left the *opposite* pre-inversion wording in `developer/architect/reviewer.md` and split
+  the team-lead Relay Contract's ordering — the `:43/:112`-vs-`:77` contradiction class ADR-16 had
+  retired. Reconciled: the three agent handoffs now state "artifact first, message is a convenience
+  copy"; the Relay Contract states the artifact-primary ordering once; a verbatim-relay/Read-Discipline
+  bridge was added; and ADR-16 now back-references ADR-17.
+
 ## [1.2.5] — 2026-06-09
 Enforcement moves into the agents; the docs stop claiming the gate does what it can't. Root-caused
 from a real run (Pass 3c-C): the developer ran analyze→implement in one spawn while the token was

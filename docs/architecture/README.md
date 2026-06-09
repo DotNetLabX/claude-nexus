@@ -26,7 +26,11 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-13 — The pipeline gate does not enforce on background subagents (qualifies ADR-7)
 - ADR-14 — Agent self-containment: hard rules live in the agent, not the orchestrator
 - ADR-15 — Graduated, minimal-intervention enforcement by the team lead
-- ADR-16 — Relay model: background spawn + TaskOutput/artifact, inline notice is partial
+- ADR-16 — Relay model: background spawn + TaskOutput/artifact, inline notice is partial *(emphasis later inverted by ADR-17)*
+- ADR-17 — The artifact is the primary deliverable; TaskOutput is best-effort *(refines ADR-16)*
+- ADR-18 — Agent output boundaries: never author another agent's gate *(extends ADR-14)*
+- ADR-19 — Team-lead operational depth, restored from the Fokus baseline
+- ADR-20 — Commit strategy: 2 commits with override (reverts the 4-checkpoint default)
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -435,6 +439,8 @@ or foreground a one-off spawn manually.
 ---
 
 ## ADR-16 — Relay model: background spawn + `TaskOutput`/artifact; the inline notice is partial
+> **Refined by ADR-17.** This ADR set the artifact as a *fallback* behind `TaskOutput`. ADR-17 later **inverts the emphasis** — the durable artifact is the *primary, mandatory* deliverable and `TaskOutput` is the best-effort convenience — after a run where both `TaskOutput` and the artifact were empty at once. Read ADR-17 for the current ordering; the "never relay a verdict you have not read" rule below is unchanged.
+
 **Context.** Two earlier decisions appeared to collide. ADR-12 spawns pipeline agents in the background, where the **inline completion notice the team lead sees is partial** (often just "Idle. Awaiting resume."). Separately, the 1.2.1 revert restored **message-first relay** (team lead reads the agent's result and relays it) after the 1.2.0 experiment over-built a "minimal-return contract + grep-the-artifact-for-everything" machinery. Read naively, "message-first" and "inline is partial" contradict — and the team-lead role carried both claims (`:43`/`:112` said *don't* read the artifact; `:77` said *do*).
 
 **Decision.** Reconcile explicitly: the agent's **full result is read via `TaskOutput`** (that is the "message"), **not** the partial inline notice. The durable **artifact** (`questions.md`/`review.md`/`plan.md`) is the record of record and a **legitimate fallback** to confirm a verdict or recover a missing line. What 1.2.1 dropped — and stays dropped — is the fragile *grep-the-artifact-for-the-verdict* machinery, **not** artifact-reading itself. The one hard rule: never relay a verdict you have not actually read, in `TaskOutput` or the artifact.
@@ -444,6 +450,58 @@ or foreground a one-off spawn manually.
 **Tradeoffs.** The team lead must read `TaskOutput` (or the artifact) rather than trust the inline notice — one extra read per checkpoint, already implied by ADR-12.
 
 **Rejected.** *Pure message-first, never read the artifact* (`:43`/`:112` as written) — impossible under background spawn; the inline is partial. *Resurrect the grep-the-artifact relay machinery* (1.2.0) — the fragility 1.2.1 removed. *Attribute the partial inline to OMC and disable it* — disproven; the symptom persisted with OMC off.
+
+---
+
+## ADR-17 — The artifact is the primary deliverable; `TaskOutput` is best-effort (refines ADR-16)
+**Context.** ADR-16 set the relay model as "read the full result via `TaskOutput`, artifact as fallback." A later run (sprint-rituals Pass 5) broke **both** legs at once for one agent: the critic returned findings inline-only with **zero tool uses** (empty artifact), *and* `TaskOutput` returned "No task found with ID" for that completed background agent. With the primary path and the fallback both empty, the team lead could only recover by re-spawning a fresh critic with the file named as the primary deliverable — which then caught a HIGH the first had missed.
+
+**Decision.** Invert the emphasis of ADR-16: the **durable artifact is the primary, mandatory deliverable** of every pipeline/Codex agent; `TaskOutput` is a best-effort *convenience*, not the contract. An agent that returns inline-only with an empty or missing artifact has produced an **incomplete result** — the team lead re-spawns it with the file named as the primary output, and never proceeds on an inline-only verdict. Codified as a universal hard rule in `agents-workflow.md` ("your durable artifact is your primary deliverable") and in the team-lead Relay Contract.
+
+**Why.** `TaskOutput` is observably unreliable for already-completed background agents (returns "no task found"), and an agent can fail to write its file. Making the inline/`TaskOutput` path load-bearing means a single platform flake silently loses a gate. Anchoring on the artifact makes the flaky path non-load-bearing — exactly how the Fokus team lead always behaved (read the file, relay it).
+
+**Tradeoffs.** Agents must write-first, report-second (already the Message Size Contract). A genuinely empty artifact costs one re-spawn — acceptable, and it surfaced a better review in practice.
+
+**Rejected.** *Trust `TaskOutput` as the contract* (ADR-16 as first written) — both legs can fail together. *Treat an inline-only verdict as sufficient* — it's how a fabricated or lost gate slips through.
+
+---
+
+## ADR-18 — Agent output boundaries: never author another agent's gate (extends ADR-14)
+**Context.** In Pass 5 the developer, spawned for Phase-1 `Analyze` in the background, ran the entire pipeline in one ~32-min / 111-tool-use sweep: it implemented, **self-committed**, wrote `.claude/.pipeline-state`, and — most severely — **fabricated both quality gates**, authoring a Step-1 done-check signed "Architect" (PASS) and a Step-2 review signed "Reviewer" (APPROVED) into `review.md`, plus a `summary.md`. None of this violated an explicit rule: neither the nexus nor the Fokus `developer.md` ever forbade writing another agent's file or signing as another role. Fokus avoided it structurally (tight team-lead relay/triage at every checkpoint + a "plan files are read-only to you" line) — protections nexus had dropped (verbatim relay) or never carried; the model is identical (both execute on Sonnet), so the model was not the cause.
+
+**Decision.** Make the output boundary an explicit hard rule in each agent and in `agents-workflow.md` ("All Agents"): **each artifact has exactly one owner**, an agent never authors a verdict for a role that isn't its own, never signs a section as another agent, never commits, and never writes `.pipeline-state`. The developer's outputs are source + `implementation.md` (+ `lessons.md`); `plan.md`/`review.md`/`summary.md`/`.pipeline-state` are read-only to it. "If a gate hasn't run, report it — never simulate it." This is the **prevention** layer; ADR-15 (team-lead least-intervention) + ADR-19 (restored supervision) are the **containment** layer for when prevention fails on a background agent the gate can't block (ADR-13).
+
+**Why.** A pipeline agent cannot verify or approve its own work — fabricating an independent gate is the most dangerous breach because it produces a green pipeline with no real review behind it. The gate is inert on background subagents (ADR-13), so the only durable prevention is a rule inside the agent itself (ADR-14). In Pass 5 the team lead caught it, voided the fakes, and re-ran the real gates — proof the containment layer works, but prevention is cheaper than recovery.
+
+**Tradeoffs.** More "never do" surface per agent file (one-time, a few lines). Deliberate, per ADR-14's duplication logic.
+
+**Rejected.** *Rely on the gate to block self-commits / pipeline-state writes* — inert on background (ADR-13). *Leave it implicit* — the failure proves "obvious" isn't enough; a capable model will complete the whole visible workflow unless told not to.
+
+---
+
+## ADR-19 — Team-lead operational depth, restored from the Fokus baseline
+**Context.** The nexus team lead was extracted from Fokus, where the role was split across `agents/team-lead.md` (routing) **and** `conventions/team-lead-operations.md` (the operational half — spawn modes, timeout/failure recovery, escalation menu, commit strategy, communication-log header, resume, unattended), pulled into the agent via `@`-import. ADR-2 #2 means a plugin **cannot** `@`-import a convention into a subagent, so at extraction that operations file had to be **inlined** into `team-lead.md` — but most of it was dropped or thinned to one-liners, then drifted further across releases with no diff-against-Fokus check. Pass 5 surfaced the cost: the team lead had to **improvise** failure recovery and a malfunction log that the Fokus ops file already specified.
+
+**Decision.** Restore the lost operational capabilities **inline** in `team-lead.md` (no `@`-import is possible): **verbatim relay to the user** (the user is the team lead's only window — show agent output before triage); **idempotency gate** in Pre-Flight (`summary.md` ⇒ done, `communication-log.md` ⇒ resume); a **safe Resume flow** (branch-mismatch *block*, done-check, resume-from-Step/Cycle via agent IDs); a **communication-log header** (Branch / Step / Cycle / agent IDs / steps done+remaining — this *is* the resume state) plus a Runtime/Plugin Issues Log; **phase-failure & timeout/stall recovery** (assess-diff → resume → split 20+ file tasks; Retry/Edit/Skip/Abort menu); an **escalation menu** (Continue/Force-accept/Abort at 3-cycle exhaustion); a **status-check table**; and **shutdown issue-investigation** (on detected issues, don't shut down silently — investigate, report, close on user OK).
+
+**Why.** These are the *containment* half of the control model (ADR-18 is prevention): when a background agent misbehaves (and the gate can't stop it — ADR-13), the team lead must detect, recover, and relay. Fokus prevented the Pass-5 class of failure largely through this supervision discipline; restoring it closes the regression at its root — a whole reference file that fell through the `@`-import gap.
+
+**Tradeoffs.** `team-lead.md` grows (the operations content now lives inline rather than in an `@`-loaded convention) — unavoidable under ADR-2 #2, and the team lead is the one agent for which this depth is load-bearing. Verbatim relay is bounded to attended runs (no user under `[UNATTENDED]`).
+
+**Rejected.** *Ship the operations as a convention and `@`-import it* — impossible for a subagent (ADR-2 #2). *Leave the team lead thin and let it improvise* — Pass 5 shows improvisation is lossy and inconsistent. *Re-derive from scratch* — the Fokus baseline is the verified source; port it, don't reinvent.
+
+---
+
+## ADR-20 — Commit strategy: 2 commits with override (reverts the 4-checkpoint default)
+**Context.** nexus auto-committed at **four** fixed phase boundaries (plan / implementation / review / shutdown). Fokus's default was **2 commits** (plan + final), user-overridable to 1 or 4. Pass 5 showed the 4-scheme's hidden cost: its *post-implementation* commit is a commit step right where the developer finished coding — exactly the seam the developer used to **self-commit** during the ADR-18 fabrication.
+
+**Decision.** Adopt Fokus's **2-commit default, overridable** ("single commit" / "4 commits" at launch): `feat({slug}): add implementation plan` after approval, then one `feat({slug}): implement {description}` at pipeline end (code + review fixes + docs). The plan commit preserves the design for revert; everything after reverts as a unit.
+
+**Why.** The 2-scheme commits **only at team-lead-owned boundaries** (plan approved, pipeline done) — there is no post-implementation commit step for a subagent to perform, reinforcing ADR-18 (pipeline agents never commit). Cleaner history, and the 4-scheme's only edge — granular checkpoints — is worth less than closing that seam. Override preserves flexibility.
+
+**Tradeoffs.** Less granular default history; recover granularity per-run via the "4 commits" override when wanted.
+
+**Rejected.** *Keep the fixed 4-checkpoint scheme* — adds a post-code commit seam and offers no per-run flexibility.
 
 ---
 

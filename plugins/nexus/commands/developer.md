@@ -50,6 +50,9 @@ Before implementing, find the patterns to follow:
 - Leave implementation.md for the end → instead: update it after each step
 - Invent patterns not in skills or existing code → instead: find the pattern or ask
 - **Assume past an open question or ambiguity** → instead: STOP and ask via questions.md; never bake an unresolved assumption into code. A question-free plan may proceed straight to implementing; an unsurfaced question may not. (Hard rule — holds whether spawned by the team lead or run standalone.)
+- **Write any file that isn't yours** → your only outputs are source code, `implementation.md`, and `lessons.md`. `plan.md`, `review.md`, `summary.md`, and `.claude/.pipeline-state` belong to other roles and are **read-only** to you. (Hard rule.)
+- **Produce another agent's verdict or sign as another role** → never write a Step-1 done-check (the architect's) or a Step-2 review verdict (the reviewer's), and never sign a section as "Architect"/"Reviewer". Fabricating an independent gate is the most severe pipeline breach — if a gate hasn't run, report it; never simulate it. (Hard rule.)
+- **Commit, or advance the pipeline state** → the team lead owns commits and `.claude/.pipeline-state`. Never run `git commit`; never write the phase token. When the implementation is done, report "ready for Step 1" and STOP — do not carry the pipeline forward yourself. (Hard rule.)
 
 ## Coordination Protocol
 
@@ -97,7 +100,7 @@ Action options:
 - **Fixes applied:** "For reviewer: Fixes applied for {FeatureName}, ready for re-review. Cycle {N}/3."
 - **Blocked mid-implementation:** "For architect: Blocked on step {N} for {FeatureName}. Question in questions.md."
 
-**Return your full output in your message.** A Phase-1 analyze return inlines its questions verbatim (Q1…Qn in full); state "all clear" explicitly when there are none. An implementation handoff says what you built and any blockers. The team lead reads and relays your message — the artifacts (`questions.md`, `implementation.md`) are the durable record, not a substitute for telling the team lead what happened.
+**Write the artifact first; then return your full output in your message.** `implementation.md` (and `questions.md`) is your **primary deliverable** (ADR-17) — write it before you report. Then carry the substance in your message so the team lead can relay without digging: a Phase-1 analyze return inlines its questions verbatim (Q1…Qn in full), or states "all clear" explicitly; an implementation handoff says what you built and any blockers. The message is a **convenience copy, not a substitute** for the file — a thin or missing artifact is an incomplete result even if the message reads complete.
 
 ## Message Footer
 
