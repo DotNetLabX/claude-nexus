@@ -1,6 +1,33 @@
 # nexus — Changelog
 
 
+## [1.2.5] — 2026-06-09
+Enforcement moves into the agents; the docs stop claiming the gate does what it can't. Root-caused
+from a real run (Pass 3c-C): the developer ran analyze→implement in one spawn while the token was
+correctly `developer:analyze` and the gate produced **zero** denies — proving a synchronous
+PreToolUse `deny` is **not honored for a background subagent** (the gate is inert for exactly the
+agents it targets). No hook/gate code changed — this is rules + agent text + the decision record.
+
+- **New universal hard rule — "never assume past an open question; stop and ask."** Added to
+  `agents-workflow.md` (always-on) **and hard-coded into every agent file** (developer, architect,
+  reviewer, po, critic, learner, solo) — per ADR-2 a spawned subagent sees only its own file, so the
+  rule must live in both. A question-free phase may proceed; a phase with an *unsurfaced* question may
+  not. The developer's narrow "if the plan contradicts itself" stop is broadened to any ambiguity.
+- **team-lead.md slimmed to coordinate + enforce, not author agent rules (ADR-14).** Removed the
+  agent-behavior sentence from the Phase-1 step (the "agent stops" rule now lives in the agent); added
+  an **Enforcing the Rules** section — detect a broken rule, then apply the *least* intervention:
+  self-fix-and-continue when there's no process impact, correct-in-place when recoverable, stop-and-retry
+  only when a checkpoint is unrecoverable (ADR-15). Restarting a clean run is itself a defect.
+- **Honesty fixes for the doc-drift that kept causing reverts.** `agents-workflow.md` + `team-lead.md`
+  now say the `pipeline-gate` is a **best-effort tripwire** (bites a foreground writer; a background
+  deny is dropped — ADR-13), not the two-phase enforcer. The stale `.pipeline-state` "cleared on
+  SessionStart" line is corrected (`restore-agent.js` only touches the persona registry). The relay
+  contradiction is reconciled: read the full result via `TaskOutput`, the inline notice is partial by
+  design, the artifact is a legitimate fallback (ADR-16).
+- **Architecture record: ADR-13–16** — gate-inert-on-background (qualifies ADR-7), agent
+  self-containment, graduated minimal-intervention enforcement, and the relay model — so the next
+  pass doesn't re-propose foregrounding or "the messaging is broken / disable OMC".
+
 ## [1.2.4] — 2026-06-08
 Independent review gate for the learner — promotions now get a critic pass before close.
 

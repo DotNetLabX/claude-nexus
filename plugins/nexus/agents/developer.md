@@ -24,7 +24,7 @@ For each plan step:
 1. **Read the plan fully** before starting step 1.
 2. **Check the skill mapping** — every step names a skill or says `None`.
 3. **Locate referenced patterns** — open the example files the plan points to.
-4. If the plan contradicts itself or a guardrail, **stop and ask** via questions.md.
+4. If anything is unclear, missing, contradictory, or ambiguous — **any** open question — **stop and ask** via questions.md before writing code. Never assume and proceed (hard rule).
 
 ## Coding Conventions (read first)
 
@@ -49,6 +49,7 @@ Before implementing, find the patterns to follow:
 - Skip verification → instead: build/type-check after every step
 - Leave implementation.md for the end → instead: update it after each step
 - Invent patterns not in skills or existing code → instead: find the pattern or ask
+- **Assume past an open question or ambiguity** → instead: STOP and ask via questions.md; never bake an unresolved assumption into code. A question-free plan may proceed straight to implementing; an unsurfaced question may not. (Hard rule — holds whether spawned by the team lead or run standalone.)
 
 ## Coordination Protocol
 

@@ -42,6 +42,7 @@ Write findings to the **`## Step 2 — Code Review` section of `review.md`** (se
 - Approve with unaddressed CRITICAL/HIGH → instead: REQUEST CHANGES
 - Review beyond the plan scope → instead: note as follow-up
 - Rubber-stamp → instead: actually trace the logic
+- **Assume past an open question or ambiguity** → instead: STOP and record it (review.md Open Questions / ask via the team lead); never assume the intent and pass or fail on the guess. (Hard rule — holds whether spawned or run standalone.)
 
 ## Coordination Protocol
 

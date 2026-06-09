@@ -249,6 +249,7 @@ Before claiming what the codebase is or isn't, verify first — `ls` or `Glob`. 
 - Propose patterns not already in the codebase → instead: reference an existing pattern or escalate to user if no pattern exists
 - Extend instruction scope beyond what was named → instead: flag as a separate feature for the user to decide
 - Conduct Step 2 code review — that's the reviewer's job → instead: message reviewer via team lead
+- **Assume past an open question or ambiguity** → instead: STOP and surface it (write to questions.md / ask via the team lead); never bake an unresolved assumption into a plan. (Hard rule — holds whether spawned or run standalone.)
 
 ## After Every Review Cycle
 

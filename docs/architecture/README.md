@@ -17,12 +17,16 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-4 — Artifact formats are skills, preloaded producer-only
 - ADR-5 — Conventions use the Read-Index pattern
 - ADR-6 — `omni` is generated from `nexus`
-- ADR-7 — Pipeline enforcement: failures must be unreachable, not merely discouraged
+- ADR-7 — Pipeline enforcement: failures must be unreachable, not merely discouraged *(qualified by ADR-13)*
 - ADR-8 — Security guard as a synchronous hook
 - ADR-9 — Build & release pipeline
 - ADR-10 — Spawn mode: foreground for pipeline agents *(superseded by ADR-12)*
 - ADR-11 — Token consumption audit (opt-in)
 - ADR-12 — Spawn mode: background for pipeline agents (supersedes ADR-10)
+- ADR-13 — The pipeline gate does not enforce on background subagents (qualifies ADR-7)
+- ADR-14 — Agent self-containment: hard rules live in the agent, not the orchestrator
+- ADR-15 — Graduated, minimal-intervention enforcement by the team lead
+- ADR-16 — Relay model: background spawn + TaskOutput/artifact, inline notice is partial
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -198,6 +202,8 @@ the top-level READMEs carry small per-twin overrides rather than being blindly m
 ---
 
 ## ADR-7 — Pipeline enforcement: failures must be unreachable, not discouraged
+> **Qualified by ADR-13.** Track B's mechanical gate is unreachable-to-violate only for a *foreground* writer; a **background subagent's hook deny is not honored by the platform**, so for backgrounded pipeline agents (ADR-12) the "unreachable" guarantee does not hold — enforcement falls back to the agent's own hard-stop rule (ADR-14) + the team lead's verify-intervene (ADR-15). The principle stands; its mechanical reach was narrower than assumed.
+
 **Context.** A real pipeline post-mortem showed agents that *believed* they were following the
 protocol while silently collapsing it (single-spawning instead of the two-phase Analyze→Resume,
 approving with open HIGH findings, the done-checker editing source). The defects were baked into the
@@ -386,6 +392,58 @@ Relay Contract and Two-Phase Spawn rules.
 launch-time background/foreground question* — it was the original "second Pre-Flight question," but a
 single fixed default the owner already chose beats re-asking every run; a power user can still background
 or foreground a one-off spawn manually.
+
+---
+
+## ADR-13 — The pipeline gate does not enforce on background subagents
+**Context.** `pipeline-gate.js` (ADR-7 Track B) is a synchronous PreToolUse hook meant to make the two-phase collapse *unreachable*: block plan/source writes while `.pipeline-state` ends in `:analyze`, block a subagent from advancing the token (invariant 3), block APPROVED-with-open-HIGH. A real run (sprint-rituals Pass 3c-C) collapsed anyway: the team lead correctly held the token at `developer:analyze` for the entire ~30-min implementation window, the developer wrote ~14 source files, and the gate produced **zero** denies. The token was right; the gate simply did not fire. The only real gate-deny in that project's entire history was a **main-session (foreground)** spawn.
+
+**Decision.** Record the platform reality: **a synchronous PreToolUse `deny` is not honored for a background (sidechain) subagent's tool call.** Since ADR-12 spawns every pipeline agent in the background, the gate is inert against exactly the agents it targets. The async `audit-logger` still *sees* those calls (so PreToolUse fires), but the blocking decision is dropped. Keep ADR-12 (background); do **not** revert to foreground to make the gate bite.
+
+**Why.** Foregrounding to resurrect the gate (the recurring temptation) trades away the whole ADR-12 benefit — a non-blocking main session — to harden a backstop for a failure mode (an agent that *has* questions but assumes anyway) never actually observed; the one agent with questions in that run (the architect) self-stopped correctly. The cheaper, real fix puts the analyze→stop boundary where it always actually lived: the agent's own hard-stop-on-questions rule (ADR-14) + the team lead's verify-and-intervene (ADR-15). The gate stays as a cheap tripwire that still bites a foreground/main-session mistake and keeps the token's audit trail honest.
+
+**Tradeoffs.** No mechanical hard-block on a backgrounded agent that violates the two-phase boundary — caught after the fact by the team-lead checkpoint + the architect done-check + the reviewer, not prevented. Accepted: the downstream gates still verify correctness, and the collapse is harmless when the plan is clean (zero questions to lose).
+
+**Rejected.** *Foreground pipeline agents so the gate enforces* (ADR-10) — reverts ADR-12 for a backstop rarely needed; blocks the session. *Keep claiming the gate enforces two-phase* (the prior docs) — false for background agents and the source of repeated confusion. *Build non-hook enforcement (team lead diffs the tree each checkpoint)* — possible later, but ADR-15's reasoned intervention covers it without new machinery.
+
+---
+
+## ADR-14 — Agent self-containment: hard rules live in the agent, not the orchestrator
+**Context.** Behavioral mandates (e.g. "stop and ask before assuming", "two-phase analyze-then-stop") were partly authored *in the team-lead role* — the team lead described how the architect/developer must behave. But every agent is usable **standalone** (`be developer`, `be architect`, `be solo`) with no team lead present, and ADR-2 constraint #2 means a spawned subagent receives **only its own agent file** as system prompt — it cannot see the team lead's instructions or (reliably) the injected `rules/`.
+
+**Decision.** A behavioral hard-rule belongs **inside the agent it governs** (and, for cross-agent rules, duplicated into the always-on `agents-workflow.md`), **never** authored in the team-lead role. The team lead **coordinates and enforces** (spawn, relay, checkpoint, intervene); it does not implement the agents' internal rules. Concretely: the "never assume past an open question — stop and ask" rule is hard-coded in every agent file *and* in `agents-workflow.md`; the team-lead role only spawns Phase-1 and verifies the result.
+
+**Why.** If an agent's rule lives only in the orchestrator, the agent loses it the moment it runs standalone or is spawned as a subagent (sees only its own file) — "a total mess" in the owner's words. Self-contained agents behave identically whether driven by a team lead or invoked directly. Same logic as the per-agent boundary duplication in Inherited decisions, applied to behavioral rules.
+
+**Tradeoffs.** Deliberate duplication: the hard rule appears in N agent files plus the shared rule. Cheap (one line each) and consistent with ADR-2's "inline what a subagent must carry".
+
+**Rejected.** *Author behavioral rules once in the team lead* — breaks standalone and subagent use. *Rely solely on the always-on `agents-workflow.md`* — does not reliably reach a spawned subagent (ADR-2 #2).
+
+---
+
+## ADR-15 — Graduated, minimal-intervention enforcement by the team lead
+**Context.** With the gate inert against background agents (ADR-13) and rules owned by the agents (ADR-14), the team lead is the active enforcer. An agent that *assumed* past a question won't self-report it, so enforcement is detect-not-wait. But over-reacting — restarting a run on every spotted deviation — is its own failure, especially when the deviation cost nothing.
+
+**Decision.** The team lead enforces in three graduated steps, biased to the least intervention that restores correctness: **(1)** broken rule with no process impact that the team lead can fix itself → fix and continue, do not stop the run; **(2)** recoverable → correct in place (re-issue the token, re-ask the unanswered question, send back the single fix) without restarting; **(3)** unrecoverable — a checkpoint that can't be reconstructed after the fact (e.g. the developer implemented before its real questions were answered) → stop that phase and retry it. Restarting a clean, already-correct run is itself a defect.
+
+**Why.** The point of the checkpoints is "don't skip questions and assume" — not ceremony for its own sake. When a collapse loses no decision (clean plan, zero open questions), the downstream done-check and review already guarantee correctness, so a restart only burns tokens. Reserve the expensive intervention (stop + retry) for the case where information was actually lost.
+
+**Tradeoffs.** Enforcement now depends on the team lead's reasoning about recoverability rather than a mechanical rule — less deterministic, but matched to a backstop the gate can't provide for background agents anyway.
+
+**Rejected.** *Always stop-and-retry on any rule break* — wastes clean runs. *Never intervene, trust the agents* — an assumed-past question would slip silently.
+
+---
+
+## ADR-16 — Relay model: background spawn + `TaskOutput`/artifact; the inline notice is partial
+**Context.** Two earlier decisions appeared to collide. ADR-12 spawns pipeline agents in the background, where the **inline completion notice the team lead sees is partial** (often just "Idle. Awaiting resume."). Separately, the 1.2.1 revert restored **message-first relay** (team lead reads the agent's result and relays it) after the 1.2.0 experiment over-built a "minimal-return contract + grep-the-artifact-for-everything" machinery. Read naively, "message-first" and "inline is partial" contradict — and the team-lead role carried both claims (`:43`/`:112` said *don't* read the artifact; `:77` said *do*).
+
+**Decision.** Reconcile explicitly: the agent's **full result is read via `TaskOutput`** (that is the "message"), **not** the partial inline notice. The durable **artifact** (`questions.md`/`review.md`/`plan.md`) is the record of record and a **legitimate fallback** to confirm a verdict or recover a missing line. What 1.2.1 dropped — and stays dropped — is the fragile *grep-the-artifact-for-the-verdict* machinery, **not** artifact-reading itself. The one hard rule: never relay a verdict you have not actually read, in `TaskOutput` or the artifact.
+
+**Why.** It matches what every run actually does (the team lead read `questions.md` when the inline came back partial — and that was correct, not a workaround) and removes the doc contradiction that kept causing "the messaging is broken" misdiagnoses. The partial inline is a property of background spawn, not a regression and not OMC — confirmed by a run (Pass 3c-C) where the symptom persisted with OMC fully disabled for the prior ~3 hours.
+
+**Tradeoffs.** The team lead must read `TaskOutput` (or the artifact) rather than trust the inline notice — one extra read per checkpoint, already implied by ADR-12.
+
+**Rejected.** *Pure message-first, never read the artifact* (`:43`/`:112` as written) — impossible under background spawn; the inline is partial. *Resurrect the grep-the-artifact relay machinery* (1.2.0) — the fragility 1.2.1 removed. *Attribute the partial inline to OMC and disable it* — disproven; the symptom persisted with OMC off.
 
 ---
 

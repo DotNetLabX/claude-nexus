@@ -40,7 +40,7 @@ Reading the work in depth is the agents' job, not yours — don't open `plan.md`
 
 ### Relay Contract
 
-Pipeline agents return their full verdict, questions, and findings **in their completion message** — read the message and relay it. That is the channel. They also write durable artifacts (`plan.md`, `review.md`, `implementation.md`, `lessons.md`) as the record of record, but you rely on the agent's message for the verdict/questions — you do not reconstruct them by grepping the artifact. If a checkpoint message is missing action options, append them before relaying to the user. If an agent's message comes back genuinely empty or unclear, ask that agent for the one line you need — don't go read its artifact in its place.
+Pipeline agents return their full verdict, questions, and findings in their completion result — **read it via `TaskOutput`** and relay it. The inline completion *notice* may be partial under background spawn (ADR-12); `TaskOutput` carries the full output, so read that, not the notice. They also write durable artifacts (`plan.md`, `review.md`, `implementation.md`, `lessons.md`) as the record of record — reading the artifact to **confirm** a verdict or recover a missing line is fine, not forbidden (what 1.2.0 over-built and 1.2.1 dropped was the fragile *grep-the-artifact-for-everything* machinery, not artifact-reading itself). The one rule: never relay a verdict you have not actually read — in `TaskOutput` or the artifact. If a checkpoint message is missing action options, append them before relaying to the user.
 
 ### Pipeline
 
@@ -70,7 +70,7 @@ Human -> architect (analyze Phase 1 -> questions checkpoint -> write plan Phase 
 
 The architect and the developer are **always spawned in two phases**. Agents cannot pause mid-run, so the question and review-mode checkpoints exist *only* if you spawn twice. This is the single most important rule on this page.
 
-1. **Phase 1 — Analyze.** Spawn with exactly `Analyze {slug}.` The agent reads context, surfaces questions, and STOPS. It must not write the plan or code.
+1. **Phase 1 — Analyze.** Spawn with exactly `Analyze {slug}.` Expect back **questions or "all clear"** — not a finished plan or implementation. The stop-and-ask is the *agent's* own rule (it asks before assuming; see its agent file + `agents-workflow.md`); your job is to send the Phase-1 verb and check what comes back (see Enforcing the Rules).
 2. **Triage.** Read the Phase-1 output. Route questions (architect → PO → user; developer → architect). For the architect, settle review mode (see Architect Questions Checkpoint).
 3. **Phase 2 — Resume.** Resume the **same** agent (SendMessage to its **agent id**) with a Phase-2 verb (`Write the plan…` / `Implement…`). **Always use the agentId — role-name addressing (e.g. "architect") fails once an agent goes idle.** The resume path is always a `SendMessage` to a completed background agent; those are only addressable by agentId. Track agentIds from spawn time.
 
@@ -80,7 +80,7 @@ The architect and the developer are **always spawned in two phases**. Agents can
 - **Stale task-notification labels:** every completion notice keeps the original spawn label (e.g. "…Phase 1 analyze F6") across resumes, because the agentId keeps its spawn label. Track role by agentId — do not trust the notification label to identify which phase completed.
 - **Self-report count drift:** an agent's prose count of its own output can drift (e.g. the architect says "Q1–Q3" while its questions.md has Q1–Q4). Rely on the artifact (questions.md, review.md), not the agent's self-count.
 
-**State for the gate:** before each spawn/resume, write `.claude/.pipeline-state` with the appropriate token from the complete vocabulary defined in `agents-workflow.md` (Pipeline State section). The full token set covers every pipeline phase — `po:shape`, `architect:analyze`, `architect:plan`, `architect:donecheck`, `critic:review`, `developer:analyze`, `developer:implement`, `reviewer:review`, `learner:process`. The `pipeline-gate` hook reads this file to enforce two-phase discipline and persona-keyed source writes. Gate contract in one line: source writes are allowed only under `developer:implement`; a present-but-non-matching token denies the write; an absent file fails open (solo / leaderless). You are the sole writer — a subagent that tries to write `.pipeline-state` is blocked by invariant 3.
+**State for the gate:** before each spawn/resume, write `.claude/.pipeline-state` with the appropriate token from the complete vocabulary defined in `agents-workflow.md` (Pipeline State section). The full token set covers every pipeline phase — `po:shape`, `architect:analyze`, `architect:plan`, `architect:donecheck`, `critic:review`, `developer:analyze`, `developer:implement`, `reviewer:review`, `learner:process`. The `pipeline-gate` hook reads this file as a **best-effort tripwire**: it can deny a *foreground* write under the wrong token, but a **background subagent's deny is not honored** (ADR-13), so the gate does **not** reliably stop a backgrounded agent — the analyze→stop boundary is held by the agent's hard-stop rule + your verify-and-intervene (see Enforcing the Rules), not the gate. You are still the sole writer of this file (a subagent write is blocked by invariant 3); keep it correct so the tripwire and the audit trail stay meaningful.
 
 **Never send a combined "analyze and write/implement" prompt, and never open with a Phase-2 verb.** Handing `write the plan` or `implement` on the first spawn makes the agent skip Phase 1 — that is the collapse that destroys the checkpoints. The first message to architect/developer is always `Analyze {slug}.`
 
@@ -109,7 +109,7 @@ After developer Phase 1:
 
 ### Checkpoint Report Format
 
-A checkpoint report carries the agent's content inline — a Phase-1 analyze report includes its questions; a verdict handoff includes the verdict line and findings. That message is what you relay (see Relay Contract). If a report comes back genuinely empty, ask that agent for the missing line — don't reconstruct it from the artifact.
+A checkpoint report carries the agent's content — a Phase-1 analyze report includes its questions; a verdict handoff includes the verdict line and findings. Read the full result via `TaskOutput` (the inline notice may be partial under background spawn) and relay it. If `TaskOutput` is partial too, read the artifact (`questions.md`/`review.md`) to recover the line; only re-ask the agent if both are genuinely empty.
 
 If an agent's checkpoint output does not include action options, append them before relaying to the user:
 
@@ -143,7 +143,18 @@ Read the verdict and findings from the agent's message — a verdict can self-co
 
 - **Reviewer verdict:** an APPROVED that still lists an open CRITICAL or HIGH is invalid → treat as REQUEST CHANGES and send back to the developer. Do not "accept the approval and add a discretionary fix."
 - **Architect done-check verdict:** a PASS that still lists a step marked `Missing` is invalid → return to the developer. The architect must not fix the gap itself.
-- You can see both from the agent's message; only open `review.md` if the message is genuinely ambiguous about the verdict. The critic writes no verdict file — take its findings from its message.
+- You can see both from the agent's message; only open `review.md` if the message is genuinely ambiguous about the verdict. The critic writes no verdict file — read its findings from its `TaskOutput`.
+
+### Enforcing the Rules — detect, reason, least intervention
+
+The agents own their rules (the hard-stop-on-questions rule lives in each agent file + `agents-workflow.md`). Your job is to **verify the rule was obeyed and intervene only when needed** — an agent that *assumed* won't report it, so you check rather than wait. You do **not** re-author the agents' internal rules here; you enforce them.
+
+- **Detect at each checkpoint:** does the output match the rule the agent owed? (A developer spawned for Phase-1 `Analyze` that returns with source already written ran past the stop-on-questions checkpoint; a done-check PASS that lists a `Missing` step is invalid; an APPROVED with an open CRITICAL/HIGH is invalid.)
+- **Then act with the least intervention that restores correctness:**
+  - Broken rule, **no process impact**, you can fix it yourself → fix it and continue; do **not** stop the run (e.g. a stray `critic-review.md` left on disk → fold/delete it and carry on).
+  - **Recoverable** → correct it in place (re-issue the token, re-ask the unanswered question, send back the one fix) without restarting the run.
+  - **Unrecoverable** — a checkpoint that can't be reconstructed after the fact (e.g. the developer implemented before its real questions were answered, so the answers can no longer shape the code) → stop that agent/phase and retry it.
+- Bias to the lightest action. **Restarting a clean, already-correct run is itself a defect** — if the collapse cost no decision (plan was clean, zero open questions), let the downstream done-check and review do their job and note it for the learner.
 
 ## Operations
 

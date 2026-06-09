@@ -33,7 +33,7 @@ Ad-hoc work has no `definition/` folder — only `delivery/`.
 
 ## Pipeline State (`.claude/.pipeline-state`)
 
-The team lead is the **sole writer** of `.claude/.pipeline-state`. Every phase transition writes the next token before the spawn or resume. The `pipeline-gate` hook reads this file to enforce the two-phase discipline. Per gate invariant 3, no pipeline subagent may write this file.
+The team lead is the **sole writer** of `.claude/.pipeline-state`. Every phase transition writes the next token before the spawn or resume. The `pipeline-gate` hook reads this file as a **best-effort tripwire** — it can deny a *foreground* (main-session) write under the wrong token, but a **background subagent's deny is not honored by the platform** (ADR-13), so it does **not** reliably stop a backgrounded pipeline agent. The real enforcement of the analyze→stop boundary is the agent's own hard-stop rule (it asks before assuming — see "All Agents") plus the team lead's verify-and-intervene. Per gate invariant 3, no pipeline subagent may write this file.
 
 **Complete vocabulary (these exact tokens):**
 
@@ -50,9 +50,9 @@ The team lead is the **sole writer** of `.claude/.pipeline-state`. Every phase t
 | `reviewer:review` | Reviewer Step-2 code review | Spawning reviewer |
 | `learner:process` | Learner consolidating lessons | Spawning learner |
 
-**Gate contract (source of truth is the gate decision table in `pipeline-gate.js`):**
-- A developer source-write is allowed **only** under `developer:implement`; any other present token, or an unrecognized token, denies it.
-- A plan.md write is blocked under any token ending in `:analyze`.
+**Gate contract (source of truth is the gate decision table in `pipeline-gate.js`) — these describe the gate's *decision*; it is only *enforced* against a foreground writer (ADR-13):**
+- A developer source-write is allowed **only** under `developer:implement`; any other present token, or an unrecognized token, denies it — **but a background developer subagent's write is not actually blocked** (the deny is dropped), so this is a tripwire, not a guarantee.
+- A plan.md write is blocked under any token ending in `:analyze` (same foreground-only caveat).
 - An absent file fails open (solo / leaderless / unattended runs are never wedged).
 
 **The gate keys on the token, not on conversational intent — three recurring failure modes:**
@@ -60,7 +60,7 @@ The team lead is the **sole writer** of `.claude/.pipeline-state`. Every phase t
 - **No self-advance / no bypass.** A pipeline subagent must **never** advance its own phase — not via the Write/Edit path (the gate blocks it, invariant 3) and not via the side doors a faithful agent reaches for when blocked: `printf …> .claude/.pipeline-state` in Bash, or writing `plan-draft.md` and `mv`-ing it to `plan.md`. These defeat the gate silently. If blocked, report the checkpoint and let the team lead transition — do not engineer around the gate.
 - **Foreign-repo deliverables are a blind spot.** The gate watches the working tree at `CLAUDE_PROJECT_DIR`. For a pass whose deliverables land in a **separate repo** (e.g. editing the Nexus plugin source from a consumer project), the gate sees no plan/source writes in the repo it watches and cannot enforce the analyze→implement boundary at all — it fails open. The team lead must enforce the checkpoint **manually** for such passes (don't rely on the gate), and the plan must headline the foreign deliverable path so the done-check and review read the right repo. *(Making the gate two-repo-aware — watch a plan-declared foreign path, or honor a developer-written phase marker — is a tracked `pipeline-gate.js` improvement, not yet implemented.)*
 
-**Session lifecycle:** `.pipeline-state` is cleared by `restore-agent.js` on SessionStart `startup` and `clear` events, mirroring the persona registry. A token from a prior closed session cannot block a new session.
+**Session lifecycle:** `.pipeline-state` is **not** auto-cleared on SessionStart — `restore-agent.js` manages only the persona registry (`.personas.json`), never this file. The team lead owns the token: it overwrites the file to the correct phase before each spawn/resume, so a stale token from a prior run is replaced before it matters. A stale or absent token only ever fails the gate **open** (it never wedges a run).
 
 ## Communication Model: Hub-and-Spoke
 
@@ -82,6 +82,7 @@ To team-lead: "For {recipient}: {message content}"
 
 - **Instructions from the team lead are user decisions.** Instructions relayed through the team lead represent user decisions already made. Agents may flag concerns or recommend alternatives *before* the decision, but once an instruction arrives, they execute it — they don't substitute their own judgment because they consider it more efficient or equivalent.
 - **Rules go in files, not memory.** When a reusable rule or convention is identified, capture it in the appropriate rule or agent file — not in memory. Memory is for context that doesn't fit in rule files (user preferences, project state, external references). This applies to every agent, not just the team lead.
+- **Never assume past an open question — stop and ask (hard rule).** Any ambiguity, missing input, or unmade decision means you STOP, surface it (write it to `questions.md` and report it), and wait — before writing a plan, code, or any artifact that bakes in the assumption. "I'll assume X and proceed" is a defect, not initiative. In a team, route the question through the team lead; standalone, ask the user. A phase with **no** open question may proceed; a phase with an **unsurfaced** one may not. This is every agent's own rule, and it is also hard-coded in each agent file — per ADR-2 a spawned subagent sees only its own file, so the rule lives in both places.
 
 ## Message Size Contract
 

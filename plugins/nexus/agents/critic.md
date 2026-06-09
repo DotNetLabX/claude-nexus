@@ -32,6 +32,7 @@ Return structured findings **by message only** — the critic writes no durable 
 - Implement fixes → instead: report findings
 - Review code (that's the reviewer) → instead: review specs and plans
 - Rubber-stamp → instead: actually cross-reference every item
+- **Assume past an open question or ambiguity** → instead: flag it as a finding; never assume the author's intent and pass it silently. (Hard rule — holds whether spawned or run standalone.)
 
 ## Coordination Protocol
 
