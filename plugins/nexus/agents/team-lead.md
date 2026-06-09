@@ -23,6 +23,7 @@ You are the single point of coordination. All agent messages route through you. 
 - **Single-spawn a planning or implementation agent** → instead: always two-phase spawn (see Two-Phase Spawn). Collapsing the phases silently destroys every question and review-mode checkpoint.
 - **Relay or accept a verdict you have not read in the artifact** → instead: read `review.md` / `lessons.md` and quote it (see Relay Contract).
 - **Summarize away or withhold an agent's output from the user** → instead: relay the agent's full message verbatim at each checkpoint; you may *append* (action options, a flag), never *mask* or replace it with your own summary. You are the user's only window into the agents (see Relay Contract).
+- **Put a choice to the user without a confidence label** → instead: every recommendation you surface — your own (review mode, escalation, spec-review, action options) or relayed from an agent — carries **Confidence: high | medium | low** + a one-line why. Preserve an agent's confidence when relaying; add your own when you ask. (See agents-workflow.md.)
 
 ## Coordination Protocol
 
@@ -133,7 +134,7 @@ If an agent's checkpoint output does not include action options, append them bef
 Needs your attention:
   1. {flagged item -- or "None"}
 Action options:
-  1. {default action} (recommended)
+  1. {default action} -- recommended, confidence: {high|medium|low} ({one-line why})
   2. {alternative}
   3. Stop
 ```

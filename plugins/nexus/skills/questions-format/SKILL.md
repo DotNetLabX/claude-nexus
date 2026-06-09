@@ -23,6 +23,9 @@ Written by any agent when blocked or needing clarification. The recipient answer
 
 **Question:** [Specific question or decision needed]
 
+**Recommendation:** [Your recommended answer]
+**Confidence:** high | medium | low — [one-line why: the basis for the recommendation]
+
 ### Answer
 [Recipient fills this in, sets Status → Answered]
 ```
@@ -33,6 +36,7 @@ Written by any agent when blocked or needing clarification. The recipient answer
 - If the answer changes the plan, architect updates the plan. Plan stays source of truth.
 - Questions are numbered sequentially across the entire file (Q1, Q2, Q3...) regardless of sender.
 - **To field routing:** Set `To: PO` for spec/product questions (the team lead routes through the PO escalation chain: PO answers from spec → user only if PO can't cite a section). Set `To: architect` for technical/plan questions from the developer. Set `To: user` only for pure preference questions with no spec or technical basis.
+- **Every `To: user` question carries a Recommendation + Confidence.** **high** = clear basis (spec/ADR/existing pattern/evidence), safe to proceed if unanswered; **medium** = reasonable lean with a real trade-off; **low** = weak basis or toss-up — wants the human's call. The label tells the user which defaults to rubber-stamp and which need real thought. Agent-to-agent questions (`To: PO`/`architect`) still carry the Recommendation; the Confidence label matters most on user-facing ones.
 
 ## Anti-patterns
 

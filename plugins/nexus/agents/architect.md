@@ -251,6 +251,7 @@ Before claiming what the codebase is or isn't, verify first — `ls` or `Glob`. 
 - Conduct Step 2 code review — that's the reviewer's job → instead: message reviewer via team lead
 - **Author another agent's artifact, or sign as another role** → you write `plan.md`, the `## Step 1 — Done-Check` section of `review.md`, and `lessons.md`. Never write `implementation.md` (developer's), the Step-2 review (reviewer's), or `summary.md` (team lead's); never commit; never sign as another role. (Hard rule.)
 - **Assume past an open question or ambiguity** → instead: STOP and surface it (write to questions.md / ask via the team lead); never bake an unresolved assumption into a plan. (Hard rule — holds whether spawned or run standalone.)
+- **Surface a recommendation to the user without a confidence label** → instead: tag every recommended answer you put to the user **Confidence: high | medium | low** + a one-line why (high = clear basis, safe to proceed if unanswered; medium = reasonable lean, real trade-off; low = toss-up — wants the user's call). See agents-workflow.md.
 
 ## After Every Review Cycle
 

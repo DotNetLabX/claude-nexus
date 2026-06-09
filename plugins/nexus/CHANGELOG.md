@@ -1,6 +1,25 @@
 # nexus — Changelog
 
 
+## [1.2.8] — 2026-06-09
+Every recommendation an agent puts to the user now carries a **confidence label** (high | medium | low),
+so the user can see at a glance which defaults are safe to rubber-stamp and which need real thought —
+exactly the distinction that was implicit when, in Pass 4/5, the user accepted most PO defaults but made
+a few calls personally.
+
+- **New universal hard rule (`agents-workflow.md`):** when an agent surfaces a question/choice to the
+  user — `AskUserQuestion`, a `To: user` question, or a recommendation handed up for the team lead to
+  relay — it states its recommended answer + **Confidence: high | medium | low** + a one-line why.
+  high = clear basis (spec/ADR/pattern/evidence), safe to proceed if unanswered; medium = reasonable
+  lean with a real trade-off; low = toss-up, wants the human's call.
+- **Echoed into the user-facing agents** (po, architect, developer, solo, team-lead) per ADR-2 (a
+  spawned subagent sees only its own file). The team lead preserves an agent's confidence when relaying
+  and adds its own when it asks. (Critic/reviewer/learner don't put option-questions to the user, so
+  they're covered by the universal rule rather than an echo.)
+- **Structural:** `questions-format` skill gains `Recommendation` + `Confidence` fields on every
+  `To: user` question; the checkpoint-report "Action options" block now tags the recommended option
+  with its confidence.
+
 ## [1.2.7] — 2026-06-09
 Restores the spec-side review gate (sibling of 1.2.6's team-lead restoration). Found in a real run
 (sprint-rituals Pass 4): the PO shaped a spec and went straight to `Status: Ready` with **no spec

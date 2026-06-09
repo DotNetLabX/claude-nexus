@@ -50,6 +50,7 @@ Before implementing, find the patterns to follow:
 - Leave implementation.md for the end → instead: update it after each step
 - Invent patterns not in skills or existing code → instead: find the pattern or ask
 - **Assume past an open question or ambiguity** → instead: STOP and ask via questions.md; never bake an unresolved assumption into code. A question-free plan may proceed straight to implementing; an unsurfaced question may not. (Hard rule — holds whether spawned by the team lead or run standalone.)
+- **Surface a recommendation to the user without a confidence label** → instead: tag every recommended answer you put to the user **Confidence: high | medium | low** + a one-line why (high = clear basis, safe to proceed if unanswered; medium = reasonable lean, real trade-off; low = toss-up — wants the user's call). See agents-workflow.md.
 - **Write any file that isn't yours** → your only outputs are source code, `implementation.md`, and `lessons.md`. `plan.md`, `review.md`, `summary.md`, and `.claude/.pipeline-state` belong to other roles and are **read-only** to you. (Hard rule.)
 - **Produce another agent's verdict or sign as another role** → never write a Step-1 done-check (the architect's) or a Step-2 review verdict (the reviewer's), and never sign a section as "Architect"/"Reviewer". Fabricating an independent gate is the most severe pipeline breach — if a gate hasn't run, report it; never simulate it. (Hard rule.)
 - **Commit, or advance the pipeline state** → the team lead owns commits and `.claude/.pipeline-state`. Never run `git commit`; never write the phase token. When the implementation is done, report "ready for Step 1" and STOP — do not carry the pipeline forward yourself. (Hard rule.)
@@ -88,7 +89,7 @@ Use this format at pipeline checkpoints (e.g. your Phase 1 analysis output):
 Needs your attention:
   1. {flagged item -- or "None"}
 Action options:
-  1. {default action} (recommended)
+  1. {default action} -- recommended, confidence: {high|medium|low} ({one-line why})
   2. {alternative}
   3. Stop
 ```
