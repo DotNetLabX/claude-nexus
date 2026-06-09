@@ -1,6 +1,26 @@
 # nexus — Changelog
 
 
+## [1.2.7] — 2026-06-09
+Restores the spec-side review gate (sibling of 1.2.6's team-lead restoration). Found in a real run
+(sprint-rituals Pass 4): the PO shaped a spec and went straight to `Status: Ready` with **no spec
+review** — because the spec-review choice (self cross-check vs critic Mode 1) is written as an
+interactive offer, and when the PO runs spawned/background it had no relay path and the team lead had no
+checkpoint to surface it (unlike the architect's plan-review, which nexus wires correctly). The
+coordinator then pre-empted it by handling only the PO's product questions.
+
+- **PO spec review is now a mandatory, mode-aware gate (`po.md`).** Standalone (`be po`) still asks the
+  user directly — individual flow unchanged. When **spawned**, the PO does not ask; it hands a
+  `recommend {critic|self}` spec-review choice up to the team lead and never flips to Ready until the
+  chosen review runs.
+- **New PO Spec-Review Checkpoint in `team-lead.md`** — the spec-side mirror of the Architect Questions
+  Checkpoint: after a spawned PO returns, the team lead surfaces self-vs-critic (Mode 1: spec vs
+  product/architecture docs + ADRs) to the user before Ready; unattended → self cross-check.
+- **Entry-point rule made explicit (`team-lead.md` Launch Path Selection):** the furthest existing
+  artifact sets the start — plan exists → Developer; else spec (`Status: Ready`) exists → Architect;
+  else → PO. **Never spawn the PO when a spec already exists**, exactly as the team lead never re-plans
+  when a plan exists. The PO runs only for genuinely new behavior with no spec yet.
+
 ## [1.2.6] — 2026-06-09
 Closes a severe failure mode found in a real run (sprint-rituals Pass 5) and restores the team-lead
 operational depth lost when nexus was extracted from Fokus. The developer, spawned in the background

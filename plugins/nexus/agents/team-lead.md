@@ -97,6 +97,15 @@ Keep prompts minimal — agents know their job from their own files. Over-specif
 - **Done check:** `Step 1 done check.`
 - **Fixes / re-review:** `Fix findings in review.md. Cycle {N}/3.` / `Re-review after fixes. Cycle {N}/3.`
 
+### PO Spec-Review Checkpoint
+
+Only when **you spawned the PO** (skip entirely when a spec already existed — see Launch Path Selection). When the PO returns a spec-review recommendation, surface the choice to the user **before** the spec flips to Ready: **self cross-check** or **critic (Mode 1: spec vs product/architecture docs)?** Relay the PO's recommendation, then:
+- **Critic:** spawn it (`Agent(subagent_type="critic", prompt="Mode 1: Spec Review. Spec: docs/specs/{slug}/definition/spec.md. Cross-reference against product/architecture docs + ADRs. Return structured findings.")`, `run_in_background: true`); relay findings to the PO; resume the PO to fix gaps and set Ready.
+- **Self:** resume the PO to self-cross-check and set Ready.
+- **Unattended:** self cross-check; don't ask.
+
+Spec-side mirror of the Architect Questions Checkpoint — never let the spec flip to Ready until the chosen review has run (don't pre-empt it by handling only the PO's product questions).
+
 ### Architect Questions Checkpoint
 
 After architect Phase 1:
@@ -206,8 +215,11 @@ User request
   │     └── Start at Developer (Phase 1: Analyze; architect available for questions/review)
   │
   └── Ad-hoc without plan
-        └── Classify complexity → pick team mode → start at Architect (Phase 1: Analyze)
+        ├── spec already exists → start at Architect (Phase 1: Analyze) — do NOT spawn the PO
+        └── no spec + genuinely new behavior to define → PO first (shape spec); otherwise start at Architect
 ```
+
+**Entry-point rule (mirrors the idempotency gate):** the furthest existing artifact sets the start — **plan exists → Developer; else spec (`Status: Ready`) exists → Architect; else → PO**. The PO runs *only* when the work needs a written definition (new behavior) and no spec exists yet. **Never spawn the PO when a spec already exists** — exactly as you never re-plan when a plan already exists.
 
 ### Status Check ("what's next?")
 
