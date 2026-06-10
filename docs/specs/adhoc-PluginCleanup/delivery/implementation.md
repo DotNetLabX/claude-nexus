@@ -104,7 +104,7 @@ R5 (Codex first-round-only + recommendation heuristics) → lands in team-lead.m
 6. `claude plugin validate --strict` → both plugins pass (A15: `"async": true` accepted).
 7. Two commits, explicit staging (no `git add -A`), per plan: machinery (no-bump) then release.
 8. Side addition riding the release commit (docs-only, user request mid-step): architecture README
-   "Known limitations / future work" gains a **plugin init tests** proposal (node:test over hooks/scripts
+   "Known limitations / future work" gains a **plugin unit tests** proposal (node:test over hooks/scripts
    + structural lint; promote to ADR when built).
 
 NOT pushed — Track 6 requires the user's explicit ask (1.2.6→1.3.0 all local).

@@ -549,7 +549,7 @@ Pre-existing tradeoffs, retained:
   (`bump-plugin.mjs --check`, hard gate) and `claude plugin validate --strict` (advisory until CI auth
   for the `claude` CLI is confirmed, then flip to required). Still future: a lint for dangling
   `*-format`/skill references would catch the exact class of bug behind ADR-4.
-- **Plugin init tests (proposed).** The plugin's executable surface is deterministically testable
+- **Plugin unit tests (proposed).** The plugin's executable surface is deterministically testable
   but currently untested — the 2026-06 cleanup audit found multiple shippable-only-because-untested
   bugs (dead classification branch in `bump-plugin.mjs`, `gen-commands.mjs` crash on a plugin with
   no `agents/` dir, pipeline-gate regressions across patches). Proposed: a `node:test` suite
@@ -564,8 +564,11 @@ Pre-existing tradeoffs, retained:
      skills; no dangling `*-format` references (the ADR-4 bug class — subsumes the lint above);
      `commands/` regen-clean vs `agents/`; CHANGELOG top entry matches `plugin.json` version;
      no `${CLAUDE_PLUGIN_ROOT}` in markdown bodies (ADR-2 #3).
-  Out of scope: agent *behavior* (prompt semantics) — that requires LLM evals, a separate concern.
-  Promote to an ADR when built.
+  Agent *behavior* (prompt semantics) is a separate, fourth layer: LLM evals — promptfoo's
+  claude-agent-sdk provider with deterministic trajectory assertions ("critic never invokes Write")
+  plus a small llm-rubric set, grown from real failures only. Full research (platform support,
+  ecosystem survey — most plugins ship zero tests, eval tiers + costs):
+  `docs/research/testing-claude-code-plugins.md`. Promote to an ADR when built.
 
 ---
 
