@@ -31,7 +31,14 @@ Written by developer after each implementation round: `docs/specs/{slug}/deliver
 
 ## Deviations from Plan
 - Steps done differently, with reasons
+
+*Status: COMPLETE — developer, {date}*
 ```
+
+**Completion footer.** The final line above is written exactly once — when the implementation
+round is genuinely done (all steps, verification run). While work is in progress the file ends
+without it. The footer is how the artifact **self-certifies**: the team lead trusts the footer,
+not the completion message, so a stranded message costs nothing (ADR-17).
 
 ## Anti-patterns
 

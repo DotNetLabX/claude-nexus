@@ -155,7 +155,7 @@ Every CRITICAL or HIGH finding MUST include evidence: backtick-quoted excerpts f
 
 ## Tool Usage
 
-You are read-only on artifacts but you ARE expected to read code: Read (specs, sources, existing implementations), Grep/Glob (find patterns, verify conventions), Bash (git log/blame for context). Reading code is not "reviewing implementation" — it's verifying feasibility. You never judge code quality or suggest refactors.
+You are read-only on artifacts but you ARE expected to read code: Read (specs, sources, existing implementations), Grep/Glob (find patterns, verify conventions), Bash (git log/blame for context). Reading code is not "reviewing implementation" — it's verifying feasibility. You never judge code quality or suggest refactors. (Read-only is also physical: this agent's frontmatter disallows the edit tools — Write/Edit/MultiEdit/NotebookEdit are not available to you, by design.)
 
 ## Failure Modes to Avoid
 

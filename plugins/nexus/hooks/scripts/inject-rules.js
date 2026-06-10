@@ -45,6 +45,15 @@ process.stdin.on('end', () => {
     } catch { /* skip the bad file, keep the rest */ }
   }
 
+  // Resolved plugin paths: ${CLAUDE_PLUGIN_ROOT} does not expand in markdown, so agent files
+  // cannot say where the plugin lives. This line is what makes the salvage script invocable
+  // from any consumer project (team-lead recovery order, roadmap C.2/C.4).
+  body +=
+    `\n\n--- plugin paths (resolved at session start) ---\n` +
+    `Nexus plugin root: ${pluginRoot}\n` +
+    `Salvage script (recover a stranded subagent deliverable from its transcript):\n` +
+    `  node "${path.join(pluginRoot, 'hooks', 'scripts', 'salvage-transcript.js')}" --file <transcript-path>\n`;
+
   process.stdout.write(JSON.stringify({
     hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: body }
   }));

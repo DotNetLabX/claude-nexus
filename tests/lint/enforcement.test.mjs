@@ -1,0 +1,69 @@
+// T1 — enforcement + relay package contracts (evaluation roadmap B.1, B.2, C.3, C.4).
+// Born as TDD reds (tests/red/), promoted here when the package shipped. These pin the
+// text-level halves of the package; the behavior halves live in tests/unit/salvage.test.mjs
+// and tests/unit/boundary-detector.test.mjs.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { pluginRoot, frontmatter } from '../helpers.mjs';
+
+const read = (...p) => readFileSync(join(pluginRoot('nexus'), ...p), 'utf8');
+
+// ── B.1 — critic is tool-locked, not just instructed ────────────────────────────────────────
+// disallowedTools in agent frontmatter is enforced by the PLATFORM regardless of spawn mode —
+// the one lever ADR-13 left standing. The critic is message-only by contract; this makes the
+// contract physical.
+test('B.1: critic frontmatter declares disallowedTools covering all edit tools', () => {
+  const { data } = frontmatter(join(pluginRoot('nexus'), 'agents', 'critic.md'));
+  assert.ok(data.disallowedTools, 'critic.md must declare disallowedTools in frontmatter');
+  for (const tool of ['Write', 'Edit', 'MultiEdit', 'NotebookEdit']) {
+    assert.ok(data.disallowedTools.includes(tool), `critic disallowedTools must include ${tool}`);
+  }
+});
+
+// ── B.2 — boundary detection (gate-as-detector) ──────────────────────────────────────────────
+// Probe P1 (2026-06-10): PostToolUse hooks DO fire inside background subagents (and carry the
+// parent session_id). Prevention stays impossible (deny dropped, ADR-13); detection is
+// deterministic: the detector appends violations to .claude/audit/violations.log and the
+// team lead checks it at every checkpoint.
+test('B.2: hooks.json registers the boundary detector on PostToolUse edits', () => {
+  const cfg = JSON.parse(read('hooks', 'hooks.json'));
+  const post = JSON.stringify(cfg.hooks.PostToolUse || []);
+  assert.ok(post.includes('boundary-detector.js'), 'PostToolUse must run the boundary detector');
+});
+
+test('B.2: team-lead.md instructs checking violations.log at checkpoints', () => {
+  assert.match(read('agents', 'team-lead.md'), /violations\.log/,
+    'team-lead.md must name the violations log as a checkpoint input');
+});
+
+// ── C.3 — completion footer in artifact formats ──────────────────────────────────────────────
+// A stranded message must cost nothing for artifact-producing agents: the artifact
+// self-certifies via a final `*Status: COMPLETE — {role}, {date}*` line; the team lead
+// trusts the footer, not the message.
+test('C.3: implementation-format and review-format specify the completion footer', () => {
+  for (const skill of ['implementation-format', 'review-format']) {
+    assert.match(read('skills', skill, 'SKILL.md'), /Status:\s*COMPLETE/,
+      `${skill} must define the completion footer`);
+  }
+});
+
+// ── C.4 — recovery order codified in team-lead.md ────────────────────────────────────────────
+// Measured: re-asking a stranded agent ran 0/2 on 2026-06-10. The designed order is
+// artifact -> TaskOutput -> salvage script -> re-ask LAST.
+test('C.4: team-lead.md names the salvage script as a designed recovery leg, before any re-ask', () => {
+  const teamLead = read('agents', 'team-lead.md');
+  assert.match(teamLead, /salvage-transcript/, 'team-lead.md must name the salvage script');
+  const salvageAt = teamLead.search(/salvage/i);
+  const reAskAt = teamLead.search(/re-spawn|re-ask/i);
+  assert.ok(salvageAt >= 0 && (reAskAt === -1 || salvageAt < reAskAt),
+    'recovery order must place salvage before re-ask (re-ask is the measured-worst option)');
+});
+
+test('C.4: the always-on context tells the model where the plugin (and salvage script) lives', () => {
+  // ${CLAUDE_PLUGIN_ROOT} does not expand in markdown, so the model cannot construct the
+  // script path from the agent file alone — inject-rules.js carries the resolved path.
+  const inject = read('hooks', 'scripts', 'inject-rules.js');
+  assert.match(inject, /salvage-transcript/, 'inject-rules must surface the salvage script location');
+});

@@ -55,6 +55,20 @@ test('register: invalid role strings and unrelated paths are ignored', () => {
   assert.ok(!existsSync(join(dir, '.claude', '.personas.json')), 'nothing valid was registered');
 });
 
+test('register: subagent events never register a persona (Probe P1 clobber fix)', () => {
+  // Probe P1 (2026-06-10): a background subagent's hook events carry the PARENT session_id —
+  // a subagent writing .current-agent would silently reassign the MAIN session's persona
+  // (and a later compact would restore the wrong role). Persona commands run main-thread
+  // only, so any event carrying agent_type must be ignored.
+  const dir = sandboxWithClaudeDir();
+  seedRegistry(dir, { s1: { agent: 'developer', ts: Date.now() } });
+  runHook(REGISTER, {
+    session_id: 's1', agent_type: 'general-purpose', cwd: dir,
+    tool_input: { file_path: '.claude/.current-agent', content: 'solo' },
+  }, { projectDir: dir });
+  assert.equal(registry(dir).s1.agent, 'developer', 'subagent write must not clobber the session persona');
+});
+
 test('register: entries older than the TTL are pruned on write', () => {
   const dir = makeSandbox();
   seedRegistry(dir, { stale: { agent: 'po', ts: Date.now() - 17 * 60 * 60 * 1000 } });

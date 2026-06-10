@@ -53,13 +53,9 @@ jobs:
           node-version: 20
       - name: T1 lint + T2 unit tests
         # Unquoted globs: bash expands them, so this works on any Node version.
+        # tests/red/ (TDD reds, non-blocking) reappears here when a new fix package is
+        # being test-driven — see tests/README.md for the red-suite rule.
         run: node --test tests/lint/*.test.mjs tests/unit/*.test.mjs
-      - name: Fix-package reds (EXPECTED TO FAIL until the enforcement+relay package lands)
-        # Visibility only — these are the TDD reds for roadmap items B.1/C.2-C.4
-        # (docs/proposals/plugin-evaluation-2026-06.md). Promote into the hard gate
-        # (move into tests/lint + tests/unit) when the fix package ships.
-        continue-on-error: true
-        run: node --test tests/red/*.test.mjs
 
   plugin-validate:
     # Advisory: validates plugin.json / frontmatter / hooks schema. continue-on-error until

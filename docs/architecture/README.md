@@ -432,6 +432,21 @@ or foreground a one-off spawn manually.
 
 **Rejected.** *Foreground pipeline agents so the gate enforces* (ADR-10) — reverts ADR-12 for a backstop rarely needed; blocks the session. *Keep claiming the gate enforces two-phase* (the prior docs) — false for background agents and the source of repeated confusion. *Build non-hook enforcement (team lead diffs the tree each checkpoint)* — possible later, but ADR-15's reasoned intervention covers it without new machinery.
 
+> **Probe P1 (2026-06-10, live in-repo experiment) and the 1.4.0 detection layer.** A background
+> subagent was spawned to write `.claude/.current-agent` and read a guarded path. Results:
+> **PostToolUse hooks DO fire inside background subagents** (register-persona ran on the
+> subagent's write), and the subagent's hook events carry the **parent's `session_id`** — the
+> probe silently reassigned the main session's persona, a clobber `register-persona.js` now
+> guards against (subagent events, identified by `agent_type`, never register). The PreToolUse
+> deny stayed dropped, consistent with this ADR. Consequences shipped in 1.4.0:
+> **prevention** where the platform allows it — the critic's frontmatter `disallowedTools`
+> (honored regardless of spawn mode) makes the message-only contract physical — and
+> **deterministic detection** everywhere else: `boundary-detector.js` (PostToolUse, async,
+> observe-only) appends every ADR-18 ownership breach by a subagent to
+> `.claude/audit/violations.log`, which the team lead reads at every checkpoint. Prevention
+> stays impossible for background subagents; detection no longer depends on an agent
+> self-reporting. Offline tests pin all of it (`tests/`).
+
 ---
 
 ## ADR-14 — Agent self-containment: hard rules live in the agent, not the orchestrator

@@ -143,5 +143,14 @@ No rapid live test exists — every live run costs 30–120 min, so live validat
 4. **T3/T4 evals** once CI auth is decided — turns categories 3/4 into measured numbers.
 5. **Live validation by the owner: 2 new features in other projects** — the real acceptance test, last.
 
+**Status (2026-06-10):** steps 1–3 SHIPPED. Step 1: 60-test green baseline + 18 reds, all verified
+failing for the right reason first; CI hard gate live; the harness found a real bump-plugin bug
+(porcelain first-line trim) on its first run. Step 2: probe answered YES for PostToolUse —
+background-subagent hook events fire and carry the parent session_id (which exposed and fixed a
+register-persona clobber). Step 3: B.1 + B.2 + C.2–C.4 shipped as 1.4.0 (critic tool-lock,
+boundary-detector + violations.log, salvage-transcript script + injected path, completion footers,
+recovery order codified); all reds promoted to the permanent suite. Remaining: step 4 (T3/T4,
+gated on CI auth) and step 5 (owner live validation).
+
 *Confidence: high on A (researched, costed); high on B.1 (platform behavior proven live); medium on
 B.2 (gated on probe P1); medium-high on C (designs are simple, but the score ceiling is the platform's).*

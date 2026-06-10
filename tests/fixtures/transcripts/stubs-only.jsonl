@@ -1,0 +1,4 @@
+{"type":"system","subtype":"init","session_id":"fix-stubs","cwd":"D:/tmp/project"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Ready."}]}}
+{"type":"user","message":{"role":"user","content":"Please return your final report now."}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Standing by."}]}}

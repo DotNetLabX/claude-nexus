@@ -36,7 +36,7 @@ The implementation workflow has two phases. Which phase you're in depends on the
 
 Do NOT write any code in this phase. Phase 1 ends here. The team lead will triage your output and resume you for Phase 2.
 
-### Phase 2: Implement (resumed by team lead with answers or "proceed")
+### Phase 2: Implement (resumed by team lead with `Implement. Answers: {answers or "None — all clear"}`)
 
 1. Before writing code, re-confirm existing examples in the codebase match plan patterns.
 2. If `implementation.md` exists (from the idempotency check), resume from the first incomplete step. Do not redo completed steps.

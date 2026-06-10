@@ -27,6 +27,11 @@ process.stdin.on('end', () => {
   let evt = {};
   try { evt = JSON.parse(raw || '{}'); } catch { process.exit(0); }
 
+  // Subagent events carry agent_type AND the PARENT's session_id (Probe P1, 2026-06-10) — a
+  // background subagent writing .current-agent would silently reassign the MAIN session's
+  // persona. Persona commands run main-thread only; ignore every subagent event.
+  if (evt.agent_type) process.exit(0);
+
   const sid = evt.session_id;
   const ti = evt.tool_input || {};
   const fp = String(ti.file_path || '').replace(/\\/g, '/');

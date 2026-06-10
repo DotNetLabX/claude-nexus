@@ -97,7 +97,14 @@ Both steps write to `docs/specs/{slug}/delivery/review.md` under their own label
 | Check | Result | Command | Output |
 |-------|--------|---------|--------|
 | Build | pass/fail | [per docs/conventions/coding-conventions.md, if defined] | [summary] |
+
+*Status: COMPLETE — reviewer, {date}*
 ```
+
+**Completion footer.** Each section's writer (architect for Step 1, reviewer for Step 2) ends
+its own section with `*Status: COMPLETE — {role}, {date}*` when that review step is done. The
+footer is how the artifact **self-certifies**: the team lead trusts the footer, not the
+completion message, so a stranded message costs nothing (ADR-17).
 
 ## Anti-patterns
 

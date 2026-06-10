@@ -1,6 +1,39 @@
 # nexus — Changelog
 
 
+## [1.4.0] — 2026-06-10
+The enforcement + relay package (evaluation roadmap B/C, TDD-first: every change below
+shipped with its test written and failing first; the offline suite lives in the dev repo).
+
+**New: stranded deliverables are recoverable by script.** `hooks/scripts/salvage-transcript.js`
+extracts a background agent's final substantive message verbatim from its platform-written
+transcript (zero model tokens), skipping lifecycle stubs ("Ready when you are.") — the measured
+stranding shape. The always-on rules context now injects the resolved plugin root + the exact
+salvage command, and team-lead.md codifies the recovery order: **artifact → TaskOutput →
+salvage → re-ask LAST** (re-ask measured 0/2). A stranded critic message is routed from salvage
+exactly as if it had arrived.
+
+**New: boundary violations are deterministically visible.** Probe P1 established that
+PostToolUse hooks fire inside background subagents (where the gate's deny is dropped, ADR-13).
+New `hooks/scripts/boundary-detector.js` (async, observe-only) logs every ADR-18 ownership
+breach by a subagent — non-code role editing source, wrong-role artifact writes,
+`.pipeline-state` writes — to `.claude/audit/violations.log`; the team lead reads it at every
+checkpoint. Zero footprint when clean.
+
+**Hardened: critic is physically tool-locked.** `disallowedTools: Write, Edit, MultiEdit,
+NotebookEdit` in its frontmatter — platform-enforced regardless of spawn mode; message-only is
+now mechanical, not instructional.
+
+**Hardened: persona registry can no longer be clobbered by a subagent.** Probe P1 showed
+subagent hook events carry the parent session_id; `register-persona.js` now ignores any event
+with `agent_type`, so only the main thread registers personas.
+
+**Artifacts self-certify.** `implementation-format` and `review-format` gain a completion
+footer (`*Status: COMPLETE — {role}, {date}*`); the team lead trusts the footer, not the
+completion message.
+
+Also: developer.md Phase-2 heading now names the real resume message (Step-10 LOW-3 carry-over).
+
 ## [1.3.0] — 2026-06-10
 Restores the worker-side halves of every pipeline contract that the Fokus→nexus extraction dropped
 ("the hub got hardened, the spokes got lobotomized" — full audit: adhoc-PluginCleanup). The team-lead

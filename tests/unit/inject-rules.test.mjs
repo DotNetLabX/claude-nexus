@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { pluginRoot, runHook } from '../helpers.mjs';
 
 const INJECT = join(pluginRoot('nexus'), 'hooks', 'scripts', 'inject-rules.js');
+// (pluginRoot doubles as the expected injected path — tests run from the real plugin tree)
 
 test('startup/clear/compact inject every shipped rule file', () => {
   const ruleFiles = readdirSync(join(pluginRoot('nexus'), 'rules')).filter((f) => f.endsWith('.md'));
@@ -19,6 +20,16 @@ test('startup/clear/compact inject every shipped rule file', () => {
       assert.ok(ctx.includes(`--- ${f} ---`), `${source}: rule ${f} not injected`);
     }
   }
+});
+
+test('the injected context carries the resolved plugin paths (salvage script location)', () => {
+  // ${CLAUDE_PLUGIN_ROOT} does not expand in markdown, so agent files cannot state where the
+  // plugin lives. The hook resolves its own location and injects it, making the salvage
+  // script invocable from any consumer project (roadmap C.2/C.4).
+  const res = runHook(INJECT, { source: 'startup' });
+  const ctx = res.json?.hookSpecificOutput?.additionalContext || '';
+  assert.match(ctx, /salvage-transcript\.js/, 'salvage script path must be injected');
+  assert.ok(ctx.includes(pluginRoot('nexus')), 'the resolved absolute plugin root must be injected');
 });
 
 test('resume injects nothing (transcript already contains the rules)', () => {
