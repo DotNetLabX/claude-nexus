@@ -9,13 +9,20 @@
 // Removes:    plugins/omni-net (no longer part of the model).
 // Never touches: omni/LICENSE, omni/.git, marketplace name/owner/metadata.
 //
-// Run from the nexus repo:  node scripts/gen-omni.mjs [omniRepoPath]   (default: ../omni)
+// Run from the nexus repo:  node scripts/gen-omni.mjs [omniRepoPath] [--check]   (default: ../omni)
+//   --check   verify-only (audit B6): regenerate in memory, diff against the omni tree, exit 1
+//             listing any drift (missing / differing / extra files). Changes nothing. Run it after
+//             every bump (release-plugin flow) so the twin can never silently diverge.
 import { readdirSync, statSync, readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const argv = process.argv.slice(2);
+const CHECK = argv.includes('--check');
+const pathArg = argv.find((a) => !a.startsWith('--'));
+
 const NEXUS = join(dirname(fileURLToPath(import.meta.url)), '..');
-const OMNI = process.argv[2] || join(NEXUS, '..', 'omni');
+const OMNI = pathArg || join(NEXUS, '..', 'omni');
 
 if (!existsSync(join(OMNI, '.claude-plugin', 'marketplace.json'))) {
   console.error(`✗ omni repo not found at ${OMNI} (pass the path as arg 1)`);
@@ -29,38 +36,79 @@ const swap = (s) => s
   .replaceAll('Nexus', 'Omni')
   .replaceAll('nexus', 'omni');
 
-// Recursively mirror src -> dst, swapping file CONTENTS and path SEGMENTS (so nexus-dotnet -> omni-dotnet).
+const drift = [];
+const rel = (p) => relative(OMNI, p).replace(/\\/g, '/');
+
+// Write a generated file (apply) or compare it against the tree (--check).
+function emit(dst, content) {
+  if (!CHECK) {
+    mkdirSync(dirname(dst), { recursive: true });
+    writeFileSync(dst, content, 'utf8');
+    return;
+  }
+  if (!existsSync(dst)) drift.push(`missing:  ${rel(dst)}`);
+  else if (readFileSync(dst, 'utf8') !== content) drift.push(`differs:  ${rel(dst)}`);
+}
+
+// Remove a path (apply) or flag its presence as drift (--check).
+function assertAbsent(p) {
+  if (!CHECK) { rmSync(p, { recursive: true, force: true }); return; }
+  if (existsSync(p)) drift.push(`obsolete: ${rel(p)} should not exist`);
+}
+
+// Mirror src -> dst, swapping file CONTENTS and path SEGMENTS (so nexus-dotnet -> omni-dotnet).
+// In --check mode: compare every expected file AND flag extra files present in dst.
 function mirrorDir(src, dst) {
-  rmSync(dst, { recursive: true, force: true });
-  mkdirSync(dst, { recursive: true });
-  for (const entry of readdirSync(src)) {
-    const s = join(src, entry);
-    const d = join(dst, swap(entry));
-    if (statSync(s).isDirectory()) mirrorDir(s, d);
-    else writeFileSync(d, swap(readFileSync(s, 'utf8')), 'utf8');
+  const expected = new Map();
+  (function collect(s, d) {
+    for (const entry of readdirSync(s)) {
+      const sp = join(s, entry);
+      const dp = join(d, swap(entry));
+      if (statSync(sp).isDirectory()) collect(sp, dp);
+      else expected.set(dp, swap(readFileSync(sp, 'utf8')));
+    }
+  })(src, dst);
+
+  if (!CHECK) rmSync(dst, { recursive: true, force: true });
+  for (const [dp, content] of expected) emit(dp, content);
+
+  if (CHECK) {
+    if (!existsSync(dst)) return; // every file already reported missing above
+    (function sweep(d) {
+      for (const entry of readdirSync(d)) {
+        const dp = join(d, entry);
+        if (statSync(dp).isDirectory()) sweep(dp);
+        else if (!expected.has(dp)) drift.push(`extra:    ${rel(dp)}`);
+      }
+    })(dst);
   }
 }
 
 // 1) plugins
 mirrorDir(join(NEXUS, 'plugins', 'nexus'), join(OMNI, 'plugins', 'omni'));
 mirrorDir(join(NEXUS, 'plugins', 'nexus-dotnet'), join(OMNI, 'plugins', 'omni-dotnet'));
-rmSync(join(OMNI, 'plugins', 'omni-net'), { recursive: true, force: true });
+assertAbsent(join(OMNI, 'plugins', 'omni-net'));
 
 // 2) scripts: only the command generator (token-swapped). Drop obsolete/source-only scripts.
-mkdirSync(join(OMNI, 'scripts'), { recursive: true });
-writeFileSync(join(OMNI, 'scripts', 'gen-commands.mjs'),
-  swap(readFileSync(join(NEXUS, 'scripts', 'gen-commands.mjs'), 'utf8')), 'utf8');
+emit(join(OMNI, 'scripts', 'gen-commands.mjs'),
+  swap(readFileSync(join(NEXUS, 'scripts', 'gen-commands.mjs'), 'utf8')));
 for (const f of ['compose-dotnet-agents.mjs', 'scaffold-dotnet.mjs', 'gen-nexus-dotnet.mjs', 'gen-omni.mjs', 'skill-classification.md'])
-  rmSync(join(OMNI, 'scripts', f), { force: true });
+  assertAbsent(join(OMNI, 'scripts', f));
 
 // 3) marketplace.json: regenerate plugins array; PRESERVE name/owner/metadata.
 const mpPath = join(OMNI, '.claude-plugin', 'marketplace.json');
 const mp = JSON.parse(readFileSync(mpPath, 'utf8'));
-mp.plugins = [
+const wantPlugins = [
   { name: 'omni', source: './plugins/omni' },
   { name: 'omni-dotnet', source: './plugins/omni-dotnet' },
 ];
-writeFileSync(mpPath, JSON.stringify(mp, null, 2) + '\n');
+if (CHECK) {
+  if (JSON.stringify(mp.plugins) !== JSON.stringify(wantPlugins))
+    drift.push('differs:  .claude-plugin/marketplace.json (plugins array)');
+} else {
+  mp.plugins = wantPlugins;
+  writeFileSync(mpPath, JSON.stringify(mp, null, 2) + '\n');
+}
 
 // 4) top-level README: token-swap nexus README, then apply omni-specific (license/privacy) overrides.
 let readme = swap(readFileSync(join(NEXUS, 'README.md'), 'utf8'));
@@ -80,9 +128,20 @@ if (/\bMIT\b/.test(readme)) {
   console.error('✗ REFUSING to write omni README: it still contains "MIT" (proprietary twin must not ship MIT).');
   process.exit(1);
 }
-writeFileSync(join(OMNI, 'README.md'), readme, 'utf8');
+emit(join(OMNI, 'README.md'), readme);
 
+// ── report ──
+if (CHECK) {
+  if (drift.length) {
+    console.error(`✗ omni twin has drifted from nexus (${drift.length} path(s)):`);
+    for (const d of drift) console.error('  ' + d);
+    console.error('\nRun `node scripts/gen-omni.mjs` to regenerate.');
+    process.exit(1);
+  }
+  console.log('✓ omni twin is in sync with nexus.');
+  process.exit(0);
+}
 console.log('=== omni regenerated from nexus ===');
 console.log('  plugins: omni, omni-dotnet   (omni-net removed)');
 console.log('  preserved: omni/LICENSE, marketplace name/owner');
-console.log('  ⚠ run `node scripts/gen-commands.mjs omni` and `… omni-dotnet`? No — commands are mirrored as-is from nexus.');
+console.log('  verify: node scripts/gen-omni.mjs --check');

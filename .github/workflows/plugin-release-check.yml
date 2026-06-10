@@ -28,8 +28,20 @@ jobs:
             git fetch --quiet origin "$BASE"
             node scripts/bump-plugin.mjs --check --base "origin/$BASE"
           else
-            node scripts/bump-plugin.mjs --check
+            # Push to main: origin/main IS the pushed HEAD, so the default base yields an empty
+            # diff and the check always passed (audit B3). Diff against the pre-push tip instead.
+            BEFORE="${{ github.event.before }}"
+            if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+              node scripts/bump-plugin.mjs --check --base "$BEFORE"
+            else
+              node scripts/bump-plugin.mjs --check --base "HEAD~1"
+            fi
           fi
+      - name: Generated commands in sync (audit B5)
+        # nexus only — nexus-dotnet ships no agents/commands (gen-commands no-ops there).
+        run: |
+          node scripts/gen-commands.mjs nexus
+          git diff --exit-code plugins/nexus/commands
 
   plugin-validate:
     # Advisory: validates plugin.json / frontmatter / hooks schema. continue-on-error until

@@ -22,8 +22,10 @@
 # Per-developer orchestration state — never shared.
 .omc/
 
-# --- Token-consumption audit output (ADR-11) --------------------------------
+# --- Audit-trail output (ADR-11, opt-in) -------------------------------------
 # Raw per-run capture read by the consumption-report skill. Regenerated each run.
+# Current path is .claude/audit/ (1.3.0+); docs/audit/ kept for pre-1.3.0 strays.
+.claude/audit/
 docs/audit/
 
 # --- Node (scripts/*.mjs may gain dependencies) -----------------------------

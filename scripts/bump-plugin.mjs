@@ -14,6 +14,7 @@
 //                                           (vs --base) without ANY version bump. Changes nothing.
 //   --base <ref>   base ref for --check (default: origin/main, fallback HEAD~1)
 //   --staged       apply/dry-run over staged changes only (default: staged + unstaged + untracked)
+//   --note <text>  one-line human summary seeded into the CHANGELOG entry (apply mode)
 //
 // Tiering: PATCH is the default for every shipped-file change (the install cache is version-keyed, so
 // even a patch reaches users). The tool NEVER auto-escalates by file type — the owner escalates to
@@ -37,6 +38,8 @@ const STAGED_ONLY = has('--staged');
 const BASE = valOf('--base');
 // Owner escalation: default is PATCH; --minor / --major raise the bump for every changed plugin.
 const OVERRIDE_TIER = has('--major') ? TIER.MAJOR : has('--minor') ? TIER.MINOR : null;
+// Optional human summary for the CHANGELOG entry (audit B8 — generic labels alone tell users nothing).
+const NOTE = valOf('--note');
 
 function git(...a) {
   return execFileSync('git', a, { encoding: 'utf8' }).trim();
@@ -76,7 +79,13 @@ function changedPaths() {
     let p = line.slice(3);
     if (STAGED_ONLY && xy[0] === ' ') continue;     // unstaged-only change, skip in --staged
     if (xy === '??' && STAGED_ONLY) continue;
-    if (p.includes(' -> ')) p = p.split(' -> ')[1];  // rename: take new path
+    if (p.includes(' -> ')) {
+      // Rename: classify BOTH sides (audit B2). A file moved OUT of plugins/ removes shipped
+      // surface — a behavior change that classifying only the new path would miss.
+      const [oldP, newP] = p.split(' -> ');
+      paths.push(oldP.replace(/^"|"$/g, ''));
+      p = newP;
+    }
     paths.push(p.replace(/^"|"$/g, ''));
   }
   return paths;
@@ -97,6 +106,13 @@ function classify(pluginRel, name, fullPath) {
   // Default tier for ANY shipped-file change is PATCH; the owner escalates with --minor/--major.
   // This only decides PATCH-vs-NONE (does the change reach a session at all?) plus a descriptive label.
   const seg = pluginRel.replace(/\\/g, '/');
+
+  // Root-level runtime config (.mcp.json, .lsp.json, settings.json) IS shipped surface. This test
+  // must run BEFORE the no-slash doc/meta check below — those filenames contain no '/' and would be
+  // silently swallowed as "doc/meta → no bump" (audit B1: the change would never reach users).
+  if (/^\.(mcp|lsp)\.json$/.test(seg) || seg === 'settings.json') {
+    return [TIER.PATCH, 'runtime config surface'];
+  }
 
   // Plugin-root doc/meta (CHANGELOG.md, README.md, LICENSE, …) is not shipped to sessions → no bump.
   if (!seg.includes('/')) return [TIER.NONE, `plugin-root doc/meta (${seg})`];
@@ -121,7 +137,6 @@ function classify(pluginRel, name, fullPath) {
     seg.startsWith('hooks/') ? 'hook behavior/enforcement change' :
     seg.startsWith('commands/') ? 'shipped command changed' :
     skill ? `skill change (${skill})` :
-    (/^\.(mcp|lsp)\.json$/.test(seg) || seg === 'settings.json') ? 'runtime config surface' :
     `plugin payload (${seg})`;
   return [TIER.PATCH, label];
 }
@@ -159,6 +174,8 @@ function readVersion(name, ref) {
     const txt = gitSafe('show', `${ref}:plugins/${name}/.claude-plugin/plugin.json`);
     return txt ? JSON.parse(txt).version : null;
   }
+  // Working tree: a wholesale-deleted plugin dir is a reportable state, not a crash (audit B9).
+  if (!existsSync(manifestPath(name))) return null;
   return JSON.parse(readFileSync(manifestPath(name), 'utf8')).version;
 }
 function nextVersion(v, tier) {
@@ -185,6 +202,10 @@ function printPlan() {
   console.log(`bump-plugin (${MODE}) — base ${MODE === 'check' ? baseRef : 'HEAD'}:`);
   for (const b of bumped) {
     const cur = readVersion(b.name);
+    if (cur === null) {
+      console.log(`  ${b.name}: plugin dir removed from working tree — nothing to bump (verify the removal is intended).`);
+      continue;
+    }
     const next = nextVersion(cur, b.tier);
     console.log(`  ${b.name}: ${TIER_NAME[b.tier].toUpperCase()}  ${cur} -> ${next}`);
     for (const r of b.reasons) console.log(`      - ${r}`);
@@ -213,6 +234,7 @@ if (MODE === 'dry-run' || bumped.length === 0) process.exit(0);
 const today = new Date().toISOString().slice(0, 10);
 for (const b of bumped) {
   const mp = manifestPath(b.name);
+  if (!existsSync(mp)) { console.log(`  ${b.name}: plugin dir removed — skipping bump.`); continue; }
   const manifest = JSON.parse(readFileSync(mp, 'utf8'));
   const cur = manifest.version;
   const next = nextVersion(cur, b.tier);
@@ -223,7 +245,7 @@ for (const b of bumped) {
   const clPath = join(root, 'plugins', b.name, 'CHANGELOG.md');
   const title = `# ${b.name} — Changelog`;
   const entry = `## [${next}] — ${today}\n` +
-    `- ${TIER_NAME[b.tier].toUpperCase()} bump.\n` +
+    (NOTE ? `- ${NOTE}\n` : `- ${TIER_NAME[b.tier].toUpperCase()} bump.\n`) +
     b.reasons.map((r) => `  - ${r}`).join('\n') + '\n';
   let cl;
   if (existsSync(clPath)) {

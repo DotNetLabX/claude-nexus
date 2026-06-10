@@ -2,7 +2,13 @@
 // Single source of truth = the agent .md; command = activation wrapper + inlined body.
 // Run: node scripts/gen-commands.mjs [pluginName]   (default: nexus)
 // Paths resolve relative to this file — location-independent.
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+//
+// Frontmatter is INTENTIONALLY dropped (audit B4): agent `model`/`effort`/`skills` apply when the
+// agent is SPAWNED (Task/Agent tool honors agent frontmatter); a persona command runs in the user's
+// interactive session and must inherit THAT session's model — carrying `model:` into the command
+// would silently switch the user's session. Per-agent consumer overrides happen at spawn time via
+// `.claude/nexus-agents.json` (read by the team lead), not here.
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -10,6 +16,11 @@ const PLUGIN_NAME = process.argv[2] || 'nexus';
 const PLUGIN = join(dirname(fileURLToPath(import.meta.url)), '..', 'plugins', PLUGIN_NAME);
 const AGENTS_DIR = join(PLUGIN, 'agents');
 const CMD_DIR = join(PLUGIN, 'commands');
+if (!existsSync(AGENTS_DIR)) {
+  // e.g. nexus-dotnet ships skills only — nothing to generate, and not an error (critic CRITICAL-1).
+  console.log(`gen-commands: ${PLUGIN_NAME} has no agents/ dir — nothing to generate.`);
+  process.exit(0);
+}
 mkdirSync(CMD_DIR, { recursive: true });
 
 const MAP = {
