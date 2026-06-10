@@ -1,6 +1,12 @@
 # nexus — Changelog
 
 
+## [1.4.1] — 2026-06-10
+Learner consolidation from Passes 3c-C, 4, 5 — proven (2+ occurrence) lessons promoted into the plan skill and architect agent.
+
+- **`skills/create-implementation-plan`**: new **Plan Grounding & Deviation Rules** section — (1) declare which surfaces are binding vs the developer's call (public/wire identifiers binding, internal names free; name the convention forks) so deviations are pre-sanctioned; (2) a hedge in a plan is a deferred read — resolve every disk-checkable "may/if needed/either-or" at plan time, cite counts only from greps, and trace cross-boundary contract fields to their actual source type. Extended the enumerate-all-consumers refactoring rule with a **method-hiding sweep** (`public new {Method}` + call-site static types — a `new`-hidden base method can have zero reachable callers).
+- **`agents/architect.md`** (+ regenerated command mirror): adhoc/refactoring passes must **re-verify every aged finding against current source** (triage verdicts, proposal-era defect lists, prior-pass deferrals) before planning its fix — the cited defect may already be fixed; a "fix" for a fixed finding is a no-op or a regression.
+
 ## [1.4.0] — 2026-06-10
 The enforcement + relay package (evaluation roadmap B/C, TDD-first: every change below
 shipped with its test written and failing first; the offline suite lives in the dev repo).

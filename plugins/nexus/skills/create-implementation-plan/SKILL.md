@@ -83,13 +83,21 @@ Before invoking this skill, ensure you have read:
 - **Omitting skill mapping for steps that have a matching skill.** Setting disposition to None without running the skill verification test ("list all actions → match each against skill frontmatter"). A step that creates an endpoint, adds a domain event handler, or configures persistence almost always has a matching skill.
 - **Restating pattern details alongside a Follow skill reference.** If the skill already covers file placement, DI wiring, or record structure — delete it from the plan step. Keep only feature-specific inputs the skill can't know. Over-specification causes the developer to skip the skill entirely.
 
+## Plan Grounding & Deviation Rules
+
+These apply to every plan, feature or refactor.
+
+- **Declare which surfaces are binding and which are the developer's call.** Public/wire identifiers (routes, serialized property names, contract type names) are binding; internal names are free unless the plan says otherwise. Name the known convention forks (e.g. an alternate migration startup project) as sanctioned variants, and when a plan point is genuinely developer judgment, say so explicitly. This converts a would-be "deviation" into a pre-sanctioned decision the done-check resolves in one line instead of escalating.
+
+- **A hedge in a plan is a deferred read.** Every "may", "if needed", "either…or" that is resolvable from on-disk state (a model snapshot, a DI registration, an installed-package list) must be resolved while writing the plan — reserve hedges for genuine runtime unknowns. Any count the plan cites ("N early returns", "8 call sites") comes from a grep run at plan time, never from memory of a read. And when a step carries a field across a module or contract boundary, trace the field back to its *actual source type* on disk before making it a key or a required member — the source DTO may not have it.
+
 ## Refactoring & Type-Move Plan Rules
 
 Refactoring passes (rename, extract, relocate, delete, type-move) fail in ways feature plans don't. Encode these in the plan, not in the developer's memory. (Stack-specific carve-out examples belong in the stack extension plugin's skills, not here — these are the stack-agnostic principles.)
 
 - **A "fix/split/replace every file matching pattern P" step must derive its file list from the *exact* grep used in its acceptance criterion** — the step's enumerated files and the acceptance grep must be the same query, never hand-curated separately or assembled from memory of files you happened to read. Use a **definition-line** grep (matches where the symbol is *declared*), not a usage grep — a usage grep also matches references and undercounts or overcounts. Hand-curated lists drift from the check and miss files.
 
-- **Enumerate ALL consumers from a grep before planning a removal — not just the obvious one.** When a step removes or renames a public symbol, grep the name across the **whole** project (every registration site, secondary entry points, generated bindings, global imports) and list every site in the plan step. The indirect consumer nobody remembered is the one that breaks the build mid-implementation.
+- **Enumerate ALL consumers from a grep before planning a removal — not just the obvious one.** When a step removes or renames a public symbol, grep the name across the **whole** project (every registration site, secondary entry points, generated bindings, global imports) and list every site in the plan step. The indirect consumer nobody remembered is the one that breaks the build mid-implementation. Method hiding is part of this sweep: when the change targets a shared base-class method, also grep for `new`-hidden redeclarations (`public new {Method}`) and overrides across all derived types, and confirm the call sites' *static* types — a `new`-hidden base method can have **zero** reachable callers, and any verification step written against it tests a path the change cannot reach.
 
 - **"grep before delete" is a hard, numbered verification sub-step — not a soft note in prose.** A buried "remember to grep" sentence gets skipped. Make it `Step N: grep for remaining references to {symbols}; zero hits required` so the done-check can mark it Missing. Better still: move shared types in an **earlier** step with all consumers updated — phased plans split by feature cluster rarely align with the type-ownership graph.
 

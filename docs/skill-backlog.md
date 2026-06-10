@@ -44,3 +44,24 @@ Tracks every skill created or fixed by the learner/developer pipeline. One entry
 - **Source:** adhoc-Pass1-SkillRepair
 - **Description:** Added "When to Use a Value Object vs a Flat Scalar" subsection (ADR-007 gap). Variant-annotated IDomainEventPublisher section (full-stack Blocks.MediatR vs light-stack Blocks.FastEndpoints variants). Variant-annotated State Machine Pattern section (Application/StateMachines/ full-stack vs no-Application-layer light-stack placement). No content scrubbed.
 - **Date:** 2026-06-06
+
+### create-implementation-plan
+- **Status:** Fixed
+- **Type:** Fix
+- **Source:** adhoc-Pass3c-C-DevEpicAnalytics, adhoc-Pass4-IdentityExtraction, adhoc-Pass5-EventCorrectness (learner consolidation)
+- **Description:** New "Plan Grounding & Deviation Rules" section (binding-vs-developer-free surfaces; hedge-is-a-deferred-read; counts-from-grep; trace contract fields to source DTO). Method-hiding sweep added to the enumerate-all-consumers refactoring rule.
+- **Date:** 2026-06-10
+
+### persistence-patterns
+- **Status:** Fixed
+- **Type:** Fix
+- **Source:** adhoc-Pass5-EventCorrectness (learner consolidation; B7 improvement proposal)
+- **Description:** `UpsertAsync` value-copy rule — EF `PropertyValues` overload, never `SetValues(object)`; backing-field (`PropertyAccessMode.Field`) shallow-copy hazard; cross-referenced owned/complex-type caveat.
+- **Date:** 2026-06-10
+
+### create-aggregate
+- **Status:** Fixed
+- **Type:** Fix
+- **Source:** adhoc-Pass4-IdentityExtraction, adhoc-Pass5-EventCorrectness (learner consolidation)
+- **Description:** Added "Promote an Existing Entity to an Aggregate Root (in place)" section — folded the promote-entity-to-aggregate gap into the existing skill per owner decision. Variant-aware (plain DDD vs ASP.NET Identity).
+- **Date:** 2026-06-10

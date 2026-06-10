@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 - Initial changelog creation (adhoc-PipelineCraftImprovements)
+- Added "Promote an Existing Entity to an Aggregate Root (in place)" section — type-change-in-place workflow, schema-consequence check via model snapshot, mirror-existing-aggregate guidance, plain-DDD vs ASP.NET-Identity variant note (adhoc-Pass4-IdentityExtraction, adhoc-Pass5-EventCorrectness)
 
 ## [1.0.0] — 2026-05-24
 - Baseline version (reconstructed from git history — last known modification: 27e1934 [Claude-Code] Skills cleanup)

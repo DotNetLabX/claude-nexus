@@ -19,6 +19,14 @@ user-invocable: true
 Key interface methods: `Query()` (returns `IQueryable`), `AddAsync()`, `SaveChangesAsync()`, `DeleteByIdAsync()` (raw SQL for required-property entities).
 Additional `RepositoryBase` methods (not on `IRepository`): `UpsertAsync()`, `FindByIdAsync()`, `TableName`.
 
+**`UpsertAsync` value-copy rule — copy through EF `PropertyValues`, never `SetValues(object)`.** When applying a detached entity onto a tracked one, go through EF's property machinery:
+
+```csharp
+DbContext.Entry(existing).CurrentValues.SetValues(DbContext.Entry(entity).CurrentValues);
+```
+
+The `SetValues(object)` overload with the detached POCO uses plain reflection and **silently skips properties mapped to private backing fields** (`PropertyAccessMode.Field`) — a latent shallow-copy bug invisible to shape greps. Aggregates adopting backing fields must configure the matching access mode in their entity configuration. This is the backing-field sibling of the owned/complex-type caveat: `SetValues` does not deep-copy owned/complex members either — those need explicit member assignment (see "Mapping a Command onto a Tracked Entity" below).
+
 ### Tier 2: Service-Level Repository
 Each service defines a thin concrete `Repository<TEntity>` binding to its DbContext:
 ```csharp
