@@ -92,37 +92,56 @@ deterministic** mechanisms:
 
 ### C. Messaging / relay reliability (4 → ~6.5, platform-capped)
 
-1. **Two-leg critic channel (hub-persisted, transcript-backed).** Keep the critic message-only and
-   tool-locked (B.1); the hub (TL, or architect in standalone) persists the verdict + findings to
-   `docs/specs/{slug}/delivery/plan-review.md` (spec reviews: `definition/spec-review.md`).
-   *The persistence alone does NOT fix stranding* — if the message strands, there is nothing to
-   persist. The load-bearing leg is the transcript: the platform writes
-   `subagents/agent-{id}.jsonl` unconditionally, so for a tool-locked agent the transcript IS the
-   guaranteed artifact. Happy path: message arrives → hub transcribes. Stranded path: hub runs the
-   salvage extractor (2) on the transcript → same file. Either way the artifact exists and nothing
-   trusts the model's last message. This also resolves the B.1↔artifact-first tension: a locked
-   critic cannot be artifact-first, and doesn't need to be — the platform's transcript is more
-   reliable than an agent remembering to Write (an agent can strand a message; the platform cannot
-   strand a transcript).
-2. **Ship the salvage extractor.** A small script/skill that extracts the last substantive assistant
-   text from a subagent transcript — hand-built twice now; as the designed second leg of (1), it must
-   be deterministic and documented in team-lead.md, not an emergency improvisation.
+**The transcript, defined (mechanism — was previously undocumented).** For every spawned subagent,
+the platform itself appends the agent's entire run — every message and tool call — to
+`{session-dir}/subagents/agent-{agentId}.jsonl` (the spawn result returns the `agentId`). It is
+written by the platform, not by the model: it cannot strand, cannot be forgotten, and is verbatim by
+construction. It is therefore the **guaranteed record** behind every lossy message channel. Reading
+it must be done by a **script, never by a model** — piping a 300KB transcript through an agent to
+"find the report" burns tokens for nothing; this plugin optimizes feature production AND token
+consumption. (Design detail to verify during implementation: locating `{session-dir}` from a consumer
+project — likely a SessionStart hook recording the path for scripts to use.)
+
+1. **No standalone critic artifact — the review record lives in the artifact it served.** The critic
+   is an aid bound to some task (spec, plan, promotion — always someone else's artifact); its
+   findings' lifecycle ends when the artifact owner applies them, and the **owner** records the
+   outcome *in the artifact itself* — as `plan.md` already does (review-record header line + inline
+   `critic {ID}` markers). No `plan-review.md` as a pipeline mechanism: it would be a second,
+   driftable source of truth for what the reviewed artifact already records, written by someone who
+   isn't the critic. (Historical archives like PluginCleanup's remain valid as archives.) The critic
+   stays message-only and tool-locked (B.1); if its message strands, the spawner salvages (2) and
+   applies findings exactly as if the message had arrived.
+2. **Ship a generic salvage script — `salvage(agentId) → text`.** Agent-agnostic by design: stranding
+   hits any background agent (measured on researchers, not pipeline agents, on 2026-06-10), the critic
+   is merely the only agent whose *primary* deliverable rides the message channel. The script extracts
+   the final substantive assistant text from the subagent transcript; the spawner decides what to do
+   with it (critic findings → apply; worker report → read). Hand-built twice now; ship it
+   (hooks/scripts or a skill-bundled script), document it in team-lead.md as the designed recovery
+   leg, not an emergency improvisation. Zero model tokens.
 3. **Completion footer in artifact formats.** `implementation-format`/`review-format` (etc.) gain a
    final `*Status: COMPLETE — {role}, {date}*` line; the TL trusts the footer, not the message. A
    stranded message then costs nothing for artifact-producing agents: the artifact self-certifies.
-4. **Codify recovery order in team-lead.md:** artifact → TaskOutput → transcript salvage → re-ask
+4. **Codify recovery order in team-lead.md:** artifact → TaskOutput → salvage script → re-ask
    LAST (measured 0/2 on 2026-06-10). Today's order implies re-ask too early.
 5. **Measure stranding rate** via T3 evals + token-audit detail, so the next evaluation has a number
    instead of anecdotes.
 
-### Sequencing recommendation
+### Sequencing (owner-decided, TDD-first)
 
-1. **Live pipeline run on a small feature** (validates 1.3.0 restorations; feeds real eval scenarios) —
-   highest information per hour; moves category 2 toward 9 or surfaces what the restore missed.
-2. **Testing T1+T2** (no bump, ~1–2 days) — locks in the consistency sweep, catches the next B1-class bug.
-3. **Enforcement+relay package as one release** (B.1, C.1–C.4 are mostly agent/skill edits → one MINOR
-   bump; B.2 probe first since its result shapes the gate change).
+No rapid live test exists — every live run costs 30–120 min, so live validation moves to the END.
+
+1. **Tests first (TDD).** Build the T1+T2 harness: green baseline tests for current behavior, plus
+   **red** tests for the fix package, failing for the right reason before any fix lands —
+   frontmatter lint asserting the critic declares `disallowedTools` (red until B.1); unit tests for
+   the salvage script against fixture transcripts (red until C.2); format-skill lint asserting the
+   completion footer (red until C.3); convergence lint asserting team-lead.md's recovery order names
+   salvage-before-re-ask (red until C.4).
+2. **Probe P1** (do hooks fire inside background subagents?) — an experiment, not a test; its result
+   sets the scope of B.2 before implementation starts.
+3. **Implement the enforcement + relay package** — turn the reds green; one MINOR release
+   (B.1, C.1–C.4; B.2 if P1 allows).
 4. **T3/T4 evals** once CI auth is decided — turns categories 3/4 into measured numbers.
+5. **Live validation by the owner: 2 new features in other projects** — the real acceptance test, last.
 
 *Confidence: high on A (researched, costed); high on B.1 (platform behavior proven live); medium on
 B.2 (gated on probe P1); medium-high on C (designs are simple, but the score ceiling is the platform's).*
