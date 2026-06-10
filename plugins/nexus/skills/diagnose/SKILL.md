@@ -93,7 +93,7 @@ After each probe:
    - What was the root cause?
    - What would have prevented this?
    - Is there an architectural improvement needed? (flag for architect)
-4. **Build verification** — build passes per Build Verification in project-rules
+4. **Build verification** — build passes per the project's build conventions (`docs/conventions/coding-conventions.md`, if defined)
 
 ## Integration with Circuit Breaker
 

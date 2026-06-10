@@ -7,7 +7,7 @@ Use this template for every `docs/specs/{slug}/definition/spec.md` file (or `epi
 ```markdown
 # {Feature Name}
 
-**Traces to:** `docs/product/v1.md` §{section numbers}
+**Traces to:** `docs/product/index.md` §{section numbers}
 **Source:** Scratch | Jira {TICKET-KEY}
 **Dependencies:** {features or aggregates that must exist first, or "None"}
 **Status:** Draft | Ready | Done
@@ -21,7 +21,7 @@ Use this template for every `docs/specs/{slug}/definition/spec.md` file (or `epi
 
 ## Purpose
 
-Why this feature exists in v1. One paragraph max. Reference the v1 spec for broader context — don't repeat it.
+Why this feature exists in the product. One paragraph max. Reference the product spec for broader context — don't repeat it.
 
 ## Entities
 
@@ -34,7 +34,7 @@ For each entity, specify:
 
 Do not include: persistence details (cascade behavior, collation, index types, migration names), constructor visibility, base class names, or interface names. Those belong in the plan.
 
-Reference `docs/product/v1.md` §4 for the canonical entity definitions.
+Reference the product spec (`docs/product/index.md`) section that owns the canonical entity definitions.
 
 ## User Flows
 

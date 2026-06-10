@@ -1,82 +1,67 @@
 ---
 name: improve-flow
-description: Applies promoted lessons to flow artifacts — CLAUDE.md, agent files (.claude/agents/), and rule files (.claude/rules/). Invoked by the learner agent after classification and user approval. Do not invoke directly — the learner handles classification and approval.
+description: Applies promoted lessons to project flow artifacts (CLAUDE.md, docs/conventions/) and routes plugin-bound lessons to the portable plugin-feedback file. Invoked by the learner agent after classification and user approval. Do not invoke directly.
 ---
 
 # Improve Flow
 
-Applies classified and approved lesson items to their target flow files. Each item has already been classified by the learner agent with a specific target, section, and action.
+Applies classified and approved lesson items to their targets. Each item has already been classified by the learner agent with a specific target, section, and action.
+
+## Two Channels (decide per item, by target)
+
+The nexus agents, rules, and skills live in the **plugin's version-keyed cache** — a consuming project holds no editable copy (ADR-1). Lessons therefore split by audience:
+
+1. **Project-bound** (this project's conventions, gotchas, guardrails) → **apply on the spot** to project files: `CLAUDE.md`, `docs/conventions/*`, project rule files the project itself owns.
+2. **Plugin-bound** (a nexus agent behaved wrong, a pipeline rule needs changing, a shipped skill has a gap) → **never write into `.claude/` or the plugin cache.** Append the item to the **portable feedback file**: `docs/plugin-feedback/nexus-{plugin-version}-{date}.md` (create with header if absent). This file is committable; a consumer sends it to the plugin owner, who applies it in the plugin source repo. On the owner's machine the same file is simply applied there directly.
 
 ## Steps
 
-1. **Receive the promotion list** — a set of items, each with: content, target file, target section, and action (add or update).
+1. **Receive the promotion list** — items with: content, channel (project | plugin), target file, target section, action (add or update).
 
-2. **For each target file**, grouped to minimize file reads:
+2. **Project-bound items, grouped per file:**
    a. Read the current file content fully.
-   b. Find the target section for each item going to this file.
-   c. Final dedup check — verify the item isn't already expressed (different wording, same concept).
-   d. Insert or update the item in the appropriate section.
-   e. Preserve the file's existing style, formatting, and indentation.
+   b. Find the target section; final dedup check — verify the item isn't already expressed (different wording, same concept).
+   c. Insert or update; preserve the file's existing style, formatting, and indentation.
 
-3. **Verify consistency** — after all edits:
-   - No duplicate entries introduced.
-   - No sections broken by insertions.
-   - File still reads coherently as a whole.
+3. **Plugin-bound items:** append each to the feedback file as an entry:
+   ```markdown
+   ## {short title}
+   - **Suggested target:** {agent|rule|skill name} → {section, e.g. "developer.md ## Anti-patterns"}
+   - **Action:** add | update
+   - **Evidence:** {feature slug(s)}, recurrence {N}x
+   - **Lesson:** {the actionable rule, condensed}
+   ```
+   Suggest the target precisely — e.g. recurring agent mistakes map to that agent's `## Anti-patterns` section; cross-cutting rules to `agents-workflow.md`.
 
-4. **Report** — return a list of all changes made: file path, section, what was added or updated.
+4. **Verify consistency** — no duplicate entries introduced, no sections broken, files still read coherently.
 
-## Target File Conventions
+5. **Report** — list every change: file path, section, what was added or updated; plus the feedback-file entries written.
+
+## Project Target Conventions
 
 ### CLAUDE.md
+- Guardrails go under a `## Guardrails` (or equivalent) section.
+- Framework-specific gotchas go near related existing sections; create a subsection only if there's no natural fit.
+- Match the existing bullet style.
 
-- Guardrails go under `## Guardrails — DO NOT`
-- Framework-specific gotchas go near related existing sections. Create a subsection only if there's no natural fit.
-- Conventions go near related existing conventions.
-- Match the existing bullet style (` - **Bold lead** — explanation`).
-
-### Agent files (`.claude/agents/`)
-
-- **architect.md** — planning discipline items. Integrate into existing workflow sections (e.g., "Plan Writing Rules", "Before Acting") when the item extends an existing rule. Add a new section only when no existing section fits.
-- **developer.md** — implementation discipline items. Same approach — extend "How You Work", "Exploration Before Implementation", or "Circuit Breaker" sections.
-- **reviewer.md** — review calibration items. Extend "Stage 2: Code Quality", "Gap Analysis", or "Fresh Evidence" sections.
-- Prefer integrating into existing sections over creating new ones. New sections fragment the agent's instructions.
-
-### Rule files (`.claude/rules/`)
-
-- Cross-cutting rules that apply to all agents or across the entire project.
-- Add to an existing rule file if the topic matches.
-- Create a new `.claude/rules/{topic}.md` file only if no existing file covers the topic.
-- Rule files are auto-loaded every session — keep them concise.
+### docs/conventions/
+- Extend the file the conventions index (`coding-conventions.md`) lists for that topic; create a new file only if no existing one covers it, and add it to the index.
 
 ## Style Rules
 
-- Match the target file's voice and density. Agent files are direct and imperative. CLAUDE.md uses structured lists.
-- Don't add attribution ("learned from JiraSync"). The lesson stands on its own.
-- Don't add dates. The git history tracks when it was added.
+- Match the target file's voice and density.
+- Don't add attribution ("learned from JiraSync") or dates — git history tracks that. (The feedback file is the exception: it carries evidence citations by design.)
 - Condense the lesson to its actionable essence. Strip the story, keep the rule.
-
-## Anti-pattern Promotion
-
-When a lesson recurs 2+ times across features and maps to an agent file, check if that agent has an `## Anti-patterns` section. If yes, promote the recurring lesson as a new anti-pattern entry. Format:
-
-```markdown
-- **{Pattern name}.** {What goes wrong}. {Correct approach instead}.
-```
-
-Anti-patterns are a valid promotion target alongside rules, conventions, and agent instructions. The `## Anti-patterns` section exists in developer.md and reviewer.md.
-
-## Post-Apply
-
-After modifying agent files, rule files, or conventions, read `.claude/README.md` and update it if the change affects the system overview (new/removed agents, new rule files, changed information layers).
 
 ## Cross-Reference Lint
 
-Before renaming or removing a rule, convention, or agent reference, grep all agent files, rule files, and convention files for references to the old name. Update or remove stale references before completing the change.
+Before renaming or removing a project convention or doc reference, grep the project's docs and CLAUDE.md for references to the old name. Update or remove stale references before completing the change.
 
 ## What This Skill Does NOT Do
 
 - Classify items — the learner already did that.
 - Create or modify skills — that's `improve-skills`.
+- Edit nexus agent files, rules, or shipped skills — plugin-bound items go to the feedback file, never applied locally.
 - Write application code.
 - Decide what gets promoted — the learner decides, user approves.
-- Tag items as [APPLIED] — the learner handles tagging after skill completes.
+- Tag items as [APPLIED] — the learner handles tagging after the skill completes.

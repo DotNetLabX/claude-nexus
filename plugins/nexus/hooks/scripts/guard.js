@@ -96,6 +96,8 @@ function isCodeFile(fp) {
 
 function isSecret(fp) {
   const p = String(fp).replace(/\\/g, '/');
+  // .env.example/.template/.sample are committed, secret-free scaffolds — legitimate reads.
+  if (/\.env\.(example|template|sample)$/i.test(p)) return false;
   return /(^|\/)\.env(\.|$)/i.test(p)
     || /\/secrets?\//i.test(p)
     || /\/\.credentials\//i.test(p)
@@ -114,11 +116,22 @@ function isAbsoluteOutside(fp, cwd) {
 function badBash(cmd, mode) {
   const c = cmd.toLowerCase();
 
-  // recursive force-delete of a root / home / absolute path
-  const rmFlag = c.match(/\brm\s+(-[a-z]+)/);
-  const rmRF = rmFlag && rmFlag[1].includes('r') && rmFlag[1].includes('f');
-  if (rmRF && /[\s=](\/(\s|\*|$)|~(\/|\s|\*|$)|\$home|\/[a-z])/i.test(c)) {
+  // recursive force-delete of a root / home / absolute path.
+  // Flags may be split ("rm -r -f") — collect every flag token after rm, not just the first.
+  const rmMatch = c.match(/\brm\s+((?:-[a-z-]+\s*)+)/);
+  const rmFlags = rmMatch ? rmMatch[1] : '';
+  const rmRF = rmFlags.includes('r') && rmFlags.includes('f');
+  // Targets: POSIX (/, ~, $HOME) AND Windows shapes (C:\, C:/, UNC \\server) — this runs on
+  // Windows-first machines where "rm -rf D:\foo" is just as catastrophic.
+  if (rmRF && /[\s='"]([a-z]:[\\/]|\\\\|\/(\s|\*|$)|~([\\/]|\s|\*|$)|\$home|\/[a-z])/i.test(c)) {
     return 'recursive force-delete of a root/home/absolute path';
+  }
+  // PowerShell equivalent: Remove-Item -Recurse -Force on an absolute/home path (flag order varies,
+  // flags may be abbreviated -rec/-fo): basic coverage, fail-open beyond it.
+  if (/\b(remove-item|ri|del|rmdir|rd)\b/.test(c)
+      && /\s-rec\w*/.test(c) && /\s-fo\w*/.test(c)
+      && /[\s'"]([a-z]:[\\/]|\\\\|~[\\/]|\/)/i.test(c)) {
+    return 'recursive force-delete of a root/home/absolute path (PowerShell)';
   }
   if (/\bsudo\b/.test(c)) return 'sudo escalation';
   if (/\bgit\s+push\b[^\n]*(--force\b|-f\b|--force-with-lease\b)/.test(c)) return 'force push';

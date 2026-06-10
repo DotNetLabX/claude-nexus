@@ -22,7 +22,7 @@ Before writing, ensure you have:
 
 1. **Feature spec** — read `docs/specs/{slug}/definition/spec.md` (or `epic.md` / `bug.md` depending on slug type)
 2. **Architecture doc** — read for system shape and existing decisions
-3. **Skill inventory** — scan `.claude/skills/` — read every `SKILL.md` frontmatter. If the architecture doc has a Skill Inventory section, use it; otherwise build one from scratch.
+3. **Skill inventory** — if the architecture doc has a Skill Inventory section, use it; otherwise build one from **the skills surfaced in your context** (plugin skills live in the version-keyed cache — globbing `.claude/skills/` under-reports them) plus the project's own `.claude/skills/`.
 4. **Existing plans** — read `docs/specs/*/delivery/plan.md` for format consistency
 
 ## Steps
@@ -73,8 +73,8 @@ Pass the feature name: `create-implementation-plan Sprint`
 
 Before invoking this skill, ensure you have read:
 - `docs/specs/{slug}/definition/spec.md` — feature requirements to plan against
-- `docs/architecture/v1.md` — system shape and existing decisions (already loaded via @)
-- `.claude/skills/` frontmatter of each skill — needed to build the Skill Mapping table
+- `docs/architecture/index.md` — system shape and existing decisions (read it if present — nothing is auto-loaded)
+- The skill inventory (context-surfaced plugin skills + project `.claude/skills/`) — needed for the Skill Mapping table
 - `docs/specs/*/delivery/plan.md` (1-2 recent examples) — format consistency
 
 ## Anti-patterns
@@ -85,19 +85,19 @@ Before invoking this skill, ensure you have read:
 
 ## Refactoring & Type-Move Plan Rules
 
-Refactoring passes (rename, extract, relocate, delete, type-move) fail in ways feature plans don't. Encode these in the plan, not in the developer's memory:
+Refactoring passes (rename, extract, relocate, delete, type-move) fail in ways feature plans don't. Encode these in the plan, not in the developer's memory. (Stack-specific carve-out examples belong in the stack extension plugin's skills, not here — these are the stack-agnostic principles.)
 
-- **A "fix/split/replace every file matching pattern P" step must derive its file list from the *exact* grep used in its acceptance criterion** — the step's enumerated files and the acceptance grep must be the same query, never hand-curated separately or assembled from memory of files you happened to read. Use a **definition-line** grep, not a usage grep: `^\s*(public\s+)?(class|record)\s+\w+(Request|Response|Validator|Dto)\b` finds *definitions*; a bare `class .*Response` also matches `EndpointWithoutRequest<MeResponse>` (a usage) and undercounts. Hand-curated lists drift from the check and miss files.
+- **A "fix/split/replace every file matching pattern P" step must derive its file list from the *exact* grep used in its acceptance criterion** — the step's enumerated files and the acceptance grep must be the same query, never hand-curated separately or assembled from memory of files you happened to read. Use a **definition-line** grep (matches where the symbol is *declared*), not a usage grep — a usage grep also matches references and undercounts or overcounts. Hand-curated lists drift from the check and miss files.
 
-- **Enumerate ALL consumers/injection sites from a grep before planning a removal — not just the obvious endpoint.** When a step removes or renames a public type, grep the type name across the **whole** project (every DI-registered service, secondary endpoints, gRPC mappings, `GlobalUsings`) and list every site in the plan step. Cross-injected services (e.g. a secondary `QaTrends`/`QaWorkload` endpoint injecting the service you're deleting) are the ones that break the build mid-implementation.
+- **Enumerate ALL consumers from a grep before planning a removal — not just the obvious one.** When a step removes or renames a public symbol, grep the name across the **whole** project (every registration site, secondary entry points, generated bindings, global imports) and list every site in the plan step. The indirect consumer nobody remembered is the one that breaks the build mid-implementation.
 
-- **"grep before delete" is a hard, numbered verification sub-step — not a soft note in prose.** When a deleted file's types are shared beyond the migrated feature, the developer will skip a buried "remember to grep" sentence. Make it `Step N: grep for remaining references to {types}; zero hits required` so the done-check can mark it Missing. Better still: move shared wire/value types in an **earlier** step with all consumers updated, because splitting a phased plan by computation-cluster rarely aligns with the type-ownership graph.
+- **"grep before delete" is a hard, numbered verification sub-step — not a soft note in prose.** A buried "remember to grep" sentence gets skipped. Make it `Step N: grep for remaining references to {symbols}; zero hits required` so the done-check can mark it Missing. Better still: move shared types in an **earlier** step with all consumers updated — phased plans split by feature cluster rarely align with the type-ownership graph.
 
-- **"Replace all X" is dangerous when X has a non-call homonym — spell out the carve-out with file:line + DO-NOT-TOUCH.** Distinguish "this is a *call* to the thing I'm replacing" from "this is a *constant/usage* that happens to occupy the same field position." Examples that a blanket replace corrupts: a hard-coded `"neutral"` literal sitting in a `*DeltaPolarity` field position (not a `DeltaPolarity(...)` call); `HttpClient.SendAsync` / SignalR `hubContext.…SendAsync` under a `Send*Async` migration; a Mapster `.Adapt<T>()` method call under a "no `adapt`" prose check. Name every known non-match with its `file:line` and a DO-NOT-TOUCH directive; never rely on "replace all."
+- **"Replace all X" is dangerous when X has a non-call homonym — spell out the carve-out with file:line + DO-NOT-TOUCH.** Distinguish "this is a *call/usage* of the thing being replaced" from "this is a literal, constant, or unrelated symbol that happens to match the same text." Name every known non-match with its `file:line` and a DO-NOT-TOUCH directive; never rely on a blanket replace-all.
 
-- **Type-move / rename passes need an explicit old→new rename table + the wire-stability invariants stated as binding rules.** Give a byte-checkable `OldName → NewName` table so the done-check is a deterministic field-by-field read instead of a judgment call. State what must NOT change as a rule with a diff-based accept: protobuf-net keys the wire on `[DataMember(Order)]` and Refit/JSON on property name, so renaming the C# type is safe **only** if Order numbers and property names are untouched — and a C# property rename (`AlertThreshold` → `BugRatioAlertThreshold`) changes the JSON key (under a camelCase serializer policy) to `bugRatioAlertThreshold`, so the hand-written TS payload must change to match. Discriminated `{Mode, Multi?, Single?}` `*Response` envelopes are **wire-only**: the endpoint assembles them; never mirror them into the domain or list them in the domain rename table.
+- **Type-move / rename passes need an explicit old→new rename table + the wire-stability invariants stated as binding rules.** Give a byte-checkable `OldName → NewName` table so the done-check is a deterministic field-by-field read instead of a judgment call. State what must NOT change as a rule with a diff-based accept: anything that keys a serialized/wire contract (field order, serialized property names, route strings) survives a code-level rename only if the wire-visible parts are untouched — and when a rename DOES change a serialized name, every hand-written consumer of that contract must change in the same plan. Wire-only envelope types stay at the boundary — never mirror them into the domain or list them in the domain rename table.
 
-- **Before planning a project-reference removal from a domain project, grep the *dependent* projects' `GlobalUsings` and all property/field/return-type signatures — not just `.csproj` refs.** A stale `global using Jira.Contracts;` in `Fokus.Persistence` breaks the build even though Persistence has zero direct usage (it inherited the namespace transitively); a domain *property* typed `Jira.Contracts.SprintState` breaks the reference drop even though no factory parameter uses it.
+- **Before planning a dependency removal, grep the *dependent* modules' global imports and all property/field/return-type signatures — not just the declared dependency list.** A transitive import or a type used only in a signature breaks the removal even when no direct call exists.
 
 ## Downstream Consumers
 

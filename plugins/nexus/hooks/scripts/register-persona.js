@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Nexus PostToolUse(Write) hook — bridge a /<agent> persona command into the per-session registry.
+ * Nexus PostToolUse(Write|Edit) hook — bridge a /<agent> persona command into the per-session registry.
  *
  * The persona commands instruct the model to write the role slug to .claude/.current-agent.
  * That Write fires this hook, which carries the authoritative session_id (concurrency-safe —
@@ -10,6 +10,10 @@
  * Why a hook and not the command itself: a slash command is model-run and never learns its own
  * session_id; a SessionStart-injected id would be shared/raced across concurrent tabs. The
  * PostToolUse payload is the only place both the session_id and the chosen role meet.
+ *
+ * Two files BY DESIGN (don't "unify" them): `.claude/.current-agent` is only the WRITE-TRIGGER —
+ * nothing ever reads it back; `.claude/.personas.json` is the durable per-session registry that
+ * guard.js / audit-logger.js / restore-agent.js consume.
  */
 'use strict';
 const fs = require('fs');
@@ -28,7 +32,9 @@ process.stdin.on('end', () => {
   const fp = String(ti.file_path || '').replace(/\\/g, '/');
   if (!sid || !fp.endsWith('.current-agent')) process.exit(0);
 
-  const agent = String(ti.content || '').trim();
+  // Write carries `content`; Edit carries `new_string` (the file usually pre-exists from an
+  // earlier session, so the model may legitimately Edit it — the hook matcher covers both).
+  const agent = String(ti.content != null ? ti.content : (ti.new_string != null ? ti.new_string : '')).trim();
   if (!/^[a-z][a-z-]{1,30}$/.test(agent)) process.exit(0);
 
   const root = process.env.CLAUDE_PROJECT_DIR || evt.cwd || process.cwd();

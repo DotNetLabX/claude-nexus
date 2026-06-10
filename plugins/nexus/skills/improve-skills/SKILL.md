@@ -1,112 +1,70 @@
 ---
 name: improve-skills
-description: Creates new skills and fixes existing skills based on lessons. Scaffolds .claude/skills/{name}/SKILL.md for skill gaps. Updates existing SKILL.md for skill fixes. Invoked by the learner agent after classification and user approval.
+description: Creates project-local skills for skill gaps and routes fixes to shipped (plugin) skills into the portable plugin-feedback file. Invoked by the learner agent after classification and user approval.
 ---
 
 # Improve Skills
 
-Creates new skills and updates existing skills based on classified lesson items. Each item has already been classified by the learner agent as either a "skill fix" (existing skill needs correction) or "skill gap" (new skill needed).
+Handles classified lesson items about skills: "skill fix" (an existing skill needs correction) or "skill gap" (a new skill is needed). Each item was already classified by the learner.
 
-## For Skill Fixes
+## Two Channels (ADR-1)
 
-1. **Read the existing skill's SKILL.md** fully.
-2. **Identify the section** that needs correction based on the lesson content.
-3. **Apply the fix**, preserving the skill's existing structure and style.
-4. **Log the fix** to `docs/skill-backlog.md` under the skill's entry with status `Fixed`.
+Shipped nexus skills live in the plugin's version-keyed cache — not editable from a consuming project.
 
-## For Skill Gaps (New Skills)
+- **Fix to a shipped (plugin) skill** → append to the portable feedback file `docs/plugin-feedback/nexus-{plugin-version}-{date}.md` (same entry format as improve-flow: suggested target = the skill + section, action, evidence, condensed lesson). Never edit the cache.
+- **Fix to a project-local skill** (one that lives in this project's `.claude/skills/`) → apply directly: read the SKILL.md fully, identify the section, fix it preserving structure and style.
+- **Skill gap** → decide the home:
+  - **Project-specific pattern** (this codebase's stack/structure) → scaffold a **project-local** skill in `.claude/skills/{name}/` (a consumer project legitimately owns its local skills).
+  - **Pipeline-generic pattern** (useful to every nexus consumer) → feedback-file entry proposing a new plugin skill; don't scaffold locally.
 
-1. **Read the gap description** from the lesson — what pattern is missing, why it was needed, reference files mentioned.
+## For New Project-Local Skills
 
-2. **Verify the gap is real:**
-   - Grep `.claude/skills/` for the pattern name — confirm no existing skill covers it.
+1. **Verify the gap is real:**
+   - Check the skills already surfaced in your context (plugin skills are listed there — directory globbing under-reports them) AND grep the project's own `.claude/skills/` — confirm no existing skill covers it.
    - Check that reference files mentioned in the lesson still exist.
-   - Confirm the pattern is repeatable (will be needed again, not a one-off).
-
-3. **Study 2-3 existing skills** in `.claude/skills/` that are closest in type. Match their structure.
-
-4. **Scaffold the skill directory:**
-   ```
-   .claude/skills/{skill-name}/
-   └── SKILL.md
-   ```
-   Add `workflows/` or `references/` subdirectories only if the skill is variant-aware or needs templates.
-
-5. **Write SKILL.md** following the native Claude Code format:
-
-   ```yaml
-   ---
-   name: {skill-name}
-   description: {one-line description — specific enough for auto-detection}
-   ---
-   ```
-
-   Body sections (follow the pattern of existing project skills):
-   - `# {Skill Name}` — one-sentence purpose
-   - `## Steps` — numbered workflow steps, concrete and actionable
-   - `## Arguments` — if the skill takes arguments (e.g., `/skill-name FeatureName`)
-   - Additional sections as needed (folder structure, conventions, examples)
-
-6. **Use the lessons context** to write the steps — the gap description tells you what was needed, the reference files show the actual codebase pattern.
-
-7. **Read the reference files** mentioned in the gap. Extract the real pattern from the codebase — don't invent abstract instructions.
+   - Confirm the pattern is repeatable — will be needed again, not a one-off.
+2. **Study 2-3 existing skills** closest in type (project-local ones, or shipped ones from your context) and match their structure.
+3. **Scaffold:** `.claude/skills/{skill-name}/SKILL.md` (add `workflows/` or `references/` only if variant-aware or template-bearing).
+4. **Write SKILL.md** in the native format — frontmatter (`name`, `description` specific enough for auto-detection), then `# {Skill Name}`, `## Steps` (concrete, actionable), `## Arguments` if applicable.
+5. **Extract the real pattern from the codebase** — read the reference files from the gap description; don't invent abstract instructions.
 
 ## Skill Backlog
 
-Log every action to `docs/skill-backlog.md`. Create the file if it doesn't exist.
-
-Entry format:
+Log every action to `docs/skill-backlog.md` (create if absent). Entry format:
 
 ```markdown
 ### {Skill Name}
-- **Status:** Created | Fixed
+- **Status:** Created | Fixed | Routed-to-plugin | Deferred
 - **Type:** Gap | Fix
 - **Source:** {Feature name} lessons
-- **Description:** {What it covers or what was fixed}
+- **Description:** {What it covers, what was fixed, or what was routed to the feedback file}
 - **Date:** {YYYY-MM-DD}
 ```
 
-Group entries under `## Skills Created` and `## Skills Fixed` headings.
+Group entries under `## Skills Created`, `## Skills Fixed`, and `## Routed to Plugin`.
 
-## Quality Gate
+## Quality Gate (before creating any new skill)
 
-Before creating a new skill, verify all of:
-- The pattern is **repeatable** — it will be needed again
-- **No existing skill** covers it, even partially
-- The **reference files** mentioned in the gap still exist
-- The skill follows the project's **existing skill conventions** (check 2-3 neighbors)
-- The steps are **concrete and actionable** — not abstract guidance
-- The skill is **generic and reusable across projects** — no project-specific names, paths, or assumptions baked into the skill logic. Use placeholders (`{Name}`, `{Svc}`) and derive project-specific details from the codebase or CLAUDE.md at runtime
+- The pattern is **repeatable** — it will be needed again.
+- **No existing skill** covers it, even partially (context-surfaced + project-local).
+- The **reference files** mentioned in the gap still exist.
+- The steps are **concrete and actionable** — not abstract guidance.
+- Project-local skills may bake in project specifics; a skill proposed for the **plugin** must be generic — placeholders (`{Name}`, `{Svc}`), no project paths.
 
-If the quality gate fails, log the gap to the backlog with status `Deferred` and the reason.
-
-## Cross-Reference Lint
-
-Before renaming or deleting a skill, grep all agent files and convention files for references to the old name. Update or remove stale references before completing the change.
+If the gate fails, log the gap to the backlog with status `Deferred` and the reason.
 
 ## Changelog Maintenance
 
-When modifying an existing skill (fix or significant update), append a changelog entry to its `CHANGELOG.md`:
+When fixing a **project-local** skill, append to its `CHANGELOG.md` under `## [Unreleased]` — one bullet per meaningful change with the evidence citation (feature slug). Create the file if absent. (Shipped-skill changelogs are the plugin repo's concern — the feedback entry carries the evidence instead.)
 
-1. If `CHANGELOG.md` doesn't exist for the skill, create it following the format in any existing skill CHANGELOG (e.g., `.claude/skills/create-implementation-plan/CHANGELOG.md`).
-2. Add the entry under `## [Unreleased]` — one bullet per meaningful change.
-3. Include: what changed, why it changed, and the evidence citation (feature slug or lesson source).
+## Cross-Reference Lint
 
-Entry format:
-```markdown
-- {What changed} ({evidence — feature slug or "lessons analysis"})
-```
-
-Do not create a version entry per change — group unreleased changes together. The learner/architect promotes to a versioned entry when the skill reaches a stable milestone.
-
-## Post-Apply
-
-After creating or removing skills, read `.claude/README.md` and update the skill count and any affected sections.
+Before renaming or deleting a project-local skill, grep the project's docs and config for references to the old name. Update or remove stale references first.
 
 ## What This Skill Does NOT Do
 
 - Classify items — the learner already did that.
-- Modify CLAUDE.md, agent files, or rule files — that's `improve-flow`.
+- Modify CLAUDE.md, conventions, or rule files — that's `improve-flow`.
+- Edit shipped plugin skills — those route to the feedback file.
 - Write application code.
-- Create non-native skill formats — only native Claude Code `.claude/skills/` format.
-- Tag items as [APPLIED] — the learner handles tagging after skill completes.
+- Tag items as [APPLIED] — the learner handles tagging.

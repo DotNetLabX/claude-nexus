@@ -236,8 +236,14 @@ where a faithful agent would otherwise fail silently.
 ## ADR-8 — Security guard as a synchronous hook
 **Decision.** A `security_mode` chosen at install (`userConfig`) feeds the synchronous `guard.js`
 PreToolUse hook: `open` (default — blocks catastrophic actions only), `hardened` (adds push/network
-blocks for teams/CI), `off`. `audit-logger.js` runs async and appends every tool call to
-`docs/audit/tool-calls.log` (record-only, never blocks).
+blocks for teams/CI), `off`. `audit-logger.js` runs async (record-only, never blocks).
+
+> **Amended (1.3.0):** the audit-logger is now **fully opt-in** behind `token_audit` and writes to
+> **`.claude/audit/{session}.log`** (per-session, with a forensic `detail` field — file/command/skill
+> per call) + `.claude/audit/token-usage.jsonl`, never to `docs/` (committed-content area) and never
+> from bare `process.cwd()` (the stray-log bug). Consumers who enable it add `.claude/audit/` to
+> their `.gitignore`. The original "always appends every tool call to `docs/audit/tool-calls.log`"
+> behavior is retired — it contradicted ADR-11's "off by default means zero work".
 
 **Why.** Enforcement must be synchronous (able to deny) and separate from observation (must never
 block). One knob keeps it usable.
@@ -337,12 +343,18 @@ consumption evaluation that motivated several pipeline fixes was done **by hand*
 there was no built-in way to measure per-agent consumption in a live run.
 
 **Decision.** An **opt-in** audit, **off by default**. A `token_audit` userConfig flag (default
-`false`) that, when on, has the existing `audit-logger` hook additionally append per-agent token
-readings to `docs/audit/token-usage.jsonl` (`{ts, agent, tool, input, output, cache_read,
+`false`) that, when on, has the `audit-logger` hook append per-agent token
+readings to `.claude/audit/token-usage.jsonl` (`{ts, agent, tool, input, output, cache_read,
 cache_creation, context}`), plus a `consumption-report` skill that aggregates that log into a
 per-agent table (peak context, output generated, tool-call count, growth curve). This **ships to
 consumers** — unlike the release tooling (ADR-9), it is runtime observability for the pipeline, which
 runs in consuming projects.
+
+> **Amended (1.3.0):** the same flag now gates the **entire** logger — the tool-call trace included
+> (previously the trace was unconditionally always-on, contradicting this ADR's premise). Output
+> moved `docs/audit/` → `.claude/audit/`; the trace regained the per-session file + per-call
+> `detail` field (file/command/skill) as forensic supervision evidence. The transcript read is
+> tail-only (last 64KB) instead of whole-file.
 
 **Why.** (a) **Fold capture into the existing always-on `audit-logger`** rather than add a hook — it
 already attributes each tool call to an agent (`agent_type` / persona registry), so the only addition
@@ -441,7 +453,7 @@ or foreground a one-off spawn manually.
 ## ADR-16 — Relay model: background spawn + `TaskOutput`/artifact; the inline notice is partial
 > **Refined by ADR-17.** This ADR set the artifact as a *fallback* behind `TaskOutput`. ADR-17 later **inverts the emphasis** — the durable artifact is the *primary, mandatory* deliverable and `TaskOutput` is the best-effort convenience — after a run where both `TaskOutput` and the artifact were empty at once. Read ADR-17 for the current ordering; the "never relay a verdict you have not read" rule below is unchanged.
 
-**Context.** Two earlier decisions appeared to collide. ADR-12 spawns pipeline agents in the background, where the **inline completion notice the team lead sees is partial** (often just "Idle. Awaiting resume."). Separately, the 1.2.1 revert restored **message-first relay** (team lead reads the agent's result and relays it) after the 1.2.0 experiment over-built a "minimal-return contract + grep-the-artifact-for-everything" machinery. Read naively, "message-first" and "inline is partial" contradict — and the team-lead role carried both claims (`:43`/`:112` said *don't* read the artifact; `:77` said *do*).
+**Context.** Two earlier decisions appeared to collide. ADR-12 spawns pipeline agents in the background, where the **inline completion notice the team lead sees is partial** (often just "Idle. Awaiting resume."). Separately, the 1.2.1 revert restored **message-first relay** (team lead reads the agent's result and relays it) after the 1.2.0 experiment over-built a "minimal-return contract + grep-the-artifact-for-everything" machinery. Read naively, "message-first" and "inline is partial" contradict — and the team-lead role carried both claims (`:43`/`:112` said *don't* read the artifact; `:77` said *do*; line numbers refer to the pre-1.2.6 `team-lead.md` — historical record, since reconciled).
 
 **Decision.** Reconcile explicitly: the agent's **full result is read via `TaskOutput`** (that is the "message"), **not** the partial inline notice. The durable **artifact** (`questions.md`/`review.md`/`plan.md`) is the record of record and a **legitimate fallback** to confirm a verdict or recover a missing line. What 1.2.1 dropped — and stays dropped — is the fragile *grep-the-artifact-for-the-verdict* machinery, **not** artifact-reading itself. The one hard rule: never relay a verdict you have not actually read, in `TaskOutput` or the artifact.
 
@@ -527,6 +539,23 @@ Pre-existing tradeoffs, retained:
   (`bump-plugin.mjs --check`, hard gate) and `claude plugin validate --strict` (advisory until CI auth
   for the `claude` CLI is confirmed, then flip to required). Still future: a lint for dangling
   `*-format`/skill references would catch the exact class of bug behind ADR-4.
+- **Plugin init tests (proposed).** The plugin's executable surface is deterministically testable
+  but currently untested — the 2026-06 cleanup audit found multiple shippable-only-because-untested
+  bugs (dead classification branch in `bump-plugin.mjs`, `gen-commands.mjs` crash on a plugin with
+  no `agents/` dir, pipeline-gate regressions across patches). Proposed: a `node:test` suite
+  (zero deps, `node --test tests/`) in three layers, wired into the CI workflow:
+  1. **Hook tests** — hooks are pure `stdin JSON → exit code/stdout` programs; feed synthetic
+     `PreToolUse`/`PostToolUse` events and assert allow/deny, registry writes, and fail-open edges
+     (guard.js rm/secret matrices, pipeline-gate role gating, register-persona Write|Edit payloads,
+     audit-logger off-by-default = zero side effects).
+  2. **Script tests** — `bump-plugin.mjs` tier classification table, `gen-commands.mjs` generation
+     against a fixture agent, `gen-omni.mjs` write→`--check` round-trip (exit 0, then mutate → exit 1).
+  3. **Structural lint** — every agent frontmatter parses and its `skills:` resolve to shipped
+     skills; no dangling `*-format` references (the ADR-4 bug class — subsumes the lint above);
+     `commands/` regen-clean vs `agents/`; CHANGELOG top entry matches `plugin.json` version;
+     no `${CLAUDE_PLUGIN_ROOT}` in markdown bodies (ADR-2 #3).
+  Out of scope: agent *behavior* (prompt semantics) — that requires LLM evals, a separate concern.
+  Promote to an ADR when built.
 
 ---
 

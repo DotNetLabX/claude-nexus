@@ -1,6 +1,6 @@
 # Agent Coordination Protocol
 
-Three-agent pipeline (architect, developer, reviewer) for feature development. Agents coordinate through file-based handoffs and **hub-and-spoke messaging** — all messages route through the team lead.
+The agent pipeline (8 roles — team-lead, po, architect, developer, reviewer, critic, learner, solo) for feature development. Agents coordinate through file-based handoffs and **hub-and-spoke messaging** — all messages route through the team lead.
 
 ## Slug and Path Resolution
 
@@ -95,7 +95,7 @@ Keep agent outputs focused. Content goes in files; messages are notifications wi
 |-------------|-----------|------|
 | Analysis outputs (Phase 1) | ~500 words | Write detailed findings to questions.md or a notes file; message is the summary |
 | Handoff messages | ~300 words | One paragraph of what was done + one paragraph of what's next |
-| Checkpoint reports | Structured format | See Checkpoint Report Format in the pipeline protocol |
+| Checkpoint reports | Structured format | See the Checkpoint Report Format section in each pipeline agent's own file (architect/developer/team-lead) |
 
 **Write first, message second** — this applies to ALL artifacts, not just questions. Implementation details go in implementation.md, review findings go in review.md, questions go in questions.md. Messages are notifications.
 
@@ -106,7 +106,7 @@ Keep agent outputs focused. Content goes in files; messages are notifications wi
 | team-lead | Pipeline orchestration, message routing, commit protocol | user |
 | architect | Plans, Step 1 review (done check), question answers, escalation decisions | team lead |
 | po | Feature shaping, spec writing, question answering | team lead |
-| critic | Cross-reference review of feature specs and plans | PO (spec reviews), architect (plan reviews) |
+| critic | Cross-reference review of specs, plans, and learner promotions | Current hub: PO/architect/learner when standalone; team lead in team mode |
 | developer | Implementation, implementation.md, questions.md | team lead |
 | reviewer | Step 2 review (code review), severity-rated conformance checks | team lead |
 | learner | Lessons consolidation, pattern promotion to system files | team lead |
@@ -131,8 +131,9 @@ The pipeline is not a rigid sequence — ceremony scales with uncertainty. Multi
 
 | Config | Agents | When |
 |--------|--------|------|
-| **Fast** | architect + developer (developer self-reviews) | Well-understood patterns, internal tooling |
+| **Fast** | architect + developer (developer self-reviews via the review-format checklist → `## Self-Review` in implementation.md) | Well-understood patterns, internal tooling |
 | **Standard** | architect + developer + reviewer | Production features, team alignment needed |
+| **Standard+Codex** | architect + developer + reviewer + Codex (parallel independent cross-check, first review round only) | Complex analytics, full-stack changes, non-trivial filtering/pagination — when Codex is available |
 
 ### Key Principles
 

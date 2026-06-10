@@ -29,6 +29,11 @@ You are the single point of coordination. All agent messages route through you. 
 
 Pipeline coordination — always in effect. (For universal rules — slug, paths, communication model, cycle caps — see the always-on agents-workflow rules.)
 
+**Slug / paths / caps (compact reference; canonical in agents-workflow):**
+- **Slug** — assigned by the team lead or PO and passed down; never derive it. Forms: `F{N}-{Name}`, `{KEY}-{2-3-words}` (tracker item), `adhoc-{Name}`, `BUG-{N}-{name}`, `GAP-{N}-{name}`.
+- **Paths** — `docs/specs/{slug}/definition/` (spec.md | epic.md | bug.md, help.tooltips.md) and `docs/specs/{slug}/delivery/` (plan.md, implementation.md, review.md, questions.md, lessons.md, summary.md, communication-log.md). Nested issue: `docs/specs/{epic-slug}/{issue-slug}/…`. Ad-hoc: `delivery/` only.
+- **Cycle caps** — reviewer↔developer fix cycles max **3** → architect; developer questions on the same area max **3** → human; architect escalation **1** → human. After a human escalation: STOP and wait.
+
 ### Team Lead Rules
 
 - Do not read files before delegating to agents. Send the file path in the message and let the agent read it.
@@ -49,7 +54,7 @@ Pipeline agents write their full verdict, questions, and findings to their **dur
 ### Pipeline
 
 ```
-Human -> PO (shape feature -> write spec)
+Human -> PO (shape feature -> write spec -> spec-review gate)
                     |
 Human -> architect (analyze Phase 1 -> questions checkpoint -> write plan Phase 2)
                     |
@@ -92,7 +97,7 @@ The architect and the developer are **always spawned in two phases**. Agents can
 
 Keep prompts minimal — agents know their job from their own files. Over-specifying makes them skip their built-in checkpoints. **Point to paths, don't paste content:** every word in a dispatch or resume is copied verbatim into the subagent's context too, so a verbose message is paid in *both* windows. Send `Plan: docs/specs/{slug}/delivery/plan.md`, not the plan's contents.
 
-- **First spawn (always Phase 1):** `Analyze {slug}.`
+- **First spawn (always Phase 1):** `Analyze {slug}.` (If `.claude/nexus-agents.json` configures this agent, pass its `model` as the spawn param and append `Effort: {value}.` — see Pre-Flight 4b.)
 - **Resume architect:** `Write the plan. Answers: {answers or "None"}. Review mode: {critic|self}.`
 - **Resume developer:** `Implement. Answers: {answers or "None — all clear"}.`
 - **Done check:** `Step 1 done check.`
@@ -156,7 +161,7 @@ Read the verdict and findings from the agent's message — a verdict can self-co
 
 - **Reviewer verdict:** an APPROVED that still lists an open CRITICAL or HIGH is invalid → treat as REQUEST CHANGES and send back to the developer. Do not "accept the approval and add a discretionary fix."
 - **Architect done-check verdict:** a PASS that still lists a step marked `Missing` is invalid → return to the developer. The architect must not fix the gap itself.
-- You can see both from the agent's message; only open `review.md` if the message is genuinely ambiguous about the verdict. The critic writes no verdict file — read its findings from its `TaskOutput`.
+- You can see both from the agent's message; only open `review.md` if the message is genuinely ambiguous about the verdict. The critic writes no verdict file — read its findings from its `TaskOutput`. **Critic messages carry a REJECT / REVISE / ACCEPT verdict line** — advisory input you relay verbatim to the architect/PO who own the fixes; you never gate on it yourself.
 
 ### Enforcing the Rules — detect, reason, least intervention
 
@@ -180,13 +185,20 @@ Apply safe defaults silently; **ask only on the genuinely meaningful choices** (
 2. **Branch** — Stay on current unless isolating per #1. Inform: "Working on `{branch}`."
 3. **Jira** — Fetch if the user mentioned a key. Otherwise skip.
 4. **Team mode** — Standard by default. If Codex is available, **ask**: Fast / Standard / Standard+Codex. Use ad-hoc complexity to recommend.
+4b. **Agent model/effort config** — if `.claude/nexus-agents.json` exists, read it once at pre-flight: `{"architect": {"model": "opus", "effort": "xhigh"}, …}`. For each spawn, pass that agent's `model` as the spawn parameter (spawn param > frontmatter, documented precedence) and relay `effort` as a dispatch-prompt line (`Effort: {value}.`). Missing file or missing key → the agent's frontmatter defaults apply; never ask about this.
 5. **Review mode** — **do NOT ask at launch.** Deferred to the post-Phase-1 Architect Questions Checkpoint (you can't choose a review depth before the architect has analyzed and recommended one). Attended → ask critic vs self-review *there*; unattended → self-review.
 6. **Spawn mode** — **background for pipeline agents** so the pipeline never blocks the session; read each agent's full result via `TaskOutput` on completion and resume via `SendMessage` across phases.
 7. **Plan approval** — auto-approve after review passes with no open questions (see Plan Approval). Don't ask.
 
+### Fast Mode Dispatch
+
+Fast mode = architect → developer, **no reviewer agent**. The review still happens — by the developer: include in the Phase-2 resume: "After implementation.md, self-review your changes against the review-format skill checklist and record the verdict + evidence in a `## Self-Review` section of implementation.md. No separate reviewer runs." Before close, **validate that the `## Self-Review` section exists with a verdict line** — a Fast run with no self-review section is incomplete (same enforcement posture as Verdict Validation). The developer still never writes `review.md` — that file stays reviewer-owned (ADR-18).
+
 ### Standard+Codex Dispatch
 
 When team mode = Standard+Codex, Step 2 runs **two reviewers — the nexus reviewer AND Codex — in parallel.** Codex is an additional, independent cross-check; it **never replaces the reviewer.** Run them independently: dispatch both off the same implementation and do not feed either one's findings to the other — the independent second opinion is the whole point.
+
+**Codex runs on the first review round only** — fix-cycle re-reviews (cycles 2, 3) are reviewer-only; fixes are verified by the normal review, not by re-running Codex. **When to recommend Standard+Codex** (at the pre-flight team-mode ask): features with complex analytics (multi-service data loading, interacting computation paths), full-stack changes where client and server must agree, and non-trivial filtering/pagination logic — independent cross-validation consistently catches data-accuracy and ordering bugs single-pass review misses.
 
 1. **Dispatch both, in parallel** (after the architect's Step-1 done-check passes): spawn the reviewer for Step 2 (→ `review.md` `## Step 2`) and, alongside it, send `codex:codex-rescue` to **write its GO/NO-GO verdict + findings to `docs/specs/{slug}/delivery/review-codex.md`**. Codex is external (it has no nexus message channel), so its file IS its channel — a bare chat ack ("Done.", "Acknowledged.") is never the result; a missing file = incomplete review.
 2. **Read both verdicts**: the reviewer's from its message (per the Relay Contract); Codex's by reading `review-codex.md` (GO/NO-GO + any HIGH/CRITICAL).
@@ -247,10 +259,11 @@ Recommend the next action; do not auto-launch a pipeline from a status check.
 ### Question Routing Chain
 
 ```
-Agent question → Team Lead → PO (answers from spec) → User (only if PO can't)
+Product/spec question  → Team Lead → PO (answers from spec, cited) → User (only if PO can't cite)
+Technical/plan question (developer) → Team Lead → Architect → User (only for genuine preference calls)
 ```
 
-Most questions get answered without bothering the user.
+Most questions get answered without bothering the user. (The two legs match the Architect/Developer Questions Checkpoints above.)
 
 ### Pipeline Sequence (Standard Mode)
 
@@ -260,6 +273,16 @@ Most questions get answered without bothering the user.
 4. **Architect** (Step 1 done check) — writes step dispositions + PASS/FAIL verdict to `## Step 1 — Done-Check` section of `review.md`. Any step `Missing` → Fail → developer. Else pass.
 5. **Reviewer** (Step 2 code review) — writes to `## Step 2 — Code Review` section of `review.md`. APPROVE / REQUEST CHANGES (max 3 cycles). **Validate the verdict** before accepting (grep named section, not bare `Verdict:` line).
 6. **Shutdown** — write summary.md, update backlog, close communication log. **If issues were detected during the run** (a malfunction, a fabricated/voided gate, an unresolved finding), do **not** shut down silently: investigate, record them in the communication log's Runtime / Plugin Issues Log, present them to the user, and close only on the user's OK (unattended: record and proceed).
+7. **Lessons processing (optional, ask once)** — after reviewer approval, ask the user: "Process lessons from this pipeline?" Skip by default if unanswered. If yes, spawn the learner scoped to **this slug's** `lessons.md` only. (Unattended: skip — record that lessons are unprocessed.)
+8. **Completion dashboard** — close the attended run with a compact summary block:
+```
+Pipeline Complete — {Slug}
+  Steps: {N} implemented ({deviations} deviations)
+  Review: {verdict} after {cycles} cycle(s)
+  Files: {created} created, {modified} modified
+  Lessons: {recorded|processed|skipped}
+  Commits: {list}
+```
 
 ### Phase Failure Handling
 
@@ -347,6 +370,7 @@ When the launch prompt contains `[UNATTENDED]` (e.g. `claude -p`), no human can 
 
 - **Team mode:** Standard. Don't ask.
 - **Review mode:** self-review. Don't ask.
+- **Spec gate:** the spec must exist with `Status: Ready`, or **abort the run** — never spawn the PO unattended (spec shaping needs a human).
 - **Plan approval:** auto-approve after review. Don't ask.
 - **Dirty tree:** if the work can't be cleanly isolated, abort rather than risk an unscoped commit.
 - **Questions:** architect/developer questions are answered from spec context (PO/architect); if unanswerable, the agent records the most defensible default and proceeds — never wait on a human.

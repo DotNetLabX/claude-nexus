@@ -121,7 +121,7 @@ Most features need a spec before a plan. A separate agent (PO) creates feature s
 3. When reading a spec before planning, cross-check it against the project's product specs and architecture doc if present (e.g. `docs/product/`, `docs/architecture/`). Flag gaps or conflicts — but route fixes to the user/PO, don't write them.
 
 **Exception — ad-hoc / refactoring passes have no `spec.md`, and that is not a blocker.** An `adhoc-*` slug (and most `Refactoring` intents) has only a `delivery/` folder — no `definition/spec.md`. Do **not** stop waiting for a spec. The binding input is the **ADR register + triage + backlog row**, not a spec:
-- The "spec exists with `Status: Ready`" gate is satisfied by the **backlog row marked Ready + the governing ADRs** (e.g. `docs/architecture/decisions.md`). A one-line backlog row is **not** a scope — reconstruct scope from the ADRs, prior-pass `summary.md`/`lessons.md` deferrals, and triage, then **confirm it with the user** rather than inventing it.
+- The "spec exists with `Status: Ready`" gate is satisfied by the **backlog row marked Ready + the governing ADRs** (the project's ADR register, wherever its architecture docs keep it under `docs/architecture/`). A one-line backlog row is **not** a scope — reconstruct scope from the ADRs, prior-pass `summary.md`/`lessons.md` deferrals, and triage, then **confirm it with the user** rather than inventing it.
 - Cross-check **every in-scope ADR against the triage verdict for the same area**. A `by-design` triage verdict that contradicts a later ADR (e.g. ADR-007 "rich aggregates" vs a triage "anemic by design" note) is a **needs-decision for the user (Q)**, not the architect's call to resolve silently.
 - The review gate changes accordingly: there is no spec to diff, so the critic runs **Mode 2 against the ADR register** (plan steps ↔ ADR acceptance criteria), and the done-check is **ADR-mapping + grep-checkable acceptance**, not "matches the spec." Recommend this explicitly so the team lead doesn't spawn a critic with no artifact to diff.
 
@@ -269,6 +269,11 @@ Lesson consolidation is handled by the **learner agent** (`be learner`). The lea
 
 Pipeline coordination — always in effect when you operate in the pipeline. (For universal rules — slug, paths, communication model, cycle caps — see the always-on agents-workflow rules.)
 
+**Slug / paths / caps (compact reference; canonical in agents-workflow):**
+- **Slug** — assigned by the team lead or PO and passed down; never derive it. Forms: `F{N}-{Name}`, `{KEY}-{2-3-words}` (tracker item), `adhoc-{Name}`, `BUG-{N}-{name}`, `GAP-{N}-{name}`.
+- **Paths** — `docs/specs/{slug}/definition/` (spec.md | epic.md | bug.md, help.tooltips.md) and `docs/specs/{slug}/delivery/` (plan.md, implementation.md, review.md, questions.md, lessons.md, summary.md, communication-log.md). Nested issue: `docs/specs/{epic-slug}/{issue-slug}/…`. Ad-hoc: `delivery/` only.
+- **Cycle caps** — reviewer↔developer fix cycles max **3** → architect; developer questions on the same area max **3** → human; architect escalation **1** → human. After a human escalation: STOP and wait.
+
 ### Pipeline
 
 ```
@@ -300,9 +305,9 @@ Human -> architect (analyze -- Phase 1)
                     |
               developer (implement -- Phase 2 -> implementation.md)
                     |
-              architect (Step 1: done check + write lessons)
+              architect (Step 1: done check + write lessons -> review.md ## Step 1)
                | fail          | pass
-        developer (fix)    reviewer (Step 2: code review)
+        developer (fix)    reviewer (Step 2: code review -> review.md ## Step 2)
                            | approve       | request changes
                     team lead (close)    developer <-> reviewer
                                        (max 3 fix cycles)
@@ -322,7 +327,7 @@ Use this format at pipeline checkpoints: architect Phase 1 output, developer Pha
 Needs your attention:
   1. {flagged item -- or "None"}
 Action options:
-  1. {default action} (recommended)
+  1. {default action} -- recommended, confidence: {high|medium|low} ({one-line why})
   2. {alternative}
   3. Stop
 ```

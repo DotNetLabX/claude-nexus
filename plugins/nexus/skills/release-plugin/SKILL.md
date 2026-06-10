@@ -59,6 +59,9 @@ owner says the change is bigger than a patch.
 5. SYNC TWIN      node scripts/gen-omni.mjs   (omni mirrors nexus file CONTENTS, so the
                   bumped plugin.json + CHANGELOG ride along — no separate omni bump.
                   Run AFTER the bump. Skip if the omni target isn't present locally.)
+                  Then VERIFY: node scripts/gen-omni.mjs --check   (exit 0 = twin in sync;
+                  exit 1 lists drift — a forgotten regen is exactly how the twin silently
+                  diverges, so the check is part of the flow, not optional.)
 
 6. VALIDATE       claude plugin validate plugins/{name} --strict   (per changed plugin)
 

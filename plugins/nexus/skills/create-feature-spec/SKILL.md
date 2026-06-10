@@ -4,9 +4,9 @@ description: Creates a feature specification in docs/specs/{slug}/definition/ �
 user-invocable: true
 ---
 
-# Create Feature Spec (Architect Reference)
+# Create Feature Spec (PO Reference)
 
-This skill is for the **PO agent** (primary owner) or **architect agent**. It produces `docs/specs/{slug}/definition/spec.md` — the product definition that the implementation plan is built against. The plan in `docs/specs/{slug}/delivery/plan.md` references this spec but does not replace it.
+This skill is for the **PO agent** (primary owner; the architect may consume it when reviewing). It produces `docs/specs/{slug}/definition/spec.md` — the product definition that the implementation plan is built against. The plan in `docs/specs/{slug}/delivery/plan.md` references this spec but does not replace it.
 
 ## Audience & voice
 
@@ -18,12 +18,12 @@ Write in **domain / product language**. Describe what the user does and what the
 
 These belong in the implementation plan, not the feature spec:
 
-- **Class or method names** — `CreateTeamCommandValidator`, `ExistsByCreatorEmailAsync`, `GuestTokenAuthenticationHandler`
-- **Framework internals** — `HandleResponse()`, `SaveTokens = false`, `AuthenticateResult.NoResult()`, `CookieSecurePolicy.SameAsRequest`
+- **Class or method names** — `{Entity}CommandValidator`, `ExistsBy{Field}Async`, `{Concern}AuthenticationHandler`
+- **Framework internals** — handler overrides, framework flag assignments, framework policy enum values
 - **Persistence details** — collation strategies, cascade behavior, FK column names, migration names, index types
-- **Constructor / instantiation patterns** — private constructors, `required init`, factory method signatures
-- **Interface or base class names** — `IDomainEvent`, `IEventHandler<T>`, `AggregateRoot`
-- **Config key paths** — `Auth:AllowedEmails`, `Auth:Google:ClientId` (say "email allowlist configured per-environment" instead)
+- **Constructor / instantiation patterns** — private constructors, required-member syntax, factory method signatures
+- **Interface or base class names** — `I{DomainEvent}`, `{EventHandler}<T>`, aggregate base classes
+- **Config key paths** — `{Section}:{Key}` paths (say "email allowlist configured per-environment" instead)
 
 **Rule of thumb:** if it would change during a refactor but the product behavior stays the same, it's plan material, not spec material.
 
@@ -35,16 +35,16 @@ Before writing an implementation plan. Every feature needs a spec in `docs/specs
 
 Before writing, ensure you have:
 
-1. **Business spec** — read on-demand (project-specific path listed in the Architect agent's "What you know" section)
-2. **Architecture reference** — already loaded via the Architect agent's `@` directives
+1. **Product spec** — read `docs/product/index.md` if present (the PO's source of truth; nothing is auto-loaded)
+2. **Architecture reference** — read `docs/architecture/index.md` if present, for feasibility context (read it yourself — no `@` auto-loading exists)
 3. **Existing feature specs** — read `docs/specs/*/definition/spec.md` (and `docs/specs/*/*/definition/spec.md` for nested issues) for format consistency, overlaps, dependencies
-4. **Domain source files** — read current aggregates/entities to understand what already exists. Use this to inform your understanding, but do not carry class names or implementation patterns into the spec.
+4. **What exists today** — the PO never opens source files; gauge what exists from specs, the backlog, and file names/paths (Glob/Grep). If implementation reality matters, route the question to the architect.
 
 ## Steps
 
 1. **Pre-fill from conversation context.** The Architect has typically been discussing the feature before invoking this skill. Pull every answer you can from the existing conversation. Do not re-ask what the user already said.
 
-2. **Walk through the reading protocol.** Read existing feature specs and domain source files. Identify which sections of the business spec this feature traces to.
+2. **Walk through the reading protocol.** Read existing feature specs and the product spec. Identify which sections of the product spec this feature traces to.
 
 3. **Ask clarifying questions in one batch.** For anything ambiguous or unspecified in the business spec for this feature — ask once, all together. Do not write the file yet.
 
@@ -59,12 +59,9 @@ Before writing, ensure you have:
 
    Domain concepts that happen to share names with classes (e.g. "ScrumMaster policy" as a concept) can stay — the rule targets code references, not vocabulary overlap.
 
-6. **Offer final choices.** Ask the user two things together:
-   - **Verification method:** cross-check (quick, same-context) or critic review (thorough, independent)?
-   - **Help content:** "Do you want help content files for this feature?" If yes, produce two sibling files in the same folder, both mirroring the spec's section headings:
-     - `docs/specs/{slug}/definition/help.tooltips.md` — one section per UI element, each containing only the tooltip text (under 150 chars).
-     - `docs/specs/{slug}/definition/help.page.md` — one section per UI element, each containing a guide page paragraph explaining interpretation and recommended actions.
-     Write in user-facing language — this content will appear in the app as tooltips and guide page entries.
+6. **Offer final choices** (writing-time decisions — see the PO agent's Spec review gate for who answers them in standalone vs spawned mode):
+   - **Verification method:** self cross-check (quick, same-context) or critic review (Mode 1 — thorough, independent)?
+   - **Help content:** "Do you want help content files for this feature?" If yes, produce `docs/specs/{slug}/definition/help.tooltips.md` — one section per UI element, tooltip text only (under 150 chars), user-facing language. Sync-check it against the spec after any review fixes.
 
 ## Slug Resolution
 
@@ -86,7 +83,7 @@ Pass the feature name: `create-feature-spec Sprint`
 | Agent | What they use | Impact if spec is incomplete |
 |-------|--------------|------------------------------|
 | Architect | All sections (plans against the spec) | Plan steps miss requirements; gaps discovered only during implementation |
-| Critic (Mode 1) | All sections (validates spec vs v1.md) | Critic can't find gaps in an incomplete spec; architectural misalignments reach the plan stage |
+| Critic (Mode 1) | All sections (validates spec vs `docs/product/index.md`) | Critic can't find gaps in an incomplete spec; architectural misalignments reach the plan stage |
 | Developer | Never reads spec directly — reads the plan | Indirect: spec gaps become plan gaps, which become implementation gaps |
 
 ## What this skill does NOT do

@@ -1,6 +1,6 @@
 ---
 name: consumption-report
-description: Reports per-agent token consumption from docs/audit/token-usage.jsonl — peak context, output generated, tool-call count, and context growth per agent (team-lead, architect, each subagent). Requires the token_audit plugin config to have been ON during the run. Use to find which agent burns the most tokens and why.
+description: Reports per-agent token consumption from .claude/audit/token-usage.jsonl — peak context, output generated, tool-call count, and context growth per agent (team-lead, architect, each subagent). Requires the token_audit plugin config to have been ON during the run. Use to find which agent burns the most tokens and why.
 ---
 
 # Consumption Report
@@ -11,10 +11,11 @@ context grew**. This is the analysis half of the token audit; the capture half i
 
 ## Precondition
 
-The data lives in **`docs/audit/token-usage.jsonl`** in the current project, written by the
-`audit-logger` hook while `token_audit` is enabled. Before reporting:
+The data lives in **`.claude/audit/token-usage.jsonl`** in the current project, written by the
+`audit-logger` hook while `token_audit` is enabled. (Runs captured before nexus 1.3.0 wrote to
+`docs/audit/token-usage.jsonl` — fall back to that path if the new one is absent.) Before reporting:
 
-1. If `docs/audit/token-usage.jsonl` is **missing or empty**, the audit was not on. Tell the user:
+1. If `.claude/audit/token-usage.jsonl` is **missing or empty** (and the legacy path too), the audit was not on. Tell the user:
    *"No token-usage log yet. Turn on the `token_audit` plugin config (Nexus → Token consumption
    audit, or `token_audit: true`), then re-run the pipeline — the audit only records while it's on."*
    Do not fabricate numbers.
@@ -35,7 +36,8 @@ Run this aggregation (it handles the same-turn dedup correctly):
 ```bash
 node -e '
 const fs=require("fs");
-const p="docs/audit/token-usage.jsonl";
+let p=".claude/audit/token-usage.jsonl";
+if(!fs.existsSync(p))p="docs/audit/token-usage.jsonl"; // pre-1.3.0 capture path
 if(!fs.existsSync(p)){console.log("No token-usage.jsonl — enable token_audit and re-run.");process.exit(0);}
 const rows=fs.readFileSync(p,"utf8").split("\n").filter(Boolean).map(l=>{try{return JSON.parse(l)}catch{return null}}).filter(Boolean);
 const A={};

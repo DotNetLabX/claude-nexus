@@ -1,15 +1,16 @@
 # Architecture Doc Template
 
-Use this template for every `docs/architecture/{version}.md` file. Omit sections that don't apply. Do not add sections beyond this template. If you want to add detail that a skill already covers, STOP — reference the skill and use "Not specified here" instead.
+Use this template for `docs/architecture/index.md` (the canonical path — version history lives inside the doc, not in the filename). Omit sections that don't apply. Do not add sections beyond this template. If you want to add detail that a skill already covers, STOP — reference the skill and use "Not specified here" instead.
 
 ---
 
 ```markdown
-# {Project Name} — Architecture ({version})
+# {Project Name} — Architecture
 
 **Status:** Draft | Current
+**Version:** {version}
 **Date:** {date}
-**Skill inventory built from:** `.claude/skills/` scan on {date}
+**Skill inventory built from:** context-surfaced plugin skills + project `.claude/skills/` on {date}
 
 ---
 
@@ -19,7 +20,7 @@ Use this template for every `docs/architecture/{version}.md` file. Omit sections
 |-------|--------|-------------|
 | {skill-name} | {one-line from skill description} | Referenced / Gap |
 
-Built by scanning `.claude/skills/` at generation time. This table is the source of truth for which patterns are skill-owned vs. inline.
+Built from the skills surfaced in context plus the project's `.claude/skills/` at generation time. This table is the source of truth for which patterns are skill-owned vs. inline.
 
 ---
 
@@ -83,7 +84,7 @@ Environment, hosting, secrets management, CI/CD. Factual — not pattern-definin
 
 ---
 
-## What's Explicitly Out of Scope ({version})
+## What's Explicitly Out of Scope (this version)
 
 Features, integrations, or capabilities not included in this version.
 ```

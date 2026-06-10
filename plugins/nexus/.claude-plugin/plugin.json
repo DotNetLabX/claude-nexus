@@ -1,6 +1,6 @@
 {
   "name": "nexus",
-  "version": "1.2.8",
+  "version": "1.3.0",
   "description": "Nexus core — a stack-agnostic multi-agent team pipeline (architect, developer, reviewer, PO, critic, learner, team-lead, solo) with always-on rules, persona commands, process skills, and a security guard.",
   "author": {
     "name": "ldumit"
@@ -22,8 +22,8 @@
     },
     "token_audit": {
       "type": "boolean",
-      "title": "Token consumption audit",
-      "description": "When on, the audit-logger additionally records per-agent token usage (input/output/cache/context) to docs/audit/token-usage.jsonl on each tool call, for analysis via the consumption-report skill. Default off — zero extra work when disabled.",
+      "title": "Audit trail (tool calls + token consumption)",
+      "description": "When on, the audit-logger records a per-session tool-call trace (.claude/audit/{session}.log — agent, tool, file/command detail) and per-agent token usage (.claude/audit/token-usage.jsonl) for the consumption-report skill. Add .claude/audit/ to your .gitignore. Default off — truly zero work when disabled (no files, no directories).",
       "default": false
     }
   }

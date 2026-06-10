@@ -11,11 +11,23 @@
  *      collapse. Blocked.
  *   2) Verdict integrity. A review.md written with an APPROVED verdict while it still lists
  *      an unresolved CRITICAL or HIGH finding is an invalid verdict. Blocked.
- *   3) State-file integrity. .claude/.pipeline-state is invariant (1)'s source of truth, yet it lives
- *      under .claude/ (guard.js treats that as writable) and is not a plan/source file — so nothing else
- *      stops a pipeline subagent from rewriting it. A subagent that flips its own ":analyze" to
- *      ":implement" would bypass (1) silently. Only the team lead owns phase transitions; a pipeline
- *      subagent writing the state file is blocked.
+ *
+ * REMOVED — invariant (3), state-file integrity (blocking a pipeline subagent's write to
+ * .claude/.pipeline-state): the only callers it could ATTRIBUTE (data.agent_type is present
+ * solely on subagent tool calls) are background subagents, whose PreToolUse deny the platform
+ * drops (ADR-13). There was no caller both attributable AND blockable — unreachable code.
+ * State-file ownership ("team lead is the sole writer") is enforced by ADR-18 agent hard rules
+ * + the team lead's verify-and-intervene, not by this gate.
+ *
+ * Scope honesty: this gate is effective for FOREGROUND writers only — the main session and
+ * persona-command runs. Background pipeline subagents are governed by their own hard-stop
+ * rules + team-lead checkpoints (ADR-13..15), not by this gate.
+ *
+ * Deliberate fail-open edges (do not "fix" without reading ADR-7's posture):
+ *   - For Edit, only `new_string` is inspected — an Edit that flips a verdict line to APPROVED
+ *     without touching the findings table is not caught (conservative by design).
+ *   - Path matches require a directory separator before the filename (`/plan.md`, `/review.md`) —
+ *     a bare relative filename in the project root is not matched.
  *
  * Design rules (so it never wedges a run, including unattended -p):
  *   - Fail open on ANY uncertainty (bad JSON, missing state file, ambiguous content).
@@ -25,9 +37,6 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-
-// Pipeline roles — gates who may write the phase-state file (invariant 3).
-const PIPELINE_ROLES = new Set(['architect', 'developer', 'reviewer', 'po', 'critic', 'learner']);
 
 let input = '';
 process.stdin.setEncoding('utf8');
@@ -45,22 +54,6 @@ process.stdin.on('end', () => {
 
   const fp = String(ti.file_path || ti.path || '').replace(/\\/g, '/');
   if (!fp) return allow();
-
-  // (3) State-file integrity: a pipeline subagent must never write .claude/.pipeline-state — invariant
-  //     (1)'s own source of truth. Nothing else stops it (guard.js treats .claude/ as writable; it is not
-  //     a plan/source file), so a subagent could flip its own analyze->implement and bypass (1). Only the
-  //     team lead (or the main session) manages phase transitions. Attributed via data.agent_type.
-  if (/(^|\/)\.claude\/\.pipeline-state$/.test(fp.toLowerCase())) {
-    const writer = String(data.agent_type || '').toLowerCase().split(/[:/]/).pop();
-    if (PIPELINE_ROLES.has(writer)) {
-      return deny(
-        `the ${writer} pipeline subagent is writing .claude/.pipeline-state — the two-phase gate's own ` +
-        'state. Only the team lead advances phases; a subagent rewriting it would let it flip its own ' +
-        'analyze->implement phase and bypass the collapse gate. Report your checkpoint and let the team ' +
-        'lead transition the phase.'
-      );
-    }
-  }
 
   const root = process.env.CLAUDE_PROJECT_DIR || data.cwd || process.cwd();
 

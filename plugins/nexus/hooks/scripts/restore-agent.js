@@ -22,7 +22,19 @@ const fs = require('fs');
 const path = require('path');
 
 const TTL_MS = 16 * 60 * 60 * 1000;
-const VALID = ['architect', 'developer', 'reviewer', 'team-lead', 'po', 'critic', 'learner', 'solo'];
+
+// Valid roles = whatever the plugin actually ships — derived from agents/, never hardcoded
+// (a hardcoded roster silently orphans a newly added agent: it registers but never restores).
+function validRoles() {
+  try {
+    const pluginRoot = path.resolve(__dirname, '..', '..');
+    return fs.readdirSync(path.join(pluginRoot, 'agents'))
+      .filter(f => f.endsWith('.md'))
+      .map(f => f.slice(0, -3));
+  } catch {
+    return [];
+  }
+}
 
 function stripFrontmatter(md) {
   return md.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').trim();
@@ -40,10 +52,11 @@ function readAgentBody(agent) {
 let raw = '';
 process.stdin.on('data', (c) => (raw += c));
 process.stdin.on('end', () => {
-  let sid = '', source = '';
-  try { const e = JSON.parse(raw || '{}'); sid = e.session_id || ''; source = e.source || ''; } catch { /* ignore */ }
+  let sid = '', source = '', evtCwd = '';
+  try { const e = JSON.parse(raw || '{}'); sid = e.session_id || ''; source = e.source || ''; evtCwd = e.cwd || ''; } catch { /* ignore */ }
 
-  const root = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  // Same root chain as register-persona.js — the hook process's own cwd may differ from the event's.
+  const root = process.env.CLAUDE_PROJECT_DIR || evtCwd || process.cwd();
   const file = path.join(root, '.claude', '.personas.json');
 
   let reg = {};
@@ -71,7 +84,7 @@ process.stdin.on('end', () => {
   // Restore ONLY on compact.
   if (source !== 'compact' || !sid) process.exit(0);
   const agent = reg[sid] && reg[sid].agent;
-  if (!agent || !VALID.includes(agent)) process.exit(0);
+  if (!agent || !validRoles().includes(agent)) process.exit(0);
 
   const body = readAgentBody(agent);
   const context = body

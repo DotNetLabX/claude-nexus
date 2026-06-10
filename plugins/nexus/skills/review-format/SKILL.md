@@ -31,6 +31,8 @@ The team lead greps **named sections**, not bare `Verdict:` lines, to avoid stac
 - Security: no hardcoded secrets, inputs validated, no injection vectors
 - Logic: all branches reachable, no off-by-one, null handling correct
 - Performance: check for performance anti-patterns per loaded conventions
+- Data-loading depth: when logic accesses nested/related data, verify the data layer actually loads it to that depth — missing loads cause silent null/zero results, not runtime errors
+- Boundary tests for threshold logic: when code uses `> N` / `>= N` conditions, verify tests exist at exactly N and N+1
 - Skill mapping verified: any "None" disposition in the Skill Mapping was warranted (no existing skill actually covers the step)
 
 ## Severity Ratings
@@ -40,7 +42,7 @@ The team lead greps **named sections**, not bare `Verdict:` lines, to avoid stac
 - **LOW**: Style preference, minor improvement. Optional.
 
 ## Verdict
-- **APPROVE**: No CRITICAL or HIGH issues.
+- **APPROVED**: No CRITICAL or HIGH issues.
 - **REQUEST CHANGES**: Any CRITICAL or HIGH issue present.
 - **COMMENT**: Only MEDIUM/LOW, no blockers.
 
@@ -94,7 +96,7 @@ Both steps write to `docs/specs/{slug}/delivery/review.md` under their own label
 ## Evidence
 | Check | Result | Command | Output |
 |-------|--------|---------|--------|
-| Build | pass/fail | [per project-rules] | [summary] |
+| Build | pass/fail | [per docs/conventions/coding-conventions.md, if defined] | [summary] |
 ```
 
 ## Anti-patterns

@@ -1,6 +1,39 @@
 # nexus — Changelog
 
 
+## [1.3.0] — 2026-06-10
+Restores the worker-side halves of every pipeline contract that the Fokus→nexus extraction dropped
+("the hub got hardened, the spokes got lobotomized" — full audit: adhoc-PluginCleanup). The team-lead
+layer kept its formats and gates across 1.2.x; this release gives the five worker agents back the
+protocols those gates assume, plus a consistency sweep and hook fixes.
+
+- **developer.md** — two-phase plan workflow (analyze-and-stop checkpoint), idempotency/resume,
+  step announcements, debugging protocol (diagnose + 3-attempt circuit breaker), TDD, Boy Scout,
+  completion checklist, reviewer-findings response protocol, anti-patterns.
+- **critic.md** — full investigation protocol (code-grounded feasibility, breadth scan, self-audit,
+  realist + adversarial checks), severity scale, REJECT/REVISE/ACCEPT verdict, cross-reference
+  matrix in the message (no-file contract kept).
+- **reviewer.md** — pre-commitment predictions, `## Carry-Over Findings` consumption, fresh-evidence
+  requirement (`git show HEAD~1:{path}` parity), stage gate, gap analysis, finding confidence,
+  self-audit.
+- **po.md** — question-answering mode (Cited/Inferred/No-answer, cite-or-escalate), read boundaries,
+  pre-spec gap check, optional `help.tooltips.md` question (restore-lite), generic tracker flows,
+  slug confirm.
+- **team-lead.md** — Fast Mode dispatch (developer self-review), per-agent model/effort config via
+  optional `.claude/nexus-agents.json` (spawn-param model + prompt-line effort, frontmatter fallback),
+  Codex first-round-only heuristics, lessons-processing and completion-dashboard pipeline steps,
+  unattended spec-gate abort, two-leg question routing.
+- **learner.md** — two-channel lesson promotion: project-bound lessons applied on the spot;
+  plugin-bound lessons routed to a portable `docs/plugin-feedback/` file for the plugin owner
+  (consumers can't edit the plugin cache). improve-flow/improve-skills rewritten around the same model.
+- **Consistency sweep** — every agent carries the identical slug/paths/caps compact-reference block
+  (ADR-2); stale `v1.md`/`project-rules`/`@`-import references genericized across skills; stack-specific
+  (.NET) examples abstracted out of create-implementation-plan.
+- **Hooks** — audit-logger: truly zero-cost when off, logs to `.claude/audit/` with per-event detail;
+  inject-rules: skips on resume; guard: split-flag `rm` + PowerShell `Remove-Item` coverage,
+  `.env.example` excluded; pipeline-gate: unreachable background-role invariant removed (ADR-13);
+  register-persona: handles Edit payloads; restore-agent: roles derived from `agents/` dir.
+
 ## [1.2.8] — 2026-06-09
 Every recommendation an agent puts to the user now carries a **confidence label** (high | medium | low),
 so the user can see at a glance which defaults are safe to rubber-stamp and which need real thought —
