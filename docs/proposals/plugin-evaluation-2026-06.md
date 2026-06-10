@@ -92,18 +92,26 @@ deterministic** mechanisms:
 
 ### C. Messaging / relay reliability (4 → ~6.5, platform-capped)
 
-1. **TL persists the critic's verdict.** Keep the critic message-only and tool-locked (B.1), but make
-   the TL transcribe the received verdict + findings to `docs/specs/{slug}/delivery/plan-review.md`
-   (hub-side artifact, TL-owned). This is exactly what was done by hand in the PluginCleanup run.
-   Closes the one pipeline deliverable that exists only in the message channel, without giving the
-   critic write tools.
-2. **Completion footer in artifact formats.** `implementation-format`/`review-format` (etc.) gain a
+1. **Two-leg critic channel (hub-persisted, transcript-backed).** Keep the critic message-only and
+   tool-locked (B.1); the hub (TL, or architect in standalone) persists the verdict + findings to
+   `docs/specs/{slug}/delivery/plan-review.md` (spec reviews: `definition/spec-review.md`).
+   *The persistence alone does NOT fix stranding* — if the message strands, there is nothing to
+   persist. The load-bearing leg is the transcript: the platform writes
+   `subagents/agent-{id}.jsonl` unconditionally, so for a tool-locked agent the transcript IS the
+   guaranteed artifact. Happy path: message arrives → hub transcribes. Stranded path: hub runs the
+   salvage extractor (2) on the transcript → same file. Either way the artifact exists and nothing
+   trusts the model's last message. This also resolves the B.1↔artifact-first tension: a locked
+   critic cannot be artifact-first, and doesn't need to be — the platform's transcript is more
+   reliable than an agent remembering to Write (an agent can strand a message; the platform cannot
+   strand a transcript).
+2. **Ship the salvage extractor.** A small script/skill that extracts the last substantive assistant
+   text from a subagent transcript — hand-built twice now; as the designed second leg of (1), it must
+   be deterministic and documented in team-lead.md, not an emergency improvisation.
+3. **Completion footer in artifact formats.** `implementation-format`/`review-format` (etc.) gain a
    final `*Status: COMPLETE — {role}, {date}*` line; the TL trusts the footer, not the message. A
-   stranded message then costs nothing: the artifact self-certifies.
-3. **Codify recovery order in team-lead.md:** artifact → TaskOutput → transcript salvage → re-ask
+   stranded message then costs nothing for artifact-producing agents: the artifact self-certifies.
+4. **Codify recovery order in team-lead.md:** artifact → TaskOutput → transcript salvage → re-ask
    LAST (measured 0/2 on 2026-06-10). Today's order implies re-ask too early.
-4. **Ship a salvage helper.** A small script/skill that extracts the last substantive assistant text
-   from a subagent transcript (`subagents/agent-{id}.jsonl`) — hand-built twice now; make it deterministic.
 5. **Measure stranding rate** via T3 evals + token-audit detail, so the next evaluation has a number
    instead of anecdotes.
 
