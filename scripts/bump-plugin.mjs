@@ -44,6 +44,11 @@ const NOTE = valOf('--note');
 function git(...a) {
   return execFileSync('git', a, { encoding: 'utf8' }).trim();
 }
+function gitRaw(...a) {
+  // No trim: porcelain status is positional — a leading space on the FIRST line (unstaged
+  // modify/delete) is data, and trim() eating it shifts slice(3) off by one.
+  return execFileSync('git', a, { encoding: 'utf8' });
+}
 function gitSafe(...a) {
   // stderr ignored: callers use this for lookups where a miss (e.g. a not-yet-committed path) is expected
   try { return execFileSync('git', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
@@ -72,7 +77,7 @@ function changedPaths() {
     return out ? out.split('\n').filter(Boolean) : [];
   }
   // apply / dry-run: working-tree changes (staged + unstaged [+ untracked unless --staged])
-  const porcelain = git('status', '--porcelain', STAGED_ONLY ? '--untracked-files=no' : '--untracked-files=all');
+  const porcelain = gitRaw('status', '--porcelain', STAGED_ONLY ? '--untracked-files=no' : '--untracked-files=all');
   const paths = [];
   for (const line of porcelain.split('\n').filter(Boolean)) {
     const xy = line.slice(0, 2);
