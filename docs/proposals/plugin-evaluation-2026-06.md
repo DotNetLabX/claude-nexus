@@ -149,8 +149,13 @@ failing for the right reason first; CI hard gate live; the harness found a real 
 background-subagent hook events fire and carry the parent session_id (which exposed and fixed a
 register-persona clobber). Step 3: B.1 + B.2 + C.2–C.4 shipped as 1.4.0 (critic tool-lock,
 boundary-detector + violations.log, salvage-transcript script + injected path, completion footers,
-recovery order codified); all reds promoted to the permanent suite. Remaining: step 4 (T3/T4,
-gated on CI auth) and step 5 (owner live validation).
+recovery order codified); all reds promoted to the permanent suite. Step 4 SHIPPED
+**local-first on subscription auth** (owner decision: no API key/CI billing for now) —
+`tests/evals/`: headless `claude -p --plugin-dir` sessions run the real agents against
+seeded-defect fixtures (critic message-only + verdict vocabulary + gap not accepted;
+developer Phase-1 stop-and-ask; reviewer carry-over engagement, haiku-judged), promptfoo
+dropped because its judge path requires an API key; CI wiring deferred with that decision.
+Remaining: step 5 (owner live validation).
 
 *Confidence: high on A (researched, costed); high on B.1 (platform behavior proven live); medium on
 B.2 (gated on probe P1); medium-high on C (designs are simple, but the score ceiling is the platform's).*
