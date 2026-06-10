@@ -1,0 +1,9 @@
+{"type":"system","subtype":"init","session_id":"fix-stranded","cwd":"D:/tmp/project"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Starting the research task now."}]}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_01","name":"WebSearch","input":{"query":"claude code plugin testing"}}]}}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01","content":"search results omitted"}]}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_02","name":"Read","input":{"file_path":"docs/notes.md"}}]}}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_02","content":"file contents omitted"}]}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"FINDINGS:\n\n1. The platform validator is a manifest linter only — it does not execute hook scripts or verify referenced files exist on disk.\n2. Most ecosystem plugins ship zero tests; the only proven prompt-asset pattern is frontmatter validation in CI.\n3. Hook scripts can be tested offline by piping synthetic event JSON on stdin and asserting on exit code and stdout JSON.\n4. Trajectory assertions against the tool-call trace make agent contracts testable deterministically at zero judge cost.\n\nRECOMMENDATION: build a two-tier offline harness (structural lint + hook unit tests) before any model-in-the-loop evals."}]}}
+{"type":"user","message":{"role":"user","content":"Please return your final report now."}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Ready when you are."}]}}
