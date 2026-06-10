@@ -1,6 +1,6 @@
 # adhoc-PluginCleanup — Implementation Plan
 
-**Input:** `docs/audit/nexus-plugin-audit-2026-06-09.md` (the audit is the spec).
+**Input:** `docs/specs/adhoc-PluginCleanup/definition/audit.md` (the audit is the spec; originally drafted at `docs/audit/nexus-plugin-audit-2026-06-09.md`, moved here per Step-10 review MEDIUM-1 — that path is gitignore-masked).
 **Scope:** Tracks 1–4. Track 5 (OMC adoptions) is deliberately excluded — it needs platform-feature verification first and will get its own plan. Track 6 (push) is a user action.
 **Release shape:** one commit for Track 4 (dev-repo machinery, no bump), then **one release `1.3.0` (MINOR)** containing Tracks 1+2+3 — fix everything, verify, ship once.
 **Baseline for restorations:** `D:\src\fokus\.claude` (read-only). IDs (D1, C1, R1, P1, T1, H1, M1, A1, B1…) reference the audit and its source reports.

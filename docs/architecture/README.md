@@ -4,6 +4,10 @@ The canonical record of **how Nexus is built and why**. Nexus is a multi-agent f
 pipeline distributed as Claude Code plugins. This document lives **in the plugin repo** because the
 plugin repo is the single source of truth (see ADR-1).
 
+> **Dev-repo exception:** this file is the *plugin's* ADR record and deliberately keeps its
+> `README.md` name/format. Consumer projects use `docs/architecture/index.md` as produced by the
+> `create-architecture-doc` skill — the canonicalization there does not apply here.
+
 > **Scope.** `nexus` is the public core; `nexus-dotnet` is its .NET/Vue stack extension. `omni` /
 > `omni-dotnet` are a private twin **generated** from this repo (ADR-6) — everything here applies to
 > both, modulo naming. Each section is an ADR: *Context → Decision → Why → Tradeoffs → Rejected
@@ -247,6 +251,12 @@ blocks for teams/CI), `off`. `audit-logger.js` runs async (record-only, never bl
 
 **Why.** Enforcement must be synchronous (able to deny) and separate from observation (must never
 block). One knob keeps it usable.
+
+> **Note (1.3.0, persona plumbing).** The persona registry is deliberately **two files**:
+> `.claude/.current-agent` is only the *write-trigger* (the persona command writes it; nothing reads
+> it back) and `.claude/.personas.json` is the durable per-session registry consumed by
+> `guard.js`/`audit-logger.js`/`restore-agent.js`. Don't "unify" them — rationale in the
+> `register-persona.js` header.
 
 ---
 

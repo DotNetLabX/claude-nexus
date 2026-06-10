@@ -109,6 +109,22 @@ R5 (Codex first-round-only + recommendation heuristics) → lands in team-lead.m
 
 NOT pushed — Track 6 requires the user's explicit ask (1.2.6→1.3.0 all local).
 
+## Step 10 — Fresh-context verification review ✅ (2026-06-10)
+
+Independent reviewer (fresh context, code-grounded) over `772185b` + `9314af4` with the audit as
+checklist → **APPROVED** (`delivery/review.md`): FIXED 78 · DEFERRED 7 · SKIPPED 1 · PARTIAL 1 ·
+**MISSED 0**. All 3 convergence claims PASS. Findings triaged by severity:
+
+- **MEDIUM-1 FIXED** — the audit report (this run's spec) was untracked + gitignore-masked
+  (`docs/audit/`). Moved to `definition/audit.md` (it IS the definition); plan.md Input pointer
+  updated; `docs/audit/` ignore kept (now masks only the pre-1.3.0 stray logs it was meant for).
+- **LOW-1 FIXED** — register-persona two-file design note added to ADR-8 (the plan's missed second leg).
+- **LOW-2 FIXED** — dev-repo exception blockquote added to the architecture README header.
+- **LOW-3 DEFERRED** — `developer.md:39` parenthetical names a resume string ("proceed") the TL never
+  sends; cosmetic, shipped file → rides the next bump (see Carry-Over #4).
+
+All four fixes are docs-only (no shipped plugin files) → no bump. Committed as a follow-up commit.
+
 ## Carry-Over Findings
 
 | # | Risk | For reviewer |
@@ -116,3 +132,4 @@ NOT pushed — Track 6 requires the user's explicit ask (1.2.6→1.3.0 all local
 | 1 | gen-omni.mjs full rewrite — apply-mode behavior must be byte-equivalent for generated output (mirrorDir now collects-then-writes instead of write-during-walk; rmSync timing changed: dst removed AFTER collection — verify no self-mirroring edge when OMNI is nested under NEXUS (it isn't in practice)) | Diff old/new apply-mode output on the real omni repo |
 | 2 | B2 both-sides classification can double-count a rename WITHIN plugins/ (old+new both PATCH) — harmless (same tier, same plugin) but verify the reasons list isn't confusing | Read output of --dry-run on a rename |
 | 3 | CI `github.event.before` on force-push points at a rewritten-away commit — `--check` would error on `git diff`; accepted (force-push to main is denied by guard policy anyway), worth a header note if it ever bites | — |
+| 4 | Step-10 LOW-3: `developer.md:39` Phase-2 parenthetical says `or "proceed"` but the TL resume template sends `None — all clear`; cosmetic — fix to ride the NEXT version bump (shipped file, not worth one alone) | Fold into next release touching developer.md |
