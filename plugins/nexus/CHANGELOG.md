@@ -1,6 +1,18 @@
 # nexus — Changelog
 
 
+## [1.5.1] — 2026-06-11
+Restores the Fokus-baseline **Skill-First Implementation** section in `developer.md` — diluted in the
+Fokus→nexus extraction (same loss class as ADR-19). Audit evidence: a 12-step plan with skills mapped
+on 9 steps implemented with zero Skill invocations while the logger was active (sprint-rituals Pass 4).
+
+- The 4-step invoke→load→implement→conflict recipe and the **"This is mandatory… STOP and invoke
+  it"** self-check sentence are back, extended to `tdd` on `TDD: yes` steps.
+- The dead fallback fixed: "read `.claude/skills/{name}/SKILL.md`" doesn't exist in plugin consumers
+  (skills live in the version-keyed cache — probe-verified that bare AND `nexus-dotnet:{name}` forms
+  resolve via the Skill tool). On a genuinely failed invocation: implement from the plan's pattern
+  references + record the deviation in `## Skills Used` — never silently reconstruct from memory.
+
 ## [1.5.0] — 2026-06-11
 The F16 remediation package (ADR-21/ADR-22) — anti-delegation, communication, read discipline, and
 skills enforcement, all evidence-based from the audited F16-DataPathRework run (10-rogue-agent
