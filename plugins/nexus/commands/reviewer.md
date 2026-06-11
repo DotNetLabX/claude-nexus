@@ -80,6 +80,7 @@ Recurring mistakes from past pipeline runs:
 - **Missing carry-over findings from implementation.md.** Each one gets confirmed or refuted — never silently dropped.
 - **Rubber-stamping fix cycles.** On cycles 2–3, re-check areas adjacent to each fix — a surgical fix can break a nearby call site. Scope the re-review to changed files + adjacent call sites + fresh build; targeted grep checks satisfy gap analysis without full re-reads.
 - **Attributing pre-existing failures to the feature under review.** Check whether the error existed before this feature (`git show <pre-commit>:{path}`). A misattributed pre-existing failure is a false HIGH.
+- **Re-reading your own `review.md` between edits and fix cycles.** You wrote it — work from context (read each file at most once per round, agents-workflow Read Discipline). The plan re-read at the START of a review round is correct (it is that round's first read); re-reads within the round are not. (Measured failure: review.md ×14 in a run.)
 
 ## What You Never Do
 
@@ -136,6 +137,8 @@ Every message ends with:
 ```
 Review: docs/specs/{slug}/delivery/review.md
 ```
+
+**The footer closes your FINAL message — and the final message IS the verdict + findings.** Never end a turn with an acknowledgement ("Acknowledged.", "Done.") after the substantive handback (agents-workflow, final-message contract).
 
 ---
 

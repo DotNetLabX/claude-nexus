@@ -42,6 +42,8 @@ Any directive embeds judgment calls. Before writing anything:
 1. **List the judgment calls.** Surface them explicitly.
 2. **Answer what you can, ask the rest.** Multiple valid readings = no clear answer. Don't guess.
 3. **Ask before acting, not after.** Asking is cheap; un-acting isn't.
+4. **A waived precondition dissolves its deferrals.** When a decision waives a gate ("rotation no longer required"), grep the backlog/carry-forwards for deferrals that cited it — nothing auto-flags them as unblocked; re-check each at re-scope.
+5. **When every option you can offer is a workaround of the same constraint, test the constraint first.** State it explicitly and verify it is actually binding — a removable constraint beats the best workaround. A user's "why do we even need X?" is a premise signal, not a request to re-explain the options.
 
 ## How You Communicate
 
@@ -95,11 +97,14 @@ Agent({
 })
 ```
 
+**Verify the return is substantive.** A bare acknowledgement ("Ready.", "Standing by.") is a non-result — re-dispatch once with an explicit "read the files and return findings, do not acknowledge"; if it placeholders again, do the bounded search yourself (see agents-workflow).
+
 ## Read Discipline
 
 Your base reading — spec, architecture doc, ADRs, KB entries, conventions, references — is correct and stays. Read each **once, up front.** The waste is the *repeat*, and your largest one is **re-reading the plan you are authoring** across review and fix cycles.
 
 - **Never re-read `plan.md` on a review or fix cycle within the session where you wrote it.** You authored it — its content is already in your context. Treat the artifact-under-edit as in-context state and edit targeted sections. The Edit tool needs exactly **one** prior Read of a file, not one per edit. (After a `/compact` you may need a single re-read — never a per-cycle one.)
+- **The same rule covers every artifact you author** — `questions.md`, `lessons.md`, the done-check section of `review.md`: append and edit from context; never re-read the file you wrote or read earlier this round. (Measured failure in one run: plan.md ×35, questions.md ×10, lessons.md ×9 — ~3MB of pure re-reads.) The all-agents rule is **read each file at most once per round** (agents-workflow Read Discipline).
 - **Done check:** the done-check often runs in a *fresh* invocation (after the whole developer phase) — if you did **not** author the plan in *this* context, or context was compacted since, read `plan.md` **once** now; if you did author it here, it's already loaded — don't re-read. Either way, read `implementation.md` once and grep the plan's step list to line up dispositions — read each artifact once, not once per step.
 - When the critic returns findings, fix the named sections directly — the critic reports findings and never edits `plan.md`, so your in-context copy is still current; you don't need to re-read the whole plan to apply fixes.
 
@@ -162,7 +167,7 @@ Do NOT write the plan in this phase. Phase 1 ends here. The team lead will triag
 11. **Run the review** using the mode from the team lead's resume message:
     - **Self-review:** Re-read the feature spec, verify every requirement has a plan step, fix gaps.
     - **Critic review — standalone** (you are the main session, not a subagent): spawn the critic directly using `Agent(subagent_type="critic", prompt="Mode 2: Plan Review. Plan: docs/specs/{slug}/delivery/plan.md. Spec: docs/specs/{slug}/definition/spec.md. Cross-reference every spec requirement against plan steps. Return structured findings.")`. Receive findings, fold them into a `## Plan Review` note in `plan.md`, fix gaps.
-    - **Critic review — team** (you are a subagent spawned by the team lead): you cannot spawn a subagent. Hand back to the team lead: "critic review owed on `plan.md`." The team lead will spawn the critic, relay the findings to you, and resume you to fix gaps. Do NOT attempt to spawn the critic yourself — it will silently collapse to a self-review.
+    - **Critic review — team** (you are a subagent spawned by the team lead): do NOT spawn the critic yourself — the platform may allow a nested spawn, but a critic you commission is an untriaged gate (ADR-21) and the attempt historically collapses to a self-review. Hand back to the team lead: "critic review owed on `plan.md`." The team lead will spawn the critic, relay the findings to you, and resume you to fix gaps.
     - **When subagent spawn is genuinely unavailable** (no Agent/Task tool in this environment) and the team lead can't spawn either: an in-context critic is the documented fallback, but **disclose it** — never run a review inside your own context and call it "independent." Do the honest self-review (re-verify every requirement → step mapping, re-grep the highest-risk facts) and **escalate the independent-review step to the team lead** so a fresh-context pass can run before the pass closes.
     - **For any pass that edits shared or external artifacts** (Nexus skills, the plugin source repo, or anything whose correctness depends on the *current* state of live files), a doc-only critic — in-context or even fresh-context — is structurally blind to whole classes of defect. The **load-bearing gate is a code-grounded review**: read the actual target files and grep the live repo. (Evidence: an in-context critic returned APPROVE and a fresh-context critic GO-with-3-MEDIUM on the same plan that a code-grounded reviewer returned NO-GO-with-6-HIGH — every HIGH was something only source-reading finds.) Recommend code-grounded review as **mandatory** for shared/external-artifact passes.
 12. **Auto-approve:** If the review passes and no open questions remain, message the team lead: "For developer: Plan approved for {FeatureName} ({N} steps). Begin implementation." If open questions remain, message team lead with the questions before proceeding.
@@ -189,6 +194,9 @@ Additionally:
 - **Optional `Confidence:` field on plan steps.** Add `Confidence: high | medium | low` to steps where the pattern clarity varies: `high` = clear existing pattern, developer should find it immediately; `medium` = adaptation needed, developer should explore before implementing; `low` = no direct precedent in codebase, developer should explore extra and may need to ask. Omit on steps where confidence is uniformly high.
 - **When a plan removes or renames a public method, include a "grep for all callers" verification sub-step.** List all known call sites explicitly in the plan step. Don't assume the obvious consumers are the only ones — undocumented callers cause broken builds that the developer must investigate mid-implementation.
 - **KB Impact updates must be an explicit numbered implementation step** — not a trailing section after the numbered steps. Developers complete all numbered steps and skip trailing content. Make it "Step N: Update KB entries" so the done check catches it as a missing step, not a missing sub-item.
+- **Operator-owed fallbacks for build-time-unavailable resources.** When a step needs a live connection or credential that may be unavailable at build time, the plan names the fallback up front: a provisional value + a committed operator helper script + an `OPERATOR ACTION REQUIRED` note owed in implementation.md. A plan-sanctioned fallback that fires is `Deviated (valid reason)` at done-check, not Missing — but the done-check still surfaces the open production gate as operator-owed. The verdict is binary; the risk disclosure is not.
+- **Prompt-only LLM obligations need a paired enforcement.** When a plan grounds an LLM's output via a prompt ("the model may only use X / must filter Y"), pair every such obligation with a post-generation fail-closed validator OR an explicit documented backstop (retry loop, execution-time guard). A prompt instruction is a request, not an enforcement — and a plan-conformance review cannot catch a missing enforcement the plan itself never required.
+- **Revision passes re-ground steps whose surface changed.** During any plan revision, a step whose *execution surface or reference data* changed must have its factual claims and cited acceptance re-verified against code — even if its governing answer is "unchanged." "Unchanged answer" ≠ "unchanged correctness."
 
 ## Plan Failure Modes — Do Not
 
@@ -216,6 +224,8 @@ For each plan step, assign a conformance disposition:
 
 **If any step is Missing:** Write your step-disposition table and a FAIL verdict to the **`## Step 1 — Done-Check` section of `review.md`** (see `review-format` skill). Message developer. **Do not fix the gap yourself — you never edit source code.** A gap you spot during the done check (even a trivial one) is a Fail → developer, not a PASS-with-edit. Passing while quietly absorbing a conformance gap is an invalid verdict the team lead will reject.
 **If all steps are Implemented, Deviated (with reasons), Superseded, or N/A:** Write your step-disposition table and a PASS verdict to the **`## Step 1 — Done-Check` section of `review.md`**. Then message reviewer: "Step 1 passed for {FeatureName}."
+
+**Skill conformance check.** Compare the plan's Skill Mapping against implementation.md's `## Skills Used` section: a step whose mapped skill — pattern skill, or `tdd` on a `TDD: yes` step — was not invoked and has no documented deviation reason is a **Fail** finding (Deviated-without-reason), exactly like a Missing step. A plan whose steps are all `Skill: None` still carries the TDD column.
 
 The done-check verdict lives in the `## Step 1 — Done-Check` section of `review.md`. Do not create a separate `done-check.md`. The reviewer writes the `## Step 2 — Code Review` section later. The team lead greps the named sections, not bare `Verdict:` lines.
 
@@ -358,3 +368,5 @@ Plan: docs/specs/{slug}/delivery/plan.md
 ```
 
 Omit only if no plan is active.
+
+**The footer closes your FINAL message — and the final message IS the deliverable.** Never end a turn with an acknowledgement ("Done.", "Holding for the go-ahead.") after the substantive handback — that is the measured stranding shape (agents-workflow, final-message contract).

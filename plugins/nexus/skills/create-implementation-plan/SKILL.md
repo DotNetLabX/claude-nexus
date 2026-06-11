@@ -40,6 +40,8 @@ Before writing, ensure you have:
 
    **Skill verification before setting None:** For each step, list the actions it performs (throws exceptions, registers services, queries data, creates endpoints, configures persistence). Match each action against skill frontmatter descriptions. Only set None after confirming no frontmatter description matches. If a frontmatter is ambiguous, read the skill's When to Use section before deciding.
 
+   **TDD marking (every step, every plan):** alongside the disposition, set the step's `TDD` column — `yes` for testable behavior (domain logic, endpoint request/response, business rules), `no` for pure wiring (DI, config, migrations). This is a *process-skill* mapping, independent of the pattern-skill disposition: a `Skill: None` step can still be `TDD: yes`, and the developer invokes the `tdd` skill on every `yes` step.
+
 5. **Anti-pattern check.** Scan the draft for:
    - The word "adapted" or "adapt" near a skill reference — violation. Either Follow or Build, never Adapt.
    - A skill dismissed as "too simple" or "not needed for this case" — violation. Skills ensure consistency; complexity is not the criterion.
@@ -82,6 +84,7 @@ Before invoking this skill, ensure you have read:
 - **Writing method-body plans.** Describing sequential logic steps (1. do X, 2. do Y, 3. do Z) instead of operation + acceptance criteria. This over-specifies and leads the developer to skip skill invocation. Describe *what* to accomplish, not *how* to implement it internally.
 - **Omitting skill mapping for steps that have a matching skill.** Setting disposition to None without running the skill verification test ("list all actions → match each against skill frontmatter"). A step that creates an endpoint, adds a domain event handler, or configures persistence almost always has a matching skill.
 - **Restating pattern details alongside a Follow skill reference.** If the skill already covers file placement, DI wiring, or record structure — delete it from the plan step. Keep only feature-specific inputs the skill can't know. Over-specification causes the developer to skip the skill entirely.
+- **Bloated plans are a read-cost multiplier.** A plan is read by 4+ agents across the run, and every KB is paid in each of their contexts (a measured 72KB plan was read ×55 ≈ 3.9MB through contexts). Keep the whole file lean — acceptance criteria over restated detail; target well under ~40KB, and past that prefer splitting into sub-plans over letting one file bloat.
 
 ## Plan Grounding & Deviation Rules
 
@@ -90,6 +93,12 @@ These apply to every plan, feature or refactor.
 - **Declare which surfaces are binding and which are the developer's call.** Public/wire identifiers (routes, serialized property names, contract type names) are binding; internal names are free unless the plan says otherwise. Name the known convention forks (e.g. an alternate migration startup project) as sanctioned variants, and when a plan point is genuinely developer judgment, say so explicitly. This converts a would-be "deviation" into a pre-sanctioned decision the done-check resolves in one line instead of escalating.
 
 - **A hedge in a plan is a deferred read.** Every "may", "if needed", "either…or" that is resolvable from on-disk state (a model snapshot, a DI registration, an installed-package list) must be resolved while writing the plan — reserve hedges for genuine runtime unknowns. Any count the plan cites ("N early returns", "8 call sites") comes from a grep run at plan time, never from memory of a read. And when a step carries a field across a module or contract boundary, trace the field back to its *actual source type* on disk before making it a key or a required member — the source DTO may not have it.
+
+- **Pre-author the operator-owed fallback for any step needing a live connection or credential.** If a step's primary path needs a resource that may be unavailable at build time (a prod read account, a rotation-gated credential), the plan names the fallback up front: a provisional value, a committed operator helper script, and the `OPERATOR ACTION REQUIRED` documentation owed in implementation.md. A pre-authored fallback that fires resolves as `Deviated (valid reason)` in one line at done-check; an un-authored one becomes an escalation.
+
+- **Pair every prompt-only LLM obligation with an enforcement.** When a step grounds an LLM's output via prompt text ("only use X", "must filter Y", "never reference Z"), the same step (or a named sibling) carries a post-generation fail-closed validator OR an explicitly documented backstop (retry loop, execution-time guard). A prompt instruction is a request, not an enforcement — and a conformance review cannot catch a missing enforcement the plan never required.
+
+- **On any revision pass, re-ground every step whose execution surface or reference data changed** — re-verify its factual claims and cited acceptance against code even when its governing answer is "unchanged." A surface flip silently invalidates claims in steps nobody re-opened ("unchanged answer" ≠ "unchanged correctness"); a revision's failures cluster in exactly the steps not re-grounded.
 
 ## Refactoring & Type-Move Plan Rules
 

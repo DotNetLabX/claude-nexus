@@ -17,17 +17,18 @@ In scope. Explicitly out of scope.
 
 ## Skill Mapping
 
-| Step | Skill | Disposition | Feature-Specific Inputs | Gap? |
-|------|-------|-------------|------------------------|------|
-| 1 | {skill-name} | Follow | {only what's unique: entity names, paths, types} | |
-| 2 | {skill-name} | Build | {what to build locally + feature inputs} | |
-| 3 | (none) | — | (full inline detail in step) | Log to lessons.md |
+| Step | Skill | Disposition | TDD | Feature-Specific Inputs | Gap? |
+|------|-------|-------------|-----|------------------------|------|
+| 1 | {skill-name} | Follow | yes | {only what's unique: entity names, paths, types} | |
+| 2 | {skill-name} | Build | no | {what to build locally + feature inputs} | |
+| 3 | (none) | — | yes | (full inline detail in step) | Log to lessons.md |
 
 **Disposition rules:**
 - **Follow** — apply the skill pattern. Adapt implementation specifics (e.g., SQLite instead of SQL Server) but never skip the pattern.
 - **Build** — skill references infrastructure that doesn't exist locally. Build it first, then follow the skill.
 - **None** — no skill covers this step. Describe what to accomplish + acceptance criteria. Do NOT write method-body logic flows. The developer decides internal decomposition. Log the gap.
 - **Never "Adapt"** — if you're about to write "adapted for this project's needs," you're skipping the skill. Either Follow (the pattern applies, specifics may differ) or Build (the infrastructure is missing).
+- **TDD column (process skill — every plan has it, even all-`None` plans).** The architect marks each step at plan time: `yes` = testable behavior (domain logic, endpoint request/response, business rules) — the developer invokes the `tdd` skill on it; `no` = pure wiring (DI, config, migrations). `Skill: None` means no *pattern* skill — it never waives TDD. (Measured failure: an all-`None` plan read as "no skills at all" and 34+ tests shipped test-after.)
 
 **Anti-patterns (if any of these appear, revise before proceeding):**
 - A skill dismissed as "simple" or "not needed" — Skills ensure consistency, not just complexity.

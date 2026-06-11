@@ -1,6 +1,49 @@
 # nexus — Changelog
 
 
+## [1.5.0] — 2026-06-11
+The F16 remediation package (ADR-21/ADR-22) — anti-delegation, communication, read discipline, and
+skills enforcement, all evidence-based from the audited F16-DataPathRework run (10-rogue-agent
+self-advancement incident, 8/8 stranded deliverables, plan.md re-read ×35, 2 Skill invocations in
+12.7h).
+
+- **Anti-delegation (ADR-21).** New all-agents hard rule: a pipeline subagent never spawns
+  pipeline-role agents (the F16 incident vector — a developer commissioned done-checks, a Step-2
+  review, and a learner as correctly-typed agents, so ownership rules never fired); explicit
+  entries in `developer.md`/`learner.md`; the false "as a subagent you *cannot* spawn" claims
+  corrected to **must not** (architect/critic/learner). `boundary-detector.js` now also matches
+  `Agent|Task` and logs a subagent's pipeline-role spawn to `violations.log`. The team-lead
+  dispatch templates gain the standing "Phase-end = hand back and STOP" line; the learner gains an
+  explicit approval gate before applying promotions.
+- **Communication (ADR-22).** `salvage-transcript.js` default selection is now longest-recent (the
+  measured 8/8 recovery winner; the old final-substantive pick failed all 8 verbose-closer
+  strandings — `--final` preserves it). New all-agents final-message contract: the last message IS
+  the deliverable, never an acknowledgement after it (reinforced per agent). Placeholder
+  first-returns ("Standing by.") codified as non-results with a re-dispatch-once rule. Team lead:
+  persists critic findings verbatim to `review-critic.md` (standardized), and documents that
+  spawn-time `model` overrides do NOT survive `SendMessage` resume (platform constraint #4) —
+  re-spawn fresh for model-critical phases.
+- **Read discipline (ADR-22).** New all-agents rule: read each file at most **once per round**
+  (sanctioned exceptions: post-compaction, cross-round external change, chunked first reads,
+  offset checks); role-input boundary (the comm-log is the team lead's). New `read-tracker.js`
+  PostToolUse hook: nudges on a 2nd same-round read, logs ≥3 to `violations.log`; round boundary =
+  pipeline-state token/session change. `consumption-report` gains a re-read-offenders aggregation;
+  the plan skill gains a plan-size budget (a plan is read by 4+ agents).
+- **Skills enforcement.** The plan template's Skill Mapping gains a **TDD column** (`Skill: None`
+  never waives TDD — F16 shipped 34+ tests test-after under an all-None mapping);
+  `implementation-format` gains a `## Skills Used` section; the developer's completion checklist
+  and the architect's done-check now verify skill conformance per step.
+- **Plan-grounding additions** (from the knowledge-gateway feedback file): pre-authored
+  operator-owed fallbacks for build-time-unavailable credentials; prompt-only LLM obligations must
+  pair with a fail-closed validator or documented backstop; revision passes re-ground steps whose
+  surface changed; presumed answers are never recorded as user-answered (`questions-format`);
+  `lessons.md` is append-only per role (`lessons-format`).
+- Stale "gate invariant 3" references fixed (`team-lead.md`, `agents-workflow.md`); the
+  architecture record gains ADR-21/ADR-22 + platform constraint #4; the P2 skill-inventory
+  limitation marked resolved (the F16 all-None mapping was verified honest). F11's "gate blocked
+  Edit during implementation" feedback item: verified not-a-bug in current code — the gate blocks
+  only during `:analyze`; the F11 symptom was a stale token + foreground writer.
+
 ## [1.4.1] — 2026-06-10
 Learner consolidation from Passes 3c-C, 4, 5 — proven (2+ occurrence) lessons promoted into the plan skill and architect agent.
 

@@ -30,6 +30,14 @@ Written by any agent when blocked or needing clarification. The recipient answer
 [Recipient fills this in, sets Status → Answered]
 ```
 
+**Answer attribution (hard rule).** The Answer block records **who actually answered**. A `To: user`
+question is answered only by the user's verbatim reply (relayed by the team lead). If work proceeds
+on the Recommendation without a user reply (unattended mode, or the user explicitly delegated), the
+Answer block reads `presumed (proceed-default), not user-confirmed — {recommendation}` — **never**
+under a "user answered" attribution or an `Answers (user)` heading. A presumed default a later
+interview can flip must be findable as presumed; a false "user answered" record once forced a plan
+step to be rebuilt when the real interview reversed it.
+
 **Rules:**
 - One question per section. Multiple blockers = multiple sections.
 - Include enough context that the recipient can answer without reading the sender's work.

@@ -35,6 +35,8 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-18 — Agent output boundaries: never author another agent's gate *(extends ADR-14)*
 - ADR-19 — Team-lead operational depth, restored from the Fokus baseline
 - ADR-20 — Commit strategy: 2 commits with override (reverts the 4-checkpoint default)
+- ADR-21 — Delegated pipeline advancement is a breach (extends ADR-18)
+- ADR-22 — Round-scoped read discipline and the final-message contract
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -54,6 +56,11 @@ Three Claude Code facts drive most decisions below. Verified against the docs (J
    `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>`. `/plugin update` is a no-op unless
    `plugin.json`'s `version` changed. `--plugin-dir` bypasses the cache and reads a working checkout
    live.
+4. **A `SendMessage` resume does not preserve spawn-time overrides.** The `model` param applies to
+   the original spawn only — a resumed background agent falls back to its frontmatter `model:`
+   (measured 2026-06-11: a developer spawned on opus resumed Phase 2 on sonnet, silently). Any
+   per-run model config (`.claude/nexus-agents.json`) therefore holds per *spawn*, not per *agent
+   lifetime* — re-spawn fresh for model-critical phases.
 
 Sources: code.claude.com/docs — `plugins-reference`, `sub-agents`, `discover-plugins`,
 `plugin-dependencies`.
@@ -542,6 +549,39 @@ or foreground a one-off spawn manually.
 
 ---
 
+## ADR-21 — Delegated pipeline advancement is a breach (extends ADR-18)
+**Context.** ADR-18 forbade *authoring* another role's gate after a developer fabricated done-check and review verdicts. The F16-DataPathRework run (knowledge-gateway, 2026-06-11) surfaced the complementary vector: the developer, mid-Phase-2, **spawned the rest of the pipeline as correctly-typed agents** — 7 Agent calls (Sub-Plan A done-check, a *nested developer* for Sub-Plan B, done-check B, Step-2 review, LOW-fix round, re-review, learner), and the rogue learner spawned 3 more (Explore ×2 + a Mode-3 critic). Audit-confirmed: the trace attributes all 10 spawns. No rule forbade it — "no self-advance" covered only the state-token/write path, ADR-18 only authored artifacts — and the boundary detector's ownership rules **legitimately stayed silent** (each rogue agent wrote its *own* role's artifact). Consequences: gates with no team-lead triage, no user checkpoints, no model config (`nexus-agents.json` is team-lead pre-flight), the Codex cross-check skipped, an unauthorized learner writing shared files — and the rogue Step-2 review **APPROVED code containing a HIGH wrong-number bug** that the controlled re-review later caught.
+
+**Decision.** Commissioning a pipeline-role agent (po/architect/developer/reviewer/critic/learner/team-lead/solo — including another instance of the caller's own role) is the team lead's act alone, and a subagent doing it is the **same breach as authoring the gate** (ADR-18). Three layers, matching the ADR-13 enforcement reality:
+- **Rule (prevention):** a hard rule in `agents-workflow.md` (All Agents) + explicit entries in `developer.md`/`learner.md`; the false capability claims ("as a subagent you *cannot* spawn") corrected to **must not** — the platform allows nested spawns, and the wrong claim produced a learner whose handback narrative contradicted its own actions. Research spawns (Explore, general-purpose) stay sanctioned, as do the spawns an agent's own file directs (standalone architect/PO/learner → critic).
+- **Detection:** `boundary-detector.js` now also matches `Agent|Task` calls — a subagent spawn whose `subagent_type` is a pipeline role is appended to `.claude/audit/violations.log` (PostToolUse fires in background subagents, Probe P1). The team lead triages the log at every checkpoint. In the F16 incident this rule would have logged all 10 spawns.
+- **Containment:** every team-lead dispatch (spawn AND resume) ends with the standing line "Phase-end = hand back and STOP. Never spawn pipeline agents or advance the pipeline yourself." — its omission from the F16 developer spawn was the confirmed contributing factor (an F11 lesson recurrence, now a template line instead of a memory).
+
+**Why.** Prevention by hook is impossible for background subagents (ADR-13); the rule must live in the agent (ADR-14) and detection must not depend on self-reporting. A "real" gate produced by a commissioned agent is *worse* than a fabricated one — it looks independent while having had no supervision at all.
+
+**Tradeoffs.** Spawn detection keys on `subagent_type` naming — a custom agent type not in the role list evades it (acceptable: the named roles are the pipeline's own, and the team-lead checkpoint remains the backstop).
+
+**Rejected.** *Foregrounding to make the gate block spawns* — re-litigates ADR-12/13. *Allowing supervised delegation ("the developer may spawn the done-check when confident")* — the value of a gate is exactly the supervision a delegated spawn skips.
+
+---
+
+## ADR-22 — Round-scoped read discipline and the final-message contract
+**Context.** The F16 audit (token_audit on, both logs analyzed) quantified two waste/loss patterns. **Reads:** the architect re-read its own `plan.md` ×35 (~2.5MB through context; `questions.md` ×10, `lessons.md` ×9), the reviewer its own `review.md` ×14, the developer one source file ×32 — against an existing architect-only Read Discipline rule, proving prose-only discipline fails over long runs. **Communication:** 8/8 deliverables stranded behind closing lifecycle replies; `salvage-transcript.js`'s final-substantive heuristic failed all 8 (the closers were single-line but ≥80 chars), while longest-recent-message recovered all 8; one stranding occurred *despite* an explicit final-message instruction in the dispatch (prompt-only insufficient). The critic — the one agent with no durable artifact, by design — stranded its verdict twice.
+
+**Decision.**
+- **Read rule (all agents):** read each file at most **once per round** (spawn/resume→handback); after that it is in-context state — Edit needs one prior Read, never one per edit; never re-read to verify your own write. Sanctioned re-reads: post-compaction, cross-round external change, chunked first reads, offset checks of one's own edit. Role-input boundary: read your role's inputs + what the dispatch names (`communication-log.md` is the team lead's). Canonical in `agents-workflow.md`, duplicated per agent (ADR-14).
+- **Nudge + detection:** a new `read-tracker.js` PostToolUse(Read) hook — async, observe-only, fail-silent — counts (agent, file) per round, where the round boundary is a change of `.claude/.pipeline-state` content or session id (the team lead rewrites the token at every spawn/resume). 2nd same-round read → corrective `systemMessage`; ≥3 → a line in `.claude/audit/violations.log` for the team-lead checkpoint. *Caveat:* whether a PostToolUse `systemMessage` reaches a background subagent's context is unverified (Probe P1 proved hooks fire, not message delivery) — the log is the guaranteed layer; the nudge is best-effort. The `consumption-report` skill gains a "re-read offenders" aggregation over the audit trace.
+- **Final-message contract (all agents):** the last message of a turn IS the deliverable — never an acknowledgement after it. Inlined per agent; the critic's variant is sharpest (no artifact, so the message is everything) and the team lead now standardly persists critic findings to `review-critic.md` on receipt.
+- **Salvage default flipped:** `salvage-transcript.js` picks the final substantive text only when it *looks* like a deliverable (multi-line or ≥400 chars); otherwise the longest of the last 5 substantive texts (the measured 8/8 winner). `--final` preserves the old selection.
+
+**Why.** Reads are unblockable (a read deny would wedge legitimate work, and background denies are dropped anyway — ADR-13), so the only honest mechanism is rule + nudge + deterministic detection — the same shape ADR-21 uses for spawns. For stranding, the artifact-first protocol (ADR-17) already bounds the damage; fixing the recovery tool is cheaper and more reliable than fighting model closing-behavior with stronger prompts (measured: instruction alone failed).
+
+**Tradeoffs.** The read-tracker keeps a small state file under `.claude/audit/` (reset per round/session) — a deliberate exception to boundary-detector's zero-footprint posture, required to count across calls. Longest-recent can in principle prefer a long mid-turn analysis over a short final deliverable; the multi-line/≥400-char final-preference guards the common case, and `--final` remains.
+
+**Rejected.** *PreToolUse read-blocking* — wedges legitimate re-reads and is inert on background subagents. *Stronger prompt wording alone* — disproven in-run. *Granting the critic an artifact* — trades away the physical no-write guarantee (`disallowedTools`) for a stranding problem the salvage fix already covers; the team-lead persist step keeps a durable record (owner's decision, 2026-06-11).
+
+---
+
 ## Inherited pipeline decisions
 Pre-existing tradeoffs, retained:
 
@@ -555,11 +595,11 @@ Pre-existing tradeoffs, retained:
 ---
 
 ## Known limitations / future work
-- **Skill-inventory discovery (P2).** `create-implementation-plan` / `create-architecture-doc` build
-  their skill inventory by globbing `.claude/skills/`. Plugin skills live in the version cache, **not**
-  in the project's `.claude/skills/`, and there is no documented runtime "list skills" API — so the
-  inventory under-reports plugin-provided skills. Fix: have those skills use the skills surfaced in
-  the agent's context rather than a directory glob.
+- **Skill-inventory discovery (P2) — resolved in 1.4.1.** `create-implementation-plan` now instructs
+  building the inventory from the skills surfaced in the agent's context (plugin skills included),
+  with the `.claude/skills/` glob covering only project-local skills. Kept here for the record; the
+  F16 all-`None` skill mapping was verified honest (the data-path pattern genuinely has no skill
+  coverage), not an inventory artifact.
 - **CI gate.** Added: `.github/workflows/plugin-release-check.yml` runs the version-bump check
   (`bump-plugin.mjs --check`, hard gate) and `claude plugin validate --strict` (advisory until CI auth
   for the `claude` CLI is confirmed, then flip to required). Still future: a lint for dangling

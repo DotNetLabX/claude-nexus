@@ -76,3 +76,47 @@ test('fail silent: malformed stdin and non-edit tools never log or fail', () => 
   assert.equal(detect(dir, 'critic', '', 'Bash').status, 0);
   assert.ok(!existsSync(LOG(dir)));
 });
+
+// --- ADR-21: delegated self-advancement (a subagent spawning pipeline-role agents) ---
+
+function spawn(dir, agentType, subagentType, tool = 'Agent') {
+  const event = {
+    session_id: 'sess-bd', tool_name: tool,
+    tool_input: { subagent_type: subagentType, prompt: 'Step 1 done check for F16.' }, cwd: dir,
+  };
+  if (agentType) event.agent_type = agentType;
+  return runHook(DETECTOR, event, { projectDir: dir });
+}
+
+test('a subagent spawning a pipeline-role agent is logged (delegated self-advancement)', () => {
+  const dir = makeSandbox();
+  const res = spawn(dir, 'developer', 'nexus:reviewer');
+  assert.equal(res.status, 0, 'detector never fails the call');
+  const [v] = lines(dir);
+  assert.equal(v.agent, 'developer');
+  assert.match(v.rule, /pipeline-role|ADR-21/i);
+  assert.ok(res.json?.systemMessage, 'a spawn violation surfaces a systemMessage');
+});
+
+test('Task-tool spawns and own-role respawns are detected too', () => {
+  const dir = makeSandbox();
+  spawn(dir, 'nexus:developer', 'architect', 'Task');
+  spawn(dir, 'developer', 'nexus:developer'); // nested developer = same breach
+  const all = lines(dir);
+  assert.equal(all.length, 2);
+  assert.ok(all.every((v) => /pipeline-role|ADR-21/i.test(v.rule)));
+});
+
+test('research spawns (Explore / general-purpose) by a subagent are NOT logged', () => {
+  const dir = makeSandbox();
+  spawn(dir, 'architect', 'Explore');
+  spawn(dir, 'learner', 'general-purpose');
+  assert.ok(!existsSync(LOG(dir)), 'research helpers are sanctioned');
+});
+
+test('main-session spawns (no agent_type) are NOT logged — the team lead spawns freely', () => {
+  const dir = makeSandbox();
+  spawn(dir, null, 'nexus:architect');
+  spawn(dir, null, 'developer', 'Task');
+  assert.ok(!existsSync(LOG(dir)));
+});

@@ -74,3 +74,39 @@ console.log("\nTotal output generated across agents: "+k(tot));
 
 Call out the top one or two agents by peak and by growth, and tie the growth back to what that
 agent read or re-read during the run. Keep the table; add 2–4 lines of plain-language findings.
+
+## Re-read offenders (read-discipline check)
+
+The per-session trace (`.claude/audit/{session}.log`, written by the same `token_audit` capture)
+carries the file `detail` for every Read — aggregate it to see who re-read what against the
+read-once-per-round rule (ADR-22):
+
+```bash
+node -e '
+const fs=require("fs");
+const dir=".claude/audit";
+let files=[];try{files=fs.readdirSync(dir).filter(f=>/\.log$/.test(f)&&f!=="violations.log")}catch{}
+if(!files.length){console.log("No per-session trace — enable token_audit and re-run.");process.exit(0);}
+const C={};
+for(const f of files){
+  for(const l of fs.readFileSync(dir+"/"+f,"utf8").split("\n")){
+    if(!l)continue;let r;try{r=JSON.parse(l)}catch{continue}
+    if(r.tool!=="Read"||!r.detail)continue;
+    const k=r.agent+" | "+r.detail;
+    C[k]=(C[k]||0)+1;
+  }
+}
+const sz=f=>{try{return fs.statSync(f).size}catch{return 0}};
+const rows=Object.entries(C).filter(([,n])=>n>=3).sort((a,b)=>b[1]-a[1]).slice(0,15);
+if(!rows.length){console.log("No 3+ repeat reads — read discipline held.");process.exit(0);}
+console.log("reads  ~KB-each  agent | file");
+for(const [k,n] of rows){const f=k.split(" | ")[1];console.log(String(n).padStart(5)+"  "+String(Math.round(sz(f)/1024)).padStart(8)+"  "+k);}
+'
+```
+
+**Interpretation caveat:** trace counts are **session-wide**, not per-round — a file legitimately
+read once per round across many rounds shows several reads. The signal is *high* counts of one
+file by one agent (10+ is never legitimate; the measured failure was plan.md ×35 by its own
+author). True per-round attribution lives in `violations.log`, where the read-tracker hook logs
+every ≥3 same-round repeat. Multiply count × file size for the context cost and name the top
+offenders next to the per-agent growth table.

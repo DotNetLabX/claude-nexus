@@ -14,11 +14,15 @@
  * Usage:
  *   node salvage-transcript.js --file <transcript>   # the spawn result's output_file / agent-{id}.jsonl
  *   node salvage-transcript.js <agentId>             # best-effort search of known transcript roots
+ *   add --final to force the pre-1.5.0 selection (final substantive text, whatever its shape)
  *
- * Output: the final SUBSTANTIVE assistant text, verbatim, on stdout. Lifecycle stubs
- * ("Ready when you are.", "Standing by.", ".") — the measured stranding shape — are skipped
- * from the tail. If nothing substantive exists, the last text is printed anyway with a
- * warning on stderr. Exit codes: 0 recovered, 1 transcript not found/empty, 2 usage.
+ * Output: the stranded DELIVERABLE, verbatim, on stdout. Lifecycle stubs ("Ready when you
+ * are.", "Standing by.", ".") are skipped from the tail; when the final substantive text is a
+ * single-line verbose closer ("Holding for the go-ahead…" — >=80 chars, so the stub skip
+ * misses it; the F16-measured shape), the LONGEST of the recent substantive texts is returned
+ * instead (longest-recent recovered 8/8 strandings when studied). If nothing substantive
+ * exists, the last text is printed anyway with a warning on stderr. Exit codes: 0 recovered,
+ * 1 transcript not found/empty, 2 usage.
  *
  * The transcript locations are an UNVERSIONED platform surface — both known layouts are
  * searched; pass --file (the path the spawn result prints) when in doubt.
@@ -33,7 +37,9 @@ function usage() {
   process.exit(2);
 }
 
-const args = process.argv.slice(2);
+const argv = process.argv.slice(2);
+const finalMode = argv.includes('--final');
+const args = argv.filter((a) => a !== '--final');
 if (args.length === 0) usage();
 
 let file = null;
@@ -81,13 +87,24 @@ if (texts.length === 0) {
   process.exit(1);
 }
 
-// Final SUBSTANTIVE text: walk from the end, skipping lifecycle stubs (short single-liners —
-// "Ready when you are.", "Standing by.", "."). Deliberately crude: a real deliverable is
-// either long or multi-line; anything else is a stub not worth relaying.
+// Lifecycle stubs (short single-liners — "Ready when you are.", "Standing by.", ".") are
+// never the deliverable. Among substantive texts, the final one is the deliverable only when
+// it LOOKS like one (multi-line or long). A single-line, short-ish final text is the
+// verbose-closer shape that stranded every F16 deliverable ("Holding for the go-ahead…" —
+// >=80 chars, so the stub skip misses it); there, the longest of the last 5 substantive
+// texts wins (longest-recent recovered 8/8 measured strandings). --final forces the
+// pre-1.5.0 behavior: the final substantive text, whatever its shape.
 const isStub = (t) => { const s = t.trim(); return s.length < 80 && !s.includes('\n'); };
+const substantive = texts.filter((t) => !isStub(t));
 let pick = null;
-for (let i = texts.length - 1; i >= 0; i--) {
-  if (!isStub(texts[i])) { pick = texts[i]; break; }
+if (substantive.length > 0) {
+  const last = substantive[substantive.length - 1];
+  const looksLikeDeliverable = last.includes('\n') || last.trim().length >= 400;
+  if (finalMode || looksLikeDeliverable) {
+    pick = last;
+  } else {
+    pick = substantive.slice(-5).reduce((a, b) => (b.trim().length > a.trim().length ? b : a));
+  }
 }
 if (pick === null) {
   process.stderr.write('salvage-transcript: WARNING — no substantive text found; printing the last (stub) message.\n');

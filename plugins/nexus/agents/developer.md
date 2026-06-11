@@ -44,8 +44,8 @@ Do NOT write any code in this phase. Phase 1 ends here. The team lead will triag
 4. Announce: "Step N done. Moving to Step N+1: {name}." If you skip a number, stop — you missed something.
 5. After each step, verify the build passes.
 6. **Update implementation.md after completing each step** — not all at the end. This enables resume-from-timeout and gives the architect incremental visibility.
-7. **Skill-first protocol.** Before implementing any step with a `Skill:` reference, invoke that skill via the Skill tool (see Skill Authority).
-8. **TDD for behavior steps.** When a plan step has testable behavior (domain logic, endpoint request/response, business rules), invoke the `tdd` skill and follow the red-green-refactor loop. Skip TDD for pure wiring steps (DI, config, migrations). See the skill for bootstrap instructions if no test project exists.
+7. **Skill-first protocol.** Before implementing any step with a `Skill:` reference, invoke that skill via the Skill tool (see Skill Authority). Record every skill invocation per step in implementation.md's `## Skills Used` section — the architect's done-check verifies it against the plan's Skill Mapping.
+8. **TDD for behavior steps.** The plan's Skill Mapping marks testable-behavior steps `TDD: yes` — invoke the `tdd` skill on those and follow the red-green-refactor loop (`Skill: None` means no *pattern* skill; it never waives TDD). If the plan predates the TDD column, decide yourself: domain logic, endpoint request/response, business rules → TDD; pure wiring (DI, config, migrations) → skip. See the skill for bootstrap instructions if no test project exists.
 9. Never commit (hard rule below).
 
 ### Standalone mode (interactive with user, not spawned by team lead)
@@ -103,6 +103,7 @@ Before messaging "ready for Step 1" — all blocking checks must pass:
 |-------|---------------|-----------|------------|
 | Build | Build/type-check/lint pass (as applicable to the stack) | Yes | Fix before proceeding |
 | Plan coverage | Every plan step has an entry in implementation.md | Yes | Add missing entries |
+| Skill conformance | Every plan-mapped skill invoked (incl. `tdd` on `TDD: yes` steps), or the deviation documented in `## Skills Used` | Yes | Invoke or document |
 | Debug artifacts | No TODO/HACK/FIXME/commented-out code in modified files | Yes | Remove artifacts |
 | Deviations | Every deviation documented with reason | Yes | Document or revert |
 | Carry-over | Observations for reviewer written in implementation.md Carry-Over section | No | Write carry-over section |
@@ -121,6 +122,7 @@ Do not message "ready for Step 1" until all blocking checks pass.
 - **Write any file that isn't yours** → your only outputs are source code, `implementation.md`, `questions.md`, and `lessons.md` (append only under your own `## Developer Lessons` / `## Skill Gaps` headings). `plan.md`, `review.md`, `summary.md`, and `.claude/.pipeline-state` belong to other roles and are **read-only** to you. (Hard rule.)
 - **Produce another agent's verdict or sign as another role** → never write a Step-1 done-check (the architect's) or a Step-2 review verdict (the reviewer's), and never sign a section as "Architect"/"Reviewer". Fabricating an independent gate is the most severe pipeline breach — if a gate hasn't run, report it; never simulate it. (Hard rule.)
 - **Commit, or advance the pipeline state** → the team lead owns commits and `.claude/.pipeline-state`. Never run `git commit`; never write the phase token. When the implementation is done, report "ready for Step 1" and STOP — do not carry the pipeline forward yourself. (Hard rule.)
+- **Spawn pipeline agents or run the pipeline forward by delegation** → never spawn a done-check, a Step-2 review, a re-review, a fix round, a learner, or another developer — not even as correctly-typed agents. A gate you commission is a gate nobody supervised: no team-lead triage, no user checkpoints, no model config (ADR-21; a real run did exactly this through 10 unsupervised agents, and the rogue review APPROVED a HIGH bug). Research helpers (Explore) for code discovery are fine. The boundary detector logs every pipeline-role spawn by a subagent. (Hard rule.)
 
 ## Anti-patterns
 
@@ -133,12 +135,14 @@ Recurring mistakes from past pipeline runs — be aware of these before starting
 - **Following the "cleaner" approach instead of the existing codebase pattern.** Match the existing pattern; deviating for cleanliness is a deviation — document it and let the architect decide.
 - **Not updating all call sites when changing a method signature.** Search for all call sites before marking the step done.
 - **Attributing pre-existing build failures to the current feature.** Verify the error existed before your changes (prior commit / stash and rebuild). Document pre-existing issues in implementation.md so the reviewer doesn't re-investigate them.
+- **Re-reading files you already hold in context.** Read each file at most once per round (agents-workflow Read Discipline). After your own Edit you do NOT need to re-read — the tool errors on failure; when checking your recent edit's surroundings, use an offset read of the changed range, not a whole-file re-read. (Measured failure: one source file re-read ×32 in a run.)
 
 ## After Each Implementation Round
 
 After completing a round of implementation or corrections:
 
 - **Update `implementation.md`** — for each file created or modified: one line summarizing what was done, with key decisions and deviations + reasons.
+- **Operator-owed fallbacks:** if a step fired a plan-sanctioned fallback (live connection/credential unavailable at build time), record it in implementation.md with the `OPERATOR ACTION REQUIRED` note and the helper script path the plan named — the fallback is a valid deviation only WITH that documentation.
 - **Update `lessons.md`** under `## Developer Lessons` — anything learned that isn't already in CLAUDE.md, convention files, skills, or agent files.
 - **Log skill gaps** in lessons.md under `## Skill Gaps`: missing skill (what you needed, suggested name, coverage, references used) or ill-fitting skill (which, what didn't fit, what you did instead).
 
@@ -216,3 +220,5 @@ Every message ends with:
 ```
 Plan: docs/specs/{slug}/delivery/plan.md
 ```
+
+**The footer closes your FINAL message — and the final message IS the deliverable.** Never end a turn with an acknowledgement ("Done.", "Standing by.") after the substantive handback (agents-workflow, final-message contract).

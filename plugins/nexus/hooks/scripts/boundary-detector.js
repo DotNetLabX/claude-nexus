@@ -14,11 +14,15 @@
  * Scope: SUBAGENT calls only (agent_type present). Main-session/foreground writes are already
  * covered by the gate + guard, whose denies ARE honored there.
  *
- * Rules (ADR-18 ownership matrix):
+ * Rules (ADR-18 ownership matrix + ADR-21 delegation):
  *   - a non-code role (architect/reviewer/po/critic/team-lead/learner) writing application source
  *   - a role writing another role's artifact: plan.md=architect, review.md=architect|reviewer,
  *     implementation.md=developer, summary.md=team-lead (lessons.md is shared by design)
  *   - ANY subagent writing .claude/.pipeline-state (the team lead owns it, main-session only)
+ *   - ANY subagent spawning a pipeline-role agent via Agent/Task (ADR-21: delegated
+ *     self-advancement — the F16 incident vector: a developer commissioned done-checks, a
+ *     Step-2 review, and a learner as correctly-typed agents, so the ownership rules above
+ *     never fired). Research spawns (Explore, general-purpose) are sanctioned.
  *
  * Zero footprint when clean: nothing is created unless a violation occurs. Fail silent on any
  * error (mirrors audit-logger).
@@ -28,6 +32,7 @@ const fs = require('fs');
 const path = require('path');
 
 const NONCODE_ROLES = new Set(['architect', 'reviewer', 'po', 'critic', 'team-lead', 'learner']);
+const PIPELINE_ROLES = new Set(['po', 'architect', 'developer', 'reviewer', 'critic', 'learner', 'team-lead', 'solo']);
 const ARTIFACT_OWNERS = [
   [/\/plan\.md$/, new Set(['architect'])],
   [/\/review\.md$/, new Set(['architect', 'reviewer'])],
@@ -64,16 +69,25 @@ process.stdin.on('data', (d) => (input += d));
 process.stdin.on('end', () => {
   try {
     const data = JSON.parse(input || '{}');
-    if (!/^(Write|Edit|MultiEdit)$/.test(data.tool_name || '')) return process.exit(0);
-    if (!data.agent_type) return process.exit(0); // main session: the foreground gate covers it
+    if (!/^(Write|Edit|MultiEdit|Agent|Task)$/.test(data.tool_name || '')) return process.exit(0);
+    if (!data.agent_type) return process.exit(0); // main session: the foreground gate + team lead cover it
     const role = String(data.agent_type).toLowerCase().split(/[:/]/).pop();
-
     const ti = data.tool_input || {};
-    const fp = String(ti.file_path || ti.path || '').replace(/\\/g, '/');
-    if (!fp) return process.exit(0);
 
-    const rule = violation(role, fp);
-    if (!rule) return process.exit(0);
+    let rule = null;
+    let fp = '';
+    if (/^(Agent|Task)$/.test(data.tool_name)) {
+      // ADR-21: delegated self-advancement — a subagent commissioning pipeline-role agents.
+      const target = String(ti.subagent_type || '').toLowerCase().split(/[:/]/).pop();
+      if (!PIPELINE_ROLES.has(target)) return process.exit(0); // research spawns are sanctioned
+      fp = String(ti.subagent_type || '');
+      rule = `subagent spawned a pipeline-role agent (${target}) — pipeline advancement belongs to the team lead alone (ADR-21)`;
+    } else {
+      fp = String(ti.file_path || ti.path || '').replace(/\\/g, '/');
+      if (!fp) return process.exit(0);
+      rule = violation(role, fp);
+      if (!rule) return process.exit(0);
+    }
 
     const root = process.env.CLAUDE_PROJECT_DIR || data.cwd || process.cwd();
     const dir = path.join(root, '.claude', 'audit');
