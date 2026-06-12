@@ -37,6 +37,10 @@ The nexus agents, rules, and skills live in the **plugin's version-keyed cache**
 
 5. **Report** — list every change: file path, section, what was added or updated; plus the feedback-file entries written.
 
+## Prefer Mechanical Enforcement
+
+When a promoted lesson can be enforced by something deterministic the project already runs — a lint script, a test, a hook, a CI check — wire or extend that check instead of (or alongside) the prose rule, and name the enforcement in the report. A rule that isn't mechanically executed on every run is decoration: two independent projects measured prose-only rules decaying to zero compliance until a script enforced them. "Rule + check" beats "rule"; if only prose is possible, say so explicitly so the gap is a known one.
+
 ## Project Target Conventions
 
 ### CLAUDE.md

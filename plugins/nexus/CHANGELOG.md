@@ -1,6 +1,37 @@
 # nexus — Changelog
 
 
+## [1.6.0] — 2026-06-12
+The improve-skills overhaul (ADR-23) — the skill meta-loop now ends in a deterministic gate.
+Evidence base: the Omnishelf job-fitness evaluation of the evolved skill estate (their addendum
+diff-verified `omni:improve-skills` against our 1.5.1 source and moved the rewrite target here;
+distilled in `docs/evidence/2026-06-11-omnishelf-job-fitness.md`), convergent with the
+knowledge-gateway skills-decay audit: **a rule that isn't mechanically executed on every run is
+decoration** — two independent projects, one law.
+
+- **New: `skills/improve-skills/scripts/skill-lint.mjs`** — a portable lint shipped *inside* the
+  skill (version-locked to the instructions that invoke it): SKILL.md present, no BOM (UTF-8/16),
+  frontmatter valid, `name` = folder, `description` present, cited `references/`/`workflows/`
+  files exist. Errors exit 1; thin descriptions warn. The dev repo dogfoods it — a new test
+  lints every shipped nexus skill (11 new tests, TDD-first).
+- **improve-skills SKILL.md rewritten** around "born compliant":
+  - **Deterministic gate (both paths):** every fix and every scaffold ends with the lint
+    exiting 0 — the done-condition, not advice.
+  - **Born-compliant scaffolds:** frontmatter completeness (name=folder, when-to-use phrasing,
+    `user-invocable`/`disable-model-invocation` decisions) + a registration step (skills index
+    row) are scaffold steps 4/6.
+  - **Write Discipline:** SKILL.md and reference files via the Write tool, UTF-8 without BOM —
+    never shell redirection (measured incident: three skills silently registered broken by a
+    shell-default BOM, found weeks later).
+  - **Two entry points, one owner:** learner-classified items AND direct user requests
+    ("build me a skill for X") run the same gates — the de-facto main entry point was
+    previously unscoped; a separate create-skill skill was rejected (duplicate owner).
+  - **Fixes are consolidating passes:** net complexity flat or down, never additive patching.
+- **improve-flow — "Prefer Mechanical Enforcement":** when promoting a lesson, wire or extend a
+  deterministic check (lint/test/hook/CI) instead of — or alongside — the prose rule, and name
+  the enforcement in the report; prose-only promotions must say so explicitly.
+- Architecture record: ADR-23.
+
 ## [1.5.2] — 2026-06-12
 Refinements from the knowledge-gateway per-plan skill-usage audit (29 mapped steps across 11
 plans → 3 Skill invocations; evidence distilled in `docs/evidence/2026-06-12-developer-skill-usage-audit.md`).

@@ -37,6 +37,7 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-20 — Commit strategy: 2 commits with override (reverts the 4-checkpoint default)
 - ADR-21 — Delegated pipeline advancement is a breach (extends ADR-18)
 - ADR-22 — Round-scoped read discipline and the final-message contract
+- ADR-23 — The skill meta-loop ends in a deterministic gate (born-compliant skills)
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -579,6 +580,25 @@ or foreground a one-off spawn manually.
 **Tradeoffs.** The read-tracker keeps a small state file under `.claude/audit/` (reset per round/session) — a deliberate exception to boundary-detector's zero-footprint posture, required to count across calls. Longest-recent can in principle prefer a long mid-turn analysis over a short final deliverable; the multi-line/≥400-char final-preference guards the common case, and `--final` remains.
 
 **Rejected.** *PreToolUse read-blocking* — wedges legitimate re-reads and is inert on background subagents. *Stronger prompt wording alone* — disproven in-run. *Granting the critic an artifact* — trades away the physical no-write guarantee (`disallowedTools`) for a stranding problem the salvage fix already covers; the team-lead persist step keeps a durable record (owner's decision, 2026-06-11).
+
+---
+
+## ADR-23 — The skill meta-loop ends in a deterministic gate (born-compliant skills)
+**Context.** Two independent consuming projects measured the same decay law: **a rule that isn't mechanically executed on every run is decoration.** In knowledge-gateway, the prose skill-first mandate decayed to 3 invocations across 29 plan-mapped steps until `## Skills Used` + done-check gave it an executor (1.5.0–1.5.2; `docs/evidence/2026-06-12-developer-skill-usage-audit.md`). In Omnishelf, a fitness evaluation of the skill estate found `improve-skills` — the loop that *writes* skills — invoking none of the quality machinery built around it: skills were scaffolded without registration or frontmatter completeness, three were silently registered broken by a shell-default-encoding BOM and found weeks later, and prose quote/anchor gates ran on 0 of 79 receipts (`docs/evidence/2026-06-11-omnishelf-job-fitness.md`). The evaluation also found the skill misses most of its real traffic: every significant skill in that repo was built by direct operator sessions, while `improve-skills` was scoped to learner invocation only. The meta-loop has a force-multiplier property — a defect in the loop that writes skills propagates into every skill it touches.
+
+**Decision.** `improve-skills` (nexus 1.6.0) becomes the single owner of "write or modify a skill correctly," with a deterministic done-condition:
+- **Lint as the done-condition (both paths):** a portable `scripts/skill-lint.mjs` ships *inside* the skill folder; every fix and every scaffold ends with it exiting 0 (SKILL.md present, no BOM, frontmatter valid, `name` = folder, `description` present, cited `references/`/`workflows/` files exist). The dev repo dogfoods it: a test lints every shipped nexus skill.
+- **Born-compliant scaffolds:** frontmatter completeness (name=folder, when-to-use phrasing in the description, `user-invocable`/`disable-model-invocation` decisions) and registration in the project's skills index are scaffold steps, not afterthoughts.
+- **Encoding rule on the write path:** Write tool, UTF-8 without BOM — never shell redirection (the measured BOM incident class).
+- **Two entry points, one owner:** learner-classified items AND direct user requests ("build me a skill for X") run the same gates; a separate create-skill skill was rejected — it would duplicate the gate, scaffold, and ledger under a second owner.
+- **Fixes are consolidating passes:** net complexity flat or down, never additive patching.
+- **The principle generalizes to promotions:** `improve-flow` now prefers wiring a mechanical check (lint/test/hook) over adding prose when promoting any lesson, and names the enforcement in its report.
+
+**Why.** Prompt-text rules demonstrably decay (ADR-22's read discipline, the skills mandate, Omnishelf's quote gate — three instances of one law); a lint that runs in seconds at the exact moment of writing is the cheapest executor that cannot decay. Shipping the script inside the skill keeps the gate version-locked to the instructions that invoke it (ADR-1: the cache is the distribution).
+
+**Tradeoffs.** The lint checks form, not content — a well-formed bad skill passes; the Quality Gate (repeatability, no-overlap, concrete steps) remains prose, executed by the model. Scoping the reference check to `references/`/`workflows/` avoids false positives on repo-relative paths in prose but skips `scripts/` citations.
+
+**Rejected.** *A separate create-skill skill* — duplicates the machinery under a second owner (the Omnishelf evaluation's own verdict). *Hook-enforced linting of every `.claude/skills/` write* — the gate belongs to the authoring flow, not to every incidental file touch; hooks fire per-call, the lint validates the finished folder.
 
 ---
 
