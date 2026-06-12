@@ -1,6 +1,18 @@
 # nexus — Changelog
 
 
+## [1.7.2] — 2026-06-12
+Names the allocation principle the pipeline already practices and wires it into the learner
+(VWH adoption A1; `docs/proposals/vwh-adoptions-2026-06.md`). The shipped surface is one line of
+learner behavior; the rest of the pass is dev-repo machinery (architecture record + T1 lint
+extensions), which does not ship.
+
+- **Learner classifies by locus** (`learner.md`): the consolidation classify step gains a third
+  axis (c) **locus** — should a lesson become a **deterministic check** (hook/lint/CI), **prose**
+  (rule/skill), or stay **with judgment**? Prefer the cheapest locus that cannot decay; a lesson
+  restating what a gate already enforces is a prune candidate, not a promotion. (The architecture
+  record's new *allocation principle* section, referenced from ADR-7/ADR-23, is the dev-repo half.)
+
 ## [1.7.1] — 2026-06-12
 Two small imports from the Omnishelf estate sweep (10 candidate mechanisms triaged: 6 were
 already nexus's own or covered by 1.7.0; the third genuine candidate — a standing

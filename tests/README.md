@@ -7,6 +7,7 @@ no package.json. **Dev-repo machinery only** — never shipped, never version-bu
 ```
 node --test tests/lint/*.test.mjs tests/unit/*.test.mjs   # the CI hard gate (T1 + T2)
 node --test tests/evals/*.eval.mjs                        # T3/T4 — on demand, minutes, live model
+node scripts/selfcheck.mjs                                # local aggregator: every CI check at once
 ```
 
 | Dir | Tier | What it proves | Cost |
@@ -15,6 +16,18 @@ node --test tests/evals/*.eval.mjs                        # T3/T4 — on demand,
 | `unit/` | T2 unit tests | Hook scripts driven by synthetic event JSON on stdin (the platform contract): guard matrix, gate invariants + deliberate fail-open edges, audit-logger opt-in footprint, boundary detector (ADR-18 ownership matrix), persona register/restore (incl. the Probe-P1 subagent-clobber guard), rule injection, salvage-transcript recovery. Build scripts against fixture trees: bump-plugin classification + check gate, gen-commands wrapper contract, gen-omni round-trip + drift detection | $0, sec |
 | `red/` | TDD reds | Created per fix package, EXPECTED to fail, run non-blocking in CI; currently absent — the 2026-06 enforcement+relay reds shipped and were promoted into `lint/`+`unit/` | $0 |
 | `evals/` | T3 trajectory + T4 judge | Headless `claude -p --plugin-dir <dev tree>` sessions running the REAL agents against seeded-defect fixtures: critic is message-only + verdict vocabulary + doesn't ACCEPT a glaring gap; developer Phase-1 stops on a contradictory plan with questions and no code; reviewer addresses Carry-Over Findings (haiku-judged rubric). Lint proves contract *text*; only these prove the LLM *honors* it | plan quota, minutes |
+
+## The selfcheck aggregator — local UX, not a new gate
+
+`scripts/selfcheck.mjs` runs every mechanical wiring check at once with a PASS/FAIL line each and a
+nonzero exit on any failure — fast local feedback before a commit. It runs, in order: (1) the lint +
+unit gate (`node --test`, glob form — the bare-dir form regressed on Node ≥22); (2) gen-commands
+drift (regen + `git diff --exit-code plugins/nexus/commands`); (3) `gen-omni --check`; (4)
+`bump-plugin --check --base origin/main` (base overridable via `--base`); (5) the salience report
+(**informational — never fails the run**, per Q1: today's agent/rule files exceed any sane ceiling;
+thresholds arrive with A2). It is **dev-repo machinery only — never shipped, never bumped**, and adds
+**no enforcement CI doesn't already run** (`.github/workflows/plugin-release-check.yml` is the gate;
+this is convenience). Run it from the repo root.
 
 ## The evals tier — subscription-only by design
 

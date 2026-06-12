@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { pluginRoot } from '../helpers.mjs';
+import { listAgents, agentName, pluginRoot } from '../helpers.mjs';
 
 const read = (...p) => readFileSync(join(pluginRoot('nexus'), ...p), 'utf8');
 
@@ -48,5 +48,41 @@ test('severity vocabulary converges between review-format and the gate', () => {
   for (const sev of ['CRITICAL', 'HIGH']) {
     assert.ok(reviewFormat.includes(sev), `review-format lost severity level ${sev}`);
     assert.ok(gate.includes(sev), `pipeline-gate.js no longer matches severity ${sev}`);
+  }
+});
+
+// ── ADR-14 designated-identical blocks ───────────────────────────────────────
+// ADR-14 duplicates a few load-bearing blocks verbatim into every carrier agent (a background
+// subagent sees only its own file). The convergence checks above pin shared *vocabulary*; these
+// pin a shared *block* byte-for-byte. Each registry entry names the block and an extractor; the
+// carrier set is DISCOVERED (every agent whose file contains the block), never hand-curated — so a
+// 9th agent that grows the block is covered automatically and a single divergent edit is named.
+const BLOCK_REGISTRY = [
+  {
+    name: 'Slug / paths / caps (compact reference)',
+    // Heading line through the end of the `- **Cycle caps**` bullet. [\s\S] across the 3 bullets;
+    // .* (no s-flag) stops the tail at the Cycle-caps line's own newline.
+    extract: /\*\*Slug \/ paths \/ caps \(compact reference[\s\S]*?- \*\*Cycle caps\*\*.*/,
+  },
+];
+
+test('ADR-14 designated-identical blocks are byte-identical across all carrier agents', () => {
+  const agents = listAgents('nexus').map((file) => ({ name: agentName(file), text: readFileSync(file, 'utf8') }));
+  for (const { name: blockName, extract } of BLOCK_REGISTRY) {
+    const carriers = [];
+    for (const { name: agent, text } of agents) {
+      const m = text.match(extract);
+      if (m) carriers.push({ agent, block: m[0] });
+    }
+    assert.ok(carriers.length >= 2, `block "${blockName}" found in <2 agents — extractor stale or block removed`);
+    const [canonical, ...rest] = carriers;
+    for (const c of rest) {
+      assert.equal(
+        c.block,
+        canonical.block,
+        `block "${blockName}" in agents/${c.agent}.md diverges from agents/${canonical.agent}.md ` +
+          `(ADR-14 says these must be byte-identical — edit all carriers together)`
+      );
+    }
   }
 });

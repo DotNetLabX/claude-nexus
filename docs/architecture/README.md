@@ -15,6 +15,7 @@ plugin repo is the single source of truth (see ADR-1).
 
 ## Contents
 - [Platform constraints that shape everything](#platform-constraints)
+- [The allocation principle — cheapest correct locus](#the-allocation-principle--cheapest-correct-locus)
 - ADR-1 — Plugin repo is the single source of truth
 - ADR-2 — How knowledge reaches the agents (four delivery mechanisms)
 - ADR-3 — Stack support is a dependency extension, not a superset
@@ -65,6 +66,27 @@ Three Claude Code facts drive most decisions below. Verified against the docs (J
 
 Sources: code.claude.com/docs — `plugins-reference`, `sub-agents`, `discover-plugins`,
 `plugin-dependencies`.
+
+---
+
+## The allocation principle — cheapest correct locus
+
+Every behavior lives at one of four loci, ordered by resistance to decay: **deterministic script**
+(hooks, lints, CI gates) > **skill / rule text** (load-bearing convention the model can't reliably
+re-derive) > **agent prompt** > **model judgment** (the default home — maximally adaptive,
+re-derived each run). Place each responsibility at the **cheapest locus that cannot decay**, and
+move it in both directions as evidence accumulates:
+
+- **Harden** (judgment → prose → script) only what agents demonstrably keep dropping. The promotion
+  ratchet runs *fluid → lessons → prose → gate*; it never promotes on a single data point — the
+  learner's 2-occurrence threshold is this rule.
+- **Prune** (prose → judgment): every line of agent prose is a standing bet that instruction beats
+  fluid judgment there. A bet that stops paying gets deleted — that shifts the responsibility back
+  to intelligence, it doesn't destroy it.
+
+ADR-7 (failures must be unreachable) and ADR-23 (the meta-loop ends in a deterministic gate) are
+this principle's two hardest instances. Prose that knows it should become a gate says so inline.
+(Independently converged with VWH's "golden triangle" — `docs/proposals/vwh-adoptions-2026-06.md` §A1.)
 
 ---
 
@@ -242,6 +264,8 @@ believe it succeeded? If yes, it isn't fixed.* Fixes must make the failure **unr
 where a faithful agent would otherwise fail silently.
 
 **Tradeoffs.** Hooks add latency and complexity; they fail open to avoid blocking legitimate work.
+
+*An instance of the [allocation principle](#the-allocation-principle--cheapest-correct-locus): the unreachable-failure mandate is "harden to the cheapest locus that cannot decay" at its hardest.*
 
 ---
 
@@ -601,6 +625,8 @@ or foreground a one-off spawn manually.
 **Rejected.** *A separate create-skill skill* — duplicates the machinery under a second owner (the Omnishelf evaluation's own verdict). *Hook-enforced linting of every `.claude/skills/` write* — the gate belongs to the authoring flow, not to every incidental file touch; hooks fire per-call, the lint validates the finished folder.
 
 **Extended (1.7.0).** The quality system completed per the consumer's Lane A plan: the proven-pattern catalog ships genericized as `improve-skills/references/proven-patterns.md` (P1–P11 / AP1–AP7 — the design-judgment layer the lint can't check), and a new **`evaluate-skill`** process skill ships the *review* standard (lint-first Layer 0 → judgment Layers 1–4 + capability overlays → severity-rated findings doc → fixes routed through improve-skills or the feedback file per ADR-1). The lint engine gained the generic Layer-0 checks (XML-tag tokens in prose, mojibake markers, description caps); project-specific checks (retired-name lists, index-sync, convergence pins) deliberately stay consumer-local. Enforcement tests pin both wirings — AP1 applied to the system itself.
+
+*An instance of the [allocation principle](#the-allocation-principle--cheapest-correct-locus): a prose rule that kept decaying was moved to its cheapest non-decaying locus — a lint that runs at the moment of writing.*
 
 ---
 
