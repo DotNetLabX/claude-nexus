@@ -46,6 +46,8 @@ Before writing, ensure you have:
    - The word "adapted" or "adapt" near a skill reference — violation. Either Follow or Build, never Adapt.
    - A skill dismissed as "too simple" or "not needed for this case" — violation. Skills ensure consistency; complexity is not the criterion.
    - Implementation pattern details restated when a skill exists — over-specification. Delete and reference the skill.
+   - A mapped skill whose step text lacks the disposition keyword — violation. Write `Follow {name}` / `Build {x} then follow {name}`, never a bare skill name with a parenthetical scope. The keyword is the developer's binding invocation trigger (measured failure: a plan dropped it and 9 mapped steps shipped with zero invocations).
+   - In-repo code references on a Follow step that point at the *structural pattern* the skill teaches — violation. Developers measurably imitate cited code and skip the skill. On Follow steps, cite code only for feature-specific surfaces (a route to mirror, a type to extend).
    
    **Over-specification test for Follow steps:** Read the skill's SKILL.md. For each detail in the plan step, ask: "Does the skill already cover this?" If yes, delete it from the plan step. What remains should be ONLY feature-specific inputs the skill can't know:
    - Entity/type names and their properties ✓
@@ -84,6 +86,8 @@ Before invoking this skill, ensure you have read:
 - **Writing method-body plans.** Describing sequential logic steps (1. do X, 2. do Y, 3. do Z) instead of operation + acceptance criteria. This over-specifies and leads the developer to skip skill invocation. Describe *what* to accomplish, not *how* to implement it internally.
 - **Omitting skill mapping for steps that have a matching skill.** Setting disposition to None without running the skill verification test ("list all actions → match each against skill frontmatter"). A step that creates an endpoint, adds a domain event handler, or configures persistence almost always has a matching skill.
 - **Restating pattern details alongside a Follow skill reference.** If the skill already covers file placement, DI wiring, or record structure — delete it from the plan step. Keep only feature-specific inputs the skill can't know. Over-specification causes the developer to skip the skill entirely.
+- **Dropping the disposition keyword from a mapped step.** A bare skill name (`persistence-patterns` (seed-data section)) instead of `Follow persistence-patterns` removes the developer's binding invocation trigger — the measured result was 9 mapped steps implemented with zero skill invocations. Every mapped step's text carries `Follow` or `Build … then follow`.
+- **Structural-pattern code references on Follow steps.** When a Follow step also cites in-repo code implementing the same pattern, the developer imitates the cited code and never opens the skill (measured across 11 plans: skills were consumed only on steps with no in-repo precedent). Cite code on Follow steps only for feature-specific surfaces — the structural pattern is the skill's job.
 - **Bloated plans are a read-cost multiplier.** A plan is read by 4+ agents across the run, and every KB is paid in each of their contexts (a measured 72KB plan was read ×55 ≈ 3.9MB through contexts). Keep the whole file lean — acceptance criteria over restated detail; target well under ~40KB, and past that prefer splitting into sub-plans over letting one file bloat.
 
 ## Plan Grounding & Deviation Rules

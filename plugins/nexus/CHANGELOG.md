@@ -1,6 +1,25 @@
 # nexus — Changelog
 
 
+## [1.5.2] — 2026-06-12
+Refinements from the knowledge-gateway per-plan skill-usage audit (29 mapped steps across 11
+plans → 3 Skill invocations; evidence distilled in `docs/evidence/2026-06-12-developer-skill-usage-audit.md`).
+
+- **developer.md — mandate re-keyed on the mapping, not the "Follow" keyword.** A plan writing
+  bare skill names (the measured F16 failure) now binds identically; the keyword is phrasing,
+  the mapping is the trigger.
+- **developer.md — fallback ladder gains the cache-Read rung.** Skill tool (bare → namespaced) →
+  Read the installed SKILL.md from the plugin cache, recorded as a Read-channel deviation in
+  `## Skills Used` → plan references, recorded. (F11's developer proved the cache rung works
+  and is materially compliant; 1.5.1 had banned all disk reads.)
+- **create-implementation-plan + plan-template — two new anti-patterns:** (a) a mapped skill
+  without its disposition keyword in the step text (removed the developer's binding trigger —
+  9 mapped steps, zero invocations); (b) structural-pattern code references on Follow steps
+  (devs measurably imitate cited code and skip the skill — cite code only for feature-specific
+  surfaces).
+- **consumption-report — skill-usage caveat:** frontmatter preloads never appear as `Skill`
+  tool calls; zero entries ≠ format non-compliance (a measured audit mis-conclusion).
+
 ## [1.5.1] — 2026-06-11
 Restores the Fokus-baseline **Skill-First Implementation** section in `developer.md` — diluted in the
 Fokus→nexus extraction (same loss class as ADR-19). Audit evidence: a 12-step plan with skills mapped

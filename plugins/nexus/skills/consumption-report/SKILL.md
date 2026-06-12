@@ -110,3 +110,10 @@ file by one agent (10+ is never legitimate; the measured failure was plan.md ×3
 author). True per-round attribution lives in `violations.log`, where the read-tracker hook logs
 every ≥3 same-round repeat. Multiply count × file size for the context cost and name the top
 offenders next to the per-agent growth table.
+
+**Skill-usage caveat (when auditing `Skill` calls from the same logs):** each agent's
+frontmatter-preloaded skills (formats, personas) are injected at spawn and **never appear as
+`Skill` tool calls** — zero `Skill` entries for an agent does NOT mean format non-compliance.
+Only plan-mapped pattern skills and process skills (`tdd`, `diagnose`, `boy-scout`) leave
+tool-call evidence; an audit that reads the log alone will wrongly report total non-compliance
+(a measured mis-conclusion — it took the subagent transcripts to correct it).

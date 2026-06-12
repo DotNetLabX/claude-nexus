@@ -34,6 +34,8 @@ In scope. Explicitly out of scope.
 - A skill dismissed as "simple" or "not needed" — Skills ensure consistency, not just complexity.
 - Pattern details restated alongside a skill reference — Over-specification. Delete the pattern detail, keep only feature-specific inputs.
 - "No shared BuildingBlocks to reference" used to skip a skill — The pattern is the value, not the package. Build locally or Follow.
+- A mapped skill without the disposition keyword in the step text — `Follow {name}` / `Build … then follow {name}` is the developer's binding invocation trigger; bare names broke it in a measured run (9 mapped steps, zero invocations).
+- Structural-pattern code references on a Follow step — developers imitate cited code and skip the skill. Cite code only for feature-specific surfaces; the pattern is the skill's job.
 
 ## Domain Model Changes
 New/modified aggregates, entities, value objects, domain events.

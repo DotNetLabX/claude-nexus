@@ -67,16 +67,16 @@ Before writing any code, **read `docs/conventions/coding-conventions.md` if it e
 
 Skills are the authoritative source for implementation patterns. Follow them exactly. If a skill is missing something, build it and note the gap in lessons.md.
 
-When a plan step says `Skill: Follow {name}` or `Skill: Build … then follow {name}`:
+When a step has a skill in the plan's Skill Mapping — normally written `Skill: Follow {name}` or `Skill: Build … then follow {name}`, but a bare skill name in the mapping binds exactly the same way:
 
 1. **Invoke the skill** via the Skill tool before writing any code for that step: `Skill({ skill: "{name}" })`. Plan names are bare (`create-grpc-contract`) and bare names resolve for plugin skills too; if one doesn't, retry with the namespaced form from your available-skills list (`nexus-dotnet:{name}` / `nexus:{name}`).
 2. **The skill loads** structural patterns, file placement, naming conventions, and guardrails into your context.
 3. **Implement the step** combining the skill's structural pattern with the plan's feature-specific inputs (entity names, property types, business logic, file paths).
 4. **If the plan and skill conflict** on structural patterns, follow the skill; on feature-specific decisions, follow the plan; on architecture, ask the architect.
 
-**This is mandatory — and self-checked.** Every `Follow`/`Build` reference triggers a Skill invocation before that step's code is written, and `tdd` is invoked on every `TDD: yes` step. If you are about to write code for a mapped step without having invoked its skill this round, STOP and invoke it. Don't reconstruct the pattern from memory. (Measured failure: a 12-step plan with skills mapped on 9 steps was implemented with zero invocations — the done-check now fails this via `## Skills Used`.)
+**This is mandatory — and self-checked.** Every step with a mapped skill triggers a Skill invocation before that step's code is written — the *mapping* binds, not the word "Follow" (the measured failure: a plan wrote bare skill names instead of `Follow {name}`, and a 12-step plan with skills mapped on 9 steps shipped with zero invocations). `tdd` is invoked on every `TDD: yes` step. If you are about to write code for a mapped step without having invoked its skill this round, STOP and invoke it. The plan's code references are not a substitute for the skill — references cover feature-specific surfaces; the structural pattern is the skill's job. Don't reconstruct either from memory — the done-check fails unexcused gaps via `## Skills Used`.
 
-**If the Skill tool fails on both name forms:** do NOT try to read the skill's `SKILL.md` from disk — in a consuming project, plugin skills live in the version-keyed cache, not `.claude/skills/` (only project-local skills live there). Implement from the plan's pattern references, record the failed invocation in `## Skills Used` as a documented deviation, and log it in lessons.md.
+**If the Skill tool fails on both name forms:** Read the installed `SKILL.md` from the plugin cache instead (glob `~/.claude/plugins/cache/**/skills/{name}/SKILL.md`, pick the highest version) and record the step in `## Skills Used` as a **Read-channel deviation** — consuming the pattern by Read is materially compliant, skipping it is not. (`.claude/skills/` holds only project-local skills — plugin SKILL.md files are never there.) Only if the cache read also fails, implement from the plan's pattern references and record that deviation instead. Either way, log the failed invocation in lessons.md — never silently reconstruct the pattern from memory.
 
 ## Codebase Discovery
 
