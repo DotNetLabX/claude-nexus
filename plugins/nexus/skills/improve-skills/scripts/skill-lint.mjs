@@ -11,7 +11,10 @@
 //   E4  frontmatter name: present and equal to the folder name
 //   E5  frontmatter description: present
 //   E6  relative reference files cited in the body (references/, workflows/) exist on disk
+//   E7  no XML-tag-shaped tokens in prose (use {placeholder}, never <placeholder>) — code blocks exempt
+//   E8  no mojibake markers (U+FFFD, UTF-8-as-1252 sequences) — the bad-save signature
 //   W1  description shorter than 40 chars — too vague for auto-invocation
+//   W2  description longer than 1024 chars — bloats every auto-invocation scan
 // Errors exit 1; warnings alone exit 0; no arguments exits 2.
 import { readFileSync, existsSync } from 'node:fs';
 import { join, basename, resolve } from 'node:path';
@@ -55,18 +58,29 @@ for (const arg of args) {
       else if (data.name !== name) errors.push(`frontmatter name "${data.name}" does not match the folder name "${name}"`);
       if (!data.description) errors.push('frontmatter has no description:');
       else if (data.description.length < 40) warnings.push('description is thin (<40 chars) — say what the skill does AND when to use it, or auto-invocation will miss it');
+      else if (data.description.length > 1024) warnings.push('description is overlong (>1024 chars) — every auto-invocation scan pays for it; move detail into the body');
     }
 
     // E6 — files the body cites relative to the skill folder must exist. Scoped to the
     // folders a skill legitimately ships (references/, workflows/) so repo-level paths
-    // like `scripts/bump-plugin.mjs` in prose don't false-positive.
+    // like `scripts/bump-plugin.mjs` in prose don't false-positive; the lookbehind skips
+    // segments inside longer paths (`skills/other/references/x.md` is not skill-relative).
     const refs = new Set();
-    for (const m of text.matchAll(/\b(?:references|workflows)\/[\w.-][\w./-]*/g)) {
+    for (const m of text.matchAll(/(?<![\w/])(?:references|workflows)\/[\w.-][\w./-]*/g)) {
       refs.add(m[0].replace(/[.,;:]+$/, ''));
     }
     for (const ref of refs) {
       if (!existsSync(join(dir, ref))) errors.push(`dangling reference: ${ref} is cited in SKILL.md but not on disk`);
     }
+
+    // E7 — XML-tag-shaped tokens confuse loaders and models; placeholders are {curly}.
+    // Prose only: fenced code blocks and inline code spans are legitimate tag/generic homes.
+    const prose = text.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '');
+    const tag = prose.match(/<\/?[A-Za-z][\w-]*(?:\s[^<>]*)?>/);
+    if (tag) errors.push(`XML/angle-bracket token in prose (${tag[0]}) — use {placeholder} style; tags are only safe inside code blocks`);
+
+    // E8 — mojibake signatures: the replacement char, or UTF-8 smart quotes read as cp1252.
+    if (/�|â€/.test(text)) errors.push('mojibake marker found (bad-encoding save signature) — rewrite the file as clean UTF-8');
   }
 
   for (const e of errors) console.log(`ERROR ${name}: ${e}`);

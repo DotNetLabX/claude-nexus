@@ -44,15 +44,19 @@ the rewrite target to this repo.
   about *their* domain skills (kb-sync, docs-bootstrap, meeting-to-notes, spec chain), which
   are not nexus skills. Noted as design pressure, not adopted as changes.
 
-## What nexus adopted (1.6.0) vs declined
+## What nexus adopted (1.6.0 + 1.7.0) vs declined
 
-| Their finding | nexus 1.6.0 change |
+| Their finding | nexus change |
 |---|---|
-| H1 lint-as-done-condition | `skills/improve-skills/scripts/skill-lint.mjs` ships with the skill; both paths end with exit 0; dev-repo dogfood test lints every shipped skill |
-| H2 born-compliant scaffolds | Scaffold step 4 (frontmatter completeness) + step 6 (registration row) |
-| H3 encoding rule | "Write Discipline" section: Write tool, UTF-8 without BOM, never shell redirection |
-| M1 consolidating pass | Fix channel reworded: "net complexity flat or down, never additive patching" (changelog half already existed) |
-| M2 entry broadening | "Entry Points" section: learner-classified item OR direct user request; separate create-skill skill rejected per their verdict |
-| T2 generalized | `improve-flow` "Prefer Mechanical Enforcement" section |
-| Their SKILL_AUTHORING / RECIPES / RUBRIC docs wholesale | **Declined** — project-flavored; the binding rules were distilled into the skill itself instead |
+| H1 lint-as-done-condition | 1.6.0: `skills/improve-skills/scripts/skill-lint.mjs` ships with the skill; both paths end with exit 0; dev-repo dogfood test lints every shipped skill |
+| H2 born-compliant scaffolds | 1.6.0: scaffold step 4 (frontmatter completeness) + step 6 (registration row) |
+| H3 encoding rule | 1.6.0: "Write Discipline" section: Write tool, UTF-8 without BOM, never shell redirection |
+| M1 consolidating pass | 1.6.0: fix channel reworded: "net complexity flat or down, never additive patching" (changelog half already existed) |
+| M2 entry broadening | 1.6.0: "Entry Points" section: learner-classified item OR direct user request; separate create-skill skill rejected per their verdict |
+| T2 generalized | 1.6.0: `improve-flow` "Prefer Mechanical Enforcement" section |
+| Lane A3 — RECIPES §7 catalog | 1.7.0: genericized as `improve-skills/references/proven-patterns.md` (P1–P11, AP1–AP7, one-line provenance); consulted on every fix/scaffold and by the Quality Gate |
+| Lane A2 — SKILL_QUALITY_RUBRIC | 1.7.0: new `evaluate-skill` process skill (lint-first Layer 0 → judgment Layers 1–4 + generic overlays → findings doc → fixes routed via improve-skills / plugin-feedback per ADR-1); project-specific Layer-3 overlays stay local by design |
+| Lane A1 extras (generic engine checks) | 1.7.0: skill-lint gains XML-token, mojibake, and description-cap checks; config-driven repo-specific checks (retired names, README-sync, convergence pins) stay local until a consumer needs them |
+| Lane A5 — CI pin | 1.7.0: enforcement tests pin "improve-skills names the lint as its done-condition" and "evaluate-skill runs lint as Layer 0" (AP1 applied to itself) |
+| Their SKILL_AUTHORING / RECIPES / RUBRIC docs wholesale | **Declined** — project-flavored; the binding rules ship genericized inside the skills instead |
 | T1/T3 domain-skill proposals (sync triggers, re-extraction, finalize paths) | **Declined** — Omnishelf-domain, not pipeline-generic |

@@ -110,6 +110,44 @@ test('multiple folders: one bad folder fails the run, all are reported', () => {
   assert.match(res.stdout, /ERROR/);
 });
 
+test('an XML-tag-shaped token in prose is an error', () => {
+  const md = `---\nname: tagger\ndescription: A skill that demonstrates the angle-bracket placeholder problem in its body prose.\n---\n\n# Tagger\n\nReplace <placeholder> with the real value.\n`;
+  const dir = makeSkill('tagger', md);
+  const res = lint(dir);
+  assert.equal(res.status, 1);
+  assert.match(res.stdout, /angle|XML/i);
+});
+
+test('angle-bracket tokens inside fenced code blocks are allowed', () => {
+  const md = `---\nname: coder\ndescription: A skill whose fenced code examples legitimately contain generic type parameters and tags.\n---\n\n# Coder\n\n\`\`\`csharp\nList<string> items = Build<MyType>();\n\`\`\`\n\nAnd inline \`Dictionary<int, string>\` is fine too.\n`;
+  const dir = makeSkill('coder', md);
+  const res = lint(dir);
+  assert.equal(res.status, 0, res.stdout);
+});
+
+test('mojibake markers are an error', () => {
+  const md = `---\nname: mojibake\ndescription: A skill whose body carries the classic UTF-8-read-as-1252 smart-quote sequence from a bad save.\n---\n\n# Mojibake\n\nThe userâ€™s data is loaded first.\n`;
+  const dir = makeSkill('mojibake', md);
+  const res = lint(dir);
+  assert.equal(res.status, 1);
+  assert.match(res.stdout, /mojibake/i);
+});
+
+test('an overlong description warns but does not fail', () => {
+  const md = `---\nname: longdesc\ndescription: ${'This sentence pads the description well past the cap. '.repeat(25)}\n---\n\n# Long\n`;
+  const dir = makeSkill('longdesc', md);
+  const res = lint(dir);
+  assert.equal(res.status, 0, res.stdout);
+  assert.match(res.stdout, /WARN/);
+});
+
+test('a repo-level path containing references/ is not treated as skill-relative', () => {
+  const md = `---\nname: pathy\ndescription: A skill citing another skill's reference file by its full repo path, which must not be checked locally.\n---\n\n# Pathy\n\nSee \`plugins/nexus/skills/other/references/elsewhere.md\` for the source.\n`;
+  const dir = makeSkill('pathy', md);
+  const res = lint(dir);
+  assert.equal(res.status, 0, res.stdout);
+});
+
 // Dogfood: every shipped nexus skill must pass its own lint.
 test('all shipped nexus skills are lint-clean', () => {
   const skillsDir = join(pluginRoot('nexus'), 'skills');

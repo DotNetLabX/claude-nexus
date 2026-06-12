@@ -1,6 +1,35 @@
 # nexus — Changelog
 
 
+## [1.7.0] — 2026-06-12
+Completes the skill-quality system (ADR-23 extension) — the remaining Lane A items from the
+Omnishelf upstreaming plan (`2026-06-12-skill-quality-to-plugin.md`): the *design* layer and
+the *review* layer join 1.6.0's write standard + mechanical gate.
+
+- **New skill: `evaluate-skill`** — the review standard. Judges a skill against its own job
+  statement (input → output → consumer → what excellent looks like), two anchors: first-pass
+  quality AND whole-life job fitness (the measured estate pattern: high first-pass, failing
+  loop-closure). Process: gather run evidence → lint as Layer 0 → judgment Layers 1–4 +
+  capability overlays (`references/rubric.md`, genericized from the consumer's validated
+  rubric) → severity-rated findings doc (`docs/skill-evals/`) with verdict + checked-clean
+  list → fixes routed via improve-skills (local) or the plugin-feedback file (shipped,
+  ADR-1). Project-specific overlays deliberately stay consumer-local.
+- **New: `improve-skills/references/proven-patterns.md`** — the §7 catalog genericized:
+  11 evidence-backed patterns (deterministic post-conditions, state-first writing,
+  preserve-on-write, two-axis quality, carry-over confirm-or-refute, …) + 7 anti-patterns
+  (dead-letter enforcement, half-landed fixes, restated rules, hardcoded inventories,
+  fictional infrastructure, no-finalize-path, gate-nothing checkpoints), each with one-line
+  provenance and a when-NOT-to-use fence. Wired into improve-skills' scaffold step, fix
+  path, and Quality Gate — the design-judgment layer the lint can't check.
+- **skill-lint.mjs — generic Layer-0 extras:** XML-tag-shaped tokens in prose (code blocks
+  exempt; `{placeholder}` never `<placeholder>`), mojibake markers (U+FFFD / UTF-8-as-1252
+  signatures), description-length cap warning, and a path-prefix fix so repo-level paths
+  containing `references/` aren't treated as skill-relative. 5 new tests (TDD-first);
+  config-driven project checks (retired names, index-sync, convergence pins) stay local.
+- **Enforcement pins (AP1 applied to the system itself):** lint tests assert improve-skills
+  names the lint as its done-condition and ships the script, and evaluate-skill runs the
+  lint as Layer 0 and ships the rubric.
+
 ## [1.6.0] — 2026-06-12
 The improve-skills overhaul (ADR-23) — the skill meta-loop now ends in a deterministic gate.
 Evidence base: the Omnishelf job-fitness evaluation of the evolved skill estate (their addendum

@@ -600,6 +600,8 @@ or foreground a one-off spawn manually.
 
 **Rejected.** *A separate create-skill skill* — duplicates the machinery under a second owner (the Omnishelf evaluation's own verdict). *Hook-enforced linting of every `.claude/skills/` write* — the gate belongs to the authoring flow, not to every incidental file touch; hooks fire per-call, the lint validates the finished folder.
 
+**Extended (1.7.0).** The quality system completed per the consumer's Lane A plan: the proven-pattern catalog ships genericized as `improve-skills/references/proven-patterns.md` (P1–P11 / AP1–AP7 — the design-judgment layer the lint can't check), and a new **`evaluate-skill`** process skill ships the *review* standard (lint-first Layer 0 → judgment Layers 1–4 + capability overlays → severity-rated findings doc → fixes routed through improve-skills or the feedback file per ADR-1). The lint engine gained the generic Layer-0 checks (XML-tag tokens in prose, mojibake markers, description caps); project-specific checks (retired-name lists, index-sync, convergence pins) deliberately stay consumer-local. Enforcement tests pin both wirings — AP1 applied to the system itself.
+
 ---
 
 ## Inherited pipeline decisions

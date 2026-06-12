@@ -67,3 +67,19 @@ test('C.4: the always-on context tells the model where the plugin (and salvage s
   const inject = read('hooks', 'scripts', 'inject-rules.js');
   assert.match(inject, /salvage-transcript/, 'inject-rules must surface the salvage script location');
 });
+
+// ── ADR-23 — the meta-loop's own gate is physically wired (AP1 applied to itself) ────────────
+// improve-skills' done-condition is the lint script; the skill must name it, the script must
+// ship, and the rubric consumer (evaluate-skill) must run lint as its Layer 0.
+test('ADR-23: improve-skills names skill-lint as its done-condition and ships the script', () => {
+  const skill = read('skills', 'improve-skills', 'SKILL.md');
+  assert.match(skill, /skill-lint\.mjs/, 'improve-skills must name the lint script');
+  assert.match(skill, /done-condition/i, 'improve-skills must bind the lint to completion, not advice');
+  read('skills', 'improve-skills', 'scripts', 'skill-lint.mjs'); // throws if the script does not ship
+});
+
+test('ADR-23: evaluate-skill runs the lint as Layer 0 and ships the rubric', () => {
+  const skill = read('skills', 'evaluate-skill', 'SKILL.md');
+  assert.match(skill, /skill-lint\.mjs/, 'evaluate-skill must run the shipped lint first');
+  read('skills', 'evaluate-skill', 'references', 'rubric.md'); // throws if the rubric does not ship
+});

@@ -19,7 +19,7 @@ Two callers, one process:
 Shipped nexus skills live in the plugin's version-keyed cache — not editable from a consuming project.
 
 - **Fix to a shipped (plugin) skill** → append to the portable feedback file `docs/plugin-feedback/nexus-{plugin-version}-{date}.md` (same entry format as improve-flow: suggested target = the skill + section, action, evidence, condensed lesson). Never edit the cache.
-- **Fix to a project-local skill** (one that lives in this project's `.claude/skills/`) → apply directly **as a consolidating pass**: read the SKILL.md fully, fold the fix into the section it belongs to — net complexity flat or down, never additive patching. A skill that only ever grows becomes unreadable and stops being followed.
+- **Fix to a project-local skill** (one that lives in this project's `.claude/skills/`) → apply directly **as a consolidating pass**: read the SKILL.md fully, fold the fix into the section it belongs to — net complexity flat or down, never additive patching. A skill that only ever grows becomes unreadable and stops being followed. Check the fix against `references/proven-patterns.md` — especially AP2 (sweep every normative surface the rule lives on, not just where it was reported) and AP3 (one owner per fact).
 - **Skill gap** → decide the home:
   - **Project-specific pattern** (this codebase's stack/structure) → scaffold a **project-local** skill in `.claude/skills/{name}/` (a consumer project legitimately owns its local skills).
   - **Pipeline-generic pattern** (useful to every nexus consumer) → feedback-file entry proposing a new plugin skill; don't scaffold locally.
@@ -30,7 +30,7 @@ Shipped nexus skills live in the plugin's version-keyed cache — not editable f
    - Check the skills already surfaced in your context (plugin skills are listed there — directory globbing under-reports them) AND grep the project's own `.claude/skills/` — confirm no existing skill covers it.
    - Check that reference files mentioned in the lesson still exist.
    - Confirm the pattern is repeatable — will be needed again, not a one-off.
-2. **Study 2-3 existing skills** closest in type (project-local ones, or shipped ones from your context) and match their structure.
+2. **Study 2-3 existing skills** closest in type (project-local ones, or shipped ones from your context) and match their structure. Consult `references/proven-patterns.md` for the mechanisms that earned their keep (state-first writing, deterministic post-conditions, …) and the anti-patterns to design out.
 3. **Scaffold:** `.claude/skills/{skill-name}/SKILL.md` (add `workflows/` or `references/` only if variant-aware or template-bearing).
 4. **Write SKILL.md born compliant** — frontmatter first:
    - `name:` — must equal the folder name.
@@ -78,6 +78,7 @@ Group entries under `## Skills Created`, `## Skills Fixed`, and `## Routed to Pl
 - The **reference files** mentioned in the gap still exist.
 - The steps are **concrete and actionable** — not abstract guidance.
 - Project-local skills may bake in project specifics; a skill proposed for the **plugin** must be generic — placeholders (`{Name}`, `{Svc}`), no project paths.
+- **No anti-pattern from `references/proven-patterns.md`** — especially AP1 (every MUST names its executor), AP4 (glob, don't enumerate), AP5 (every named path/tool verified to exist), AP6 (multi-phase producers ship a finalize path).
 
 If the gate fails, log the gap to the backlog with status `Deferred` and the reason.
 
