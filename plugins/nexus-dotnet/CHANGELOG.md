@@ -1,6 +1,11 @@
 # nexus-dotnet — Changelog
 
 
+## [1.0.3] — 2026-06-12
+Learner consolidation — Pass 4 finalize-stage malfunction log (M6).
+
+- **`conventions/csharp.md`**: generalized the **Build Verification** `cd /d` rule from build commands to **any command under the Bash tool** (added the `git -C "…"` form). Third occurrence of the cmd-ism class — Pass 0 (developer, build), Pass 3c-B (architect, build), Pass 4 M6 (team-lead, **git**); the build-scoped wording could not catch the git context.
+
 ## [1.0.2] — 2026-06-10
 Learner consolidation from Passes 4 and 5.
 

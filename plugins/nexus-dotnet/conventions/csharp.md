@@ -34,7 +34,7 @@ Programming conventions for C# / .NET. Inlined into the developer, reviewer, and
 
 ## Build Verification
 
-- **On Windows under the Bash tool, never prefix a build with `cd /d <path> && …`.** The Bash tool runs under bash, not cmd.exe; `/d` is a cmd flag, so bash reads it as an extra `cd` argument and fails with *"too many arguments"* — the build never runs, and the pipe's exit-code-1 masquerades as a compiler failure. Pass the absolute solution path directly instead: `dotnet build "D:\…\SprintRituals.slnx"` (no `cd` — the Bash tool resets cwd between calls anyway). A shell/setup error here is easy to misread as a real compile error, so confirm the compiler actually ran before declaring a build red.
+- **On Windows under the Bash tool, never use cmd.exe idioms — with any command (build, git, anything), not just builds.** The Bash tool runs under bash, not cmd.exe; `/d` is a cmd flag, so `cd /d <path> && …` fails with *"too many arguments"* — the command never runs, and the pipe's exit-code-1 masquerades as a real failure. Skip `cd` and pass absolute paths instead: `dotnet build "D:\…\SprintRituals.slnx"` for builds, `git -C "D:/src/repo" …` for git (the Bash tool resets cwd between calls anyway). A shell/setup error here is easy to misread as a real compile/tool failure, so confirm the tool actually ran before declaring it failed.
 
 ---
 
