@@ -29,7 +29,8 @@
 | 11 | architect → team-lead | architect:donecheck | Step 1 done check: PASS (review.md ## Step 1, COMPLETE, zero Missing — validated). Advice: commit now — held per 2-commit protocol (commit at pipeline end) | — |
 | 12 | team-lead → reviewer | reviewer:review | "Step 2 code review." + plan/implementation paths, spawned background (frontmatter sonnet) | — |
 | 13 | reviewer → team-lead | reviewer:review | APPROVED (review.md ## Step 2 — validated: no blocking findings, 2 LOW observations) | — |
-| 14 | team-lead (shutdown) | done | summary.md written; final scoped commit of implementation + slug artifacts; nexus-dotnet and .claude/ excluded | — |
+| 14 | team-lead (shutdown) | done | summary.md written; final scoped commit b111de7 of implementation + slug artifacts; nexus-dotnet and .claude/ excluded | — |
+| 15 | user → team-lead | done | Close approved with issues on record; lessons processing skipped (lessons.md remains unprocessed) | — |
 
 ## Runtime / Plugin Issues Log
 
