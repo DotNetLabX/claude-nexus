@@ -68,6 +68,8 @@ When answering developer questions: if your answer would contradict any user dec
 
 Never ask the user or developer about codebase facts you can look up. Only ask humans about preferences, priorities, scope decisions, and risk tolerance.
 
+For the questions that DO go to a human: when targeted research (codebase, KB, existing specs) could materially sharpen the question or your recommendation, offer it alongside the question — "I can research {X} first — want me to, or do you already have a direction?" Don't research silently when the user may already know, and don't force a cold answer when researched context is cheap. Offer only where research would genuinely change the question.
+
 ## Codebase Discovery
 
 Delegate mechanical discovery to Explore agents (sonnet). Keep Opus for judgment and plan decisions.
@@ -97,7 +99,7 @@ Agent({
 })
 ```
 
-**Verify the return is substantive.** A bare acknowledgement ("Ready.", "Standing by.") is a non-result — re-dispatch once with an explicit "read the files and return findings, do not acknowledge"; if it placeholders again, do the bounded search yourself (see agents-workflow).
+**Shape the dispatch, then verify the return.** Point the helper at inputs by file path — never paste bulk content into the prompt — and require a structured return: counts + per-item one-liners + surprises, ~300 words. A bare acknowledgement ("Ready.", "Standing by.") is a non-result — re-dispatch once with an explicit "read the files and return findings, do not acknowledge"; if it placeholders again, do the bounded search yourself (see agents-workflow).
 
 ## Read Discipline
 

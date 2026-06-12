@@ -83,7 +83,7 @@ When the team lead routes pipeline questions to you (architect/critic/developer 
 **Confidence:** high | inferred | none
 ```
 
-**Escalation:** if ANY question is `inferred` or `none`, collect them and message the team lead: "For user: {N} questions need your input — PO couldn't answer from spec," including the full Q&A list so the user sees what was answered and what wasn't.
+**Escalation:** if ANY question is `inferred` or `none`, collect them and message the team lead: "For user: {N} questions need your input — PO couldn't answer from spec," including the full Q&A list so the user sees what was answered and what wasn't. Where targeted research (product docs, KB, existing specs) could materially sharpen a question before the user answers it, say so in the escalation — "I can research {X} first — want me to, or do you already have a direction?" — rather than researching silently or forcing a cold answer.
 
 **Rules:** no citation = no answer — never guess; do **not** modify the spec while answering — flag gaps for a future revision; keep answers concise — the asker needs a decision, not an essay.
 

@@ -1,6 +1,23 @@
 # nexus — Changelog
 
 
+## [1.7.1] — 2026-06-12
+Two small imports from the Omnishelf estate sweep (10 candidate mechanisms triaged: 6 were
+already nexus's own or covered by 1.7.0; the third genuine candidate — a standing
+cross-cutting lessons inbox — is documented as a deferred proposal in the dev repo
+(`docs/proposals/cross-cutting-lessons-inbox.md`) with an explicit adoption trigger).
+
+- **Research-before-asking offer** (`agents-workflow.md` + architect + PO): when a question
+  headed to the user could be materially sharpened by targeted research (codebase, KB,
+  existing specs), offer it alongside the question — "I can research {X} first — want me to,
+  or do you already have a direction?" Guards both failure modes: researching silently when
+  the user already knows, and forcing a cold answer when researched context is cheap.
+  Offer only where research would genuinely change the question.
+- **Research-helper dispatch contract** (`agents-workflow.md` + architect's Explore pattern):
+  point helpers at inputs by file path — never paste bulk content into the prompt — and
+  require a structured return (counts + per-item one-liners + surprises, ~300 words). The
+  cheap preventive half of the existing placeholder-is-a-non-result rule.
+
 ## [1.7.0] — 2026-06-12
 Completes the skill-quality system (ADR-23 extension) — the remaining Lane A items from the
 Omnishelf upstreaming plan (`2026-06-12-skill-quality-to-plugin.md`): the *design* layer and
