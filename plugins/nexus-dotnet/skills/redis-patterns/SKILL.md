@@ -1,6 +1,6 @@
 ---
 name: redis-patterns
-description: Redis.OM persistence — entity model, repository, index creation, seeding, DI wiring. Loaded when working with Redis-backed services.
+description: Redis.OM persistence — entity model, repository, index creation, seeding, DI wiring. Use when working with Redis-backed services.
 user-invocable: true
 ---
 

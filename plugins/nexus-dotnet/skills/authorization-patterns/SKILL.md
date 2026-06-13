@@ -1,6 +1,6 @@
 ---
 name: authorization-patterns
-description: Two-layer authorization — role gate + resource gate. Loaded when implementing endpoint authorization or access control.
+description: Two-layer authorization — role gate + resource gate. Use when implementing endpoint authorization or access control.
 user-invocable: true
 ---
 

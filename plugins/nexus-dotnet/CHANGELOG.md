@@ -1,6 +1,17 @@
 # nexus-dotnet — Changelog
 
 
+## [1.1.1] — 2026-06-13
+- nexus-dotnet description fixes — plugin blurb skill count 29→32; 7 pattern-skill descriptions Use-when uniformity
+  - plugin.json metadata change
+  - skill change (authorization-patterns)
+  - skill change (cqrs-patterns)
+  - skill change (domain-patterns)
+  - skill change (error-handling)
+  - skill change (persistence-patterns)
+  - skill change (redis-patterns)
+  - skill change (service-registration)
+
 ## [1.1.0] — 2026-06-12
 .NET skill estate sweep — rubric evaluation, format normalization, genericization fixes (ADR-23).
 First pass of all 26 .NET skills through the ADR-23 quality system (`skill-lint`, `evaluate-skill`,

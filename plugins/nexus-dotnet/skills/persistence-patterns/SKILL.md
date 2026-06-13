@@ -1,6 +1,6 @@
 ---
 name: persistence-patterns
-description: EF Core persistence — repository pattern, entity configurations, DbContext setup, seed data, interceptors. Loaded when working with database entities or persistence infrastructure.
+description: EF Core persistence — repository pattern, entity configurations, DbContext setup, seed data, interceptors. Use when working with database entities or persistence infrastructure.
 user-invocable: true
 ---
 

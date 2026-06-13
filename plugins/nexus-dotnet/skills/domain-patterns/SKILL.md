@@ -1,6 +1,6 @@
 ---
 name: domain-patterns
-description: DDD patterns — aggregates, entities, value objects, domain events, partial class split, state machines, event dispatch. Loaded when designing or implementing domain models.
+description: DDD patterns — aggregates, entities, value objects, domain events, partial class split, state machines, event dispatch. Use when designing or implementing domain models.
 user-invocable: true
 ---
 
