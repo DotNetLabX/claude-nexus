@@ -53,7 +53,9 @@
 | 22 | codex → TL | reviewer:review | **GO** (2 WARN best-effort: git -C, aliases — covered by Step-6 git log backstop by design; 1 INFO non-issue). Independently confirmed bash -c wrapping IS caught, &&-chains caught, commit-graph excluded, branch position, 17/17 skill-tracker + 9/9 hooks.json. review-codex.md written (8.6KB). | — |
 | 23 | TL (merge) | reviewer:review | Merged finding-by-finding: 0 CRIT/HIGH, no verdict conflict. APPROVED+GO → Step 2 passes cycle 1/3. LOW phrasing nit fixed by TL (implementation.md:169); 2 WARNs accepted by design. | — |
 | 24 | TL (release) | done | Step 9: bump 1.7.2→1.8.0 MINOR (proper CHANGELOG written); gen-commands nexus (architect+team-lead); gen-omni (--check green). Suite 127/128 (1 pre-existing nexus-dotnet). summary.md written. | — |
-| 25 | TL → user | done | Implement commit; completion dashboard; present RT-1/RT-2 runtime issues; lessons-processing ask. | — |
+| 25 | TL → user | done | Implement commit 700bb93; completion dashboard; presented RT-1/RT-2 runtime issues; lessons-processing ask. | — |
+| 26 | user → TL | done | Lessons = SKIP (recorded unprocessed). RT-2 = FIX NOW (solo). | — |
+| 27 | TL → solo | (new slug) | PGH CLOSED. Spawned solo for RT-2 as adhoc-SalvageFencedCloser: fix salvage-transcript.js fenced-closer selection bug + regression test; no commit (TL owns commit + PATCH bump). agentId=a5ffcfce8d47473a0 (opus). | — |
 
 ## Runtime / Plugin Issues Log
 

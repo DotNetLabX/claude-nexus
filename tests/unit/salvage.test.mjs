@@ -47,6 +47,28 @@ test('--final preserves the old final-substantive selection', () => {
   assert.match(res.stdout, /Holding for the team lead/, 'old behavior: first non-stub from the end');
 });
 
+test('recovers a deliverable stranded behind 8 trailing closers — including one >=400 chars total and a longer earlier analysis (RT-2 shape)', () => {
+  // The measured RT-2 failure: 8 trailing closers, one of which has total chars >= 400 (the
+  // fenced block pushes it over while the prose stays <400). An even-longer analysis block
+  // precedes the deliverable, so neither "pick the longest" nor "pick the last non-stub" works
+  // — content-based closer detection + tail-strip is required. The deliverable is the last
+  // non-closer: the structured critic review.
+  const res = salvage('--file', fixture('stranded-fenced-closer.jsonl'));
+  assert.equal(res.status, 0, res.stderr);
+  assert.match(res.stdout, /Pipeline Gates Hardening — Critic Review/, 'the structured review is recovered, not a closer');
+  assert.match(res.stdout, /CRITICAL-1/, 'recovered text is the verbatim review, not a shorter or longer block');
+  assert.ok(!res.stdout.includes('Harness analysis'), 'the earlier longer analysis block must not be returned');
+  assert.ok(!/^Complete\.|^Done\./m.test(res.stdout), 'no fenced closer is the deliverable');
+});
+
+test('--final on the fenced-closer transcript still returns the last substantive (a closer)', () => {
+  // --final is the explicit escape hatch: it must keep selecting the final substantive text,
+  // even when that text is a lifecycle closer. Guards against the fix over-reaching into --final mode.
+  const res = salvage('--final', '--file', fixture('stranded-fenced-closer.jsonl'));
+  assert.equal(res.status, 0, res.stderr);
+  assert.match(res.stdout, /^Done\./, 'old behavior: the final substantive text, whatever its shape');
+});
+
 test('a missing transcript is a hard error (exit 1), not empty output', () => {
   const res = salvage('--file', fixture('does-not-exist.jsonl'));
   assert.equal(res.status, 1);

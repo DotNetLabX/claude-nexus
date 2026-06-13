@@ -1,6 +1,22 @@
 # nexus — Changelog
 
 
+## [1.8.1] — 2026-06-13
+Fixes the `salvage-transcript.js` deliverable-selection heuristic (the recovery script the team
+lead runs as leg 3 of the stranded-deliverable recovery order). Found live during the 1.8.0 run:
+an agent emitted its real review (~21k chars) then capped the run with several fenced
+"Complete."/"Done." lifecycle closers, and salvage returned an 85-char closer instead of the review.
+
+- **Closer detection by shape, not length.** The old `looksLikeDeliverable = last.includes('\n') ||
+  length >= 400` plus a `slice(-5)` longest-recent window failed two ways: a multi-line *fenced*
+  closer cleared the newline shortcut, and when many closers piled up (8 in the measured case) the
+  deliverable fell outside the 5-block window while one closer exceeded the 400-char bar. Replaced
+  with: strip trailing fenced blocks to get the prose, classify a short (<400-char) lifecycle-keyword
+  prose block as a closer, then walk back from the tail past the closers and return the last
+  remaining substantive text. Correctly skips an even-longer *analysis* block that precedes the
+  deliverable (so "pick the longest" stays wrong). `--final`, the stub-skip, and the all-stubs
+  fail-safe are unchanged. New regression fixture replicates the full measured shape.
+
 ## [1.8.0] — 2026-06-13
 Two enforcement gates for breaches the pipeline previously only detected (or not at all),
 converting both from "an agent must choose to behave" into detect-then-gate: log the fact

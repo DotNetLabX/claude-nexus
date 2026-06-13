@@ -17,12 +17,17 @@
  *   add --final to force the pre-1.5.0 selection (final substantive text, whatever its shape)
  *
  * Output: the stranded DELIVERABLE, verbatim, on stdout. Lifecycle stubs ("Ready when you
- * are.", "Standing by.", ".") are skipped from the tail; when the final substantive text is a
- * single-line verbose closer ("Holding for the go-ahead…" — >=80 chars, so the stub skip
- * misses it; the F16-measured shape), the LONGEST of the recent substantive texts is returned
- * instead (longest-recent recovered 8/8 strandings when studied). If nothing substantive
- * exists, the last text is printed anyway with a warning on stderr. Exit codes: 0 recovered,
- * 1 transcript not found/empty, 2 usage.
+ * are.", "Standing by.", ".") are skipped from the tail; remaining substantive texts are then
+ * walked from the end, stripping lifecycle closers (short prose — <400 chars of non-fenced text
+ * — that announces completion/handoff/nothing-further, optionally followed by a fenced
+ * Reviewed:/Plan: block). Two measured shapes: the F16 single-line verbose closer ("Holding
+ * for the go-ahead…") and the RT-2 multi-line fenced closer ("Complete.\n\n```\nReviewed:
+ * …\n```" — even when multiple closers pile up and one exceeds 400 total chars, the non-fenced
+ * prose is always <400). The last non-closer is the deliverable. If all substantives are
+ * closers the last is returned as best-effort. --final bypasses all closer-stripping: the final
+ * substantive text, whatever its shape. If nothing substantive exists, the last text is printed
+ * anyway with a warning on stderr. Exit codes: 0 recovered, 1 transcript not found/empty,
+ * 2 usage.
  *
  * The transcript locations are an UNVERSIONED platform surface — both known layouts are
  * searched; pass --file (the path the spawn result prints) when in doubt.
@@ -88,22 +93,31 @@ if (texts.length === 0) {
 }
 
 // Lifecycle stubs (short single-liners — "Ready when you are.", "Standing by.", ".") are
-// never the deliverable. Among substantive texts, the final one is the deliverable only when
-// it LOOKS like one (multi-line or long). A single-line, short-ish final text is the
-// verbose-closer shape that stranded every F16 deliverable ("Holding for the go-ahead…" —
-// >=80 chars, so the stub skip misses it); there, the longest of the last 5 substantive
-// texts wins (longest-recent recovered 8/8 measured strandings). --final forces the
-// pre-1.5.0 behavior: the final substantive text, whatever its shape.
+// never the deliverable. Among the remaining substantive texts, trailing lifecycle closers are
+// stripped from the end until a non-closer is reached — that last non-closer is the
+// deliverable. A "closer" is a block whose non-fenced prose is <400 chars AND contains
+// lifecycle language (complete/done/nothing further/delivered above/handing back/etc.),
+// optionally followed by a fenced ```Reviewed:```/```Plan:``` trailer. Two shapes measured
+// live: F16 (single-line verbose closer >=80 chars) and RT-2 (multi-line fenced closer, one
+// can reach 420 total chars while the non-fenced prose stays <344 chars). If ALL substantives
+// are closers, the last one is returned as best-effort (better than nothing). --final bypasses
+// closer-stripping: the final substantive text, whatever its shape (pre-1.5.0 behavior).
 const isStub = (t) => { const s = t.trim(); return s.length < 80 && !s.includes('\n'); };
+// Strip one or more trailing fenced blocks (``` ... ```) to isolate the prose body.
+const stripFences = (t) => t.replace(/(\n\s*```[\s\S]*?```\s*)+$/, '').trim();
+// Lifecycle-closer keyword pattern — must match the de-fenced prose.
+const CLOSER_RE = /\b(complete|completed|done|finished|no further action|nothing further|nothing to add|nothing remaining|handing back|standing by|ready when you are|delivered above|delivered in full|is already delivered|is complete|my work is|my review is|that message is the deliverable|no remaining|nothing else|no action needed|work is done|task is done|review is done)\b/i;
+const isCloser = (t) => { const prose = stripFences(t.trim()); return prose.length < 400 && CLOSER_RE.test(prose); };
 const substantive = texts.filter((t) => !isStub(t));
 let pick = null;
 if (substantive.length > 0) {
-  const last = substantive[substantive.length - 1];
-  const looksLikeDeliverable = last.includes('\n') || last.trim().length >= 400;
-  if (finalMode || looksLikeDeliverable) {
-    pick = last;
+  if (finalMode) {
+    pick = substantive[substantive.length - 1];
   } else {
-    pick = substantive.slice(-5).reduce((a, b) => (b.trim().length > a.trim().length ? b : a));
+    // Walk backwards, stripping closers; stop at the first non-closer (the deliverable).
+    let tail = substantive.length - 1;
+    while (tail > 0 && isCloser(substantive[tail])) tail--;
+    pick = substantive[tail];
   }
 }
 if (pick === null) {
