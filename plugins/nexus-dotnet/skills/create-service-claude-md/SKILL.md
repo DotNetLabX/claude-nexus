@@ -1,7 +1,8 @@
 ---
 name: create-service-claude-md
-description: Architect-only. Captures every axis needed to scaffold a new service and writes src/Services/{Name}/CLAUDE.md. Run this before the Developer's create-service skill.
+description: Architect-only. Captures every axis needed to scaffold a new service and writes src/Services/{Name}/CLAUDE.md. Use when an architect has decided a new service and needs to capture its axes before the developer scaffolds it (run before the Developer's create-service skill).
 user-invocable: true
+disable-model-invocation: true
 ---
 
 # Create Service CLAUDE.md (Architect Reference)

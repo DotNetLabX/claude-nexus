@@ -1,6 +1,43 @@
 # nexus-dotnet — Changelog
 
 
+## [1.1.0] — 2026-06-12
+.NET skill estate sweep — rubric evaluation, format normalization, genericization fixes (ADR-23).
+First pass of all 26 .NET skills through the ADR-23 quality system (`skill-lint`, `evaluate-skill`,
+proven-patterns). Skill **names are frozen** — no renames; all changes are descriptions/bodies/frontmatter.
+Dispositions: 9 keep · 12 reformat · 5 rewrite (`docs/specs/adhoc-DotnetSkillSweep/delivery/disposition.md`).
+MINOR tier: 26-skill breadth + `disable-model-invocation` behavior change (owner-escalated).
+
+- **Genericization (the pivotal change).** Five skills were bound to private projects and/or documented
+  unbuilt "Pass 2/3" future state; all are now app-agnostic:
+  - `domain-patterns`, `domain-service`, `analytics-computation-service` — removed the "not proven until
+    Passes 2/3" banners and all "target-state / before-state / won't-build-until-then" framing; demoted
+    live `Fokus.*` paths to illustrative examples; restated ADR-004/005/006/007/010/011 as **named
+    conventions** (the rule, not the project's ADR number). The valuable mechanical content (CS9032
+    rule, VO-vs-scalar rule, pure-by-default + escape-hatch read-port, output/input boundaries, the
+    wire-only `{Mode,Multi?,Single?}` envelope rule, delta/direction/polarity, sparkline builder,
+    rolling-average ordering caveat) is preserved verbatim.
+  - `central-package-management` — dropped the banner + the `sprint-rituals` "Pass 0" snapshot;
+    **preserved verbatim** the three-form verification grep with its globstar-portability warning.
+  - `framework-currency` — dropped the banner + named-project `file:line` examples; **preserved
+    verbatim** the two-stage `Send.*` detection (grep → receiver inspection) and version-verification
+    discipline.
+- **Blocking lint fixes (Layer 0).** `persistence-patterns` and `redis-patterns` had `<T>` tokens in
+  prose headings (XML-tag-in-prose) — wrapped in inline code; both now lint clean.
+- **Format normalization.**
+  - Per-skill `CHANGELOG.md` dropped to git history on all 5 that carried one (analytics-computation-service,
+    create-aggregate, create-feature, domain-patterns, persistence-patterns) — per-skill evolution lives in
+    this plugin CHANGELOG (no external norm keeps per-skill changelogs).
+  - Every in-scope description now carries a `Use when` / `Loaded when` trigger clause (auto-invocation
+    discovery; Anthropic authoring guidance).
+  - Architect-only skills (`system-design`, `create-service-claude-md`, `create-module-claude-md`) set
+    **`disable-model-invocation: true`** (keep `user-invocable: true`) — a developer-session model no
+    longer auto-invokes them. Fixed `system-design`'s incorrect `user-invocable: false` sibling citation.
+  - `service-registration` — removed a paragraph that duplicated its frontmatter description; title-cased.
+  - Empty `{ProjectName}` registry tables in `add-integration-event` / `create-grpc-contract` replaced
+    with grep-before-adding pointer lines; added scope/adjacency fences between confusable siblings
+    (integration-event ↔ grpc ↔ domain-event-handler; pipeline-behavior ↔ cqrs).
+
 ## [1.0.3] — 2026-06-12
 Learner consolidation — Pass 4 finalize-stage malfunction log (M6).
 

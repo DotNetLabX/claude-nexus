@@ -57,7 +57,7 @@ public partial class {Entity} : Entity
 
 **NormalizedName trick:** Set in property setter for case-insensitive LINQ queries without full-text search overhead.
 
-## Repository<T>
+## `Repository<T>`
 
 **File:** `src/BuildingBlocks/Blocks.Redis/Repository.cs`
 

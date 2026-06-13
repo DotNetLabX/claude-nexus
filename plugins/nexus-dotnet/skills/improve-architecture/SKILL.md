@@ -1,6 +1,6 @@
 ---
 name: improve-architecture
-description: Proactive discovery of architectural improvement opportunities — coupling hotspots, anemic aggregates, leaky boundaries. Uses a structural dependency graph and KB data. Outputs depend on invoker (solo = implement, architect = backlog).
+description: Proactive discovery of architectural improvement opportunities — coupling hotspots, anemic aggregates, leaky boundaries. Uses a structural dependency graph and KB data. Use when asked to improve or clean up an area, running a periodic architecture health check, or assessing accumulated debt after a feature ships. Outputs depend on invoker (solo = implement, architect = backlog).
 ---
 
 # Improve Architecture
@@ -116,6 +116,6 @@ Use these terms — not generic architecture terms:
 
 - Implement changes (unless invoked by solo with user confirmation)
 - Replace the architect's domain analysis — this finds structural issues, not domain modeling problems
-- Generate ADRs — we don't use ADRs. Findings go into backlog or plan steps.
+- Generate ADRs — findings go into the backlog or plan steps, not a separate decision-record format.
 - Run automated metrics (cyclomatic complexity, line counts) — we care about domain boundaries, not numbers
 - Teach refactoring techniques — the developer knows Extract Method. This skill finds *what* to improve, not *how*.

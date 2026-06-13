@@ -7,6 +7,8 @@ description: Creates a custom MediatR pipeline behavior for cross-cutting concer
 
 Creates a custom MediatR `IPipelineBehavior<TRequest, TResponse>` for cross-cutting concerns.
 
+> **Scope vs `cqrs-patterns`.** `cqrs-patterns` covers the commands, queries, and handlers themselves (the per-request logic). This skill covers the **cross-cutting wrapper** that runs around *every* matching handler — validation, logging, user-ID assignment, caching. Reach here when the logic applies to many handlers, not to one command's behavior.
+
 ## Pattern
 
 **Reference:** `src/BuildingBlocks/Blocks.MediatR/Behaviors/ValidationBehavior.cs`

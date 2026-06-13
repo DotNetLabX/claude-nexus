@@ -1,6 +1,6 @@
 ---
 name: extract-feature-service
-description: Extracts shared handler logic from endpoints into a focused operation service. Named after the operation, scoped to a feature area. Single-purpose with result record pattern.
+description: Extracts shared handler logic from endpoints into a focused operation service. Named after the operation, scoped to a feature area. Use when two or more endpoints share handler logic, or one endpoint's HandleAsync has grown too complex and the logic is reusable. Single-purpose with result record pattern.
 ---
 
 # Extract Feature Service

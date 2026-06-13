@@ -6,23 +6,23 @@ user-invocable: true
 
 # Domain Service
 
-A *domain service* is a **Domain-layer class** in `{Module}.Domain/{Area}/` that holds cross-aggregate computation or derivation logic. Single-aggregate logic stays in aggregate behavior methods (ADR-005); only logic that genuinely crosses aggregates or is too complex for any one aggregate belongs here.
+A *domain service* is a **Domain-layer class** in `{Module}.Domain/{Area}/` that holds cross-aggregate computation or derivation logic. Single-aggregate logic stays in aggregate behavior methods; only logic that genuinely crosses aggregates or is too complex for any one aggregate belongs here.
 
 **This skill covers one pattern: the Domain-layer service.** For API-layer operation services (shared endpoint logic, no domain purity constraint), see `extract-feature-service`. For the Application-layer service pattern used in projects with an Application layer, see the "When this doesn't apply" section below.
 
-> **Accepted but not proven until Passes 2/3 consume it.** This skill encodes ADR-005, ADR-006, and ADR-010; it will be validated when applied in Pass 2/3.
+## Governing Principles
 
-## Governing ADRs
+This skill encodes three domain-layer rules. Where a project records them as ADRs, the rule is what matters, not the number:
 
-- **ADR-005** — Computation lives in the Domain layer; domain services return domain types/VOs; minimize API service classes.
-- **ADR-006** — No external/integration/response DTOs enter the Domain.
-- **ADR-010** — Endpoint always owns its own response contract and maps domain → DTO (Mapster is the chosen mapper per ADR-010/CLAUDE.md).
+- **Computation-in-domain** — cross-aggregate computation lives in the Domain layer; domain services return domain types/VOs; minimize API service classes.
+- **No-DTO-input** — no external/integration/response DTOs enter the Domain.
+- **Endpoint-owns-response** — the endpoint always owns its own response contract and maps domain → DTO (Mapster is a common choice; use whatever mapper the project standardizes on).
 
 ## When to Use
 
-- Logic spans two or more aggregates (e.g., computing a ratio across `Sprint` and `Ticket`).
+- Logic spans two or more aggregates (e.g., computing a ratio across two aggregates such as `Sprint` and `Ticket`).
 - The computation is pure enough to be tested without a database.
-- ADR-005 mandates keeping it in the Domain layer (no Application layer exists in this stack).
+- The computation-in-domain rule keeps it in the Domain layer (especially when no Application layer exists in the stack).
 
 ## Location
 
@@ -33,9 +33,7 @@ A *domain service* is a **Domain-layer class** in `{Module}.Domain/{Area}/` that
     {Name}Result.cs        ← domain result record (if complex enough to split out)
 ```
 
-> **Target-state example (created by Pass 2/3):** `Fokus.Domain/Analytics/SprintSummaryCalculator.cs`
->
-> **Current before-state:** The same computation lives in `Fokus.API/Features/Analytics/SprintSummaryService.cs` — an API-layer service that violates ADR-005. Pass 2/3 will move it to the Domain layer following this skill.
+Example shape: a `SprintSummaryCalculator` in `{Module}.Domain/Analytics/`. If the same computation currently lives in an API-layer service (a `{Module}.API/Features/Analytics/SprintSummaryService.cs`), that is the computation-in-domain smell — move it to the Domain layer following this skill.
 
 ## Naming Rule
 
@@ -61,7 +59,7 @@ public class BugRatioScorer
     public BugRatioResult Score(IReadOnlyList<Sprint> closedSprints, HealthThresholdConfig thresholds)
     {
         // pure computation over pre-loaded domain objects
-        // HealthThresholdConfig is a live domain VO in Fokus.Domain/Settings/ValueObjects/
+        // HealthThresholdConfig is a domain VO the caller supplies
     }
 }
 ```
@@ -71,10 +69,9 @@ public class BugRatioScorer
 When pre-loading all aggregates is genuinely impractical (e.g., board-level history across hundreds of sprints), inject a **narrow read port** — an interface **declared in `{Module}.Domain`**, returning **domain types only**, named for the read it performs:
 
 ```csharp
-// In {Module}.Domain/{Area}/ — declared here, implemented in Persistence
-// Target-state example (created by Pass 2/3): ClosedSprintSnapshot is a domain-layer
-// projection record defined alongside this interface. Use whatever name describes
-// the domain data your read port needs to return.
+// In {Module}.Domain/{Area}/ — declared here, implemented in Persistence.
+// ClosedSprintSnapshot is a domain-layer projection record defined alongside this
+// interface. Use whatever name describes the domain data your read port needs to return.
 public interface IClosedSprintHistory
 {
     Task<IReadOnlyList<ClosedSprintSnapshot>> LoadForBoard(int boardId, int lookBackCount, CancellationToken ct);
@@ -82,7 +79,7 @@ public interface IClosedSprintHistory
 ```
 
 ```csharp
-// Domain service injects the domain-owned abstraction, not a concrete repository
+// Domain service injects the domain-owned abstraction, not a concrete repository.
 // Primary constructor: use un-prefixed parameter name (idiomatic C# 12 primary constructor)
 public class VelocityProjector(IClosedSprintHistory history)
 {
@@ -103,7 +100,7 @@ Write the justification at the call site: `// Performance: pre-loading {N} sprin
 
 The read-port interface is registered in Persistence's `DependencyInjection.cs` (it lives in Domain but is implemented in Persistence).
 
-## Output Boundary — Endpoint Always Owns the Response DTO (ADR-010)
+## Output Boundary — Endpoint Always Owns the Response DTO
 
 Domain service methods return **domain types or dedicated domain result records**, never API response DTOs.
 
@@ -113,7 +110,7 @@ public record BugRatioResult(
     decimal Current,
     decimal? Prior,
     decimal? Delta,
-    HealthThresholdConfig Thresholds);  // HealthThresholdConfig is a live domain VO
+    HealthThresholdConfig Thresholds);  // HealthThresholdConfig is a domain VO
 
 public class BugRatioScorer
 {
@@ -129,14 +126,12 @@ public class BugRatioScorer
 }
 ```
 
-The **endpoint always defines its own response contract and maps domain → DTO via Mapster** — even when the shapes are identical. The domain type and the wire contract evolve independently; do not return the domain type directly from the endpoint, and do not reuse the domain type as the response.
+The **endpoint always defines its own response contract and maps domain → DTO via the project's mapper** — even when the shapes are identical. The domain type and the wire contract evolve independently; do not return the domain type directly from the endpoint, and do not reuse the domain type as the response.
 
-> **Discriminated `*Response` envelopes are wire-only — never mirror them into the domain.** Many analytics features wrap two compute shapes in a `{ Mode, Multi?, Single? }` `*Response` envelope. That envelope is a **transport construct**: the calculator returns the two shapes **separately** (as domain result records) and the **endpoint assembles** the envelope. Do not add a `Mode`/`Multi`/`Single` wrapper type to the Domain layer (a wire-name leak / ADR-010 violation), and do not list it in a domain rename table when planning a migration. State this explicitly for any service whose response is a discriminated wrapper.
+> **Discriminated `*Response` envelopes are wire-only — never mirror them into the domain.** Many analytics features wrap two compute shapes in a `{ Mode, Multi?, Single? }` `*Response` envelope. That envelope is a **transport construct**: the calculator returns the two shapes **separately** (as domain result records) and the **endpoint assembles** the envelope. Do not add a `Mode`/`Multi`/`Single` wrapper type to the Domain layer (a wire-name leak), and do not list it in a domain rename table when planning a migration. State this explicitly for any service whose response is a discriminated wrapper.
 
 ```csharp
-// Target-state endpoint (Mapster — the project's chosen mapper per ADR-010/CLAUDE.md;
-// Mapster package not yet in CPM, added in Pass 2/3 — snippet won't build until then)
-// Live type names from Fokus.API/Features/Analytics/GetBugRatio/:
+// Endpoint maps the domain result to its own wire response (Mapster shown; use the project's mapper):
 public class GetBugRatioEndpoint : Endpoint<GetBugRatioRequest, BugRatioResponse>
 {
     public override async Task HandleAsync(GetBugRatioRequest req, CancellationToken ct)
@@ -148,7 +143,7 @@ public class GetBugRatioEndpoint : Endpoint<GetBugRatioRequest, BugRatioResponse
 }
 ```
 
-## Input Boundary — No DTOs Enter the Domain (ADR-006)
+## Input Boundary — No DTOs Enter the Domain
 
 Domain service parameters must be **domain types, value objects, or intrinsic primitives**. External/integration/response DTOs are forbidden as parameters.
 
@@ -156,7 +151,7 @@ Domain service parameters must be **domain types, value objects, or intrinsic pr
 // CORRECT — domain types + primitives
 public BugRatioResult Score(
     IReadOnlyList<Sprint> closedSprints,      // domain aggregate
-    HealthThresholdConfig thresholds,          // live domain VO (Fokus.Domain/Settings/ValueObjects/)
+    HealthThresholdConfig thresholds,          // domain VO
     int windowSize)                            // intrinsic computation primitive
 
 // WRONG — external DTO leaks into domain
@@ -172,7 +167,7 @@ Map external data → domain types at the API/Persistence boundary *before* the 
 Register the domain service as **scoped** in the owning module's API or Persistence `DependencyInjection.cs`. No Application layer is needed — the domain service is a Domain-layer class registered wherever the module wires its DI.
 
 ```csharp
-// {Module}.API/DependencyInjection.cs  (light-stack variant — ADR-004)
+// {Module}.API/DependencyInjection.cs  (light-stack variant — no Application layer)
 services.AddScoped<BugRatioScorer>();
 services.AddScoped<SprintSummaryCalculator>();
 ```
@@ -188,7 +183,7 @@ See `service-registration` for the full layer structure and "skip layer 2 when n
 
 ## When This Doesn't Apply — The Application-Layer Service (Contrast)
 
-In projects **with an Application layer** (e.g., the `dotnet-microservices` reference), cross-aggregate orchestration commonly lives in an **Application-layer service** instead — such as `ArticleAccessChecker` in `Submission.Application/`. That is a **distinct pattern** with different rules: it may depend on a `DbContext` or repositories directly and is **not** bound by the domain-service purity rule above. Use the Application-layer approach when the project structure provides that layer and the logic is orchestration (loading + coordinating) rather than pure computation.
+In projects **with an Application layer**, cross-aggregate orchestration commonly lives in an **Application-layer service** instead — such as an `ArticleAccessChecker` in a `Submission.Application/` project. That is a **distinct pattern** with different rules: it may depend on a `DbContext` or repositories directly and is **not** bound by the domain-service purity rule above. Use the Application-layer approach when the project structure provides that layer and the logic is orchestration (loading + coordinating) rather than pure computation.
 
 No sentence in this skill implies a domain service can live in or depend on an Application layer, a `DbContext`, or concrete repositories. If you need that pattern, see `cqrs-patterns` for Application-layer handler placement.
 

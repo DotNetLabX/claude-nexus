@@ -1,6 +1,6 @@
 ---
 name: extract-endpoint-types
-description: Splits a FastEndpoints endpoint file into endpoint + command/query sibling file. Moves request, response, DTOs, and validator into the sibling. Keeps endpoint class focused on handler logic.
+description: Splits a FastEndpoints endpoint file into endpoint + command/query sibling file. Moves request, response, DTOs, and validator into the sibling. Use when an endpoint file has grown past the endpoint class, or its request/response types need to be referenced elsewhere. Keeps endpoint class focused on handler logic.
 ---
 
 # Extract Endpoint Types

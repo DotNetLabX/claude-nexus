@@ -1,6 +1,6 @@
 ---
 name: create-building-blocks-package
-description: Scaffolds a new BuildingBlocks shared library package (Blocks.{Name}) with csproj, GlobalUsings, and solution registration. App-agnostic reusable primitives only.
+description: Scaffolds a new BuildingBlocks shared library package (Blocks.{Name}) with csproj, GlobalUsings, and solution registration. Use when a reusable, app-agnostic primitive or infrastructure concern needs its own shared package. App-agnostic reusable primitives only.
 ---
 
 # Create Building Blocks Package

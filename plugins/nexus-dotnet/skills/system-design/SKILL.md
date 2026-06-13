@@ -1,7 +1,8 @@
 ---
 name: system-design
-description: Architect-only skill — system decomposition, domain lifecycle design, service boundary definition, variant axis selection. Loaded by the Architect agent when designing new apps or services.
+description: Architect-only skill — system decomposition, domain lifecycle design, service boundary definition, variant axis selection. Use when the Architect is designing a new app or decomposing a domain into services.
 user-invocable: true
+disable-model-invocation: true
 ---
 
 # System Design (Architect Reference)
@@ -100,7 +101,7 @@ After making the decisions above, capture them into the target file by running:
 - **For a new service:** `create-service-claude-md` → writes `src/Services/{Name}/CLAUDE.md`
 - **For a new module:** `create-module-claude-md` → writes `src/Modules/{Name}/CLAUDE.md`
 
-Both skills are Architect-only (`user-invocable: false`). They walk the Architect through the full axis checklist — pre-filling from the current conversation — and confirm with the user before writing.
+Both skills are Architect-only: they set `disable-model-invocation: true` (a developer-session model never auto-invokes them) while staying `user-invocable: true` (a human can run them as `/{name}`). They walk the Architect through the full axis checklist — pre-filling from the current conversation — and confirm with the user before writing.
 
 Once the CLAUDE.md exists, the Developer runs the scaffold skill in a Developer session:
 

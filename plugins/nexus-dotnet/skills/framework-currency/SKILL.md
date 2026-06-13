@@ -6,14 +6,14 @@ user-invocable: true
 
 # Framework Currency
 
-Two rules in one skill: the **general currency rule** (stack-agnostic) and the **FastEndpoints `Send.*` variant** (FastEndpoints specialization). Both are governed by ADRs 011 and 012.
+Two rules in one skill: the **general currency rule** (stack-agnostic) and the **FastEndpoints `Send.*` variant** (FastEndpoints specialization).
 
-> **Accepted but not proven until Passes 2/3 consume it.** This skill encodes ADR-011 and ADR-012; it will be validated when applied in Pass 2/3.
+## Governing Conventions
 
-## Governing ADRs
+Where a project records these as ADRs, the convention is what matters, not the number:
 
-- **ADR-012** — Always track the latest stable versions of the core stack; target framework .NET 10.
-- **ADR-011** — FastEndpoints variant: use the modern `Send.*` static API; never legacy `Send*Async` instance methods.
+- **Currency** — always track the latest stable versions of the core stack; target the current .NET LTS/STS the project standardizes on (examples below use .NET 10).
+- **Send.\*** — FastEndpoints variant: use the modern `Send.*` static API; never legacy `Send*Async` instance methods.
 
 ---
 
@@ -29,9 +29,9 @@ Track the latest stable versions of the core stack declared centrally via CPM (s
 
 ---
 
-## Rule 2 — FastEndpoints `Send.*` (FastEndpoints Variant — ADR-011)
+## Rule 2 — FastEndpoints `Send.*` (FastEndpoints Variant)
 
-> This rule is the FastEndpoints specialization of ADR-011. It applies only to projects using FastEndpoints as the endpoint framework.
+> This rule is the FastEndpoints specialization of the currency convention. It applies only to projects using FastEndpoints as the endpoint framework.
 
 Use the **modern static `Send.*` API**. Never use the legacy instance `Send*Async` methods.
 
@@ -39,7 +39,7 @@ Use the **modern static `Send.*` API**. Never use the legacy instance `Send*Asyn
 
 Verify all names against the **installed FastEndpoints version** before migrating — method names shifted between major versions (6→7, 7→8) and may shift again. **Never trust memory; verify against the installed package.**
 
-**This solution is on FastEndpoints 8.1.0** (see `src/Directory.Packages.props`). The table below is the 8.x worked example:
+Read the installed `FastEndpoints` version from `src/Directory.Packages.props`. The table below is the **8.x worked example** — confirm the names against the version the project actually pins:
 
 | Legacy (WRONG) | Modern (CORRECT) |
 |----------------|-----------------|
@@ -56,7 +56,7 @@ Verify all names against the **installed FastEndpoints version** before migratin
 - Three-arg `SendAsync(body, statusCode, ct)` → `Send.ResponseAsync(body, statusCode, ct)`
 - Two-arg `SendAsync(body, ct)` (no status code) → `Send.OkAsync(body, ct)`
 
-The reference project (`d:\src\dotnet-microservices`) uses `Send.OkAsync(...)` throughout Auth.API — zero legacy calls remain there. That is the target state.
+**Target state:** a fully migrated service uses `Send.OkAsync(...)` (and the other `Send.*` forms) throughout — zero legacy `Send*Async` instance calls remain.
 
 ### Two-Stage Detection
 
@@ -96,14 +96,14 @@ For every hit from Stage 1, check whether the call has a receiver (an object bef
 
 ### False Positives — Do NOT Migrate
 
-**Inspect the receiver before migrating.** These live examples exist in this repo:
+**Inspect the receiver before migrating.** The two recurring false-positive classes:
 
 1. **`HttpClient.SendAsync`** — used in GraphQL/REST clients.
-   - Live example: `GraphQLXrayClient.cs:296` — `await httpClient.SendAsync(request, ct)`
+   - Example: `await httpClient.SendAsync(request, ct)`
    - Receiver: `httpClient` (type `HttpClient`)
 
 2. **SignalR `hubContext.Clients.*.SendAsync`** — used to push messages to browser clients.
-   - Live example: `SyncSprintsEndpoint.cs:46` — `await hubContext.Clients.All.SendAsync("SprintsSynced", ...)`
+   - Example: `await hubContext.Clients.All.SendAsync("SomethingHappened", ...)`
    - Receiver: `hubContext` (type `IHubContext<T>`)
 
 The safe rule: **any dot-qualified receiver before `SendAsync` means it is not a FastEndpoints call**.

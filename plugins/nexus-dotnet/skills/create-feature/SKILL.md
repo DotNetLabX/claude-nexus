@@ -1,6 +1,6 @@
 ---
 name: create-feature
-description: Creates a complete vertical slice feature — endpoint, command/query, handler, validator, mappings, DI. Variant-aware across FastEndpoints, Carter, and Minimal APIs. Check the service CLAUDE.md for which framework to use.
+description: Creates a complete vertical slice feature — endpoint, command/query, handler, validator, mappings, DI. Variant-aware across FastEndpoints, Carter, and Minimal APIs. Use when adding a new feature slice to a service (check the service CLAUDE.md for which endpoint framework to use).
 ---
 
 # Create Feature

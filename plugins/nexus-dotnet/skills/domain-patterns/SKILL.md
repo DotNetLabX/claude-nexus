@@ -6,7 +6,12 @@ user-invocable: true
 
 # Domain Patterns
 
-> **Accepted but not proven until Passes 2/3 consume it.** ADR-007 (VO-vs-scalar rule) and ADR-004/011 variant annotations were added in adhoc-Pass1-SkillRepair; they will be validated when applied in Pass 2/3.
+DDD building blocks for the domain layer. Two stack variants recur and are called out per pattern:
+
+- **Light stack** — FastEndpoints events, no MediatR, no ASP.NET Core Identity. Domain events extend FastEndpoints `IEvent`.
+- **Full stack** — MediatR `INotification`-based events, optional ASP.NET Core Identity.
+
+Pick the variant from the service's CLAUDE.md; the patterns below are otherwise stack-agnostic. Examples name a concrete type only to make a shape legible — substitute your own.
 
 ## AggregateRoot
 
@@ -18,9 +23,11 @@ user-invocable: true
 - Methods: `AddDomainEvent()`, `ClearDomainEvents()`
 - Convenience form: `AggregateRoot` (non-generic, PK = int)
 
-> **Identity model (this solution — ADR-004 / CLAUDE.md locked decision):** `User : Entity<int>` — plain DDD entity, NOT `IdentityUser<int>`. This solution uses no ASP.NET Core Identity packages. Google is the identity provider; roles are string claims. See `Identity.Domain/Users/User.cs`.
+> **Identity-model variant.** Two coherent shapes — choose per service:
+> - **Plain-DDD identity (light stack):** `User : Entity<int>` — a plain DDD entity, NOT `IdentityUser<int>`; no ASP.NET Core Identity packages. Use when an external provider (e.g. Google) is the identity authority and roles are string claims.
+> - **ASP.NET Core Identity:** extend `IdentityUser<int>` and implement `IAggregateRoot` manually to satisfy the Identity package constraint. Use only when the service actually adopts ASP.NET Core Identity.
 >
-> **Full-stack / reference-only variant:** Projects that adopt ASP.NET Core Identity may extend `IdentityUser<int>` and implement `IAggregateRoot` manually to satisfy the Identity package constraint. This variant does NOT apply to this solution.
+> Whichever a service picks, record it as a locked decision in that service's CLAUDE.md so features don't drift between the two.
 
 ## Entity
 
@@ -29,7 +36,7 @@ user-invocable: true
 - `Entity<TPrimaryKey>` with `Id` property and equality by ID
 - `IsNew` returns true when ID is default value
 - Transient entities (both `IsNew`) are never considered equal
-- **Encapsulating an entity's setters?** Do not write `required` + `private set` together — that is a CS9032 compile error (a `required` member must be at least as visible as its setter). For an entity whose behavior methods mutate the property after construction (e.g. `Person.UpdateFromGoogle`), drop `required` and add a private constructor (the factory is then the only construction path, making `required` redundant); use `init` only when nothing mutates it post-construction. Full rule + remedies: `conventions/csharp.md` → Type Conventions.
+- **Encapsulating an entity's setters?** Do not write `required` + `private set` together — that is a CS9032 compile error (a `required` member must be at least as visible as its setter). For an entity whose behavior methods mutate the property after construction (e.g. an `UpdateFromGoogle`-style method), drop `required` and add a private constructor (the factory is then the only construction path, making `required` redundant); use `init` only when nothing mutates it post-construction. Full rule + remedies: `conventions/csharp.md` → Type Conventions.
 
 ## Value Objects
 
@@ -55,20 +62,20 @@ public class EmailAddress : StringValueObject
 
 **Per-bounded-context duplication is intentional.** Each service defines its own VOs even if the shape is identical. This follows DDD — each BC owns its types. Only share VOs through BuildingBlocks when they are truly cross-cutting (e.g., `SingleValueObject<T>` base).
 
-### When to Use a Value Object vs a Flat Scalar (ADR-007)
+### When to Use a Value Object vs a Flat Scalar
 
 **Rule:** When two or more scalar fields are *cohesive* — always used together, share an invariant, or represent one concept — group them into a value object or owned type rather than flat scalars. A single standalone scalar with its own validation or identity (e.g. `EmailAddress`) is also a VO. A single incidental scalar (a count, a flag, a timestamp with no invariant) stays a plain property.
 
-**Live worked example (SprintRituals):** `AppSettings` is a plain class (not an aggregate) that currently carries a mix of flat scalars and cohesive config VOs. The cohesive groups already extracted as VOs demonstrate ADR-007:
+**Worked example (illustrative).** A plain settings class (not an aggregate) that carries a mix of flat scalars and cohesive config VOs demonstrates the rule. Cohesive groups extracted as VOs:
 
-| Live VO (SprintRituals) | Location | Cohesion reason |
-|------------------------|----------|----------------|
-| `HealthThresholdConfig` | `Fokus.Domain/Settings/ValueObjects/` | Completion/Disruption/CarryOver Green+Amber pairs always set together |
-| `HealthWeightConfig` | `Fokus.Domain/Settings/ValueObjects/` | Completion/Disruption/CarryOver weights sum to 100 — invariant group |
-| `QaHealthThresholdConfig` | `Fokus.Domain/Settings/ValueObjects/` | Coverage/Execution/PassRate threshold pairs |
-| `QualitySubScoreWeightConfig` | `Fokus.Domain/Settings/ValueObjects/` | CoverageWeight/PassRateWeight sum to 100 |
+| VO (example) | Cohesion reason |
+|------------------------|----------------|
+| `HealthThresholdConfig` | Completion/Disruption/CarryOver Green+Amber pairs always set together |
+| `HealthWeightConfig` | Completion/Disruption/CarryOver weights sum to 100 — invariant group |
+| `QaHealthThresholdConfig` | Coverage/Execution/PassRate threshold pairs |
+| `QualitySubScoreWeightConfig` | CoverageWeight/PassRateWeight sum to 100 |
 
-These extend `ValueObject` directly and are mapped via EF `OwnsOne(..., b => b.ToJson())` in `AppSettingsConfiguration.cs`. The remaining flat scalars in `AppSettings` (e.g. `BugRatioAlertThreshold`, `XrayEnabled`) are ADR-007 targets for Pass 2/3 — they will be grouped into additional config VOs when that pass runs.
+These extend `ValueObject` directly and are mapped via EF `OwnsOne(..., b => b.ToJson())`. Remaining incidental scalars on the settings class (a standalone alert threshold, a feature flag) stay flat — they carry no shared invariant, so a VO would add ceremony without protecting anything.
 
 **Persistence:** Cohesive VOs map via EF Core `OwnsOne` (JSON columns) or `ComplexProperty` (flat columns) — see `persistence-patterns` for the config patterns. Do not restate EF config here.
 
@@ -86,10 +93,8 @@ public IReadOnlyList<LineItem> LineItems => _lineItems.AsReadOnly();
 
 Behavior method convention — **action parameter is typically last.** Prefer action last when writing new code:
 
-> **Illustrative pseudocode — types below (`Assignee`, `IAction`, `AssigneeChanged`) are NOT live in this solution.** They are adapted from the `dotnet-microservices` reference project to show the parameter-order convention only. For real this-solution examples see `Identity.Domain`: `PersonCreated`, `UserCreated`.
-
 ```csharp
-// action last (preferred convention) — illustrative pseudocode
+// action last (preferred convention) — illustrative; substitute your own types
 public void AssignTo(Assignee assignee, IAction action)
 {
     // validate
@@ -98,26 +103,23 @@ public void AssignTo(Assignee assignee, IAction action)
 }
 ```
 
-Real this-solution domain event records (no `IAction` — simple notification pattern):
+Simpler services often need no action object — a plain notification record is enough:
 ```csharp
-// Identity.Domain/Users/Events/UserCreated.cs
 public sealed record UserCreated(int UserId) : IDomainEvent;
-
-// Identity.Domain/Persons/Events/PersonCreated.cs
 public sealed record PersonCreated(int PersonId) : IDomainEvent;
 ```
 
 ## Domain Events
 
-**Interface (this solution — `Blocks.Domain/Events/IDomainEvent.cs`):**
+**Light-stack interface (`Blocks.Domain/Events/IDomainEvent.cs`):**
 
 ```csharp
 public interface IDomainEvent : IEvent;
 ```
 
-`IDomainEvent` extends FastEndpoints `IEvent` only. There is **no** `INotification` (MediatR) in this solution's BuildingBlocks — adding it would require a MediatR package dependency that ADR-004 explicitly excludes.
+`IDomainEvent` extends FastEndpoints `IEvent` only — **no** MediatR `INotification`, so the light stack takes no MediatR package dependency.
 
-**Event record pattern (this solution):**
+**Event record pattern:**
 ```csharp
 // Simple notification — aggregate reference only
 public sealed record SprintSynced(Sprint Sprint) : IDomainEvent;
@@ -126,19 +128,18 @@ public sealed record SprintSynced(Sprint Sprint) : IDomainEvent;
 public sealed record PersonCreated(int PersonId, string Email) : IDomainEvent;
 ```
 
-> **Full-stack / reference-only variant — NOT in this solution:**
-> In MediatR-based projects (e.g. `dotnet-microservices` reference), domain events extend both `INotification` and a base `DomainEvent<TAction>` record:
+> **Full-stack variant (MediatR):**
+> In MediatR-based services, domain events extend both `INotification` and a base `DomainEvent<TAction>` record:
 > ```csharp
-> // Articles.Abstractions (reference project only)
 > public abstract record DomainEvent<TAction>(TAction Action) : IDomainEvent
->     where TAction : IArticleAction;
+>     where TAction : IDomainAction;
 > public record OrderApproved(Order Order, IOrderAction Action) : DomainEvent<IOrderAction>(Action);
 > ```
-> This variant adds MediatR's `INotification` to `IDomainEvent` so events route through `INotificationHandler<T>`. Use only when the project has MediatR wired; do not apply to this solution.
+> This adds MediatR's `INotification` to `IDomainEvent` so events route through `INotificationHandler<T>`. Use only when the service has MediatR wired.
 
 ## Event Dispatch
 
-**This solution:** One interceptor — `DispatchDomainEventsInterceptor` in `Blocks.EntityFrameworkCore/Interceptors/`:
+**Standard interceptor** — `DispatchDomainEventsInterceptor` in `Blocks.EntityFrameworkCore/Interceptors/`:
 
 ```csharp
 // Registered in {Module}.Persistence/DependencyInjection.cs
@@ -148,14 +149,13 @@ services.AddScoped<ISaveChangesInterceptor, DispatchDomainEventsInterceptor>();
 - Dispatches **after** `SaveChanges` completes (non-transactional)
 - Scans `ChangeTracker` for `IAggregateRoot` entries with pending events
 - Clears events then calls `IDomainEventPublisher.PublishAsync`
-- Registered alongside `IDomainEventPublisher` in Persistence DI (see `Fokus.Persistence/DependencyInjection.cs:15-16` as live example)
+- Registered alongside `IDomainEventPublisher` in the module's Persistence DI
 
-> **Full-stack / reference-only variant — NOT in this solution:**
-> Some reference implementations also ship a `TransactionalDispatchDomainEventsInterceptor` that wraps save + dispatch in a single DB transaction (for handlers that write back to the same DbContext). This type does not exist in this solution's BuildingBlocks; use the standard `DispatchDomainEventsInterceptor` here.
+> **Transactional variant.** Some services also ship a `TransactionalDispatchDomainEventsInterceptor` that wraps save + dispatch in a single DB transaction (for handlers that write back to the same DbContext). Add it only when a service needs that guarantee; otherwise the standard interceptor is the default.
 
 ## IDomainEventPublisher — Framework Variants
 
-**This solution (light-stack variant — ADR-004/011):**
+**Light-stack variant (FastEndpoints):**
 
 | Implementation | Location | Mechanism |
 |---------------|----------|-----------|
@@ -168,17 +168,16 @@ services.AddScoped<IDomainEventPublisher, DomainEventPublisher>();
 
 `IEventHandler<T>` implementations live alongside their feature slices in `{Module}.API/Features/`. Check the service's CLAUDE.md for the exact location.
 
-> **Full-stack / reference-only variant — NOT in this solution:**
-> MediatR-based projects use `Blocks.MediatR/DomainEventPublisher` (from the `dotnet-microservices` reference):
+> **Full-stack variant (MediatR):**
+> MediatR-based services use `Blocks.MediatR/DomainEventPublisher`:
 > ```csharp
-> // Blocks.MediatR/DomainEventPublisher — reference project only
 > public sealed class DomainEventPublisher(IMediator mediator) : IDomainEventPublisher
 > {
 >     public Task PublishAsync(IDomainEvent @event, CancellationToken ct = default)
 >         => mediator.Publish(@event, ct);  // routes to INotificationHandler<T>
 > }
 > ```
-> Register in the Application layer's `AddApplicationServices`. Do not use in this solution (no MediatR — ADR-004).
+> Register in the Application layer's `AddApplicationServices`. Use only when the service has MediatR wired.
 
 ## State Machine Pattern
 
@@ -194,7 +193,7 @@ Two location variants — choose based on whether the project has an Application
 - Per-service `{Aggregate}ActionType` enum defines allowed actions
 - Registered in `AddApplicationServices` in the Application layer
 
-**Light-stack variant (no Application layer — ADR-004):**
+**Light-stack variant (no Application layer):**
 
 When there is no Application layer, state machine factories live in the module's API or Domain composition instead. Register them in the module's `AddApiServices` or alongside the relevant aggregate's DI wiring. See `service-registration` for the layer structure without an Application project.
 

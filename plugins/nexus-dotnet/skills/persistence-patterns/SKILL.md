@@ -74,13 +74,13 @@ await repository.FindByIdOrThrowAsync(id);
 
 ## Entity Configuration
 
-### Base: EntityConfiguration<T>
+### Base: `EntityConfiguration<T>`
 **File:** `src/BuildingBlocks/Blocks.EntityFrameworkCore/EntityConfigurations/EntityConfiguration.cs`
 
 - `HasKey(e => e.Id)` + auto-calls `builder.SeedFromJsonFile()`
 - `HasGeneratedId` virtual (default `true`) — override to `false` for natural keys
 
-### Audited: AuditedEntityConfiguration<T>
+### Audited: `AuditedEntityConfiguration<T>`
 **File:** `src/BuildingBlocks/Blocks.EntityFrameworkCore/EntityConfigurations/AuditedEntityConfiguration.cs`
 
 Extends `EntityConfiguration<T>`. Three opt-in override points:

@@ -8,11 +8,9 @@ user-invocable: true
 
 Introduces or audits **Central Package Management (CPM)** for a .NET solution. One `Directory.Packages.props` at the solution `src/` root declares every package version; `.csproj` files use bare `<PackageReference Include="..."/>` with no `Version` attribute.
 
-> **Accepted but not proven until Passes 2/3 consume it.** This skill encodes ADR-013; it will be validated when applied in Pass 2/3.
+## The CPM Convention
 
-## Governing ADR
-
-- **ADR-013** — Central Package Management: `Directory.Packages.props` at `src/`, `ManagePackageVersionsCentrally=true`, bare `<PackageReference>` in every `.csproj`.
+- **CPM** — `Directory.Packages.props` at `src/`, `ManagePackageVersionsCentrally=true`, bare `<PackageReference>` in every `.csproj`. (Where a project records this as an ADR, the convention is what matters, not the number.)
 
 ## When to Use
 
@@ -43,9 +41,7 @@ Create `src/Directory.Packages.props` (one file at the `src/` root, not per-proj
 - `CentralPackageTransitivePinningEnabled=true` — also pins transitive dependencies, preventing accidental upgrades via dependency graphs.
 - One `<PackageVersion Include="..." Version="..."/>` per package — no version declared anywhere else.
 
-**Reference:** `d:\src\dotnet-microservices\src\Directory.Packages.props` (82-entry example with grouped comments).
-
-**Worked example (SprintRituals):** `D:\src\sprint-rituals\src\Directory.Packages.props` — the "after" state; all packages centralized, `.csproj` files carry only bare references.
+**Illustrative example:** a real `src/Directory.Packages.props` typically runs to dozens of `<PackageVersion>` entries grouped by concern with comments. The "after" state of a fully migrated solution is one such file at `src/` plus `.csproj` files that carry only bare references.
 
 ## Bare References in `.csproj`
 
@@ -79,7 +75,7 @@ Other child elements (`PrivateAssets`, `IncludeAssets`) are **preserved** — th
 4. **Run the verification grep** (see below).
 5. **Build** — `dotnet build` confirms CPM is wired correctly. MSBuild will error on any remaining `Version=` or `VersionOverride=` declaration in a `.csproj`.
 
-## Verification Grep — Three Forms (ADR-013)
+## Verification Grep — Three Forms
 
 A project is clean only when **all three version-declaration forms** are absent from `.csproj` files. Use the portable `--include` / `--glob` flag form — do **not** use `src/**/*.csproj` with bare `grep` (globstar is off by default in many shells including Windows bash and CI environments; the `**` pattern would silently match nothing).
 
@@ -111,9 +107,7 @@ With ripgrep (`rg`), use `--glob` instead of `--include`:
 rg -n 'Version="' --glob '*.csproj' src/
 ```
 
-**Expected output after clean migration:** all three greps return zero hits in `.csproj` files (`Directory.Packages.props` itself intentionally declares versions — its hits are expected and correct).
-
-**SprintRituals note:** As of Pass 0, all three forms return zero hits across `src/**/*.csproj`. The live `src/Directory.Packages.props` is the "after" worked example; the three-form grep is a general requirement for projects that have not yet migrated.
+**Expected output after clean migration:** all three greps return zero hits in `.csproj` files (`Directory.Packages.props` itself intentionally declares versions — its hits are expected and correct). The three-form grep is a general requirement to run against any project that has not yet been confirmed clean.
 
 ## Interplay with `framework-currency`
 
@@ -123,4 +117,4 @@ Bumping packages to latest via CPM can surface transitive breaking changes beyon
 
 - Choosing which version to upgrade to — verify against the package's release notes.
 - Transitive dependency resolution beyond `CentralPackageTransitivePinningEnabled` — see MSBuild / NuGet docs.
-- Framework version targeting (`<TargetFramework>`) — that is governed by ADR-012 / `framework-currency`.
+- Framework version targeting (`<TargetFramework>`) — that is the framework-currency convention; see `framework-currency`.

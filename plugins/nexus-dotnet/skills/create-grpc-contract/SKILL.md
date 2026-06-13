@@ -7,6 +7,8 @@ description: Creates a gRPC code-first contract, server implementation, and clie
 
 Creates a complete gRPC code-first contract with server and client. No .proto files — pure C# with `protobuf-net.Grpc`.
 
+> **Scope vs `add-integration-event`.** Use gRPC for **synchronous** service-to-service calls where the caller blocks for a response (a read/query, or a command that needs a result). Use `add-integration-event` for **asynchronous** state propagation where the caller doesn't wait. If the caller needs data back now → gRPC; if it's fire-and-forget → integration event.
+
 ## Steps
 
 1. **Create the contract** — follow `workflows/Contract.md`
@@ -18,11 +20,9 @@ Creates a complete gRPC code-first contract with server and client. No .proto fi
 
 Pass the service contract name: `/create-grpc-contract OrderQueryService`
 
-## Existing Contracts
+## Avoid Duplicates
 
-| Contract | Service | Port | Location |
-|----------|---------|------|----------|
-| (check `src/BuildingBlocks/{ProjectName}.Grpc.Contracts/`) | | | |
+Existing gRPC contracts live in the shared contracts package (`src/BuildingBlocks/{ProjectName}.Grpc.Contracts/`, where `{ProjectName}` is this solution's prefix). Grep there before adding a new contract to avoid duplicating an existing service interface.
 
 ## Port Conventions
 

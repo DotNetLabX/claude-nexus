@@ -1,6 +1,6 @@
 ---
 name: create-module
-description: Scaffolds an empty module skeleton from its CLAUDE.md. Branches on archetype — Component (Contracts + first implementation) or Domain (Domain + Persistence + optional Application + optional API as class library).
+description: Scaffolds an empty module skeleton from its CLAUDE.md. Branches on archetype — Component (Contracts + first implementation) or Domain (Domain + Persistence + optional Application + optional API as class library). Use when standing up a new module after its CLAUDE.md exists.
 ---
 
 # Create Module

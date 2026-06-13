@@ -1,0 +1,5 @@
+{
+  "solo": { "model": "opus" },
+  "critic": { "model": "opus" },
+  "developer": { "model": "opus" }
+}

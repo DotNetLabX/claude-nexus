@@ -7,6 +7,8 @@ description: Creates a domain event handler following the vertical slice pattern
 
 Creates a domain event handler co-located with the feature slice it serves, named by its effect.
 
+> **Scope vs `add-integration-event`.** This skill handles a domain event **inside the same service** — a SignalR broadcast, a background-job trigger, a local projection update. When the reaction must cross a service boundary (publish a fact other services consume over MassTransit), use `add-integration-event` instead.
+
 ## Steps
 
 1. **Determine the service and event** — identify which service owns the domain event and which aggregate raises it.

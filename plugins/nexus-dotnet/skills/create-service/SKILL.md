@@ -1,6 +1,6 @@
 ---
 name: create-service
-description: Scaffolds an empty service skeleton from its CLAUDE.md — folder tree, csproj files with references, GlobalUsings, DI wire-up stubs, Program.cs, Dockerfile. Creates no business classes. Run create-aggregate and create-feature afterward.
+description: Scaffolds an empty service skeleton from its CLAUDE.md — folder tree, csproj files with references, GlobalUsings, DI wire-up stubs, Program.cs, Dockerfile. Use when standing up a new service after its CLAUDE.md exists (run create-aggregate and create-feature afterward for the business code). Creates no business classes.
 ---
 
 # Create Service

@@ -8,13 +8,13 @@ user-invocable: true
 
 **Specialization of `domain-service` for time-series analytics.** This skill adds analytics-specific helpers (sparklines, delta/direction/polarity, rolling averages, multi/single-period split) on top of the base `domain-service` rules. Read `domain-service` first — all its rules apply here.
 
-> **Accepted but not proven until Passes 2/3 consume it.** This skill encodes ADR-005, ADR-006, and ADR-010; it will be validated when applied in Pass 2/3.
+## Governing Principles
 
-## Governing ADRs
+Inherited from `domain-service` (the rule is what matters, not any project's ADR number):
 
-- **ADR-005** — Analytics computation lives in the Domain layer; calculators/analyzers return domain types, never API response DTOs.
-- **ADR-006** — No external/integration/response DTOs enter the Domain as inputs.
-- **ADR-010** — Endpoint always owns its own response contract and maps domain → DTO (Mapster is the chosen mapper per ADR-010/CLAUDE.md).
+- **Computation-in-domain** — analytics computation lives in the Domain layer; calculators/analyzers return domain types, never API response DTOs.
+- **No-DTO-input** — no external/integration/response DTOs enter the Domain as inputs.
+- **Endpoint-owns-response** — the endpoint always owns its own response contract and maps domain → DTO (use the project's mapper).
 
 ## When to Use
 
@@ -31,11 +31,7 @@ Analytics calculators live in the **Domain layer**, not the API layer:
     {Name}Result.cs        ← domain result record(s) (if large enough to split)
 ```
 
-> **Target-state example (created by Pass 2/3):** `Fokus.Domain/Analytics/SprintSummaryCalculator.cs`
->
-> **Current before-state:** Analytics computation currently lives in `Fokus.API/Features/Analytics/SprintSummaryService.cs` — an API-layer service that violates ADR-005. Pass 2/3 migrates it to the Domain layer.
-
-**Not** `{Module}.API/Features/Analytics/` — that was the pre-ADR-005 location. Analytics services found in the API layer are candidates for migration to the Domain layer.
+Example shape: a `SprintSummaryCalculator` in `{Module}.Domain/Analytics/`. **Not** `{Module}.API/Features/Analytics/` — an analytics service found in the API layer is a candidate for migration to the Domain layer (computation-in-domain).
 
 ## Naming
 
@@ -72,8 +68,7 @@ A typical analytics feature area has one calculator per metric group:
 
 ```csharp
 // SparklinePoint — define as a domain-layer sealed record in {Module}.Domain/Analytics/
-// alongside the calculator. This is a project-specific type, not from BuildingBlocks.
-// Target-state example (created by Pass 2/3):
+// alongside the calculator. This is a domain-layer type, not from BuildingBlocks.
 public sealed record SparklinePoint(int PeriodId, decimal Value);
 
 // Domain result record — lives in Domain, not API
@@ -85,8 +80,7 @@ public sealed record BugRatioResult(
     string? Polarity,
     SparklinePoint[] Sparkline);
 
-// Calculator — Domain layer
-// HealthThresholdConfig is a live domain VO (Fokus.Domain/Settings/ValueObjects/)
+// Calculator — Domain layer.  HealthThresholdConfig is a domain VO the caller supplies.
 public class BugRatioScorer
 {
     public BugRatioResult Score(
@@ -99,11 +93,10 @@ public class BugRatioScorer
 }
 ```
 
-The **endpoint** defines its own `{Action}Response` and maps via Mapster — even when the shapes are identical (ADR-010):
+The **endpoint** defines its own `{Action}Response` and maps via the project's mapper — even when the shapes are identical (endpoint-owns-response):
 
 ```csharp
-// Target-state endpoint (Mapster — the project's chosen mapper per ADR-010/CLAUDE.md;
-// Mapster package not yet in CPM, added in Pass 2/3 — snippet won't build until then)
+// Endpoint maps the domain result to its own wire response (Mapster shown):
 var result = _scorer.Score(sprints, settings.HealthThresholds, windowSize);  // domain type
 await Send.OkAsync(result.Adapt<BugRatioResponse>(), ct); // endpoint maps to its own response
 ```
@@ -149,7 +142,7 @@ The endpoint pre-loads period data from repositories and calls the calculator. T
 
 **Escape hatch:** When pre-loading is genuinely impractical for performance reasons, use the **narrow domain-owned read port** described in `domain-service` — an interface declared in `{Module}.Domain`, returning domain types only, implemented in Persistence. This is the *only* acceptable form of direct data access from a domain service. Direct repository injection (`IRepository<T>`, `RepositoryBase<T>`) and `IQueryable<T>` are forbidden.
 
-## Input Boundary (ADR-006)
+## Input Boundary
 
 Calculator parameters must be domain types, value objects, or intrinsic computation primitives (window size, look-back count, anchor index). External/integration/response DTOs (`JiraSprintResponse`, `XrayTestRunDto`, `*Response` records) are forbidden as inputs. Map them at the API/Persistence boundary before they reach the calculator.
 
