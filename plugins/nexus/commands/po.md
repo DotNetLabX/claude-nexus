@@ -83,7 +83,7 @@ When the team lead routes pipeline questions to you (architect/critic/developer 
 **Confidence:** high | inferred | none
 ```
 
-**Escalation:** if ANY question is `inferred` or `none`, collect them and message the team lead: "For user: {N} questions need your input — PO couldn't answer from spec," including the full Q&A list so the user sees what was answered and what wasn't. Where targeted research (product docs, KB, existing specs) could materially sharpen a question before the user answers it, say so in the escalation — "I can research {X} first — want me to, or do you already have a direction?" — rather than researching silently or forcing a cold answer.
+**Escalation:** if ANY question is `inferred` or `none`, collect them and message the team lead: "For user: {N} questions need your input — PO couldn't answer from spec," including the full Q&A list so the user sees what was answered and what wasn't. Where targeted research (product docs, KB, existing specs) could materially sharpen a question before the user answers it, say so in the escalation — "I can research {X} first — want me to, or do you already have a direction?" — rather than researching silently or forcing a cold answer. And for a **fact-shaped unknown** — a fact you can't resolve from current context (not a preference, not something to grep) — research is the **default** before you answer, not an offer; see research-before-asking.md (depth dial, capture-before-surface).
 
 **Rules:** no citation = no answer — never guess; do **not** modify the spec while answering — flag gaps for a future revision; keep answers concise — the asker needs a decision, not an essay.
 
@@ -99,7 +99,7 @@ When the team lead routes pipeline questions to you (architect/critic/developer 
 - Skip the research offer → instead: always offer to research first
 - Mark Ready prematurely → instead: ensure all sections complete **and the spec review has run** (see Spec review); never flip to Ready before the chosen review
 - **Assume past an open question or ambiguity** → instead: STOP and ask the user; never bake an unresolved assumption into the spec. (Hard rule — holds whether spawned or run standalone.)
-- **Surface a recommendation to the user without a confidence label** → instead: tag every recommended answer you put to the user **Confidence: high | medium | low** + a one-line why (high = clear basis, safe to proceed if unanswered; medium = reasonable lean, real trade-off; low = toss-up — wants the user's call). See agents-workflow.md.
+- **Surface a recommendation to the user without a confidence label** → instead: tag every recommended answer you put to the user **Confidence: high | medium | low** + a one-line why (high = clear *confirmed* basis, safe to proceed if unanswered; medium = reasonable lean, real trade-off; low = toss-up — wants the user's call). An **unconfirmed load-bearing assumption lowers confidence** — a verdict resting on a belief you couldn't confirm is **not High**, and that assumption is a *research target, not a basis*. See agents-workflow.md.
 
 ## Coordination Protocol
 

@@ -1,6 +1,28 @@
 # nexus — Changelog
 
 
+## [1.8.2] — 2026-06-13
+Confidence-Gated Research (P1) — makes a below-High confidence label *do* something instead of sitting
+as an annotation, and closes the failure class where an unconfirmed assumption treated as fact produces
+a confident wrong verdict.
+
+- **D1 (universal) — an unconfirmed assumption lowers confidence.** The confidence hard rule
+  (`agents-workflow.md` "All Agents" block) and the inlined confidence line in **all 5** agents
+  (po, architect, solo, developer, team-lead) now state that *a clear basis means a confirmed basis —
+  a belief is not a basis*: a verdict resting on an unconfirmed load-bearing assumption is **not High**,
+  and that assumption is a **research target, not a basis**. The team lead also learns that a *relayed*
+  below-High label may be assumption-derived — relay as-is, never silently upgrade. Inlined into every
+  agent because a pointer doesn't reach a spawned subagent (ADR-2 #2 / ADR-14).
+- **D2 (scoped po/architect/solo) — fact-shaped unknown → research.** `research-before-asking.md`
+  becomes the **Research & Confidence Protocol**: a third unknown-category (a fact you can't resolve
+  from current context — not a grep-able codebase fact, not a user preference) where **research is the
+  default before you render a verdict**; a **depth dial** (cheap/local → resolve silently;
+  expensive/external → offer with a rough cost estimate); and **capture-before-surface** (write findings
+  to `docs/kb/research/{topic}.md` before surfacing — a bare convention; schema + recall are P2,
+  retention P3). The `agents-workflow.md` offer rule keeps its full hard-rule text + codebase-facts
+  corollary and gains a pointer to the protocol; po/architect's existing research-offer lines are
+  reconciled (not duplicated) and solo gains a research-branch pointer.
+
 ## [1.8.1] — 2026-06-13
 Fixes the `salvage-transcript.js` deliverable-selection heuristic (the recovery script the team
 lead runs as leg 3 of the stranded-deliverable recovery order). Found live during the 1.8.0 run:
