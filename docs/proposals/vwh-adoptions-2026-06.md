@@ -222,6 +222,32 @@ existing meta-loop.**
 | In-flight intent journal + crash recovery (`journal.py`/`recovery.py`) | Elegant (intent-before-action, idempotent reconcile), but Nexus steps already checkpoint via artifacts; a crashed pipeline resumes from `implementation.md`/`review.md` state. Revisit only if partial-step loss becomes a measured pain. |
 | Monitor daemon + skeptic auto-fire | The principle ("the system fires it; the agent only responds") is ADR-23's law and already drives our hook design; a standing daemon process has no home in a Claude Code plugin today. The *no-cry-wolf invariant* (an approval must not carry a delta) is worth a one-line note in the review-format skill — fold into A6's pass. |
 
+## Where a test-generation capability lives — the nexus↔harness boundary
+
+A recurring question (owner, 2026-06-13): if Nexus gains a "generate tests for a project" capability
+(the BR-coverage loop's territory), does it live in the plugin or the project? The key correction
+(owner): **testing is part of streamlining software production, so the *method* is a plugin
+concern** — only the *data* is project-bound. This is not a new pattern; it is **ADR-4 (artifact
+formats are skills) applied to testing** — the plugin already ships `create-implementation-plan` /
+`kb-entry-schema` (method) while `plan.md` / `docs/kb/` content (instance) live in the project.
+Three **layers**, not two buckets:
+
+| Layer | Home | Examples |
+|---|---|---|
+| **Method & schema** — how to write a good test, mutation-gate discipline, golden-set schema, the RuleId→KB→CI traceability convention, the KB-entry schema, the mine→verify→cover method | **Plugin skills** — stack-agnostic → `nexus`; stack-specific (xunit/FsCheck) → `nexus-dotnet` | a future `create-unit-tests` skill; a golden-set *schema* skill; the existing `kb-entry-schema` |
+| **Output / instance data** — the actual golden set, campaign config, the generated test files, the KB *content* | **The consuming project** | Irreducibly project-specific — the plugin can't ship a golden set for a codebase it has never seen |
+| **Loop orchestration** — the stateful mine→verify→cover→discover engine, gates, golden-set firewall, ledger | **Neither — VWH, as a flavor, pointed *at* the project** | Heavyweight stateful kernel; the followup plan code-confirmed ~70% is ML scaffold; a Claude Code plugin ships markdown, not a Python kernel (see non-adoptions table) |
+
+Net rule: **method → plugin (one copy, the generalizable testing discipline), data → project, loop →
+external harness.** The plugin's share is bigger than "just lore": the schema/convention/method that
+*produces* the project's test artifacts is a nexus(-dotnet) concern and arguably *should* live there,
+so every project inherits the same test discipline it inherits for plans/specs/KB today. Only the
+output data is project-bound. The method-layer skills graduate to `skill-backlog.md` rows / ADRs when
+built; the loop and the data — and the whole BR-coverage harness design — are a **sprint-rituals**
+concern (`D:\src\sprint-rituals\docs\proposals\br-coverage-loop-harness.md` +
+`br-coverage-vwh-evaluation.md`, `br-coverage-vwh-followup-plan.md`). This doc records only the
+boundary and points there; it does not duplicate the harness.
+
 ## Sequencing & next steps
 
 1. **A1 + A3 Tier 1 proceed** (owner green-light, confirmed post-dive — the dive only strengthened
