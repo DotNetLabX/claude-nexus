@@ -120,3 +120,70 @@ test('main-session spawns (no agent_type) are NOT logged — the team lead spawn
   spawn(dir, null, 'developer', 'Task');
   assert.ok(!existsSync(LOG(dir)));
 });
+
+// --- ADR-18/20: a subagent state-changing git write (pipeline agents never commit) ---
+// Best-effort early-warning layer (the team-lead `git log` author check is the guaranteed
+// retroactive catch). Anchored-regex substring matching mirrors guard.js house style; the
+// trailing (\s|$) excludes `git commit-graph`. Subagent (agent_type present) Bash only;
+// read-only git and no-verb Bash stay a zero-footprint no-op (HIGH-3, preserves :76 above).
+
+function bash(dir, agentType, command) {
+  const event = { session_id: 'sess-bd', tool_name: 'Bash', tool_input: { command }, cwd: dir };
+  if (agentType) event.agent_type = agentType;
+  return runHook(DETECTOR, event, { projectDir: dir });
+}
+
+test('a subagent git commit is logged as a rogue write', () => {
+  const dir = makeSandbox();
+  const res = bash(dir, 'developer', 'git commit -m x');
+  assert.equal(res.status, 0, 'detector never fails the call');
+  const [v] = lines(dir);
+  assert.equal(v.agent, 'developer');
+  assert.equal(v.tool, 'Bash');
+  assert.match(v.rule, /git write|never commit|ADR-18|ADR-20/i);
+  assert.ok(res.json?.systemMessage, 'a rogue git write surfaces a systemMessage');
+});
+
+test('every canonical state-changing git verb is flagged (incl. && chains)', () => {
+  const dir = makeSandbox();
+  const writes = [
+    'git status && git commit -m x',   // chained — prefix would miss this
+    'git add -A',
+    'git add .',
+    'git stash',
+    'git stash push',
+    'git push origin main',
+    'git restore --staged f',
+    'git switch -c b',
+    'git reset --soft HEAD~1',
+  ];
+  for (const cmd of writes) bash(dir, 'developer', cmd);
+  const all = lines(dir);
+  assert.equal(all.length, writes.length, 'each state-changing verb logs exactly one line');
+  assert.ok(all.every((v) => /git write|never commit|ADR-18|ADR-20/i.test(v.rule)));
+});
+
+test('read-only git, git commit-graph, and an empty Bash command append NOTHING (DO-NOT-FLAG)', () => {
+  const dir = makeSandbox();
+  for (const cmd of [
+    'git status',
+    'git diff',
+    'git log --oneline',
+    'git rev-parse HEAD',
+    'git branch',
+    'git remote -v',
+    'git fetch',
+    'git commit-graph write',          // maintenance — excluded by the trailing (\s|$)
+    '',                                 // no verb at all — the :76 zero-footprint no-op
+    'npm test',                         // not git
+  ]) {
+    bash(dir, 'developer', cmd);
+  }
+  assert.ok(!existsSync(LOG(dir)), 'no read-only/maintenance/empty/non-git command logs — zero footprint');
+});
+
+test('a git write by the MAIN session (no agent_type) is NOT logged — only subagents are in scope', () => {
+  const dir = makeSandbox();
+  bash(dir, null, 'git commit -m x'); // main session = team lead's own commit, sanctioned
+  assert.ok(!existsSync(LOG(dir)), 'main-session git writes are the team lead, never flagged');
+});

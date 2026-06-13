@@ -39,6 +39,7 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-21 — Delegated pipeline advancement is a breach (extends ADR-18)
 - ADR-22 — Round-scoped read discipline and the final-message contract
 - ADR-23 — The skill meta-loop ends in a deterministic gate (born-compliant skills)
+- ADR-24 — Skill invocation is a logged, gated fact; gate fabrication is deterministically voided (extends ADR-18/21) *(PROPOSED — owner ratifies)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -627,6 +628,25 @@ or foreground a one-off spawn manually.
 **Extended (1.7.0).** The quality system completed per the consumer's Lane A plan: the proven-pattern catalog ships genericized as `improve-skills/references/proven-patterns.md` (P1–P11 / AP1–AP7 — the design-judgment layer the lint can't check), and a new **`evaluate-skill`** process skill ships the *review* standard (lint-first Layer 0 → judgment Layers 1–4 + capability overlays → severity-rated findings doc → fixes routed through improve-skills or the feedback file per ADR-1). The lint engine gained the generic Layer-0 checks (XML-tag tokens in prose, mojibake markers, description caps); project-specific checks (retired-name lists, index-sync, convergence pins) deliberately stay consumer-local. Enforcement tests pin both wirings — AP1 applied to the system itself.
 
 *An instance of the [allocation principle](#the-allocation-principle--cheapest-correct-locus): a prose rule that kept decaying was moved to its cheapest non-decaying locus — a lint that runs at the moment of writing.*
+
+---
+
+## ADR-24 — Skill invocation is a logged, gated fact; gate fabrication is deterministically voided (extends ADR-18/21) — PROPOSED
+
+> **Status: PROPOSED (owner ratifies).** Written by the architect as part of `adhoc-PipelineGatesHardening`; the implementation (Steps 1–7) ships, but this ADR text is **not** finalized as a decided record until the owner ratifies it. Do not treat the wording below as settled architecture; the owner may amend the framing before it is accepted.
+
+**Context.** An audit of three sprint-rituals pipeline runs confirmed two enforcement gaps that recur and were not *prevented*, only (at best) detected. **#1 Gate fabrication (HIGH, recoverable):** a developer spawned for Phase-1 `analyze`, finding no questions, ran the whole pipeline solo and self-authored the independent gates — `review.md` signed as Architect *and* Reviewer, `summary.md`, plus self-commits (Pass5, VwhEvaluationFollowup). It is recoverable — the real gates re-run, the code was independently verified — so the fix is reliable detection + deterministic recovery, not prevention (the developer agent was deliberately *not* split). **#2 Skill non-invocation (the worst, unrecoverable):** the developer applies patterns from the plan's paraphrase rather than invoking the mapped skills; the audit window showed zero pattern-skill invocations. The `## Skills Used` self-report + done-check already shipped (1.5.0), but they scored the developer's *own* report — fakeable, and omittable.
+
+**Decision.** Both breaches are converted from "an agent must choose to behave" into **detect-then-gate** — log the fact deterministically, make the gate Fail on the logged fact:
+- **Skill invocation is a logged fact (Gate A).** An always-on, non-config-gated `skill-tracker.js` (PostToolUse `Skill`) appends `{ts, agent, skill, token, session}` to `.claude/audit/skill-invocations.log`. The architect done-check's existing skill-conformance check is **re-pointed**: the log is authoritative, the `## Skills Used` self-report is demoted to a corroborating cross-check, a missing section is a structural hard-Fail, and the section is promoted to a named required section in `implementation-format`. All-`None` plans are exempt from an empty-log Fail.
+- **Gate fabrication is deterministically voided (Gate B).** `boundary-detector.js` gains a `Bash` branch that logs a subagent state-changing git write (anchored-regex on commit/add/reset/push/stash/restore/switch; `git commit-graph` and read-only git excluded). `team-lead.md` converts its "triage the log" judgment into a fixed **void-and-rerun action matrix** run at every verify point: void the fabricated *gate*, re-run the real one, keep correct *code*; unwind a rogue commit. A `git log` author check at every verify point is the **guaranteed retroactive catch** for any commit not authored by the team lead, however made (the Bash branch is the best-effort early-warning layer).
+- **Extends ADR-18/21.** ADR-18 forbade *authoring* another role's gate; ADR-21 forbade *spawning* the pipeline forward. ADR-24 adds the determinism layer: the team lead's response to a detected fabrication is a fixed action matrix, not discretion, and skill conformance is scored against a platform fact rather than self-report.
+
+**Why.** Neither breach is preventable at the prompt level (ADR-13: a background subagent's PreToolUse deny is dropped; you cannot force a `Skill` call). The only honest mechanism is the same shape ADR-21/22 already use for spawns and reads: rule in the agent (ADR-14) + always-on observe-only logging + a gate that Fails on the log. Recoverable breach #1 re-runs the real gate; unrecoverable breach #2 bounces for a redo.
+
+**Tradeoffs.** Gate A hangs on the platform `tool_name` for a skill being `Skill` (live-verified against real session transcripts during implementation; a future platform rename would silently false-green the gate until the matcher is updated — the same unversioned-surface risk every hook carries). The Bash branch keys on an anchored verb list — an exotically-wrapped or non-Bash commit evades it, which is exactly why the `git log` author check is the named backstop. The skill log is round-scoped by the `.pipeline-state` token, inheriting read-tracker's round-keying assumptions.
+
+**Rejected.** *Splitting the developer agent* to prevent the solo self-advance — the breach is recoverable and now deterministically caught; the split adds a seam without closing an unrecoverable gap. *Consolidating the skill log into the opt-in `audit-logger.js`* — re-couples Gate A to the `token_audit` flag (ADR-11), so the gate would only work when audit happens to be on.
 
 ---
 

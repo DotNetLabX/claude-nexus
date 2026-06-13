@@ -1,6 +1,30 @@
 # nexus — Changelog
 
 
+## [1.8.0] — 2026-06-13
+Two enforcement gates for breaches the pipeline previously only detected (or not at all),
+converting both from "an agent must choose to behave" into detect-then-gate: log the fact
+deterministically, then gate on the logged fact (a background subagent's PreToolUse deny is
+dropped — ADR-13 — so prevention at the prompt level is impossible).
+
+- **Gate A — skill invocation is a logged, gated fact.** New always-on `skill-tracker.js` hook
+  (PostToolUse `Skill`, not config-gated) appends `{ts, agent, skill, token, session}` to
+  `.claude/audit/skill-invocations.log`. The architect done-check now scores skill-conformance
+  against that log — the authoritative source — instead of the fakeable/omittable
+  implementation.md self-report (now a cross-check); a missing `## Skills Used` section is a
+  structural hard-Fail. The all-`None` exemption is preserved. `implementation-format` lists
+  `## Skills Used` as a required section.
+- **Gate B — gate fabrication is deterministically voided.** `boundary-detector.js` gains a
+  `Bash` branch that flags a subagent state-changing git write (`commit`/`add`/`reset`/`push`/
+  `stash`/`restore`/`switch`, anchored so `git commit-graph` and read-only git are not flagged).
+  `team-lead.md` replaces "triage the violations log" with a deterministic void-and-rerun action
+  matrix run at every verify point, with a `git log` author check as the guaranteed retroactive
+  backstop. The Bash regex is best-effort (a `git -C` form or shell alias can slip it); the
+  author check is the guarantee.
+- **Audit substrate documented** (`agents-workflow.md`): both logs, both gates, and the
+  detect-then-gate principle, so every agent shares one model of the audit substrate.
+- **ADR-24 proposed** (owner ratifies) — records the detect-then-gate substrate; extends ADR-18/21.
+
 ## [1.7.2] — 2026-06-12
 Names the allocation principle the pipeline already practices and wires it into the learner
 (VWH adoption A1; `docs/proposals/vwh-adoptions-2026-06.md`). The shipped surface is one line of

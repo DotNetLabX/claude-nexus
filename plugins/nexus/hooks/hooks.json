@@ -35,7 +35,7 @@
         ]
       },
       {
-        "matcher": "Write|Edit|MultiEdit|Agent|Task",
+        "matcher": "Write|Edit|MultiEdit|Agent|Task|Bash",
         "hooks": [
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/boundary-detector.js\"", "timeout": 10, "async": true }
         ]
@@ -44,6 +44,12 @@
         "matcher": "Read",
         "hooks": [
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/read-tracker.js\"", "timeout": 10, "async": true }
+        ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/skill-tracker.js\"", "timeout": 10, "async": true }
         ]
       }
     ]

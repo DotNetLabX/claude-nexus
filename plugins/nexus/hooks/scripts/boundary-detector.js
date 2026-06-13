@@ -23,6 +23,12 @@
  *     self-advancement — the F16 incident vector: a developer commissioned done-checks, a
  *     Step-2 review, and a learner as correctly-typed agents, so the ownership rules above
  *     never fired). Research spawns (Explore, general-purpose) are sanctioned.
+ *   - ANY subagent running a state-changing git write via Bash (ADR-18/20: pipeline agents
+ *     never commit; the team lead owns commits — the #1 fabrication vector's commit leg).
+ *     Matched by anchored-regex substring (guard.js house style) on the canonical verb list
+ *     commit/add/reset/push/stash/restore/switch; read-only git and `git commit-graph` never
+ *     flag. Best-effort early-warning only — the team lead's `git log` author check is the
+ *     guaranteed retroactive catch (team-lead.md Enforcing the Rules).
  *
  * Zero footprint when clean: nothing is created unless a violation occurs. Fail silent on any
  * error (mirrors audit-logger).
@@ -69,7 +75,7 @@ process.stdin.on('data', (d) => (input += d));
 process.stdin.on('end', () => {
   try {
     const data = JSON.parse(input || '{}');
-    if (!/^(Write|Edit|MultiEdit|Agent|Task)$/.test(data.tool_name || '')) return process.exit(0);
+    if (!/^(Write|Edit|MultiEdit|Agent|Task|Bash)$/.test(data.tool_name || '')) return process.exit(0);
     if (!data.agent_type) return process.exit(0); // main session: the foreground gate + team lead cover it
     const role = String(data.agent_type).toLowerCase().split(/[:/]/).pop();
     const ti = data.tool_input || {};
@@ -82,6 +88,22 @@ process.stdin.on('end', () => {
       if (!PIPELINE_ROLES.has(target)) return process.exit(0); // research spawns are sanctioned
       fp = String(ti.subagent_type || '');
       rule = `subagent spawned a pipeline-role agent (${target}) — pipeline advancement belongs to the team lead alone (ADR-21)`;
+    } else if (data.tool_name === 'Bash') {
+      // ADR-18/20: pipeline agents never commit — the team lead owns commits. A subagent running a
+      // state-changing git write is the #1 fabrication vector's commit leg. Best-effort EARLY-WARNING
+      // layer only; the team lead's `git log` author check at every verify point is the GUARANTEED
+      // retroactive catch (it unwinds any commit not authored by the team lead, however it was made).
+      //
+      // Matching: anchored-regex substring on the LOWERCASED command (guard.js house style at :137-138)
+      // — NOT a prefix scan. A prefix scan misses `git status && git commit -m x` (prefix is `git status`)
+      // and `bash -c "git commit …"` (prefix is `bash`); a missed write is a silently undetected breach.
+      // The trailing (\s|$) is load-bearing: `\bcommit\b` alone matches INSIDE `git commit-graph` (the `-`
+      // is a word boundary), so requiring whitespace-or-end after the verb is what excludes the
+      // `git commit-graph` maintenance command while still matching `git add .`, `git add -A`, and chains.
+      const c = String(ti.command || '').toLowerCase();
+      if (!/\bgit\s+(commit|add|reset|push|stash|restore|switch)(\s|$)/.test(c)) return process.exit(0);
+      fp = String(ti.command || '');
+      rule = 'subagent ran a git write — pipeline agents never commit; the team lead owns commits (ADR-18, commit strategy ADR-20)';
     } else {
       fp = String(ti.file_path || ti.path || '').replace(/\\/g, '/');
       if (!fp) return process.exit(0);

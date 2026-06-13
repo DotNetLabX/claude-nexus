@@ -83,3 +83,20 @@ test('ADR-23: evaluate-skill runs the lint as Layer 0 and ships the rubric', () 
   assert.match(skill, /skill-lint\.mjs/, 'evaluate-skill must run the shipped lint first');
   read('skills', 'evaluate-skill', 'references', 'rubric.md'); // throws if the rubric does not ship
 });
+
+// ── ADR-24 (proposed) — Gate A: `## Skills Used` is a NAMED required section ──────────────────
+// Step 3's done-check makes ABSENCE of `## Skills Used` a structural hard-Fail; for that to be
+// mechanically enforceable the format skill must NAME the section as required, not merely template
+// it + carry an anti-pattern. This pins the promotion (Step 4): an explicit "required sections"
+// statement that names `## Skills Used`. The template (:22-28) + anti-pattern (:56) stay; this adds
+// the named-requirement line the done-check can rely on.
+test('Gate A: implementation-format names `## Skills Used` as a required section', () => {
+  const fmt = read('skills', 'implementation-format', 'SKILL.md');
+  // An explicit required-sections statement naming the section — close enough to the prose to bind,
+  // strict enough that the pre-Step-4 template-only state fails.
+  const requiredStmt =
+    /required sections?\b[\s\S]{0,400}?##\s*Skills Used|##\s*Skills Used[\s\S]{0,400}?\brequired section/i;
+  assert.match(fmt, requiredStmt,
+    'implementation-format must state that `## Skills Used` is a required section (not just template it) — ' +
+    'so Step 3 can hard-Fail on its absence');
+});

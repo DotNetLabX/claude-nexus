@@ -42,6 +42,14 @@ Written by developer after each implementation round: `docs/specs/{slug}/deliver
 *Status: COMPLETE — developer, {date}*
 ```
 
+**Required sections.** Every implementation.md carries, at minimum: `## Files Created` / `## Files
+Modified` (whichever apply), `## Key Decisions`, **`## Skills Used`** (a per-step table — never omit
+it), `## Deviations from Plan`, and the completion footer. `## Skills Used` is a **required section**,
+not optional: the architect's done-check treats its **absence as a hard Fail** (it scores skill
+conformance against `.claude/audit/skill-invocations.log` and uses this section as the corroborating
+cross-check), so a missing section leaves the gate nothing to cross-check and fails structurally.
+`## Carry-Over Findings` and `## KB Changes` are included when they have content.
+
 **Completion footer.** The final line above is written exactly once — when the implementation
 round is genuinely done (all steps, verification run). While work is in progress the file ends
 without it. The footer is how the artifact **self-certifies**: the team lead trusts the footer,

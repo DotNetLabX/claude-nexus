@@ -116,6 +116,17 @@ The pipeline is sequential and most files have one writer — within one **round
 
 The read-tracker hook nudges on a same-round repeat read and logs ≥3 repeats of the same file to `.claude/audit/violations.log` for the team lead's checkpoint review.
 
+## Audit Substrate (`.claude/audit/`) — detect-then-gate
+
+Two enforcement breaches recur and are **not preventable at the prompt level**: a background subagent's PreToolUse deny is dropped (ADR-13), and you cannot force an agent to invoke a `Skill`. So both are converted from "an agent must choose to behave" into **detect-then-gate** — log the fact deterministically, and make a gate Fail on the logged fact. Two always-on, observe-only hooks write two logs (neither is config-gated; both are zero-footprint until they have something to record, and fail silent):
+
+| Log | Written by | Records | Consumed by |
+|---|---|---|---|
+| `.claude/audit/violations.log` | `boundary-detector.js` (PostToolUse `Write\|Edit\|MultiEdit\|Agent\|Task\|Bash`) + `read-tracker.js` (≥3 same-round re-reads) | A subagent breach the gate cannot block: an ownership write (a role writing another role's artifact / `.pipeline-state`), a **pipeline-role spawn** by a subagent (ADR-21), a **state-changing git write** by a subagent (`commit`/`add`/`reset`/`push`/`stash`/`restore`/`switch` — anchored-regex, `git commit-graph` and read-only git excluded; ADR-18/20), and re-read offenders | The **team lead** at every verify point → the deterministic fabrication void-and-rerun matrix (team-lead.md, Enforcing the Rules): void the fabricated *gate*, re-run the real one, keep correct *code*; unwind a rogue commit. Backstopped by a `git log` author check (the guaranteed catch for any commit not authored by the team lead, however made). |
+| `.claude/audit/skill-invocations.log` | `skill-tracker.js` (PostToolUse `Skill`) | One `{ts, agent, skill, token, session}` line per real skill invocation — the platform-logged fact (`tool_name === 'Skill'`, `tool_input.skill` = name), round-scoped by the `.pipeline-state` token | The **architect** done-check (Step 1): the **authoritative** source for the skill-conformance check. A plan-mapped non-`None` skill absent from the log (no documented deviation) Fails; a `## Skills Used` self-report not corroborated by the log is a fabrication → Fail; a missing `## Skills Used` section Fails structurally. All-`None` plans never Fail on an empty log. |
+
+Neither breach is preventable by hook on a background subagent — the rule lives in the agent (ADR-14), the log makes the breach deterministically visible, and the gate Fails on the logged fact. Recoverable breaches (a fabricated gate over correct code) re-run the real gate; the unrecoverable one (a skipped skill — the code is already written) bounces the developer for a redo.
+
 ## Agents
 
 | Agent | Scope | Managed by |
