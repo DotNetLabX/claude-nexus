@@ -1,0 +1,6 @@
+{
+  "class": "BugRatioCalculator",
+  "source": "D:\\src\\sprint-rituals\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\BugRatioCalculator.cs",
+  "goldenIds": ["GOLD-16", "GOLD-17", "GOLD-18"],
+  "_note": "Golden IDS ONLY — never the golden rule text. The golden text is sequestered in sprint-rituals/docs/audit/golden-set.md and is read orchestrator-side only by the scorer, after Mine, never by a miner/verifier. This config is safe to feed into the clean-room Mine run."
+}
