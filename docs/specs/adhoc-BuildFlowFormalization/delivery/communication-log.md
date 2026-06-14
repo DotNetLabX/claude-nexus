@@ -49,6 +49,9 @@
 | 25 | reviewer → team-lead | reviewer:review | Re-review APPROVED — all 4 fixes verified w/ evidence, no regressions, adjacent-call-site sweep clean; FIX-2 rule mirrored into ADR-29:754. Validated (no open CRITICAL/HIGH). | Thin closer; verdict read from review.md Re-review subsection |
 | 26 | team-lead (close) | shutdown | Review complete (APPROVED, 1 cycle). Beginning close: lessons → summary → commit GNF 1.8.3 → bump+regen+commit our 1.9.0 → dashboard. | — |
 | 27 | team-lead (close) | shutdown | Committed GNF 1.8.3 (eda62e1, scoped). Applied bump 1.8.3→1.9.0; regenerated commands/{architect,po,reviewer}; gen-omni no-op (twin untracked here). Wrote summary.md + team-lead lessons. | — |
+| 28 | team-lead (close) | shutdown | Commit 2 = 7839536 (impl + 1.9.0, scoped, 22 files). Lint 12/12 + plugin validate ✔. | — |
+| 29 | user → team-lead | shutdown | DECIDED: lessons = SKIP (learner not run); ADRs = RATIFY NOW | — |
+| 30 | team-lead (close) | shutdown | Ratified ADR-25…29 → Accepted (ce7fc5f, docs-only, no bump). Pipeline COMPLETE. | — |
 
 ## Runtime / Plugin Issues Log
 

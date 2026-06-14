@@ -17,7 +17,7 @@
    the dispatch-contract wording in agents-workflow (research-helper dispatch contract,
    1.7.1) isn't reaching this environment's Explore agent type.
 
-2. **Critic stranded its full review twice — and the salvage heuristic was defeated by a
+2. **[APPLIED · 1.8.1 SalvageFencedCloser (fenced-closer case); residual TRACKED · T5 → docs/plugin-feedback/nexus-1.8.2-2026-06-13.md] Critic stranded its full review twice — and the salvage heuristic was defeated by a
    fenced closer.** The code-grounded critic produced a complete 13KB review (verdict,
    findings, matrix) mid-turn, then ended with a closer containing only a code-fenced
    `Reviewed: {path}` line. A SendMessage resume re-stranded the same way.
@@ -218,7 +218,7 @@ communication-log Runtime/Plugin Issues Log (developer Phase-1 deliverable stran
    rephrase no-blocker summaries to avoid bare severity tokens (e.g., "No blocking findings. Highest
    severity is LOW.").
 
-   ### Improvement Proposal (pipeline gate false-positive on reviewer confidence fields)
+   ### Improvement Proposal (pipeline gate false-positive on reviewer confidence fields) — [ROUTED-TO-PLUGIN · P1 → docs/plugin-feedback/nexus-1.8.2-2026-06-13.md]
    **Target:** `plugins/nexus/hooks/scripts/pipeline-gate.js` → `approvedWithOpenHighSev` function
    **Change:** Extend the LEGEND pattern to also skip lines that start with `**Confidence:**` (the
    reviewer's own confidence-level field for a finding), or widen the RESOLVED list to include `low`

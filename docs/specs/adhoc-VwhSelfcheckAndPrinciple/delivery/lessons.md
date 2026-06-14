@@ -32,7 +32,7 @@
   regression is a plan-authoring fact worth pinning in testing conventions so it is never written
   into a plan again (developer lesson already proposes this).
 
-### Improvement Proposal (systemic)
+### Improvement Proposal (systemic) — [ROUTED-TO-PLUGIN · P4 → docs/plugin-feedback/nexus-1.8.2-2026-06-13.md]
 **Target:** `plugins/nexus/skills/create-implementation-plan/SKILL.md`
 **Change:** Add a rule: when the plan's scope is corrected from "create" to "extend" an existing
 surface (test suite, script, doc), the plan MUST include a disposition table mapping every item of
@@ -101,7 +101,7 @@ the bulk apply would have corrupted the other slug's bump, forcing a surgical ha
   a skill would duplicate it. No action proposed.
 
 ## Reviewer Lessons
-- **The pipeline gate's `\b(CRITICAL|HIGH)\b` regex fires on confidence markers like `**Confidence:** HIGH`.** The LEGEND pattern exempts table rows and "severity/meaning" lines, but a freestanding `**Confidence:** HIGH` in findings prose is not exempted. Solution: use lowercase `confidence:` in findings rather than the severity-vocabulary words, or phrase it as `(confidence: verified)`. Worth documenting in `review-format` so future reviewers don't trip the gate unintentionally with their own confidence qualifiers.
+- **[ROUTED-TO-PLUGIN · P1 → docs/plugin-feedback/nexus-1.8.2-2026-06-13.md]** **The pipeline gate's `\b(CRITICAL|HIGH)\b` regex fires on confidence markers like `**Confidence:** HIGH`.** The LEGEND pattern exempts table rows and "severity/meaning" lines, but a freestanding `**Confidence:** HIGH` in findings prose is not exempted. Solution: use lowercase `confidence:` in findings rather than the severity-vocabulary words, or phrase it as `(confidence: verified)`. Worth documenting in `review-format` so future reviewers don't trip the gate unintentionally with their own confidence qualifiers.
 - **A vacuously-passing test branch (zero hits today, forward-looking regex) is a real review finding but only LOW severity.** The right call is to document it with the exact reason it is acceptable now and what would make it a problem — not to suppress it, and not to inflate it.
 - **The gate's LEGEND exemption for `|` (table rows) means Evidence and Carry-Over tables with words like "pass" cause no false positives, but findings prose does.** Design review output so CRITICAL/HIGH only appear in table rows (where LEGEND fires) or with a RESOLVED marker nearby.
 

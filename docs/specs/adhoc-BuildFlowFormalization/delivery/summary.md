@@ -33,7 +33,7 @@ Formalized the **front** of the Nexus build flow (idea → research → proposal
 ## Deviations / open items
 
 - **Step 7 release** was dry-run-only during implementation (owner-confirmed Q5; ADR-18 — agents never commit). The team lead applied the bump at close: **nexus 1.8.3 → 1.9.0**, regenerated 3 commands (architect/po/reviewer), ran gen-omni (twin untracked here — no-op for this repo).
-- **The new ADRs are `PROPOSED` — they await your ratification.** Flipping them to decided is the first run of the ratification gate this pass defines.
+- **ADR-25…29 RATIFIED by the owner 2026-06-14** (commit `ce7fc5f`) — the first run of the ratification gate this pass defines. ADR-24 stays PROPOSED (different pass).
 - Two co-staged releases were sequenced per your decision: **GateNegationFix 1.8.3 committed first**, then this pass's 1.9.0.
 
 ## Commits
@@ -44,4 +44,4 @@ Formalized the **front** of the Nexus build flow (idea → research → proposal
 
 ## Lessons
 
-Recorded in `lessons.md` (architect, developer incl. fix cycle, reviewer, team lead). Team-lead highlights: phase-agnostic spawn labels (stale-label fix → fold into team-lead.md), the empty-transcript/salvage platform issue, and Standard+Codex earning its keep on a doc pass via cross-file defect detection. **Lessons processing (learner) not yet run** — offered to the owner at close.
+Recorded in `lessons.md` (architect, developer incl. fix cycle, reviewer, team lead). Team-lead highlights: phase-agnostic spawn labels (stale-label fix → fold into team-lead.md), the empty-transcript/salvage platform issue, and Standard+Codex earning its keep on a doc pass via cross-file defect detection. **Lessons processing (learner) SKIPPED by owner at close** — lessons.md stands as the durable record; the stale-label fix and other proposals remain available for a future learner run.

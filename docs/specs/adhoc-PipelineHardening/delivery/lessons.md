@@ -70,7 +70,7 @@ produced H4 must be applied to any new enforcement signal in the same pass. Prom
 [[verify-against-fokus-baseline]] as a gate-design rule (an enforcement signal must carry session identity or
 a SessionStart self-heal).
 
-### L-A8 — M6 terse-return recurred a third time (the critic), recovered only by reading the transcript
+### L-A8 — M6 terse-return recurred a third time (the critic), recovered only by reading the transcript [ROUTED-TO-PLUGIN · P2 → docs/plugin-feedback/nexus-1.8.2-2026-06-13.md]
 This pass's own critic returned a verdict-only message **twice** and, on re-dispatch, looped emitting
 "findings delivered earlier" without re-emitting them — the full 2-MAJOR/5-MINOR findings existed only in its
 agent transcript (`subagents/agent-*.jsonl`) and had to be recovered by parsing it. Third live M6 occurrence
