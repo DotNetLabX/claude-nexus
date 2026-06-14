@@ -118,11 +118,22 @@ function approvedWithOpenHighSev(text) {
 
   const RESOLVED = /\b(resolved|fixed|dismissed|false alarm|false[- ]positive|not an issue|won'?t ?fix|deferred|n\/?a)\b/i;
   const LEGEND = /severity|meaning|must fix before merge|fix or file follow-up|code smell|^\s*\|/i;
+  // Two clean-approval shapes carry the token without being a finding (review-format SKILL.md):
+  //   - NEGATION: a line-initial "No …" summary ("No CRITICAL or HIGH findings.") states ABSENCE.
+  //     Anchored to line-start (optional leading list/quote markers) so a `### [HIGH] No input
+  //     validation on critical path` heading — where "no" is mid-heading, not the line's opener —
+  //     is never pardoned. Bullets ("- No CRITICAL …") and blockquotes ("> No CRITICAL …") are
+  //     still pardoned because they legitimately open with "no".
+  //   - CONFIDENCE field: "**Confidence:** HIGH" is the reviewer's per-finding qualifier
+  //     (review-format `**Confidence:**`), not a severity. Match the field, not token adjacency.
+  const NEGATED = /^[\s>*_-]*no\b[^.]*\b(critical|high)\b/i;
+  const CONFIDENCE_FIELD = /\bconfidence\b\s*[:*]/i;
 
   const lines = t.split('\n');
   for (let k = 0; k < lines.length; k++) {
     const ln = lines[k];
     if (!/\b(CRITICAL|HIGH)\b/.test(ln) || LEGEND.test(ln)) continue;
+    if (NEGATED.test(ln) || CONFIDENCE_FIELD.test(ln)) continue;
     // examine the finding line plus the next few lines for a resolution marker
     const window = lines.slice(k, k + 4).join(' ');
     if (!RESOLVED.test(window)) return true;

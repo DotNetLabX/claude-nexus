@@ -1,6 +1,21 @@
 # nexus — Changelog
 
 
+## [1.8.3] — 2026-06-13
+Gate negation fix (P1) — `pipeline-gate.js` no longer false-positive DENYs a clean APPROVED review.
+
+- **`approvedWithOpenHighSev()` exempts two non-finding prose shapes** from the open-severity scan,
+  before the unresolved-window conclusion: **(a) negation** — a line matching `\bno\b[^.]*\b(critical|high)\b`
+  ("No CRITICAL or HIGH findings.") states *absence*, not a finding; **(b) Confidence field** — a line
+  matching `\bconfidence\b\s*[:*]` ("**Confidence:** HIGH") is the reviewer's per-finding format qualifier
+  (review-format), not a severity. Both are line-local `continue` skips, identical in spirit to the
+  existing LEGEND skip; the real invariant (an `APPROVED` verdict beside a genuinely-unresolved
+  `### [CRITICAL|HIGH]` finding) still fires. Recurred across 4 pipelines — in `adhoc-DotnetSkillSweep`
+  it blocked a clean APPROVED, the reviewer burned ~8h and died on a stream-idle timeout, and the field
+  workaround was a raw write bypassing the Edit hook. Regression tests added in
+  `tests/unit/pipeline-gate.test.mjs` (negation → ALLOW, Confidence field → ALLOW, real open HIGH beside
+  both → still DENY).
+
 ## [1.8.2] — 2026-06-13
 Confidence-Gated Research (P1) — makes a below-High confidence label *do* something instead of sitting
 as an annotation, and closes the failure class where an unconfirmed assumption treated as fact produces

@@ -74,6 +74,63 @@ test('review.md verdict integrity: resolved findings, REQUEST CHANGES, and legen
     'severity legend lines are not findings');
 });
 
+// Two clean-approval prose shapes carry the CRITICAL/HIGH token without being a finding
+// (review-format SKILL.md). Both must ALLOW; a real open HIGH alongside them must still DENY.
+test('verdict integrity: a negation line stating ABSENCE of findings is not a finding', () => {
+  const dir = sandboxWithState(null);
+  const negated = ['## Verdict: APPROVED', '', '## Findings', '', 'No CRITICAL or HIGH findings.'].join('\n');
+  assert.equal(denyReason(gate(write('docs/specs/F1/delivery/review.md', negated), dir)), null,
+    '"No CRITICAL or HIGH findings." states absence — it carries both tokens but is not a finding');
+});
+
+test('verdict integrity: a **Confidence:** field is the reviewer qualifier, not a severity', () => {
+  const dir = sandboxWithState(null);
+  // A fully-resolved review whose only remaining HIGH token is the Confidence qualifier on a
+  // resolved finding — the field must not be read as an open severity.
+  const confidenceOnly = [
+    '## Verdict: APPROVED', '', '## Findings', '',
+    '### [HIGH] SQL injection in OrderQuery',
+    '**File:** `src/Orders/OrderQuery.cs:42`',
+    '**Issue:** user input concatenated into the WHERE clause — resolved in cycle 2',
+    '**Fix:** parameterize the query',
+    '**Confidence:** HIGH',
+  ].join('\n');
+  assert.equal(denyReason(gate(write('docs/specs/F1/delivery/review.md', confidenceOnly), dir)), null,
+    '**Confidence:** HIGH is the per-finding format qualifier, not an open severity');
+});
+
+test('verdict integrity: exemptions do NOT mask a real open HIGH that sits beside them', () => {
+  const dir = sandboxWithState(null);
+  // A genuinely-open HIGH finding, in the same review as a negation line and a Confidence field.
+  // The exemptions are line-local skips; the real ### [HIGH] (no resolution marker) must still DENY.
+  const mixed = [
+    '## Verdict: APPROVED', '', '## Findings', '',
+    'No CRITICAL issues in the data layer.',
+    '### [HIGH] Missing auth check on the admin endpoint',
+    '**File:** `src/Admin/Endpoint.cs:10`',
+    '**Issue:** the role gate is absent',
+    '**Confidence:** HIGH',
+  ].join('\n');
+  assert.match(denyReason(gate(write('docs/specs/F1/delivery/review.md', mixed), dir)) || '',
+    /APPROVED while an unresolved CRITICAL or HIGH/,
+    'a real open HIGH must still fire even when negation/Confidence lines are present');
+});
+
+test('verdict integrity: a ### heading containing "no … critical/high" mid-heading is a real finding, not a negation', () => {
+  const dir = sandboxWithState(null);
+  // "No" appears mid-heading, not at the start of the line — the exemption must NOT fire.
+  // The NEGATED anchor (^[\s>*_-]*no) requires "no" to open the line; a ### prefix disqualifies it.
+  const midHeadingNo = [
+    '## Verdict: APPROVED', '', '## Findings', '',
+    '### [HIGH] No input validation on critical path',
+    '**Issue:** unsanitized input reaches the DB.',
+    '**Fix:** add a guard.',
+  ].join('\n');
+  assert.match(denyReason(gate(write('docs/specs/F1/delivery/review.md', midHeadingNo), dir)) || '',
+    /APPROVED while an unresolved CRITICAL or HIGH/,
+    '"no" mid-heading inside a ### finding is not a negation summary — must still DENY');
+});
+
 test('deliberate edge: table-row findings never trigger the verdict check', () => {
   // In review-format, real findings are ### headings; table rows are step dispositions,
   // evidence, and legends. The gate skips ALL `| ...` lines (conservative by design) —
