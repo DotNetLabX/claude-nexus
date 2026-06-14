@@ -40,11 +40,11 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-22 — Round-scoped read discipline and the final-message contract
 - ADR-23 — The skill meta-loop ends in a deterministic gate (born-compliant skills)
 - ADR-24 — Skill invocation is a logged, gated fact; gate fabrication is deterministically voided (extends ADR-18/21) *(PROPOSED — owner ratifies)*
-- ADR-25 — The master gate: a stage is mandatory by cost-of-being-wrong, not by size *(PROPOSED — owner ratifies)*
-- ADR-26 — The end-to-end flow and the named RESEARCH stage (consumes P1/P2) *(PROPOSED — owner ratifies)*
-- ADR-27 — The technical / product definition branch (architect owns the technical definition) *(PROPOSED — owner ratifies)*
-- ADR-28 — Proposals are RFC-lite: a named owner ratifies; ratification graduates the proposal *(PROPOSED — owner ratifies)*
-- ADR-29 — Ratified proposals become backlog rows; unratified stay the idea inbox *(PROPOSED — owner ratifies)*
+- ADR-25 — The master gate: a stage is mandatory by cost-of-being-wrong, not by size *(Accepted — ratified 2026-06-14)*
+- ADR-26 — The end-to-end flow and the named RESEARCH stage (consumes P1/P2) *(Accepted — ratified 2026-06-14)*
+- ADR-27 — The technical / product definition branch (architect owns the technical definition) *(Accepted — ratified 2026-06-14)*
+- ADR-28 — Proposals are RFC-lite: a named owner ratifies; ratification graduates the proposal *(Accepted — ratified 2026-06-14)*
+- ADR-29 — Ratified proposals become backlog rows; unratified stay the idea inbox *(Accepted — ratified 2026-06-14)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -655,9 +655,9 @@ or foreground a one-off spawn manually.
 
 ---
 
-## ADR-25 — The master gate: a stage is mandatory by cost-of-being-wrong, not by size — PROPOSED — owner ratifies
+## ADR-25 — The master gate: a stage is mandatory by cost-of-being-wrong, not by size — Accepted
 
-> **Status: PROPOSED (owner ratifies).** Written by the architect as part of `adhoc-BuildFlowFormalization`; the supporting edits (tech-spec, `proposal-format` skill, the flow ADRs below, the `Satisfies:` traceability wiring) ship, but this ADR text is **not** finalized as a decided record until the owner ratifies it. Do not treat the wording below as settled architecture.
+> **Status: Accepted — ratified by the owner 2026-06-14.** Written by the architect as part of `adhoc-BuildFlowFormalization`; the supporting edits (tech-spec, `proposal-format` skill, the flow ADRs below, the `Satisfies:` traceability wiring) shipped. This ADR text is now a decided record.
 
 **Context.** The pipeline already runs two scopes of work — the full `po → architect → developer → reviewer` pipeline and the collapsed `solo` lane — but the rule for *which stages a piece of work must pass through* was an implicit, size-flavored instinct ("small → solo, big → full pipeline"). The 2026-06-14 end-to-end-flow research (`docs/research/2026-06-14-end-to-end-build-flow.md` §0) found that all five independently-surveyed streams (product discovery, solution architecture, research→proposal, spec-driven dev, test harness) converged on the *same* gate, and it is **not** size: what makes a stage mandatory is the **cost of being wrong = uncertainty × irreversibility**.
 
@@ -675,9 +675,9 @@ This is the **spine** every per-stage skip rule in ADR-26 cites — it is stated
 
 ---
 
-## ADR-26 — The end-to-end flow and the named RESEARCH stage (consumes P1/P2) — PROPOSED — owner ratifies
+## ADR-26 — The end-to-end flow and the named RESEARCH stage (consumes P1/P2) — Accepted
 
-> **Status: PROPOSED (owner ratifies).** Part of `adhoc-BuildFlowFormalization`; not a decided record until the owner ratifies. See the ADR-25 banner.
+> **Status: Accepted — ratified by the owner 2026-06-14.** Part of `adhoc-BuildFlowFormalization`. See the ADR-25 banner.
 
 **Context.** The *back* of the Nexus flow (plan → build → verify → ship) is mature and well-specified across the agent files and the ADR register. The *front* (idea → research → proposal → definition) was informal: research is the just-shipped confidence-gated engine (P1, `research-before-asking.md`) and `search-researches`/the research-KB schema (P2, in build as `adhoc-ResearchKB`), but neither was named as a *stage* with a place in the canonical flow. The research's deferred question (§8) was whether a named research/spike stage adds value over P1's inline gate, or whether P1 alone suffices.
 
@@ -699,9 +699,9 @@ IDEA → RESEARCH → PROPOSAL → [branch] DEFINITION → PLAN → BUILD → VE
 
 ---
 
-## ADR-27 — The technical / product definition branch (architect owns the technical definition) — PROPOSED — owner ratifies
+## ADR-27 — The technical / product definition branch (architect owns the technical definition) — Accepted
 
-> **Status: PROPOSED (owner ratifies).** Part of `adhoc-BuildFlowFormalization`; not a decided record until the owner ratifies. See the ADR-25 banner.
+> **Status: Accepted — ratified by the owner 2026-06-14.** Part of `adhoc-BuildFlowFormalization`. See the ADR-25 banner.
 
 **Context.** After PROPOSAL the flow branches by **who owns the definition** (research §2). The product branch was already covered — the PO owns `spec.md` + acceptance criteria — and `architect.md` already states that an ad-hoc/technical pass has no `spec.md` and is cross-checked against the **ADR register**, not product docs (architect.md ad-hoc block). What was *not* recorded as a decision is the symmetric technical branch: that a technical feature has a real definition artifact (a tech-spec) the architect owns, parallel to the PO's spec.
 
@@ -721,9 +721,9 @@ The altitude rule (research §2a, "same thinking at two altitudes, one authorita
 
 ---
 
-## ADR-28 — Proposals are RFC-lite: a named owner ratifies; ratification graduates the proposal — PROPOSED — owner ratifies
+## ADR-28 — Proposals are RFC-lite: a named owner ratifies; ratification graduates the proposal — Accepted
 
-> **Status: PROPOSED (owner ratifies).** Part of `adhoc-BuildFlowFormalization`; not a decided record until the owner ratifies. See the ADR-25 banner. (This ADR is itself a worked instance of the rule it states — written by the architect, awaiting the owner's ratification.)
+> **Status: Accepted — ratified by the owner 2026-06-14.** Part of `adhoc-BuildFlowFormalization`. See the ADR-25 banner. (This ADR is itself a worked instance of the rule it states — written by the architect, now ratified by the owner.)
 
 **Context.** A proposal in this repo was a freeform file in `docs/proposals/` with an ad-hoc `Status:` line. The research (§3, §3a; decided 2026-06-14 in §8) gives it a standard shape and, more importantly, a governance rule the freeform form lacked: **a proposal is not a decision.** The owner's prior decision (MEMORY "proposal-spec-plan-vocabulary") barred re-proposing a proposal/spec/plan *vocabulary doc* — so this ADR is deliberately the narrower thing: an RFC-lite **front-matter + lifecycle**, not a vocabulary.
 
@@ -743,9 +743,9 @@ The altitude rule (research §2a, "same thinking at two altitudes, one authorita
 
 ---
 
-## ADR-29 — Ratified proposals become backlog rows; unratified stay the idea inbox — PROPOSED — owner ratifies
+## ADR-29 — Ratified proposals become backlog rows; unratified stay the idea inbox — Accepted
 
-> **Status: PROPOSED (owner ratifies).** Part of `adhoc-BuildFlowFormalization`; not a decided record until the owner ratifies. See the ADR-25 banner.
+> **Status: Accepted — ratified by the owner 2026-06-14.** Part of `adhoc-BuildFlowFormalization`. See the ADR-25 banner.
 
 **Context.** The flow ends PROPOSAL at "ratified", but there was nowhere for a ratified item to land: `docs/backlog.md` **did not exist**, yet the team-lead agent already *references* it (reads it to triage "what's next", and the PO updates a feature's row on spec-Ready). So the lifecycle had a dangling end and the team lead depended on a missing file (research §6, §7.7; R7).
 
