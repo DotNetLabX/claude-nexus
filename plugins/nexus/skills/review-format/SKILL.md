@@ -34,6 +34,7 @@ The team lead greps **named sections**, not bare `Verdict:` lines, to avoid stac
 - Data-loading depth: when logic accesses nested/related data, verify the data layer actually loads it to that depth — missing loads cause silent null/zero results, not runtime errors
 - Boundary tests for threshold logic: when code uses `> N` / `>= N` conditions, verify tests exist at exactly N and N+1
 - Skill mapping verified: any "None" disposition in the Skill Mapping was warranted (no existing skill actually covers the step)
+- `Satisfies:` traceability (where present): for any plan step carrying a `Satisfies:` annotation (an `AC-n` or an ADR unit), verify the implemented code actually traces to that target — the defense against intent drift (code that runs but does the wrong thing). This is a **where-present** check, not a mandate: a step without `Satisfies:` is not a finding (the annotation is optional and existing plans predate it)
 
 ## Severity Ratings
 - **CRITICAL**: Security vulnerability, data loss risk, fundamentally wrong approach. Blocks merge.

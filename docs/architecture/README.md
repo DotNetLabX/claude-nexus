@@ -40,6 +40,11 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-22 — Round-scoped read discipline and the final-message contract
 - ADR-23 — The skill meta-loop ends in a deterministic gate (born-compliant skills)
 - ADR-24 — Skill invocation is a logged, gated fact; gate fabrication is deterministically voided (extends ADR-18/21) *(PROPOSED — owner ratifies)*
+- ADR-25 — The master gate: a stage is mandatory by cost-of-being-wrong, not by size *(PROPOSED — owner ratifies)*
+- ADR-26 — The end-to-end flow and the named RESEARCH stage (consumes P1/P2) *(PROPOSED — owner ratifies)*
+- ADR-27 — The technical / product definition branch (architect owns the technical definition) *(PROPOSED — owner ratifies)*
+- ADR-28 — Proposals are RFC-lite: a named owner ratifies; ratification graduates the proposal *(PROPOSED — owner ratifies)*
+- ADR-29 — Ratified proposals become backlog rows; unratified stay the idea inbox *(PROPOSED — owner ratifies)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -647,6 +652,114 @@ or foreground a one-off spawn manually.
 **Tradeoffs.** Gate A hangs on the platform `tool_name` for a skill being `Skill` (live-verified against real session transcripts during implementation; a future platform rename would silently false-green the gate until the matcher is updated — the same unversioned-surface risk every hook carries). The Bash branch keys on an anchored verb list — an exotically-wrapped or non-Bash commit evades it, which is exactly why the `git log` author check is the named backstop. The skill log is round-scoped by the `.pipeline-state` token, inheriting read-tracker's round-keying assumptions.
 
 **Rejected.** *Splitting the developer agent* to prevent the solo self-advance — the breach is recoverable and now deterministically caught; the split adds a seam without closing an unrecoverable gap. *Consolidating the skill log into the opt-in `audit-logger.js`* — re-couples Gate A to the `token_audit` flag (ADR-11), so the gate would only work when audit happens to be on.
+
+---
+
+## ADR-25 — The master gate: a stage is mandatory by cost-of-being-wrong, not by size — PROPOSED — owner ratifies
+
+> **Status: PROPOSED (owner ratifies).** Written by the architect as part of `adhoc-BuildFlowFormalization`; the supporting edits (tech-spec, `proposal-format` skill, the flow ADRs below, the `Satisfies:` traceability wiring) ship, but this ADR text is **not** finalized as a decided record until the owner ratifies it. Do not treat the wording below as settled architecture.
+
+**Context.** The pipeline already runs two scopes of work — the full `po → architect → developer → reviewer` pipeline and the collapsed `solo` lane — but the rule for *which stages a piece of work must pass through* was an implicit, size-flavored instinct ("small → solo, big → full pipeline"). The 2026-06-14 end-to-end-flow research (`docs/research/2026-06-14-end-to-end-build-flow.md` §0) found that all five independently-surveyed streams (product discovery, solution architecture, research→proposal, spec-driven dev, test harness) converged on the *same* gate, and it is **not** size: what makes a stage mandatory is the **cost of being wrong = uncertainty × irreversibility**.
+
+**Decision.** Adopt **cost-of-being-wrong (uncertainty × irreversibility)** as the *single* criterion for whether a flow stage is mandatory or skippable, and **retire size-based reasoning** as the skip heuristic. The one-line ADR form (research §0):
+
+> A stage is mandatory when getting it wrong is *expensive or hard to reverse*; a cheap two-way door collapses to its lightest artifact (a line) or skips.
+
+This is the **spine** every per-stage skip rule in ADR-26 cites — it is stated **once** here and referenced, never restated per stage. It is the same reliable-gate reasoning already encoded at two other scales in this repo: the micro-scale confidence gate (an unconfirmed load-bearing assumption lowers confidence → research before a verdict; `research-before-asking.md`, P1) and the [allocation principle](#the-allocation-principle--cheapest-correct-locus) (place a behavior at the cheapest locus that cannot decay). ADR-13's "the only reliable gate is the one that actually holds" is the enforcement-side instance of the same idea.
+
+**Why.** Size is a proxy that breaks in both directions — a one-line change to a wire contract is a one-way door (expensive to reverse) and a large but purely additive, well-understood build is a two-way door (cheap to undo). Keying the gate on uncertainty × irreversibility makes the `solo`-vs-full-pipeline choice *principled* (the `solo` lane is the two-way-door / low-uncertainty collapse of the top stages; the full pipeline is the one-way-door / high-uncertainty column) instead of a vibe, and it unifies the skip rule the whole pipeline already half-followed.
+
+**Tradeoffs.** "Uncertainty" and "irreversibility" are judgment inputs, not measurements — two readers can disagree at the margin. Accepted: the criterion is a *reasoning frame*, not a mechanical gate (consistent with ADR-13 — a background subagent's gate can't be mechanically enforced anyway), and the master gate's job is to make the per-stage skip decisions defensible and consistent, not to automate them.
+
+**Rejected.** *Keep size-based reasoning* — the proxy the research retired; it misclassifies cheap-large and expensive-small work. *Make the gate a mechanical scorer* (numeric uncertainty × irreversibility threshold) — false precision over judgment inputs, and unenforceable on background subagents (ADR-13).
+
+---
+
+## ADR-26 — The end-to-end flow and the named RESEARCH stage (consumes P1/P2) — PROPOSED — owner ratifies
+
+> **Status: PROPOSED (owner ratifies).** Part of `adhoc-BuildFlowFormalization`; not a decided record until the owner ratifies. See the ADR-25 banner.
+
+**Context.** The *back* of the Nexus flow (plan → build → verify → ship) is mature and well-specified across the agent files and the ADR register. The *front* (idea → research → proposal → definition) was informal: research is the just-shipped confidence-gated engine (P1, `research-before-asking.md`) and `search-researches`/the research-KB schema (P2, in build as `adhoc-ResearchKB`), but neither was named as a *stage* with a place in the canonical flow. The research's deferred question (§8) was whether a named research/spike stage adds value over P1's inline gate, or whether P1 alone suffices.
+
+**Decision.** Record the canonical end-to-end flow as a **logical ordering of artifacts** (not a gated waterfall), and name **RESEARCH** an explicit stage that is a **thin documentation layer over P1+P2 with zero new machinery**:
+
+```
+IDEA → RESEARCH → PROPOSAL → [branch] DEFINITION → PLAN → BUILD → VERIFY → SHIP
+```
+
+- **RESEARCH stage.** Stage entry asks the master gate (ADR-25): *is the riskiest assumption already known? is the decision reversible & cheap?* → **skip**; otherwise run the **P1 inline gate + P2 `search-researches`** engine and emit its existing output contract (recommendation + confidence + options eliminated) before a proposal is drafted. This is strictly additive to P1's inline gate, which keeps firing inside every other stage; the named stage is the *macro* placement of the same engine at the front of large/uncertain work. **P1 and P2 are referenced by name; their entry/output schemas are not restated here** (hard constraint — the flow *consumes* the research system, it does not re-specify it). For the recall/capture wiring of `research-before-asking.md` itself, see `adhoc-ResearchKB` (P2 owns that file's edits); this ADR only *names the stage*.
+- **Mandatory-vs-skippable matrix** (research §6, keyed on ADR-25): the **bottom three stages (PLAN, BUILD, VERIFY) are always mandatory**; the **top three (RESEARCH, PROPOSAL, DEFINITION) flex on the master gate** — they collapse to their lightest artifact (or skip) for a two-way door and are mandatory for a one-way door. This is the `solo`-lane collapse vs. full-pipeline distinction, now principled.
+- **VERIFY stage — named by reference, not built here.** The tiered T1–T4 harness (`docs/research/testing-claude-code-plugins.md`) + the `mine-verify` clean-room/adversarial pattern (`docs/proposals/mine-verify-pilot-method.md`, `docs/proposals/mine-verify-pass3-evaluation.md`) are the intended VERIFY-stage gate. They are named **by reference only**; the harness is **NOT built in this pass** (it collides with the in-flight plugin-unit-test work in [Known limitations](#known-limitations--future-work) and the `mine-verify` Pass-4 generic-harness seed — the same "don't re-specify a system this flow consumes" discipline the hard constraint applies to P1/P2/P3). Promote to its own ADR when built.
+
+**Why.** Naming RESEARCH a stage costs almost nothing new — it is an ADR paragraph that points at P1+P2 and the master gate — and it is what makes ADR-25's "Research: skip | mandatory" row mean something concrete. P1 (micro, inline, per-decision) and a RESEARCH stage (macro, front-of-work placement) are the **same engine at two scopes**, not competing mechanisms; the research converged on naming the stage (§1, §6, §7.2). Recording the flow as a logical artifact ordering (every source stresses iteration — TOGAF ADM, dual-track agile) keeps it from being read as a rigid waterfall.
+
+**Tradeoffs.** A documented stage that is "usually skipped" risks looking like ceremony — mitigated by anchoring its entry test on the master gate (skip is the default for a known/reversible decision). Naming VERIFY by reference leaves a forward dependency (the harness ADR) open; accepted to avoid pre-empting two in-flight efforts.
+
+**Rejected.** *Leave research as P1's inline gate with no named stage* — loses the front-of-work placement and leaves the §6 matrix's RESEARCH row meaningless. *Build the T1–T4 / `mine-verify` harness in this pass* — collides with the in-flight plugin-unit-test and `mine-verify` Pass-4 work (research Q2/§7.6). *Restate P1/P2's schemas in the flow ADR* — violates the hard constraint and creates a second drifting copy of a system another pass owns.
+
+---
+
+## ADR-27 — The technical / product definition branch (architect owns the technical definition) — PROPOSED — owner ratifies
+
+> **Status: PROPOSED (owner ratifies).** Part of `adhoc-BuildFlowFormalization`; not a decided record until the owner ratifies. See the ADR-25 banner.
+
+**Context.** After PROPOSAL the flow branches by **who owns the definition** (research §2). The product branch was already covered — the PO owns `spec.md` + acceptance criteria — and `architect.md` already states that an ad-hoc/technical pass has no `spec.md` and is cross-checked against the **ADR register**, not product docs (architect.md ad-hoc block). What was *not* recorded as a decision is the symmetric technical branch: that a technical feature has a real definition artifact (a tech-spec) the architect owns, parallel to the PO's spec.
+
+**Decision.** Record the two-branch definition split:
+
+- **Product feature → PO owns the definition:** `spec.md` + acceptance criteria. Cross-check = critic Mode 1 vs product/architecture docs.
+- **Technical feature → architect owns the definition: a tech-spec + extracted ADRs.** A purely technical feature has no product "what" to shape, so the architect *is* the definer (the PO-equivalent), and the binding cross-check is the **ADR register** (critic Mode 2), not product docs.
+- **Both branches converge at PLAN.**
+
+The altitude rule (research §2a, "same thinking at two altitudes, one authoritative"): the **tech-spec / proposal is where you explore** (options, trade-offs, narrative); the **ADR is the durable one-decision record** (terse, in-repo, greppable). One authoritative source — the ADR wins on *the decision*, the tech-spec owns *the rationale* and the ADR points back to it. Drift over time → **supersede, don't rewrite** (the same supersede-don't-delete discipline P2 and the ADR-status convention already use). This is operationalized in the two definer agents in ADR-25's sibling agent edits (architect.md gains the technical-definition-ownership line; po.md gains the product-proposal-as-spec-seed line).
+
+**Why.** The split is industry-standard (Mountain Goat: "the PO owns what & why; the architect/tech-lead owns how"; confirmed independently by the solution-architecture and RFC research streams). Recording it makes the ad-hoc lane symmetric with the product lane instead of an exception, and the one-authoritative-source rule prevents the tech-spec and the ADRs from drifting into two competing decision records — the failure mode supersede-don't-rewrite exists to prevent.
+
+**Tradeoffs.** A technical feature now nominally has a tech-spec artifact — but the master gate (ADR-25) still applies: a two-way-door technical change collapses the tech-spec to a one-line ADR and skips the separate document. The branch is a *definition-ownership* rule, not a mandate to always write a tech-spec.
+
+**Rejected.** *Treat all definition as the PO's `spec.md`* — a purely technical feature has no product "what", so this forces a product framing onto an architecture decision (the Mountain Goat anti-pattern). *Let the tech-spec and ADRs each be independent decision records* — produces two drifting truths; the one-authoritative-source + supersede rule exists precisely to avoid it.
+
+---
+
+## ADR-28 — Proposals are RFC-lite: a named owner ratifies; ratification graduates the proposal — PROPOSED — owner ratifies
+
+> **Status: PROPOSED (owner ratifies).** Part of `adhoc-BuildFlowFormalization`; not a decided record until the owner ratifies. See the ADR-25 banner. (This ADR is itself a worked instance of the rule it states — written by the architect, awaiting the owner's ratification.)
+
+**Context.** A proposal in this repo was a freeform file in `docs/proposals/` with an ad-hoc `Status:` line. The research (§3, §3a; decided 2026-06-14 in §8) gives it a standard shape and, more importantly, a governance rule the freeform form lacked: **a proposal is not a decision.** The owner's prior decision (MEMORY "proposal-spec-plan-vocabulary") barred re-proposing a proposal/spec/plan *vocabulary doc* — so this ADR is deliberately the narrower thing: an RFC-lite **front-matter + lifecycle**, not a vocabulary.
+
+**Decision.** Give `docs/proposals/*` an RFC-lite lifecycle, defined as front-matter + section order in the **`proposal-format` skill** (ADR-4: formats are skills) and governed by the rules here:
+
+- **A proposal is not a decision — a named owner ratifies it** (enables disagree-and-commit; research §3).
+- **Front-matter / sections:** NABC (Need / Approach / Benefits / Alternatives) + Unresolved questions; a **named decision-maker**; `Status: Draft → Ratified → Superseded`; **Impact: 1–10**; **Effort: low | med | high**; **Confidence:** — the only proposal-layer additions on top of P2's research-output format are *impact* and *effort* (the rest the research engine already produces).
+- **Ratifier = the owner; the architect recommends.** The recommendation + confidence are **derived from P1** (from unconfirmed assumptions), never self-rated. **Below-High confidence ⇒ the recommendation is "research first" (the P1 research branch), never a go/no-go to ratify** — the owner only ever ratifies High-confidence recommendations; anything below routes through a research spike and re-surfaces. This is the **anti-regression guarantee** (research §3a) and is why this layer *reuses* P1 rather than re-deciding it.
+- **Mode-0 proposal critic = default-skip; user confirmation IS the gate.** A proposal already carries derived confidence + mandatory alternatives, so it is self-critiqued; the Mode-0 critic runs **only on explicit user confirmation** — the confirmation is the enforcement, consistent with ADR-13 (an automated gate on a background subagent does not hold). The architect may *flag* a high-impact/irreversible proposal, but enforcement is the confirm, not the flag — **no new automated gate is added.**
+- **Ratification graduates the proposal:** a **technical** proposal is promoted to the **tech-spec + extracted ADRs** (ADR-27; "one writing session, two homes" — never re-authored); a **product** proposal is handed to the PO as the **spec seed**. Unratified proposals stay the **idea inbox** (ADR-29).
+
+**Why.** The "a named owner ratifies" rule is the single most important governance finding from the RFC stream — it is what makes "disagree and commit" possible and what distinguishes a proposal (gathers feedback) from a decision (the ADR). Deriving confidence from P1 and routing below-High to research-first means the proposal layer can never *regress* the recommendation+confidence the agents already produce (the rejected "owner ratifies all, no recommendation" option). Framing it as front-matter + a skill (not a vocabulary doc) stays inside the owner's prior decision.
+
+**Tradeoffs.** More structure on `docs/proposals/*` for new proposals; existing proposals keep their freeform `Status:` (no migration — adopting the new front-matter is operator curation, out of scope). The lifecycle *rules* live here in the ADR and the *format* lives in the skill — a deliberate split (ADR-4 producer-format shape) that means a reader of the skill must follow its pointer back to this ADR for the ratification semantics.
+
+**Rejected.** *Owner ratifies all proposals with no architect recommendation* — a regression that discards the recommendation + confidence the agents already produce (research §3a, option 1 rejected). *A proposal/spec/plan vocabulary doc* — barred by the owner's prior decision (MEMORY); this RFC-lite front-matter is the narrower, sanctioned thing. *An automated Mode-0 proposal critic gate* — unenforceable on background subagents (ADR-13); user-confirm is the only reliable gate.
+
+---
+
+## ADR-29 — Ratified proposals become backlog rows; unratified stay the idea inbox — PROPOSED — owner ratifies
+
+> **Status: PROPOSED (owner ratifies).** Part of `adhoc-BuildFlowFormalization`; not a decided record until the owner ratifies. See the ADR-25 banner.
+
+**Context.** The flow ends PROPOSAL at "ratified", but there was nowhere for a ratified item to land: `docs/backlog.md` **did not exist**, yet the team-lead agent already *references* it (reads it to triage "what's next", and the PO updates a feature's row on spec-Ready). So the lifecycle had a dangling end and the team lead depended on a missing file (research §6, §7.7; R7).
+
+**Decision.** Record the ratified-proposal → backlog lifecycle and back it with a **minimal** `docs/backlog.md`:
+
+- A **ratified** proposal ⇒ a **backlog row**, ranked by **impact ÷ effort** (the impact + effort the proposal front-matter carries, ADR-28, give the backlog its priority ordering). **Any proposal destined for a backlog row MUST therefore carry both `Impact` and `Effort`** — a proposal may omit `Impact` only on the master-gate "one ADR line" record-only path (ADR-25), which does **not** enter the ranked backlog.
+- **Unratified proposals stay the idea inbox** in `docs/proposals/`.
+- `docs/backlog.md` holds the **schema + the lifecycle rule + at most one illustrative row** — **no migration** of existing proposals into rows (that is operator curation, not a plan/flow act). Shape Up's warning applies: don't let unbet ideas accumulate as zombie backlog rows — the unratified-stay-in-the-inbox rule is what keeps the backlog to *bet* work.
+
+**Why.** A flow that ends at "ratified" with nowhere for the row to land is incomplete, and the team lead already assumes the file exists — creating the minimal schema closes both gaps with the smallest surface. Ranking by impact ÷ effort reuses the proposal front-matter (ADR-28) and closes the ranking gap from the prior backlog discussion. Keeping it minimal (schema, not a migration) avoids turning a definitional pass into a bulk-curation exercise.
+
+**Tradeoffs.** The backlog starts essentially empty (schema + one example) — population is deferred to operator curation as proposals are ratified. Accepted: a migrated-all-at-once backlog would be exactly the zombie-row accumulation Shape Up warns against.
+
+**Rejected.** *Migrate every existing `docs/proposals/*.md` into backlog rows now* — operator curation, not a flow step; risks zombie rows. *Leave the backlog undefined and let the team lead keep referencing a missing file* — the dangling dependency that motivated this ADR.
 
 ---
 

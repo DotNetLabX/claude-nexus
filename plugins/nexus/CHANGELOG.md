@@ -1,6 +1,14 @@
 # nexus — Changelog
 
 
+## [1.9.0] — 2026-06-14
+- MINOR bump.
+  - agent instruction/behavior change
+  - skill change (create-implementation-plan)
+  - skill change (review-format)
+  - skill change (proposal-format)
+  - owner-escalated to minor
+
 ## [1.8.3] — 2026-06-13
 Gate negation fix (P1) — `pipeline-gate.js` no longer false-positive DENYs a clean APPROVED review.
 

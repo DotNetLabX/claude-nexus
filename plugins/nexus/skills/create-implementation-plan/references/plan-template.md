@@ -52,6 +52,12 @@ For each step:
 - Skill reference (from the mapping table) — if Follow or Build, say "Follow {skill-name}" or "Build {what} then follow {skill-name}"
 - Feature-specific inputs only (entity names, property types, route paths)
 - Dependencies on previous steps
+- **`Satisfies:`** (optional, recommended) — the acceptance criterion the step delivers, e.g.
+  `Satisfies: AC-3`. For an ad-hoc pass with no spec ACs, cite the **ADR unit** instead
+  (`Satisfies: ADR-26 RESEARCH-stage`), consistent with the ad-hoc ADR-mapping done-check. This is the
+  lightweight SDD requirement→task link — **optional-but-recommended, not a hard gate**: a step may omit
+  it, and existing plans predate it. Where present, the done-check confirms the cited AC/ADR-unit is
+  real and the reviewer verifies the code traces to it.
 
 **Always include a final numbered step for KB updates** if the KB Impact section identifies entries to update. Trailing sections are routinely skipped — only numbered steps are verified by the done check.
 

@@ -145,6 +145,49 @@ ADR-24 precedent; the cost of being wrong is one word in a status line.
 
 ---
 
+## Q5 — Step 7 bump: a 1.8.3 release is already staged uncommitted; what version does this MINOR pass land?
+
+**From:** developer
+**To:** architect (routes to team lead — it owns the bump + commit, per the prompt)
+**Status:** Open
+**Step:** Phase 1 analysis (Step 7 — Release)
+
+**Context.** The Phase-1 prompt flagged that Step 7's bump edits `plugin.json`/`CHANGELOG.md`, which
+already have a separate pending release staged in the working tree. Verified on disk:
+- `HEAD:plugins/nexus/.claude-plugin/plugin.json` = **`1.8.2`** (last commit `3270979`).
+- Working tree (git status: `M ` staged) = **`1.8.3`**, with a staged `CHANGELOG [1.8.3]` entry +
+  a staged `pipeline-gate.js` change. This is the **`adhoc-GateNegationFix`** release (untracked spec
+  folder `docs/specs/adhoc-GateNegationFix/`; CHANGELOG dates it 2026-06-13) — **staged but not yet
+  committed**.
+- `scripts/bump-plugin.mjs` reads the **current working-tree** `plugin.json` as the base
+  (`readFileSync(manifestPath)`, line 184/243), so a `--minor` run started now reads `1.8.3` and
+  produces **`1.9.0`** (MINOR resets patch) — not `1.8.4`.
+
+So Step 7's "MINOR" lands as **1.9.0 on top of the un-committed 1.8.3**, and two unrelated releases
+(GateNegationFix PATCH + this MINOR) are co-staged in one working tree. The CHANGELOG would then carry
+both a `[1.9.0]` (this pass) and the pre-existing `[1.8.3]` entry. I do **not** commit (ADR-18), so the
+sequencing/commit decision is the team lead's — but it affects what *I* run in Step 7.
+
+**Question.** When I reach Step 7, should I (a) run `node scripts/bump-plugin.mjs --minor` as-is and let
+it produce **1.9.0** on top of the staged 1.8.3 (the mechanically-correct outcome — the GateNegationFix
+1.8.3 becomes an intermediate version the team lead commits separately first), or (b) is the
+GateNegationFix 1.8.3 going to be committed/handled before this pass's Step 7 so I bump from a clean
+committed base? Either way the team lead reconciles the final commit(s); I only need to know which base
+to bump from and whether the `[1.8.3]` CHANGELOG entry stays.
+
+**Recommendation:** Run `--dry-run` first at Step 7 and **report the proposed version + base to the team
+lead before applying** (release-plugin Procedure step 1 already mandates dry-run-first). Default to **(a)
+— accept 1.9.0 on top of the staged 1.8.3**: it is the script's deterministic output, it loses nothing
+(the GateNegationFix entry is preserved, the team lead commits the two releases in whatever order/grouping
+it chooses), and it avoids me touching/unstaging another pass's release. I will **not** revert, unstage,
+or rewrite the staged `[1.8.3]` entry — that is the team lead's to reconcile.
+**Confidence:** high — the bump mechanics are verified against the script source and the CHANGELOG, the
+dry-run-first + team-lead-commits division is exactly ADR-9/ADR-18 + the release-plugin skill, and (a) is
+non-destructive. The only genuinely open part is the team lead's *commit grouping*, which is theirs to
+decide and does not block my implementation of Steps 1–6.
+
+---
+
 ## Resolved by the architect (recorded, not blocking — override if any is wrong)
 
 - **R-A — No overlap with P1/P2/P3 (hard constraint honored).** The flow **consumes**: RESEARCH stage =

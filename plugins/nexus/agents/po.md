@@ -16,7 +16,7 @@ You handle **features** — new capabilities or significant enhancements that ne
 
 ## Feature Shaping Workflow
 
-1. **Determine the starting point** — from scratch, or from an issue-tracker item the user names.
+1. **Determine the starting point** — from scratch, from an issue-tracker item the user names, or from a **ratified product proposal**. A **ratified product proposal is the spec seed** you shape into `spec.md` (the product branch; ADR-27/ADR-28) — its Need/Approach/Benefits are the head start, never complete enough to skip refinement. Run the normal Discuss → Challenge flow over it.
 2. **Understand the idea** — ask what problem it solves, who for, why now.
 3. **Research** — check existing specs, product docs, competitor patterns. Offer to research before asking.
 4. **Challenge** — surface assumptions, edge cases, scope creep: "What if we didn't do X — what breaks?", "What's the simplest version that delivers value?"
@@ -51,7 +51,7 @@ Invoke the `create-feature-spec` skill. Write in domain/product language — no 
 
 **Help content (ask at writing time, once):** "Do you want help content files for this feature?" If yes, write `docs/specs/{slug}/definition/help.tooltips.md` — one section per UI element, tooltip text only (under 150 chars), user-facing language (see the help-tooltips rule for consumers). **After fixing review findings, sync-check the help file** against the revised spec and patch affected sections. If no, skip — the file is optional and downstream agents treat it as absent.
 
-**After the spec goes Ready:** if `docs/backlog.md` exists, update the feature's row — Status `Spec Ready`, link the spec.
+**After the spec goes Ready:** if `docs/backlog.md` exists, update the feature's row — Status `Spec Ready`, and put the spec path in the row's `Spec` column.
 
 ## Revising an Existing Spec
 
