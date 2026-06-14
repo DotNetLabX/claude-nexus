@@ -1,6 +1,24 @@
 # nexus — Changelog
 
 
+## [1.9.1] — 2026-06-14
+Applied five promoted items from the 1.9.0 learner feedback file (`docs/plugin-feedback/nexus-1.9.0-2026-06-14.md`) — all small, prose-only.
+
+- **P2(a) — standalone critic salvage-persist.** `architect.md` standalone critic bullet now mirrors
+  `team-lead.md`: salvage a thin/stranded critic message and persist findings verbatim to
+  `review-critic.md`; record explicit non-emission rather than fabricate. (Part b — giving the critic its
+  own write — is an architect decision, still owed.)
+- **P3 — 0-byte output is expected, not a hang.** Caveat in the team-lead Relay-Contract recovery order
+  + a new hard-rule in `agents-workflow.md`: a 0-byte spawn `output_file` is not a hung agent (check the
+  transcript), and never poll a sibling agent's output to infer progress (the ADR-21 misread).
+- **P4 — create→extend disposition table.** New rule in `create-implementation-plan` requiring a
+  `covered/new/deferred` disposition table when a plan's scope flips from create to extend.
+- **N4 — dev-repo carve-out.** `improve-skills` "Two Channels" now notes that in the plugin source repo
+  shipped skills are fixed directly (lint is the done-condition); the feedback-file channel is the
+  consuming-project path.
+- **N6 — learner sweeps the comm-log.** `learner.md` now requires `communication-log.md` (Runtime /
+  Plugin Issues sections) as a second consolidation source alongside `lessons.md`.
+
 ## [1.9.0] — 2026-06-14
 - MINOR bump.
   - agent instruction/behavior change

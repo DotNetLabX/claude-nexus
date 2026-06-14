@@ -67,6 +67,8 @@ no-self-advance — already routed from sprint-rituals Pass3b/3c).
 
 ## P2 — Critic strands or never-emits its findings; standalone path has no salvage-persist; durable findings-file is owed
 
+**[APPLIED (part a) · nexus 1.9.1 / solo 2026-06-14]** Action (a) done: the standalone critic bullet at `architect.md:172` now mirrors `team-lead.md:168` — salvage-and-persist to `review-critic.md`, and record explicit non-emission rather than fabricate. **Part (b) still owed (architect decision):** whether to give the critic its own single write to `review-critic.md` (touches `critic.md` `disallowedTools` + ownership of that path) — not a Solo change; route to the architect.
+
 - **Suggested target:** `plugins/nexus/agents/architect.md:172` (the **standalone** "Critic review"
   bullet — *"Receive findings, fold them into a `## Plan Review` note… fix gaps"* — which has **no**
   salvage-and-persist instruction); compare `team-lead.md:168` which **does** ("salvage… **Persist the
@@ -104,6 +106,8 @@ no-self-advance — already routed from sprint-rituals Pass3b/3c).
 
 ## P3 — A 0-byte `output_file` is expected, not a hang; never poll a sibling agent's output file
 
+**[APPLIED · nexus 1.9.1 / solo 2026-06-14]** Done: caveat added to the team-lead Relay-Contract recovery order (`team-lead.md:50`) and a new hard-rule bullet in `agents-workflow.md` (after the durable-artifact rule, before never-author) carrying both rules — 0-byte output ≠ hang (check the transcript) and never poll a sibling's output file (the ADR-21 misread).
+
 - **Suggested target:** `plugins/nexus/agents/team-lead.md` — the Relay-Contract recovery order
   (`:50`/`:134`) and a one-line caveat alongside `agents-workflow.md:86` (durable-artifact) / `:88`
   (never-spawn-a-pipeline-role).
@@ -129,6 +133,8 @@ no-self-advance — already routed from sprint-rituals Pass3b/3c).
 
 ## P4 — A create→extend scope correction must carry a disposition table in the plan
 
+**[APPLIED · nexus 1.9.1 / solo 2026-06-14]** Done: new bullet at the head of the "Refactoring & Type-Move Plan Rules" section in `create-implementation-plan/SKILL.md` — a create→extend scope flip carries a disposition table (`covered (where)` / `new (step)` / `deferred (why)`).
+
 - **Suggested target:** `plugins/nexus/skills/create-implementation-plan/SKILL.md` — alongside the
   Downstream-Consumers / grep-before-delete rules (`:115`, `:123`).
 - **Action:** add (prose — skill rule).
@@ -146,6 +152,8 @@ no-self-advance — already routed from sprint-rituals Pass3b/3c).
 ---
 
 ## N4 — `improve-skills`' feedback-file channel does NOT apply in the plugin dev repo (ADR-1 carve-out)
+
+**[APPLIED · nexus 1.9.1 / solo 2026-06-14]** Done: dev-repo carve-out blockquote added to the "Two Channels (ADR-1)" section of `improve-skills/SKILL.md` — in the source repo shipped skills are fixed directly and lint is the done-condition; the feedback-file channel is the consuming-project path. (Promoted ahead of the 2-feature bar because it's a one-line ADR-1 restatement with zero behavior risk and it was actively confusing dev-repo runs.)
 
 - **Suggested target:** `plugins/nexus/skills/improve-skills/SKILL.md` — the "Two Channels (ADR-1)"
   section (`:17-21`), which currently states only the *consuming-project* rule ("Fix to a shipped skill
@@ -165,6 +173,8 @@ no-self-advance — already routed from sprint-rituals Pass3b/3c).
 ---
 
 ## N6 — The learner must sweep `communication-log.md` Runtime/Issues sections, not just `lessons.md`
+
+**[APPLIED · nexus 1.9.1 / solo 2026-06-14]** Done: `learner.md` Consolidation step 1 and the "What You Know" list now require `communication-log.md` (Runtime / Plugin Issues sections) as a second source alongside `lessons.md`.
 
 - **Suggested target:** `plugins/nexus/agents/learner.md` — Consolidation Workflow **step 1** ("Read
   all lessons") and the "What You Know" list (both currently name only

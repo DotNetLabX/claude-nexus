@@ -18,6 +18,8 @@ Two callers, one process:
 
 Shipped nexus skills live in the plugin's version-keyed cache — not editable from a consuming project.
 
+> **Dev-repo carve-out (ADR-1).** In the plugin *source* repo itself, this inverts: shipped skills are authored and fixed **directly** in `plugins/{plugin}/skills/` and the skill's own lint is the done-condition. The feedback-file channel below is the *consuming-project* path (where the cache is read-only) — don't route a dev-repo fix to it.
+
 - **Fix to a shipped (plugin) skill** → append to the portable feedback file `docs/plugin-feedback/nexus-{plugin-version}-{date}.md` (same entry format as improve-flow: suggested target = the skill + section, action, evidence, condensed lesson). Never edit the cache.
 - **Fix to a project-local skill** (one that lives in this project's `.claude/skills/`) → apply directly **as a consolidating pass**: read the SKILL.md fully, fold the fix into the section it belongs to — net complexity flat or down, never additive patching. A skill that only ever grows becomes unreadable and stops being followed. Check the fix against `references/proven-patterns.md` — especially AP2 (sweep every normative surface the rule lives on, not just where it was reported) and AP3 (one owner per fact).
 - **Skill gap** → decide the home:
