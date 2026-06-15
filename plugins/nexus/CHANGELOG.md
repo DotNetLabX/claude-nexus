@@ -1,6 +1,13 @@
 # nexus — Changelog
 
 
+## [1.10.0] — 2026-06-15
+- Research-KB: add search-researches (inline recall + forked-execution research skill) and research-entry-schema (entry format + cite-or-drop claim grammar); wire the research-before-asking rule to route capture+recall through them.
+  - rule (injected every session)
+  - skill change (research-entry-schema)
+  - skill change (search-researches)
+  - owner-escalated to minor
+
 ## [1.9.3] — 2026-06-15
 Subagent status-line rows for the pipeline (experimental wiring).
 

@@ -36,15 +36,23 @@ Match the research effort to the cost of getting it, and decide whether to surfa
   direction?"* Offer only when research would genuinely change the question or your recommendation — a
   reflexive offer on every question is noise.
 
-## Capture before surface
+## Capture and recall through `search-researches`
 
-When research produces findings a later step would re-derive, **write them down before you surface the
-summary**: append to `docs/kb/research/{topic}.md` in the consuming project, then present the answer.
-This is a **bare convention** for now — a topic file with your findings and their sources; the schema
-and the recall skill (`search-researches`) are P2, and retention/eviction is P3. The
-`docs/kb/research/` folder is created **lazily in the consuming project** the first time it's needed —
-the plugin never ships it (ADR-1). Capture is a convention here, not an enforced gate; a capture gate
-is a future candidate, not built.
+Research **compounds** — the same fact-shaped dive is never run twice. Route both the recall and the
+capture through the `search-researches` skill:
+
+- **Recall first.** Before you dive on a fact-shaped unknown, run the `search-researches` skill — it greps
+  the local research pool (`docs/kb/research/*.md` in the consuming project) keyed on your question and,
+  on a still-valid hit, returns the prior verdict instead of re-researching. A hit that has gone stale (its
+  reconfirm-trigger fired or it is past its validity scope) is re-researched automatically.
+- **Capture before you surface.** On a cache miss, the same skill runs the dive (in an isolated read-only
+  researcher), then **writes the cited entry to `docs/kb/research/{topic}.md` before presenting the
+  answer** — the pool is the durable record. The entry follows the `research-entry-schema` skill (fields,
+  the 8-part output ordering, and the cite-or-drop claim grammar), and a deterministic check rejects an
+  entry whose claims are not cited. A superseding re-research marks the old entry superseded and keeps it.
+
+The `docs/kb/research/` folder is created **lazily in the consuming project** the first time it is needed —
+the plugin never ships it (ADR-1).
 
 ## The offer (the L93 corollary, expanded)
 
