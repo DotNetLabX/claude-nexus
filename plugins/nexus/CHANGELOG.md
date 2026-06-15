@@ -1,6 +1,20 @@
 # nexus — Changelog
 
 
+## [1.9.3] — 2026-06-15
+Subagent status-line rows for the pipeline (experimental wiring).
+
+- **`subagentStatusLine` renderer** (`statusline/subagent-rows.js`) — restyles the agent-panel
+  rows for recognised pipeline roles (team-lead, architect, po, developer, reviewer, critic,
+  learner, solo) as a colour-coded `[role]` tag · description · token count · elapsed. Rows it
+  doesn't recognise keep Claude Code's default rendering, and a malformed payload fails open (no
+  output). Role detection is word-boundary matched, so substrings like "purpose" never fire `po`.
+- **`settings.json`** wires `subagentStatusLine` to the script via `${CLAUDE_PLUGIN_ROOT}`.
+  Whether that variable expands in a plugin `settings.json` is undocumented — if it doesn't, the
+  rows simply render default (a safe no-op) pending an installer-skill fallback.
+- Unit suite `tests/unit/subagent-rows.test.mjs` (8 tests) pins detection, fail-open, token
+  formatting, and column clipping.
+
 ## [1.9.2] — 2026-06-14
 - PATCH bump.
   - agent instruction/behavior change
