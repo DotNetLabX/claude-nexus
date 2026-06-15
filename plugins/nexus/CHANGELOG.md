@@ -1,6 +1,11 @@
 # nexus — Changelog
 
 
+## [1.9.2] — 2026-06-14
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+
 ## [1.9.1] — 2026-06-14
 Applied five promoted items from the 1.9.0 learner feedback file (`docs/plugin-feedback/nexus-1.9.0-2026-06-14.md`) — all small, prose-only.
 
