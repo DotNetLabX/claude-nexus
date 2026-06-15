@@ -10,7 +10,7 @@ import { frontmatter, listAgents, listSkills, agentName, pluginRoot } from '../h
 
 const AGENT_KEYS = new Set(['name', 'description', 'model', 'effort', 'skills', 'disallowedTools', 'maxTurns']);
 const AGENT_FORBIDDEN = new Set(['hooks', 'mcpServers', 'permissionMode']); // platform rejects these in plugin agents
-const SKILL_KEYS = new Set(['name', 'description', 'user-invocable']);
+const SKILL_KEYS = new Set(['name', 'description', 'user-invocable', 'disable-model-invocation']);
 const MODELS = new Set(['opus', 'sonnet', 'haiku', 'inherit']);
 const EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
 

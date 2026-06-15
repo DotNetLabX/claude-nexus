@@ -79,8 +79,33 @@ across ~10 classes. The fix is **three composable mechanisms**, all orchestrator
    for low-consistency or interpretive rules. Escalation target ~14% (Pass-3 observed) → most rules never
    touch the expensive tier.
 
-**Status:** unproven at scale — this is *the* thing #1/#4 must validate (does scoping+parallelizing the
-verifier hold recall while cutting cost?). Recall must not regress from the manual 3/3 baseline.
+**Spike result (2026-06-14, BugRatioCalculator — 3 miners + 35 parallel verifiers).** Recall held **3/3**
+vs golden (GOLD-16/17/18); 46 consensus rules, 38 unanimous, 0 contradictions; verify 33 confirmed / 2
+imprecise / 0 wrong. Triage worked — 11/46 rules were transcribed and skipped the verifier (~24% fewer
+calls). Parallelism cut **wall-time ~5×** (pilot 48 min → ~9 min) — **but total tokens rose ~6×** (~267k →
+~1.58M) because each of the 35 parallel verifiers independently re-read the full 386-line source.
+
+**Correction to the mechanisms above — latency and token-cost are separate axes (the design conflated
+them):** per-rule parallel verify (#2) buys *wall-time*, not tokens. To cut tokens it must be paired with
+**verifier-input scoping** — hand each verifier the rule's quote + a small surrounding slice, *never* the
+whole file — and the tiering of #3 (cheap model for the bulk). At ~1.58M tokens/class, ×10 classes ≈ 16M
+tokens: token cost is now the load-bearing viability risk, the way wall-time was at Pass 3. Recall at 3/3
+is not the constraint; per-class token cost is.
+
+**Spike v2 (sliced input, same 35-way fan-out) — confounded, but decisive on the shape.** Recall held 3/3
+(cached mined set). Slicing directionally cut verify tokens (963k vs v1's ~1.4M verifier portion), but the
+run exposed two failures that reshape the design: (a) **35 simultaneous verifier calls tripped a server-side
+rate limit** — 19/35 errored out and the retries polluted the token count, so parallelism has an
+operational ceiling independent of tokens; (b) sliced verifiers flagged **IMPRECISE more often** (5/16 vs
+2/35) — a thin slice starves the refuter of context.
+
+**Conclusion — the verifier should be BATCHED, not fanned out per rule.** Cluster ~5 interpretive rules +
+their slices into one call (≈7 calls for ~35 rules), not 35 singletons and not one monolith. Batching
+dodges the rate limit (few calls), cuts tokens (one context load per batch, not per rule), and gives the
+refuter enough surrounding code to judge. So the corrected cost fix is: **triage (skip transcribed) →
+slice the source once → batched sliced verify (~5 rules/call) → tier the model for the bulk.** Per-rule
+fan-out is the wrong shape on both axes; the monolith is token-cheap but serial; a handful of medium
+batches is the sweet spot. (Clean per-class token number still pending a v3 batched run.)
 
 ## 3. Clean-room as a mechanism, not a prompt
 

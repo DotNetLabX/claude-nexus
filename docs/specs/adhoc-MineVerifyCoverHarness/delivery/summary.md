@@ -34,7 +34,7 @@ Created: `harness/README.md`, `harness/targets/bugratio.json`, `harness/mine-ver
 **No `plugins/**` changes → no version bump** (release-plugin not invoked; dev-repo machinery only, per architect Q5).
 
 ## Lessons
-`lessons.md` recorded (architect + developer). Processing status: see close note (offered to user).
+`lessons.md` recorded (architect + developer). **Processing: SKIPPED per user** (2026-06-14) — lessons remain unprocessed; the high-value ADR-21 self-advancement item + pre-commit-hook mitigation are captured here and in `communication-log.md` for a future learner run.
 
 ## Follow-ups
 - **Inc 2 — Cover** (TDD + Stryker mutation gate); coordinate with sprint-rituals Cover work.

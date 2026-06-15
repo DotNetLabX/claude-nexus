@@ -18,10 +18,6 @@
 .claude/.personas.json
 .claude/settings.local.json
 
-# --- oh-my-claudecode (OMC) tooling state -----------------------------------
-# Per-developer orchestration state — never shared.
-.omc/
-
 # --- Audit-trail output (ADR-11, opt-in) -------------------------------------
 # Raw per-run capture read by the consumption-report skill. Regenerated each run.
 # Current path is .claude/audit/ (1.3.0+); docs/audit/ kept for pre-1.3.0 strays.

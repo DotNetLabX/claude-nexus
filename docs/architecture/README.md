@@ -783,28 +783,19 @@ Pre-existing tradeoffs, retained:
   coverage), not an inventory artifact.
 - **CI gate.** Added: `.github/workflows/plugin-release-check.yml` runs the version-bump check
   (`bump-plugin.mjs --check`, hard gate) and `claude plugin validate --strict` (advisory until CI auth
-  for the `claude` CLI is confirmed, then flip to required). Still future: a lint for dangling
-  `*-format`/skill references would catch the exact class of bug behind ADR-4.
-- **Plugin unit tests (proposed).** The plugin's executable surface is deterministically testable
-  but currently untested — the 2026-06 cleanup audit found multiple shippable-only-because-untested
-  bugs (dead classification branch in `bump-plugin.mjs`, `gen-commands.mjs` crash on a plugin with
-  no `agents/` dir, pipeline-gate regressions across patches). Proposed: a `node:test` suite
-  (zero deps, `node --test tests/`) in three layers, wired into the CI workflow:
-  1. **Hook tests** — hooks are pure `stdin JSON → exit code/stdout` programs; feed synthetic
-     `PreToolUse`/`PostToolUse` events and assert allow/deny, registry writes, and fail-open edges
-     (guard.js rm/secret matrices, pipeline-gate role gating, register-persona Write|Edit payloads,
-     audit-logger off-by-default = zero side effects).
-  2. **Script tests** — `bump-plugin.mjs` tier classification table, `gen-commands.mjs` generation
-     against a fixture agent, `gen-omni.mjs` write→`--check` round-trip (exit 0, then mutate → exit 1).
-  3. **Structural lint** — every agent frontmatter parses and its `skills:` resolve to shipped
-     skills; no dangling `*-format` references (the ADR-4 bug class — subsumes the lint above);
-     `commands/` regen-clean vs `agents/`; CHANGELOG top entry matches `plugin.json` version;
-     no `${CLAUDE_PLUGIN_ROOT}` in markdown bodies (ADR-2 #3).
-  Agent *behavior* (prompt semantics) is a separate, fourth layer: LLM evals — promptfoo's
-  claude-agent-sdk provider with deterministic trajectory assertions ("critic never invokes Write")
-  plus a small llm-rubric set, grown from real failures only. Full research (platform support,
-  ecosystem survey — most plugins ship zero tests, eval tiers + costs):
-  `docs/research/testing-claude-code-plugins.md`. Promote to an ADR when built.
+  for the `claude` CLI is confirmed, then flip to required). The dangling-`*-format`/skill-ref lint
+  that catches the ADR-4 bug class has since shipped (see *Plugin unit tests* below).
+- **Plugin unit tests — SHIPPED (2026-06; roadmap `docs/proposals/plugin-evaluation-2026-06.md` §A,
+  research `docs/research/testing-claude-code-plugins.md`).** No longer future work: the `node:test`
+  suite (zero deps) is built and is the CI hard gate. `tests/lint/` (**T1** structural lint — frontmatter
+  schema, `skills:`/dangling-`*-format` resolution, convergence of duplicated vocabulary,
+  enforcement/relay contracts, CHANGELOG↔`plugin.json`, no `${CLAUDE_PLUGIN_ROOT}` in markdown);
+  `tests/unit/` (**T2** — every hook driven by synthetic event JSON, plus `bump-plugin`/`gen-commands`/
+  `gen-omni` against fixture trees); `tests/evals/` (**T3/T4** — the real agents via headless
+  `claude -p --plugin-dir` on the **subscription CLI**; owner decision 2026-06-10: no API key, CI-wiring
+  deferred with it). Run: `node --test tests/lint/*.test.mjs tests/unit/*.test.mjs` + `scripts/selfcheck.mjs`;
+  gated by `plugin-release-check.yml`. **Still owed:** promote this to a full ADR (the "promote when built"
+  note); the only open roadmap item is owner live-validation (§A step 5).
 
 ---
 
