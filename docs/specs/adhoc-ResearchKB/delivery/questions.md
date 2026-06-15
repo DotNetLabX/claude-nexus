@@ -9,12 +9,20 @@ There is no central backlog row to reconstruct from; scope below is taken from P
 against the shipped P1 rule. Two genuine forks need the owner before I write the plan; the rest I
 resolved against source (recorded under "Resolved by the architect").
 
+**Update 2026-06-14:** both forks answered **Option A** (below). Pass is ready for Phase 2
+(write plan), queued **after** `adhoc-TokenAuditFidelity` (the smaller version-closer).
+
 ---
 
 ## Q1 — The research engine: self-contained, or wrap the external `deep-research`?
 
 **To:** user (owner ratifies — touches ADR-1)
-**Status:** Open
+**Status:** Answered — **Option A (self-contained)**, owner-confirmed 2026-06-14. `search-researches`
+is a nexus skill that depends on no non-shipped skill/agent: platform-native `WebSearch`/`WebFetch` +
+Claude Code's built-in `Explore`/`general-purpose` subagents only, on the cache-miss path. It does
+**not** wrap `deep-research` (a standalone non-nexus skill) or any OMC skill/agent
+(`document-specialist`, `autoresearch`) — that is the cross-plugin dependency ADR-1 forbids. This is
+the "build our own, don't depend on OMC/external" intent.
 
 P2 says "lead with a skill over the existing `deep-research` engine." Verified against source:
 `deep-research` is **not shipped by the nexus plugin** (not in `plugins/nexus/skills/`, not in the
@@ -42,7 +50,9 @@ that ships cleanly to consumers.
 ## Q2 — Delivery shape: skill only, or a dedicated researcher agent?
 
 **To:** user (owner — scope)
-**Status:** Open
+**Status:** Answered — **Option A (skill only)**, owner-confirmed 2026-06-14. Ship `search-researches`
+as a skill (invokable by po/architect/solo, referenced from the P1 rule); defer a dedicated researcher
+agent to a future pass if context-budget pain shows up.
 
 P2 marks this its one **Medium-confidence** open part: "Lead with a skill ... promote to a dedicated
 researcher agent only if it needs its own context budget."
