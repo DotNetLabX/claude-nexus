@@ -45,6 +45,9 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-27 — The technical / product definition branch (architect owns the technical definition) *(Accepted — ratified 2026-06-14)*
 - ADR-28 — Proposals are RFC-lite: a named owner ratifies; ratification graduates the proposal *(Accepted — ratified 2026-06-14)*
 - ADR-29 — Ratified proposals become backlog rows; unratified stay the idea inbox *(Accepted — ratified 2026-06-14)*
+- ADR-30 — Autonomy is an additive mode: a switch, not a rewrite *(Accepted — adhoc-UnattendedAutonomy, 2026-06-16)*
+- ADR-31 — The verification gate at the `SubagentStop` boundary: runs + records, never blocks *(Accepted — adhoc-UnattendedAutonomy, 2026-06-16)*
+- ADR-32 — Unattended fails closed → a structured, resumable review queue *(Accepted — adhoc-UnattendedAutonomy, 2026-06-16)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -760,6 +763,54 @@ The altitude rule (research §2a, "same thinking at two altitudes, one authorita
 **Tradeoffs.** The backlog starts essentially empty (schema + one example) — population is deferred to operator curation as proposals are ratified. Accepted: a migrated-all-at-once backlog would be exactly the zombie-row accumulation Shape Up warns against.
 
 **Rejected.** *Migrate every existing `docs/proposals/*.md` into backlog rows now* — operator curation, not a flow step; risks zombie rows. *Leave the backlog undefined and let the team lead keep referencing a missing file* — the dangling dependency that motivated this ADR.
+
+---
+
+## ADR-30 — Autonomy is an additive mode: a switch, not a rewrite — Accepted
+
+> **Status: Accepted — adhoc-UnattendedAutonomy, 2026-06-16.** Extracted (not re-authored) from `docs/specs/adhoc-UnattendedAutonomy/definition/tech-spec.md` (Layer 0). Owner-stated hard constraint: the attended pipeline must not break.
+
+**Context.** Running Nexus unattended overnight needs new behavior (a verification gate, a fail-closed defer) — but the 29-ADR attended pipeline is the project's primary asset and must not regress. A forked attended/unattended code path would drift and rot.
+
+**Decision.** Autonomy is a **single additive mode** governed by the existing `[UNATTENDED]` launch-prompt token (`team-lead.md:383`) — **no new parallel flag**. New logic *branches on the flag*; it never alters the shared attended path. With the flag off, every code path is byte-identical to the pre-v1 baseline — new behavior is **unreachable** when attended. This is pinned mechanically by a **golden regression test** (offline observables: the new gate is a no-op on output and filesystem flag-off; the existing `pipeline-gate.js`/`guard.js` decisions are unchanged), which must exist and pass before any other v1 code merges.
+
+**Why.** "Switch, not rewrite" makes the don't-break-attended constraint mechanical rather than a promise. Reusing `[UNATTENDED]` avoids a second mode signal that could disagree with the first. The golden test is the constraint's executable form — a regression in attended mode fails CI, not a code review.
+
+**Tradeoffs.** New behavior branches on a prompt token the hooks cannot see (a hook is a separate process); so the flag-consuming fork lives in the team-lead (which reads the prompt), and the gate itself always runs advisory. Accepted — it is what keeps the gate a single code path (ADR-31).
+
+**Rejected.** *Forked attended/unattended code paths* — they drift; the one-advisory-or-authoritative-path discipline exists to avoid exactly this. *A new mode flag* — a redundant second signal; reuse `[UNATTENDED]`.
+
+---
+
+## ADR-31 — The verification gate at the `SubagentStop` boundary: runs + records, never blocks — Accepted
+
+> **Status: Accepted — adhoc-UnattendedAutonomy, 2026-06-16.** Extracted from the tech-spec (Layer 1). Boundary confirmed by a live in-repo spike (the CR-1 verify-boundary spike, 2026-06-16) — the same Probe-P1 pattern ADR-13 uses.
+
+**Context.** Unattended operation needs verification to *gate* phase advancement, but ADR-13 records that a background subagent's **PreToolUse `deny` is dropped** by the platform. The question was whether a usable enforcement boundary exists for a backgrounded implementation subagent without a stateful MCP server.
+
+**Decision.** A net-new **`SubagentStop` hook**, keyed to the implementation subagent's completion, **runs the project's declared verify command set and records a verdict** to the audit trail — it **never denies or blocks**. The verify *execution* is **one code path**; the only fork is verdict *consumption*: in attended mode the human reads it and decides (advisory), in unattended mode the verdict *is* the decision (authoritative), consumed by the foreground team-lead. The spike confirmed `SubagentStop` fires **per subagent completion** (not only end-of-run), mid-session, with a payload identifying the subagent (`agent_type`, `agent_id`, `agent_transcript_path`, `last_assistant_message`).
+
+**Why.** Enforcing by *consuming a recorded verdict* (not by a hook deny) sidesteps the ADR-13 deny-drop entirely — the gate needs only run+record, which PostToolUse/SubagentStop demonstrably do on background subagents. Keeping verify execution to one path means there is no second verify implementation to rot; the single consumption fork is the one testable place mode-divergence could live.
+
+**Tradeoffs.** The boundary is the *implementation subagent's* stop, so the team-lead must be foreground to consume the verdict — true by scope (unattended always runs the standalone `claude -p` team-lead; the team-lead-as-subagent ADR-21 case is out of v1). The gate informs but cannot *force* — enforcement is the team-lead acting on the recorded Fail, consistent with ADR-15.
+
+**Rejected.** *Block at `SubagentStop`* — the spike found a `SubagentStop` `block` **is** honored on a background subagent (unlike the PreToolUse deny), but it traps a verify-failed subagent in an **unsatisfiable retry loop** (observed: 14 forced re-fires until the platform loop-guard cut it off) — it has no new information to satisfy the gate. So run+record-and-consume is a *deliberate* choice, not a platform limitation. *A stateful MCP gate server (maestro pattern)* — a new long-running process; the Stop-boundary route is cheaper (the Layer-2 roadmap retains MCP as a fallback if the hook route ever leaks).
+
+---
+
+## ADR-32 — Unattended fails closed → a structured, resumable review queue — Accepted
+
+> **Status: Accepted — adhoc-UnattendedAutonomy, 2026-06-16.** Extracted from the tech-spec (Layer 3). The unattended **replacement** for the graduated-intervention menu (ADR-15), which is attended-only — not a competitor to it.
+
+**Context.** Today an unattended phase failure is retry-once-then-skip-and-record (`team-lead.md:319`) and an exhausted escalation is fail-the-run-never-escalate (`:330`). Both are fail-closed in spirit but lose the failing item silently — there is no structured way for a human to resume it in the morning. The OMC failure mode (force-accept unverified work unwatched) must stay impossible.
+
+**Decision.** Under `[UNATTENDED]`, on **verify-fail OR 3-cycle-cap-exhausted OR a genuinely unanswered question**, the run **defers the item to a review queue** — a structured artifact capturing, per item: slug, failing gate/reason, audit-trail pointer, and a resume instruction. Resume **reuses the existing ADR-19 idempotency machinery** (`communication-log.md` + `.pipeline-state` Step/Cycle; `summary.md`⇒done, log⇒resume-from-step) so re-entry continues at the failing phase and does **not** re-run completed work. Unattended **never force-accepts and never force-ships** — worst case is "deferred to the queue." `Force-accept` (`team-lead.md:327`) stays attended-only and unreachable under `[UNATTENDED]`. A per-run token/cost cap aborts-to-queue when exceeded (advisory/inert in attended, where the human is the governor).
+
+**Why.** A structured, resumable queue turns "lost overnight" into "triaged by morning" while keeping the fail-closed guarantee. Reusing the ADR-19 resume state avoids a cold restart (which would re-run verified work and could undo it). Citing ADR-15: the graduated menu needs a human, so unattended substitutes the queue for the menu rather than removing the safety.
+
+**Tradeoffs.** A new queue artifact + index to maintain, and the cost cap is only real if a token counter is enabled (ADR-11's `token_audit` is opt-in/off-by-default — an unattended run must enable it or carry a lightweight always-on counter, or the cap is inert). Accepted and stated as a dependency.
+
+**Rejected.** *Force-accept on unattended* (the trilogy's default) — ships unverified work unwatched, the OMC failure mode. *A silent skip* (`:319` as-is) — loses the item with no resume path. *A cold-restart resume* — re-runs completed, verified work; reuse the ADR-19 resume state instead.
 
 ---
 

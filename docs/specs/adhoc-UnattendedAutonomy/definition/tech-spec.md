@@ -1,11 +1,11 @@
 # Tech-Spec — Unattended Autonomy (v1)
 
 **Slug:** adhoc-UnattendedAutonomy
-**Status:** Draft — pending the CR-1 verify-boundary spike + owner scope confirm (critic verdict: GO-with-changes; see `../delivery/review-critic.md`)
+**Status:** **Ready (2026-06-16)** — CR-1 spike RUN & PASSED, owner scope confirmed, critic GO-with-changes (all five findings folded), **ADRs 30–32 extracted** into the register (`docs/architecture/README.md`). No open blockers. Plan: `../delivery/plan.md`.
 **Owner (definition):** architect (technical branch, ADR-27)
 **Ratifier:** Laurentiu (repo owner)
 **Graduated from:** `docs/proposals/unattended-autonomy-2026-06.md` (Ratified 2026-06-16)
-**Plan:** None
+**Plan:** `docs/specs/adhoc-UnattendedAutonomy/delivery/plan.md`
 **Date:** 2026-06-16
 
 > Technical-branch definition (ADR-27): the architect owns this tech-spec; the binding
@@ -83,8 +83,11 @@ The plan's steps will carry `Satisfies: AC-n`. Acceptance is grep/test-checkable
   team-lead then reads. It only needs to **run + record**, never to *deny* — which is within
   Probe-P1's confirmed behavior ("PostToolUse/SubagentStop *runs* on background subagents", ADR-13);
   the ADR-13 deny-drop does not apply because v1 enforces by *consuming the recorded verdict*,
-  not by a hook deny. **Blocked on the CR-1 spike** (does `SubagentStop` fire per-phase with the
-  needed payload, and is the team-lead always foreground? — see Prerequisite spike).
+  not by a hook deny. **CR-1 spike RUN & PASSED (2026-06-16):** `SubagentStop` fires per-subagent
+  on completion, mid-session, carrying `agent_type` + `agent_id` + `agent_transcript_path` +
+  `last_assistant_message`; the team-lead is always foreground (owner-confirmed). The gate keys off
+  this payload. (Block *is* honored on a background subagent — see the spike verdict — but v1
+  deliberately does **not** use it; run+record only.)
 - **AC-1.2** **The verify *execution* is one code path; the only branch is verdict
   *consumption*.** The gate always runs and records the same way. The single fork is who reads
   the verdict — the human in attended (informs, human decides), the pipeline in unattended (the
@@ -130,18 +133,22 @@ The plan's steps will carry `Satisfies: AC-n`. Acceptance is grep/test-checkable
 
 ---
 
-## ADRs to extract (on reaching `Ready`, per ADR-27/28)
+## ADRs to extract (on reaching `Ready`, per ADR-27/28) — DONE 2026-06-16
 
-Extracted, not re-authored — terse one-decision records pointing back at this spec. Next free
-number is **ADR-30**.
+**Extracted** into `docs/architecture/README.md` as ADR-30/31/32 (terse one-decision records,
+not re-authored). The summaries below are the source the extraction drew from; the register entries
+are now authoritative.
 
 - **ADR-30 — Autonomy is an additive mode (switch, not rewrite).** Default-off; new behavior
   unreachable when attended; one advisory-or-authoritative code path; pinned by a golden test.
 - **ADR-31 — The verification gate at the `SubagentStop` boundary.** Net-new `SubagentStop`
-  hook keyed to the implementation subagent; **runs + records a verdict only — never denies**
-  (within Probe-P1's confirmed behavior, so the ADR-13 deny-drop does not apply); advisory in
-  attended, authoritative in unattended via verdict *consumption*. *(Text contingent on the CR-1
-  spike — write it to claim only run/record, not deny.)*
+  hook keyed to the implementation subagent; **runs + records a verdict only — never denies/blocks**;
+  advisory in attended, authoritative in unattended via verdict *consumption*. **CR-1 spike
+  confirmed (2026-06-16)** the boundary fires per-subagent with an identifying payload. Note: unlike
+  the PreToolUse deny (ADR-13, dropped on background subagents), a `SubagentStop` `block` *is*
+  honored — but using it would trap a verify-failed subagent in an unsatisfiable retry loop
+  (observed: 14 forced re-fires), so run+record is a **deliberate** choice, not a platform
+  limitation. ADR-31 records both the boundary fact and the rejected block path.
 - **ADR-32 — Unattended fails closed → review queue.** Never force-accept/ship; evolves the
   existing `team-lead.md:319/:330` record-and-don't-wait behavior with a structured, resumable
   queue. **Cite ADR-15** — ADR-32 is the unattended *replacement* for the graduated-intervention
@@ -186,14 +193,53 @@ tool-call from the Layer-2 roadmap) **before** planning — not discovered mid-i
 **Owner scope question (retires the CRITICAL's edge case):** confirm that unattended runs always
 use the **standalone / foreground (`claude -p`) team-lead** as the main session. If yes, the
 team-lead-as-subagent case (ADR-21) is out of v1 scope and CR-1 downgrades from CRITICAL to HIGH.
+**Owner answer (2026-06-16, user-confirmed): YES** — unattended always uses the foreground
+`claude -p` team-lead. The team-lead-as-subagent (ADR-21) sub-case is **out of v1 scope**; CR-1 is
+**HIGH, not CRITICAL.**
+
+### Spike verdict — RUN & PASSED (2026-06-16)
+
+Ran a live in-repo Probe-P1-style experiment: a real `claude -p` child session (CLI 2.1.178,
+`--include-hook-events --output-format stream-json`) that spawns a background subagent with a
+registered `SubagentStop` hook logging its raw payload. Four runs (one discarded for an invalid
+`--agents` registration; the rest used the built-in `general-purpose` subagent so the spawn was
+guaranteed real). **The assumed boundary fires; AC-1.1 stands. Layer 1 is NOT re-scoped.**
+
+| Spike question | Answer | Evidence |
+|---|---|---|
+| **1. Does `SubagentStop` fire when the impl subagent completes? Payload identifies it?** | **YES.** Fires the moment the subagent stops, mid-session, *before* the main session resumes. | Single-subagent run: one `SubagentStop` event ordered between the subagent's `PostToolUse` and the main session's next tool call. Payload carries `agent_type` (the role — would be `developer`/`nexus:developer`), `agent_id`, `agent_transcript_path` (a per-subagent transcript the gate can read), `last_assistant_message` (the handback text — the verdict surface), and the parent `session_id` (consistent with Probe-P1's clobber finding). |
+| **2. Does it run+write on a *background* subagent (needs no deny)?** | **YES — and more.** Run+record works; the gate's minimum requirement is met. | The hook ran and wrote `events.log` from inside the background subagent's stop, exactly as Probe-P1 predicted for `PostToolUse`. |
+| **3. Per-phase vs end-of-run?** | **PER-PHASE.** Fires once *per subagent completion*, distinct from the end-of-session `Stop`. | Two-subagent run: `SubagentStop` fired **twice**, with **distinct `agent_id`s** and the matching `last_assistant_message` (`DONE-A`, `DONE-B`), then a single `Stop` at session end. So AC-3.1's "defer the item" can key off the *implementation* subagent's specific completion — not just end-of-pipeline. |
+
+**Bonus finding (changes ADR-31's framing, not v1's design): a `SubagentStop` `decision:block`
+IS honored on a background subagent.** A variant hook returning `{decision:"block"}` fired **14
+times** for one subagent (`stop_hook_active` flipping `false`→`true`), and the subagent's own
+transcript shows it forced to take **15 extra turns** ("Same message, third time… fifth
+delivery…") until the platform's `stop_hook_active` loop-guard cut it off. This does **not**
+contradict ADR-13 — ADR-13 is about a **PreToolUse `deny`** being dropped; `SubagentStop`'s
+`block` is a *different* mechanism (force-the-stopping-agent-to-continue), and the platform honors
+it. **Consequence:** the v1 choice to enforce by *consuming the recorded verdict* (run+record) is
+now a **deliberate design decision, not a platform limitation** — and it is the *right* one,
+because a blocking `SubagentStop` would trap a verify-failed subagent in a useless retry loop it
+cannot satisfy (it has no new information), exactly the 14-fire pathology observed. v1 must **not**
+use `SubagentStop` block as its enforcement path. ADR-31 text updated to say so (below).
+
+**Probe method (reproducible):** `claude -p "<spawn a general-purpose subagent that writes a file
+then returns>" --settings <hooks.json registering SubagentStop/Stop/PostToolUse loggers> --agents
+... --output-format stream-json --include-hook-events`, run in a throwaway temp cwd so no repo
+state is touched (verified: `git status` clean afterward). Discarded run 1 because `--agents
+probe-impl` did not register (CLI reported "agent type not found"); switching to the built-in
+`general-purpose` type removed that variable. Probe artifacts were ephemeral (`/tmp`) and removed.
 
 ## Critic Review
 
 Mode-2 code-grounded critic, 2026-06-16 — **verdict: GO-with-changes** (full record:
 `../delivery/review-critic.md`). All five findings accepted and folded in: CR-2 (inventory fix),
 CR-3 (AC-0.3 observables), CR-4 (AC-1.2 reword), CR-5 (AC-3.2 → ADR-19 resume) are **resolved in
-this spec**; CR-1 (verify boundary) is addressed by the Prerequisite spike above + the owner scope
-question, and **gates `Ready`**. ADR-31/32 and D3 notes updated per the critic.
+this spec**; CR-1 (verify boundary) — the one CRITICAL→HIGH — is now **RESOLVED**: the Prerequisite
+spike was run (boundary fires per-phase, payload identifies the subagent) and the owner scope
+question answered (foreground `claude -p` team-lead, ADR-21 sub-case out of v1). **No CR finding
+remains open; the `Ready` gate is cleared.** ADR-31/32 and D3 notes updated per the critic.
 
 ## Review gate
 
