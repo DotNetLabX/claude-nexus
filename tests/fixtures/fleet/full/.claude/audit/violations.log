@@ -1,0 +1,2 @@
+{"ts":"2023-11-14T22:14:00.000Z","agent":"developer","tool":"Agent","path":"nexus:architect","rule":"subagent spawned a pipeline-role agent (architect) — ADR-21"}
+{"ts":"2023-11-14T22:15:00.000Z","agent":"reviewer","tool":"Write","path":"impl.md","rule":"wrote an artifact owned by another role — ADR-18"}

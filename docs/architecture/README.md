@@ -48,6 +48,7 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-30 — Autonomy is an additive mode: a switch, not a rewrite *(Accepted — adhoc-UnattendedAutonomy, 2026-06-16)*
 - ADR-31 — The verification gate at the `SubagentStop` boundary: runs + records, never blocks *(Accepted — adhoc-UnattendedAutonomy, 2026-06-16)*
 - ADR-32 — Unattended fails closed → a structured, resumable review queue *(Accepted — adhoc-UnattendedAutonomy, 2026-06-16)*
+- ADR-33 — The fleet view: a consolidated observability skill over a statusline heartbeat *(Accepted — adhoc-NexusFleetView, 2026-06-16)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -811,6 +812,22 @@ The altitude rule (research §2a, "same thinking at two altitudes, one authorita
 **Tradeoffs.** A new queue artifact + index to maintain, and the cost cap is only real if a token counter is enabled (ADR-11's `token_audit` is opt-in/off-by-default — an unattended run must enable it or carry a lightweight always-on counter, or the cap is inert). Accepted and stated as a dependency.
 
 **Rejected.** *Force-accept on unattended* (the trilogy's default) — ships unverified work unwatched, the OMC failure mode. *A silent skip* (`:319` as-is) — loses the item with no resume path. *A cold-restart resume* — re-runs completed, verified work; reuse the ADR-19 resume state instead.
+
+---
+
+## ADR-33 — The fleet view: a consolidated observability skill over a statusline heartbeat — Accepted
+
+> **Status: Accepted — adhoc-NexusFleetView, 2026-06-16.** Additive, two-way-door observability surface; per ADR-25 the change collapses to this one ADR rather than a tech-spec or multi-ADR extraction.
+
+**Context.** The per-row `subagentStatusLine` (ADR-13) restyles each background agent's panel row, but there is no single-screen, on-invoke view of the whole running fleet. The load-bearing finding that shapes the design: the rich live roster — per-task `tokenCount`, `startTime`, `status`, and role — is delivered **only** to the `subagentStatusLine` hook. The in-session `TaskList` tool returns just the task board (`{id, subject, status, owner, blockedBy}`), not the agent panel. So a skill that wants live fleet data cannot query for it on demand; the data must be captured where it is pushed.
+
+**Decision.** The statusline renderer persists a **heartbeat** — a normalized fleet snapshot to `<root>/.claude/audit/fleet-state.json` on every render (atomic temp-then-rename; drain-on-empty so a stale roster never lingers; fail-open so row rendering is never disturbed). The launch root is resolved from the documented top-level statusLine payload field `workspace.project_dir` — **not** `CLAUDE_PROJECT_DIR`/`CLAUDE_PLUGIN_ROOT` (hooks-only env, absent for a statusLine process), not `tasks[].cwd` (a per-task subagent dir → wrong audit location), and not bare `process.cwd()` — honoring ADR-8's audit write-path discipline. A user-invoked skill (`fleet`) then **joins** that snapshot with three best-effort sources — the newest `communication-log.md` header (phase/cycle), `token-usage.jsonl` (per-agent tool-call depth, gated on ADR-11's opt-in `token_audit`), and `violations.log` (boundary-event count) — into a header / per-agent-line / health-footer dashboard. Scope is **single-project, current session**; every join degrades to a pinned one-liner, never an error, and a snapshot past a freshness threshold renders **stale**, not live. The skill is the delivery carrier (ADR-2).
+
+**Why.** The heartbeat is the only way to make the push-only roster readable after the fact; persisting it where the other audit artifacts already live keeps one write-path discipline. Best-effort joins mean the view is always renderable — a fresh install with no run reads "No active fleet" rather than throwing. Building it as a skill (not an agent/command) keeps it a zero-cost, user-invoked surface that ships to consumers exactly as the other observability tooling does (ADR-11).
+
+**Tradeoffs.** The statusline gains a side effect (a guarded file write) on top of a previously pure transform — accepted because it is fail-open and the only delivery point for the data. The depth columns are inert unless `token_audit` is on (ADR-11 is off by default), so the common case shows the roster without per-agent calls plus an "enable token_audit" hint. Single-session/single-project scope means a multi-run history view is out of band (the audit logs already serve that; see `consumption-report`).
+
+**Rejected.** *Skill calls `TaskList`* — the task board lacks `tokenCount`/`startTime`/role/run-state, so the dashboard would have nothing live to render; the heartbeat exists precisely because this source is insufficient. *A Vue dashboard now* — deferred; the snapshot + parser is the reusable substrate a future visual surface would consume, but shipping it now is scope the two-way-door change does not warrant.
 
 ---
 

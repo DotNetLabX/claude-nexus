@@ -14,14 +14,26 @@
  * Fail-open, like the nexus hooks: any parse trouble, or a row we don't recognise as a
  * pipeline role, is left untouched (no line emitted) so we never blank out a legit row.
  *
- * Pure transform — reads no plugin files, needs no path resolution, so it runs the same
- * whether wired via ${CLAUDE_PLUGIN_ROOT} or an absolute path written by an installer.
+ * Heartbeat (adhoc-NexusFleetView, ADR-33): after building the rows, this script also persists
+ * a normalized fleet snapshot to `<root>/.claude/audit/fleet-state.json`. This is the *only*
+ * place the rich live roster (per-task tokenCount/startTime/status/role) is delivered, so the
+ * `/nexus:fleet` dashboard reads this file rather than querying on demand (TaskList carries only
+ * the task board). The write is:
+ *   - Root-resolved from `data.workspace.project_dir` — the documented top-level statusLine
+ *     payload field that names the launch root. NOT `CLAUDE_PROJECT_DIR`/`CLAUDE_PLUGIN_ROOT`
+ *     (hooks-only env, absent here), NOT `tasks[].cwd` (a per-task subagent dir → wrong audit
+ *     location), and NOT bare `process.cwd()` (ADR-8 stray-log). No root → skip the write.
+ *   - Atomic: temp file + rename, so a mid-render reader (the dashboard) never sees a torn file.
+ *   - Drain-on-empty: an empty `tasks[]` with a resolvable root writes an empty snapshot, so a
+ *     stale roster never lingers after a run ends.
+ *   - Fail-open: the whole write is swallowed on any error — row rendering is unaffected.
  *
  * Schema caveat: `type`/`name`/`status` values are undocumented, so role detection scans
  * every text field rather than trusting one. Set NEXUS_SUBAGENT_CAPTURE=<file> to append
  * the raw stdin payload there once — used to confirm the real shape against a live run.
  */
 const fs = require('fs');
+const path = require('path');
 
 // ---- ANSI (mirrors ~/.claude/statusline/statusline.js) ----
 const R = '\x1b[0m', DIM = '\x1b[2m', BOLD = '\x1b[1m';
@@ -88,6 +100,51 @@ function clip(s, max) {
   return out + R;
 }
 
+// ---- Heartbeat: persist the live fleet snapshot (adhoc-NexusFleetView) ----
+
+// The launch root is the documented top-level statusLine payload field. We deliberately do not
+// fall back to CLAUDE_PROJECT_DIR (hooks-only env, absent for a statusLine process) or to
+// process.cwd() (ADR-8 stray-log); tasks[].cwd is a subagent dir, never the audit root.
+function resolveRoot(data) {
+  const root = data && data.workspace && data.workspace.project_dir;
+  return typeof root === 'string' && root.trim() ? root : null;
+}
+
+// Normalize one task to the snapshot shape the dashboard reads. Reuses detectRole/ROLES so the
+// roster's role labels match the row rendering exactly.
+function normalizeTask(t) {
+  return {
+    id: t.id,
+    role: detectRole(t),
+    tag: t.tag,
+    name: t.name,
+    description: t.description,
+    status: t.status,
+    startTime: t.startTime,
+    tokenCount: t.tokenCount,
+    cwd: t.cwd,
+  };
+}
+
+// Atomic write: temp file in the same dir, then rename over the target so a concurrent reader
+// (the /nexus:fleet renderer) never observes a torn JSON file. Whole thing is fail-open — any
+// error is swallowed so row rendering is never affected.
+function writeFleetState(root, data, tasks) {
+  try {
+    const dir = path.join(root, '.claude', 'audit');
+    fs.mkdirSync(dir, { recursive: true });
+    const snapshot = {
+      ts: new Date().toISOString(),
+      columns: typeof data.columns === 'number' ? data.columns : null,
+      tasks: tasks.filter((t) => t && t.id != null).map(normalizeTask),
+    };
+    const target = path.join(dir, 'fleet-state.json');
+    const tmp = target + '.' + process.pid + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(snapshot));
+    fs.renameSync(tmp, target);
+  } catch { /* fail-open: never disturb row rendering */ }
+}
+
 let raw = '';
 try { raw = fs.readFileSync(0, 'utf8'); } catch { /* no stdin */ }
 
@@ -98,6 +155,13 @@ let data = {};
 try { data = raw ? JSON.parse(raw) : {}; } catch { process.exit(0); }
 
 const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+
+// Heartbeat first, before the no-rows short-circuit: an empty roster with a resolvable root must
+// still write an empty snapshot (drain), so a stale fleet never lingers after a run ends. No root
+// resolved → skip entirely (the dashboard then reads "No active fleet").
+const root = resolveRoot(data);
+if (root) writeFleetState(root, data, tasks);
+
 if (!tasks.length) process.exit(0);
 const cols = typeof data.columns === 'number' ? data.columns : 0;
 

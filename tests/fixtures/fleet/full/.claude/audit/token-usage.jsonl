@@ -1,0 +1,6 @@
+{"ts":"2023-11-14T22:13:20.000Z","agent":"nexus:architect","tool":"Read","input":1000,"output":100,"cache_read":0,"cache_creation":2000,"context":3000}
+{"ts":"2023-11-14T22:13:25.000Z","agent":"nexus:architect","tool":"Grep","input":1000,"output":100,"cache_read":0,"cache_creation":2000,"context":3000}
+{"ts":"2023-11-14T22:13:30.000Z","agent":"architect","tool":"Edit","input":1500,"output":200,"cache_read":500,"cache_creation":1000,"context":3000}
+{"ts":"2023-11-14T22:18:20.000Z","agent":"nexus:developer","tool":"Read","input":2000,"output":300,"cache_read":0,"cache_creation":4000,"context":6000}
+{"ts":"2023-11-14T22:18:25.000Z","agent":"developer-2","tool":"Write","input":2500,"output":400,"cache_read":1000,"cache_creation":2000,"context":5500}
+{"ts":"2023-11-14T22:18:30.000Z","agent":"main","tool":"Read","input":900,"output":50,"cache_read":0,"cache_creation":1000,"context":1900}

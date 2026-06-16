@@ -1,6 +1,21 @@
 # nexus — Changelog
 
 
+## [1.12.0] — 2026-06-16
+The fleet view — a consolidated, on-invoke dashboard of the running background agents
+(`adhoc-NexusFleetView`, ADR-33). Additive and two-way-door; existing behavior is unchanged.
+
+- **Statusline heartbeat (`statusline/subagent-rows.js`).** After rendering the rows, the renderer
+  now persists a normalized fleet snapshot to `<root>/.claude/audit/fleet-state.json` — the only
+  place the rich live roster (per-task tokens/startTime/status/role) is delivered. Root-resolved
+  from the statusLine payload's `workspace.project_dir`; atomic temp-then-rename; drains to an empty
+  snapshot when the fleet ends; fully fail-open so row rendering is never disturbed.
+- **`fleet` skill.** Reads that snapshot and joins it best-effort with the newest
+  `communication-log.md` header (phase/cycle), `token-usage.jsonl` (per-agent tool-call depth, with
+  `token_audit` on), and `violations.log` (boundary-event count) into a header / per-agent-line /
+  health-footer dashboard. Every missing source degrades to a pinned one-liner; a stale snapshot is
+  labelled, not rendered as live. User-invoked observability surface, single-project/current-session.
+
 ## [1.11.0] — 2026-06-16
 Research-refinements batch — additive, attended-mode improvements distilled from the
 orchestration-fork research (`docs/research/2026-06-16-orchestration-fork-value-extract.md`).

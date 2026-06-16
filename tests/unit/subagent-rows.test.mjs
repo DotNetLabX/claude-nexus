@@ -9,10 +9,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { pluginRoot, runHook } from '../helpers.mjs';
+import { existsSync, readFileSync } from 'node:fs';
+import { pluginRoot, runHook, makeSandbox, cleanupSandboxes } from '../helpers.mjs';
 
 const SCRIPT = join(pluginRoot('nexus'), 'statusline', 'subagent-rows.js');
 const plain = (s) => s.replace(/\x1b\[[0-9;]*m/g, ''); // drop ANSI for content assertions
+
+test.after(cleanupSandboxes);
+
+const stateFile = (root) => join(root, '.claude', 'audit', 'fleet-state.json');
+const readState = (root) => JSON.parse(readFileSync(stateFile(root), 'utf8'));
 
 function render(payload) {
   const { stdout, status } = runHook(SCRIPT, payload);
@@ -89,4 +95,77 @@ test('fail open: empty tasks, no tasks, and malformed JSON all produce no output
     assert.equal(stdout.trim(), '');
     assert.equal(status, 0);
   }
+});
+
+// ---- Heartbeat: the fleet-state.json snapshot (adhoc-NexusFleetView, Step 1) ----
+//
+// Root resolution is from the *payload* (workspace.project_dir), NOT the CLAUDE_PROJECT_DIR env —
+// a statusLine process never sees that env (it is hooks-only). So these tests inject the sandbox
+// root into the payload, mirroring the real statusLine contract.
+
+test('heartbeat: a populated payload writes the normalized snapshot under the resolved root', () => {
+  const root = makeSandbox('nexus-fleet-');
+  const payload = {
+    columns: 120,
+    workspace: { project_dir: root },
+    tasks: [
+      { id: 't1', type: 'nexus:architect', description: 'Plan F5', status: 'in_progress',
+        startTime: 1700000000000, tokenCount: 4200, tag: 'arch', name: 'architect', cwd: '/sub/a' },
+      { id: 't2', type: 'nexus:developer', description: 'Impl', status: 'active', tokenCount: 9000 },
+    ],
+  };
+  runHook(SCRIPT, payload);
+  const s = readState(root);
+  assert.equal(typeof s.ts, 'string');
+  assert.equal(s.columns, 120);
+  assert.equal(s.tasks.length, 2);
+  assert.deepEqual(s.tasks[0], {
+    id: 't1', role: 'architect', tag: 'arch', name: 'architect', description: 'Plan F5',
+    status: 'in_progress', startTime: 1700000000000, tokenCount: 4200, cwd: '/sub/a',
+  });
+  assert.equal(s.tasks[1].role, 'developer');
+});
+
+test('heartbeat: a second run overwrites latest-wins, no growth', () => {
+  const root = makeSandbox('nexus-fleet-');
+  const base = { workspace: { project_dir: root } };
+  runHook(SCRIPT, { ...base, tasks: [{ id: 'a', type: 'nexus:developer' }, { id: 'b', type: 'nexus:reviewer' }] });
+  runHook(SCRIPT, { ...base, tasks: [{ id: 'a', type: 'nexus:developer' }] });
+  const s = readState(root);
+  assert.equal(s.tasks.length, 1);
+  assert.equal(s.tasks[0].id, 'a');
+});
+
+test('heartbeat: empty tasks[] with a resolvable root drains to an empty snapshot (not skipped)', () => {
+  const root = makeSandbox('nexus-fleet-');
+  runHook(SCRIPT, { workspace: { project_dir: root }, tasks: [] });
+  const s = readState(root);
+  assert.deepEqual(s.tasks, []);
+});
+
+test('heartbeat: no root in the payload → no file written', () => {
+  // projectDir omitted from the harness AND no workspace.project_dir in the payload.
+  const root = makeSandbox('nexus-fleet-');
+  runHook(SCRIPT, { tasks: [{ id: 'a', type: 'nexus:developer' }] });
+  assert.equal(existsSync(stateFile(root)), false);
+});
+
+test('heartbeat: malformed/empty stdin → no throw, no write, exit 0', () => {
+  const root = makeSandbox('nexus-fleet-');
+  for (const payload of ['{not valid json', '']) {
+    // projectDir sets CLAUDE_PROJECT_DIR, which the script deliberately ignores (root comes only from
+    // the payload's workspace.project_dir). So no file is written for two reasons: the env root is not
+    // a root source, and the payload never parses to yield a payload root either — and it must not throw.
+    const { status } = runHook(SCRIPT, payload, { projectDir: root });
+    assert.equal(status, 0);
+  }
+  assert.equal(existsSync(stateFile(root)), false);
+});
+
+test('heartbeat: row stdout is unaffected by the write present', () => {
+  const root = makeSandbox('nexus-fleet-');
+  const tasks = [{ id: 't1', type: 'nexus:architect', description: 'Plan F5', tokenCount: 4200 }];
+  const withRoot = runHook(SCRIPT, { columns: 120, workspace: { project_dir: root }, tasks });
+  const without = runHook(SCRIPT, { columns: 120, tasks });
+  assert.equal(withRoot.stdout, without.stdout);
 });

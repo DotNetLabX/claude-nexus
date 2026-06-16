@@ -1,0 +1,27 @@
+{
+  "ts": "2023-11-14T22:23:00.000Z",
+  "columns": 120,
+  "tasks": [
+    {
+      "id": "t1",
+      "role": "architect",
+      "tag": "arch",
+      "name": "architect",
+      "description": "Plan F5 card",
+      "status": "in_progress",
+      "startTime": 1700000000000,
+      "tokenCount": 0,
+      "cwd": "/sub/a"
+    },
+    {
+      "id": "t2",
+      "role": "developer",
+      "tag": "dev",
+      "name": "developer",
+      "description": "Implement F5",
+      "status": "in_progress",
+      "startTime": 1700000300000,
+      "cwd": "/sub/d"
+    }
+  ]
+}
