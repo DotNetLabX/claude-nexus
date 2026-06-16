@@ -297,6 +297,17 @@ Verdict Validation + fabrication void-and-rerun matrix (don't replace them):
   auto-block (advisory).
 - **Unattended (`[UNATTENDED]`):** the verdict **is** the decision. A `blocking_failed` verify-fail
   on the implementation phase → **defer the item to the review queue** (Step 5), do not advance.
+- **Fail-defer is scoped to the implementation-phase verify checkpoint, NOT every developer
+  `SubagentStop` (Q-D1).** The hook runs verify (advisory) on *any* developer-role stop — including a
+  Step-1 **red-test-authoring** stop, where a *failing* verify set is the correct expected state (reds
+  must fail). The token alone does **not** separate these: red-authoring and implementation both carry
+  `developer:implement`. So the team-lead consumes a `blocking_failed` verdict as a defer trigger
+  **only at its own implementation-phase verify checkpoint** — after the developer hands back
+  `implementation.md` as complete (the point where a failing verify set genuinely means broken code) —
+  **not** on an intermediate `developer:implement` `SubagentStop` mid-turn. A `verdict:"fail"` recorded
+  on a red-authoring completion is a true-green advisory artifact the team-lead does not act on. (This
+  is fully inside the existing `.pipeline-state` + checkpoint-consumption mechanism — no design change,
+  no second mode signal.)
 
 Evolve the **Unattended Mode § bullets at `:391`** (AC-3.1/3.4) — this is the primary edit (MED-3); the
 `:319`/`:330` attended trailers are updated only to stay consistent, and ADR-32 names this the
@@ -324,16 +335,19 @@ Evolve the **Unattended Mode § bullets at `:391`** (AC-3.1/3.4) — this is the
   tested in Steps 1/6).
 - **Key constraints:** the fork is **consumption-only** — one verify execution path (the hook), the
   team-lead only *reads*; additive to Verdict Validation + least-intervention (ADR-15), not a
-  replacement; unattended never force-accepts/ships; the token-cap dependency on `token_audit` is
-  stated, not hidden.
+  replacement; the **fail-defer is consumed only at the implementation-phase verify checkpoint** (not on
+  every developer `SubagentStop` — a red-authoring fail is a true-green, Q-D1); unattended never
+  force-accepts/ships; the token-cap dependency on `token_audit` is stated, not hidden.
 - **Dependency:** Steps 2 (verdict file), 5 (queue artifact shape).
 - **Accept:** Enforcing-the-Rules carries the attended-informs / unattended-decides fork keyed to the
-  verdict file scoped by the `.pipeline-state` token; **the Unattended Mode § at `:391` is edited (the
-  primary target — MED-3)** so its phase-failure + 3-cycle rules defer-to-queue, with `:319`/`:330`
-  updated only for consistency; the token cap reads `token-usage.jsonl`-when-present with the
-  inert-when-off caveat stated **and the launch-time "cap inert this run" warning is emitted when
-  configured-but-off under `[UNATTENDED]` (MED-2)**; `Force-accept` is explicitly attended-only/
-  unattended-unreachable.
+  verdict file scoped by the `.pipeline-state` token; **the fail-defer is scoped to the
+  implementation-phase verify checkpoint (developer handed back `implementation.md`), NOT every
+  developer `SubagentStop` — a Step-1 red-authoring fail is an advisory true-green the team-lead does
+  not act on (Q-D1)**; **the Unattended Mode § at `:391` is edited (the primary target — MED-3)** so its
+  phase-failure + 3-cycle rules defer-to-queue, with `:319`/`:330` updated only for consistency; the
+  token cap reads `token-usage.jsonl`-when-present with the inert-when-off caveat stated **and the
+  launch-time "cap inert this run" warning is emitted when configured-but-off under `[UNATTENDED]`
+  (MED-2)**; `Force-accept` is explicitly attended-only/unattended-unreachable.
 - **Confidence:** medium — wording must reconcile with the existing Verdict Validation + least-
   intervention + "never wedge an unattended run" rules; the fork is additive to those.
 - **Satisfies:** AC-1.2, AC-3.1, AC-3.3, AC-3.4.
@@ -544,3 +558,15 @@ updated to match the step bodies). No fix opened a new question, so **no re-crit
 plan is ready for the developer. The Step-2 mandatory live-verify (the `nexus:developer` `agent_type`
 on `SubagentStop`) remains the one item the developer must land before the gate is trusted — it is now
 blocking in the step, fallback-guarded, and tripwire-pinned.
+
+**Post-approval precision amendment — Q-D1 (developer Phase-1, plan-owner adjudicated 2026-06-16).**
+The developer flagged that `agent_type` is `nexus:developer` for *both* the implementation turn and a
+Step-1 red-test-authoring turn, so the advisory gate runs verify (and records `verdict:"fail"`) on a
+red-authoring completion where a *failing* set is the correct expected state — a true-green recorded as
+a fail. Adjudication: **option (b) — an explicit plan edit was warranted**, with one sharpening of the
+developer's proposal. The discriminator is **not** the `developer:implement` token alone (red-authoring
+shares it); it is that the team-lead consumes the fail-defer **only at its implementation-phase verify
+checkpoint** (developer handed back `implementation.md` complete), never on an intermediate developer
+`SubagentStop`. Folded into Step 4's consumption-fork bullet + Key constraints + Accept. Fully inside
+the existing `.pipeline-state` + checkpoint-consumption mechanism — **not a design change, no new mode
+signal, no scope reversal.** Suite green (177/177) after the edit.

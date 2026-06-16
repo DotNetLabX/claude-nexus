@@ -182,6 +182,10 @@ The agents own their rules (the hard-stop-on-questions rule lives in each agent 
   | Skill-conformance Fail (the architect done-check's log-scored check) in the done-check verdict | Bounce to the developer (Fail); do **not** advance to the Step-2 review. |
 
   **The `git log` author check is the guaranteed retroactive catch.** Step 5's Bash branch is best-effort and can miss an exotically-wrapped or non-Bash commit; so at **every verify point** also run a `git log` author check since the phase began — any commit not authored by the team lead is unwound per row 3, **regardless of how it was made**. The Bash branch is the early-warning layer; this is the determinism backstop.
+- **Consume the verify verdict (attended informs / unattended decides) — ADR-31.** The always-on `SubagentStop` verify gate (`verify-gate.js`) runs the project's verify set when an implementation subagent (developer/solo) completes and appends a verdict to `.claude/audit/verify-verdict.json` — `{verdict: pass|fail, blocking_failed, commands, agent, token, …}`. The gate is **advisory and never blocks** (a blocking `SubagentStop` would trap a verify-failed subagent in an unsatisfiable retry loop — the spike's 14-fire pathology, ADR-31). **Enforcement is yours, by consuming the verdict** — this is additive to Verdict Validation + the void-and-rerun matrix, not a replacement. At your **implementation-phase verify checkpoint** (the developer has handed back `implementation.md` as complete), read the latest verdict line scoped by the current `.pipeline-state` token (as you do for `violations.log`):
+  - **Attended:** the verdict **informs** — surface it to the user with the handback; the normal review decides. It does **not** auto-block (it is advisory).
+  - **Unattended (`[UNATTENDED]`):** the verdict **is** the decision. A `blocking_failed` verify-fail → **defer the item to the review queue** (see Unattended Mode), do not advance.
+  - **Scope the fail-defer to the implementation-phase checkpoint, NOT every developer `SubagentStop` (Q-D1).** The gate runs verify (advisory) on *any* developer-role stop — including a Step-1 **red-test-authoring** stop, where a *failing* verify set is the correct expected state (reds must fail). The `developer:implement` token does **not** separate these (red-authoring shares it). So you act on a `blocking_failed` verdict as a defer trigger **only at your own implementation-phase verify checkpoint** (developer handed back `implementation.md` complete) — **never** on an intermediate `developer:implement` `SubagentStop` mid-turn. A `verdict:"fail"` recorded on a red-authoring completion is a true-green advisory artifact you do **not** act on.
 - **Then act with the least intervention that restores correctness:**
   - Broken rule, **no process impact**, you can fix it yourself → fix it and continue; do **not** stop the run (e.g. a stray `critic-review.md` left on disk → fold/delete it and carry on).
   - **Recoverable** → correct it in place (re-issue the token, re-ask the unanswered question, send back the one fix) without restarting the run.
@@ -316,7 +320,7 @@ A phase failure is an *unexpected* error — agent timeout/stall, build failure,
   3. Skip — mark the step skipped, continue
   4. Abort — stop the pipeline
 ```
-Unattended: retry once, then skip the step (record it). Never wait on a human.
+Unattended: retry once, then **defer the item to the review queue** (record it with the failing gate + audit pointer + resume instruction — see Unattended Mode → Fail closed). Never silently skip; never wait on a human.
 
 ### Escalation Protocol
 
@@ -327,7 +331,7 @@ Review cycle limit reached (3/3) for {slug}. Architect recommends: {recommendati
   2. Force-accept — proceed with current state (risks noted in review.md)
   3. Abort — stop the pipeline
 ```
-Unattended: fail the run (record the outcome). Never escalate to a human.
+Unattended: **defer the item to the review queue** (record the outcome + the architect's recommendation + a resume instruction — see Unattended Mode → Fail closed). Never escalate to a human live; `Force-accept` is attended-only and unreachable unattended.
 
 ### Plan Approval
 
@@ -378,6 +382,19 @@ A pipeline can be interrupted (session end, `/compact`, crash). Before spawning 
 2. **Done?** If `summary.md` exists for the slug, the pipeline already completed → report "already done", do not re-run (idempotency — a re-launch of finished work is a no-op, not a restart).
 3. **Resume point.** Otherwise read the header `Step` + `Cycle` + agent IDs and the last message rows to find where it stopped. Re-issue the correct `.pipeline-state` token (you are the **sole** writer of `.pipeline-state` — this is a legitimate team-lead write, the one ADR-18 exempts; agents never write it), then resume the live agent via `SendMessage(agentId)` if still addressable, else re-spawn that phase with explicit context (steps done / remaining — see Phase Failure Handling).
 
+### Review Queue (`.claude/review-queue/`)
+
+The fail-closed sink for an unattended run (ADR-32). When you defer an item (verify-fail, 3-cycle exhaustion, unanswered load-bearing question, or token-cap breach — see Unattended Mode), you write it here so a human can triage and resume by morning. **You** own this directory (it is run-state/audit-adjacent, beside the audit trail it points into — not a spec artifact), created at runtime; nothing else writes it. The queue is **never** written by the verify-gate hook — the hook only records the advisory verdict; the *defer* is your decision (AC-3.2).
+
+- **One file per deferred item — `.claude/review-queue/{slug}.md`:**
+  - **Slug** — the item's pipeline slug.
+  - **Failing gate / reason** — `verify-fail` | `3-cycle-cap` | `unanswered-question` | `token-cap`.
+  - **Audit-trail pointer** — the paths the human reads to reconstruct: `.claude/audit/verify-verdict.json` (the failing verdict + its commands) and `communication-log.md`.
+  - **Resume instruction** — wired to the **ADR-19 idempotency machinery**: point at `communication-log.md` (header `Step`/`Cycle`) + `.claude/.pipeline-state`. The rule is `summary.md`⇒done / log⇒resume-from-step, so re-entry **continues at the failing phase and does not re-run completed work** — a cold restart is wrong. Name the exact `.pipeline-state` token to re-issue and the agentId(s) to resume (or "re-spawn" if no longer addressable).
+- **`index.md`** — lists the open items (one line each: slug, reason, date). Created on the first defer; appended thereafter.
+
+A resumed item re-enters the attended pipeline at the recorded failing phase exactly as the Resume flow above describes — the queue item is just the durable, human-readable pointer into that same resume state.
+
 ## Unattended Mode
 
 When the launch prompt contains `[UNATTENDED]` (e.g. `claude -p`), no human can answer — **never call `AskUserQuestion`.** Apply defaults and keep the agent-to-agent pipeline running exactly as in attended mode (two-phase spawn, verdict handoffs, fix cycles all still happen — only the human-facing asks collapse to defaults):
@@ -387,10 +404,14 @@ When the launch prompt contains `[UNATTENDED]` (e.g. `claude -p`), no human can 
 - **Spec gate:** the spec must exist with `Status: Ready`, or **abort the run** — never spawn the PO unattended (spec shaping needs a human).
 - **Plan approval:** auto-approve after review. Don't ask.
 - **Dirty tree:** if the work can't be cleanly isolated, abort rather than risk an unscoped commit.
-- **Questions:** architect/developer questions are answered from spec context (PO/architect); if unanswerable, the agent records the most defensible default and proceeds — never wait on a human.
-- **Phase failure:** retry once, then skip the step (record it). **3-cycle exhaustion / escalation:** do not escalate to a user — record the outcome and fail the run.
+- **Questions:** architect/developer questions are answered from spec context (PO/architect); if a question is **genuinely unanswerable** from spec context, **defer the item to the review queue** rather than baking in a guess that can't be undone — never wait on a human. (A defensible default for a low-stakes preference still proceeds; an unanswerable *load-bearing* decision defers.)
+- **Fail closed → review queue (ADR-32).** Unattended **never force-accepts and never force-ships** — the worst case is "deferred to the review queue." On any of: a **`blocking_failed` verify verdict** at the implementation-phase checkpoint (read `.claude/audit/verify-verdict.json`, scoped by the `.pipeline-state` token — see Enforcing the Rules), a **3-cycle review exhaustion**, a **genuinely unanswered load-bearing question**, or a **token-cap breach** → **defer the item to `.claude/review-queue/`** (see the Review Queue section) and stop advancing that item. This evolves the prior `:319`/`:330` rules:
+  - **Phase failure / verify-fail:** retry once, then **defer the item to the review queue** with the failing gate + audit pointer + resume instruction. Never a silent skip.
+  - **3-cycle exhaustion / escalation:** **defer to the review queue** (record + enqueue for human resume), never escalate to a human live, never fail-the-run-and-forget.
+- **Per-run token cap (D3).** At each checkpoint read the running token total from `.claude/audit/token-usage.jsonl` **when present** (ADR-11 `token_audit` on); if it exceeds the configured cap → **abort the item to the queue**. **Dependency (stated, not hidden):** when `token_audit` is off the cap is **inert** — v1 adds no standalone counter. The cap's fail-direction is safe regardless (no cap → the run proceeds → the verify/3-cycle defers still fire; the cap is a *secondary* backstop). **Loud inertness:** if a token cap is configured **but** `token-usage.jsonl` is absent (`token_audit` off), write a one-line warning at launch into the run's audit / `communication-log.md` Runtime section — e.g. `token cap configured but token_audit off — cap inert this run` — so the gap is visible, not silent.
+- **`Force-accept` is attended-only and unreachable here.** The escalation menu's `Force-accept` option (Escalation Protocol) never fires under `[UNATTENDED]` — the worst case is always "deferred to the queue," never "shipped with risks noted."
 - **All pipeline artifacts are mandatory** — plan.md, implementation.md, review.md, summary.md, lessons.md, communication-log.md. Don't skip any; the artifact is the deliverable (a partial inline is never a substitute).
-- **Verdict Validation and all enforcement-hook gates still apply** — they need no human and are never relaxed.
+- **Verdict Validation and all enforcement-hook gates still apply** — they need no human and are never relaxed. The verify gate is one of them: it always runs and records; unattended, you consume its verdict as the decision (Enforcing the Rules).
 
 ## Message Footer
 

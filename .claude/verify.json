@@ -1,0 +1,6 @@
+{
+  "commands": [
+    { "run": "node --test tests/lint/*.test.mjs tests/unit/*.test.mjs", "blocking": true },
+    { "run": "node scripts/selfcheck.mjs", "blocking": true }
+  ]
+}

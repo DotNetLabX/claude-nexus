@@ -52,6 +52,13 @@
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/skill-tracker.js\"", "timeout": 10, "async": true }
         ]
       }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/verify-gate.js\"", "timeout": 180 }
+        ]
+      }
     ]
   }
 }

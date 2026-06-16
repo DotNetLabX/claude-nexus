@@ -1,0 +1,76 @@
+# adhoc-UnattendedAutonomy — Communication Log
+
+**Branch:** main
+**Step:** developer:implement (Step-2 polish pass — merged MED/LOW; non-blocking, both reviews APPROVED/GO)
+**Cycle:** 1/3 review round done (APPROVED+GO); polish pass dispatched (NOT a REQUEST-CHANGES cycle)
+**Team Mode:** **standard+codex** (user-confirmed 2026-06-16 — Step-2 = nexus reviewer ∥ Codex, round 1 only)
+**Review Mode:** spec → **accept existing critic GO + architect self-cross-check** (user, 2026-06-16, no 2nd critic); plan → **critic Mode-2 (plan vs spec)** (user, 2026-06-16)
+**Architect / Developer / Reviewer ID:** architect (name=`architect`, spawn agent_id=`architect@session-1853d3b4`; transcripts `a414dfaaeed5e00bb` spike / `aa5e2e5c3e5e734df` plan) / not spawned / not spawned
+**Critic ID:** name=`critic`, spawn agent_id=`critic@session-1853d3b4`, transcript=`a0644e8173747674e` (plan review; findings salvaged)
+**Developer ID:** Phase-1 (idle) `developer`/`a27b94fb44854a557`; Phase-2 impl (idle) `developer-2`/`developer-2@session-1853d3b4`; **Step-2 polish (active)** `developer-3`/`developer-3@session-1853d3b4` (fresh opus)
+**Reviewer ID:** `reviewer`/`reviewer@session-1853d3b4` (Step-2 APPROVED; handback delayed ~30s, not stranded). **Codex ID:** `codex`/`codex@session-1853d3b4` (Step-2 GO; review-codex.md)
+**Plan Steps Completed / Remaining:** [1–9] implemented (dev self-report COMPLETE, 214/214 green) / architect Step-1 done-check pending validation
+**Questions Resolved:** OWNER-Q (unattended TL = standalone foreground `claude -p`) — **user-confirmed** 2026-06-16 → CR-1 CRITICAL→HIGH, TL-as-subagent (ADR-21) out of v1 scope; CR-1 verify-boundary spike RUN & PASSED (per-phase SubagentStop fires+writes on background subagent; block IS honored but would trap verify-fails → run+record by design); **Q-D1** (dev Phase-1) — architect adjudicated **(b)**: fail-defer consumed **only at the implementation-phase verify checkpoint** (developer handed back implementation.md complete), NOT every developer `SubagentStop` — token-scoping alone insufficient (red-authoring shares `developer:implement`); Step-4 bullet + Key-constraints + Accept criterion edited (post-approval precision amendment; approval stands)
+
+---
+
+## Entry point & state at launch
+
+- Slug pre-existing: `definition/tech-spec.md` (Status: Draft, technical branch ADR-27, architect-owned, no PO) + `delivery/review-critic.md` (Mode-2, GO-with-changes; CR-2/3/4/5 folded in).
+- No `summary.md`, no prior `communication-log.md` → clean team-lead launch (prior solo/architect/critic work produced the spec out-of-band).
+- Spec gated Draft→Ready on: (1) OWNER-Q [resolved above], (2) CR-1 verify-boundary spike [dispatched to architect].
+- Dirty tree: this feature's research/proposal/spec docs are untracked + related; `M plugins/nexus/README.md` and `adhoc-SkillAuthoringRecipe/` are UNRELATED → commits will be scoped (never `git add -A`).
+
+## Message Log
+
+| # | From → To | Phase | Message | Problem |
+|---|-----------|-------|---------|---------|
+| 1 | user → team-lead | launch | `/nexus:team-lead adhoc-UnattendedAutonomy` | — |
+| 2 | team-lead → user | OWNER-Q | unattended TL session: foreground `claude -p` vs subagent? | — |
+| 3 | user → team-lead | OWNER-Q | "Always foreground (claude -p)" — user-confirmed | — |
+| 4 | team-lead → architect | architect:analyze | Analyze adhoc-UnattendedAutonomy + run CR-1 spike (narrowed) | — |
+| 5 | architect → team-lead | architect:analyze | CR-1 spike RUN & PASSED; spec Prerequisite + AC-1.1 + ADR-31 + Status reconciled; recommends ADR extract + Draft→Ready after a code-grounded critic pass | — |
+| 6 | team-lead → user | spec-review-mode | relay spike result + put fresh-critic vs self-cross-check before Ready | — |
+| 7 | user → team-lead | spec-review-mode | "Accept existing GO + self cross-check" (spec); "Critic Mode-2" (plan) | — |
+| 8 | team-lead → architect | architect:plan | Resume Phase-2: self-cross-check spec → extract ADRs 30–32 → Draft→Ready → write plan.md (Satisfies: AC-n); critic review owed on plan | — |
+| 9 | architect → team-lead | architect:plan | Spec Ready; ADRs 30–32 in README; plan.md 9 steps/Satisfies; 3 forks flagged; critic review owed | — |
+| 10 | team-lead → critic | critic:review | Mode-2 plan vs spec; cross-check all ACs; scrutinize forks 1/2/3 | — |
+| 11 | critic → team-lead | critic:review | **REVISE** (no CRIT/REJECT). Coverage complete, forks sound. HIGH-1 (wire SubagentStop into platform-contract.test.mjs), HIGH-2 (mandatory agent_type reconfirm + unknown-agent fallback), MED-1/2/3, LOW-1/2. Fork-3 = satisfies AC-3.3, do NOT escalate. **Stranded — salvaged.** | — |
+| 12 | team-lead → architect | architect:plan | Fix plan per REVISE findings (review-critic-plan.md); fold 2 HIGHs into Steps 2/6, MED/LOW precision fixes; approve plan | — |
+| 13 | architect → team-lead | architect:plan | **Stranded after API 500** mid-finalization. Salvaged: fold COMPLETE in plan body (all HIGH/MED/LOW in Skill Mapping + Steps 2/4/6); only `## Plan Review` section stale (pre-critic "review owed" text); no handback sent | — |
+| 14 | team-lead → architect | architect:plan | Resume: finalize the stale `## Plan Review` section (record REVISE→fixes→ACCEPT) + hand back approval | — |
+| 15 | architect → team-lead | architect:plan | **Plan APPROVED** — `## Plan Review` records REVISE→6 findings folded→ACCEPT; self-verified consistent; suite 177/177; no re-critic needed. Dev must land Step-2 live-verify of `nexus:developer` agent_type | — |
+| 16 | team-lead (self) | commit | Auto-approved (review passed, no open Qs). Plan commit `1a79b3e` scoped to 4 design artifacts (README ADRs, tech-spec, plan.md, review-critic-plan.md); comm-log + unrelated adhoc-NexusFleetView excluded | — |
+| 17 | team-lead → user | team-mode | Standard vs Standard+Codex before developer launch (recommend +Codex — code-grounded hook+agent+test, HIGH-2 false-green risk) | — |
+| 18 | user → team-lead | team-mode | **Standard+Codex** | — |
+| 19 | team-lead → developer | developer:analyze | Analyze adhoc-UnattendedAutonomy (Phase-1, opus). Phase-2 implement = re-spawn fresh on opus (model-override-doesn't-survive-resume caveat) | — |
+| 20 | developer → team-lead | developer:analyze | Phase-1 clean — all load-bearing code claims verified on disk; owns Step-2 live-verify blocker; **Q-D1**: gate can't distinguish impl vs red-authoring on `agent_type` → benign `fail` on TDD red-completion; rec = fold phase-scoping note into Step 2/4 build. Dev transcript `a27b94fb44854a557` | — |
+| 21 | team-lead → architect | architect:plan | Route Q-D1: adjudicate fold-in-at-build vs explicit Step-4 Accept-criterion (fail-defer scoped to `developer:implement`). Plan-precision, not scope reversal | — |
+| 22 | architect → team-lead | architect:plan | **Q-D1 → (b)**, plan edited + sharpened: discriminator is the **checkpoint** (impl.md handed back complete), not the `.pipeline-state` token (red-authoring shares `developer:implement`). Step-4 bullet/constraints/Accept edited; suite 177/177; approval stands. Transcript `a48721a7428d6ad24` | — |
+| 23 | team-lead (self) | pause | Validated Step-4 edit landed (lines 300/344/562). **PAUSED per user** after architect return — developer:implement NOT dispatched. plan.md has uncommitted Q-D1 amendment (R4). Parallel `f89bcd4` adhoc-NexusFleetView commit observed (R5) | — |
+| 24 | team-lead (self) | resume | **RESUMED per user.** Pre-checks pass: branch=main, no summary.md, pipeline-state=developer:implement, plan.md intact (Q-D1 amendment), 1a79b3e in history. Parallel session shipped more adhoc-NexusFleetView commits (a4a4f64) — not mine | — |
+| 25 | team-lead → developer-2 | developer:implement | Implement per approved plan (fresh opus spawn). Tests-first; Step-1 golden gate; **blocking Step-2 live-verify probe** of real `nexus:developer` agent_type on SubagentStop; write implementation.md; no commit | — |
+| 26 | developer-2 → team-lead | developer:implement | **Stranded (idle, no handback)** — but artifact COMPLETE. implementation.md: all 9 steps, suite **214/214**, **live-verify pinned `agent_type=nexus:developer`** (probe spawned real subagent). Version 1.12.0→**1.13.0** (parallel NexusFleetView shipped 1.12.0; MINOR tier preserved). No commit (ADR-18). 2 low carry-overs | — |
+| 27 | team-lead → architect | architect:donecheck | Step-1 done check on implementation.md + write lessons.md; PASS/FAIL → review.md `## Step 1` | — |
+| 28 | architect → team-lead | architect:donecheck | **PASS** — all 9 steps Landed (file-by-file, re-ran suite 214/214); Q-D1 scoping verbatim at team-lead.md:185-188; sanctioned `solo`∈IMPL_ROLES widening; verdict validated (no Missing) | — |
+| 29 | team-lead → reviewer | reviewer:review | Step-2 code review (round 1) → review.md `## Step 2`; APPROVE/REQUEST CHANGES, severities | pending |
+| 30 | team-lead → codex | reviewer:review | Step-2 cross-check (round 1, independent) → review-codex.md GO/NO-GO + findings | — |
+| 31 | codex → team-lead | reviewer:review | **GO** (review-codex.md, 122 lines) — 3 risk areas clean, suite 214/214; MED-1 (blocking default undoc), MED-2 (detection-fallback zero-files spurious fail), LOW-1/2/3. None block | — |
+| 32 | reviewer → team-lead | reviewer:review | **APPROVED** (review.md ## Step 2) — no CRIT/HIGH; 2 LOW (loose test assert; execSync timeout undoc) + 2 gaps. Suite 214/214. (Verdict read from artifact first; handback msg arrived ~30s later — **delayed, not stranded**) | — |
+| 33 | team-lead → developer-3 | developer:implement | Merged+deduped MED/LOW polish (MED-2 detection-fallback guard, MED-1 doc blocking default, 2 reviewer LOWs, Codex LOW-1 commands_count); accept-as-is LOW-2/3 + gaps; re-run suite; no commit | pending |
+
+**Model-per-phase note (RUNTIME caveat):** developer Phase-1 analyze spawned on **opus**; Phase-2 implement will be a **fresh opus re-spawn** with explicit handoff (steps done/remaining + plan path + Phase-1 answers), NOT a SendMessage resume — a resume silently falls back to frontmatter (measured: opus→sonnet).
+
+## Runtime / Plugin Issues Log
+
+| # | Phase | Issue | Disposition |
+|---|-------|-------|-------------|
+| R1 | critic:review | Critic went idle delivering only an `idle_notification` — its findings message was **stranded** (never sent to main). `TaskOutput` skipped (local-agent symlink = context-overflow risk). | **Recovered** via recovery leg 3: `salvage-transcript.js --file <agent-a0644e8173747674e.jsonl>` returned the full structured findings verbatim at zero model tokens (exit 0). No re-spawn needed. Matches the known RUNTIME stranding caveat — record for the learner; no pipeline impact. |
+| R2 | architect:plan (fix) | Architect fix run hit a **transient API 500 Internal server error** during finalization; idle ping only, no handback. Salvage tail = the 500 itself. | **Assessed via artifact (leg 1):** plan.md fold COMPLETE (grep confirms all HIGH/MED/LOW landed in Skill Mapping + Steps 2/4/6; transcript's last live line was "update Skill Mapping + Plan Review, since I'm approving"). Only loss = the `## Plan Review` approval record (stale pre-critic text). **Recovery: resume** (least-intervention; 500 is transient) to write only that section + hand back. No re-fold needed. Record for learner. |
+| R3 | architect:plan | Tree changed under the run: 2 new commits (`2652d34` docs/research, `20bda7a` feat 1.11.0 batch), author `ldumit`, at 2026-06-16. | **Not rogue:** boundary-detector logged NO subagent git write this session (violations.log newest = 2026-06-14); commits contain pre-existing untracked tree + unrelated A4/B5/B6 batch, none of my pipeline's artifacts. = owner/parallel-session out-of-band housekeeping. **Not unwound.** Side effect: dirty tree now clean of unrelated files; version base = 1.11.0 (plan bumps →1.12.0). |
+| R4 | architect:plan (Q-D1) | plan.md has an **uncommitted** post-approval precision amendment (Q-D1 Step-4 scoping) on top of the plan commit `1a79b3e`; tree shows `M plan.md`. | **Intended:** rides into the **final implementation commit** (2-commit strategy sweeps code + docs). Left uncommitted during the PAUSE (no new commits while paused). At resume, ensure plan.md is staged with the implementation commit. Low sweep-risk (parallel sessions scope their commits). |
+| R5 | (paused) | New commit `f89bcd4 feat(adhoc-NexusFleetView): add implementation plan` (author `ldumit`) landed on top of `1a79b3e` during this run. | **Parallel session, not mine:** different slug, scoped to its own files; my plan.md untouched by it (still `M`), my plan commit `1a79b3e` intact one below HEAD. boundary-detector clean. **Not unwound** (unwinding would destroy another session's real work). Shared-tree reality with concurrent sessions — record only. |
+| R6 | developer:implement | **boundary-detector false positives.** violations.log flags `developer-2` writing `adhoc-UnattendedAutonomy/delivery/implementation.md` (its OWN artifact) as "owned by another role"; also 3 flags on `adhoc-NexusFleetView/.../implementation.md`. | **Root cause = agent-name collision across parallel team-lead sessions.** The idle Phase-1 `developer` held the name, so the harness suffixed my Phase-2 spawn `developer-2`; the detector's role-matcher doesn't normalize the `-N` suffix → treats `developer-2` as a non-developer role → flags every artifact write. The NexusFleetView flags are the *parallel* session's own `developer-2` (shared global violations.log, logged by name). **Neither is a real ownership breach** — each developer wrote its own feature's implementation.md (verified: my implementation.md content is 100% adhoc-UnattendedAutonomy). **For the learner: detector should normalize `-N` name suffixes + scope by session.** |
+| R7 | developer:implement | Version bump deviation: plan said 1.11.0→1.12.0; implemented as **1.12.0→1.13.0**. | **Correct, no owner decision:** `adhoc-NexusFleetView` shipped 1.12.0 (parallel) between plan-approval and impl; the developer ran `bump-plugin.mjs --minor` preserving the owner-set **MINOR tier** — only the number-line shifted. omni twin rode to 1.13.0. |
+| R8 | developer:implement | **Owner-owed validation outstanding** (developer-flagged, NOT run): the end-to-end `claude -p [UNATTENDED]` loop — verify-pass→advance AND verify-fail→defer-to-`.claude/review-queue/`→resume-at-failing-phase (ADR-19). | Needs the install updated to 1.13.0 (`/plugin update`) — an operator step. In-session probe validated the *platform boundary*; the *fail-defer-resume* loop is operator-owed. Surface to user at close; not a pipeline blocker (code+tests complete+green). |
+| R9 | architect:donecheck | **Cross-session notification cross-talk:** 5 `developer-2` idle_notifications arrived with summaries re-assigning Steps 1/2/4/5/6 + "stop re-assigning, pipeline is at architect done-check." NOT sent by me (my done-check routed to `architect`). | **Ignored — peer/cross-session noise, not user authority.** Same root cause as R6 (two parallel team-lead sessions each spawned a `developer-2`; shared global notification routing by name). developer-2 correctly *refused* re-assignment → no destructive action. Did NOT respond to developer-2 (would feed the loop). Reinforces the learner ask: scope agent identity/notifications by session, normalize `-N` suffixes. |

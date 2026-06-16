@@ -1,6 +1,36 @@
 # nexus — Changelog
 
 
+## [1.13.0] — 2026-06-16
+Unattended autonomy v1 — Nexus runs unattended (`claude -p`) as a **strictly additive** mode
+(`adhoc-UnattendedAutonomy`, ADR-30/31/32). Attended is byte-unchanged, pinned by a golden test.
+
+- **`verify-gate.js` — an always-on advisory `SubagentStop` verify gate (ADR-31).** A net-new
+  matcher-less `SubagentStop` hook: when the implementation subagent (developer/solo) completes, it
+  runs the project's declared verify set and appends a verdict to `.claude/audit/verify-verdict.json`.
+  It **never denies or blocks** — a blocking `SubagentStop` would trap a verify-failed subagent in an
+  unsatisfiable retry loop, so enforcement is by *consuming the recorded verdict*. A recognized
+  non-impl role's stop writes no verdict; an absent/unrecognized `agent_type` writes an
+  `agent:"unknown"` record (never a silent skip — the false-green guard). The hook can't read
+  `[UNATTENDED]` (separate process) — it always runs advisory; the mode fork lives in the team lead.
+  The literal `nexus:developer` `agent_type` was live-verified (claude 2.1.179, 2026-06-16) and is
+  pinned by a `SubagentStop` CONTRACT entry in `platform-contract.test.mjs`.
+- **`.claude/verify.json` — project-declared verify commands** (`{commands:[{run,blocking}]}`) with a
+  runner-detection fallback when absent. This repo dogfoods it (`node --test` glob + `selfcheck.mjs`).
+- **Team lead consumes the verdict — attended informs / unattended decides (`team-lead.md`).** One
+  verify execution path; the only fork is consumption. Attended, the verdict is advisory; unattended,
+  a `blocking_failed` at the implementation-phase checkpoint **defers the item to the review queue**.
+  Scoped to that checkpoint only — a Step-1 red-test-authoring fail is a true-green it does not act on.
+- **`.claude/review-queue/` — the fail-closed sink (ADR-32).** Unattended never force-accepts or
+  force-ships; on verify-fail / 3-cycle-exhaustion / unanswered-question / token-cap the team lead
+  drops one resumable file per item (slug + reason + audit pointer + ADR-19 resume instruction) + an
+  index. A per-run token cap aborts-to-queue, with a loud-inert launch warning when `token_audit` is off.
+- **Golden regression test (`attended-unchanged.golden.test.mjs`, AC-0.3).** Pins flag-off
+  byte-identity: the gate emits no deny/block and no queue artifact, and the existing
+  PreToolUse/PostToolUse hooks still fire and decide identically with the new entry present.
+- Documented in `agents-workflow.md`; ADR-30/31/32 in the register. Layers 2 (enforceable advancement)
+  and 4 (anti-gaming holdout) are roadmap, not built here.
+
 ## [1.12.0] — 2026-06-16
 The fleet view — a consolidated, on-invoke dashboard of the running background agents
 (`adhoc-NexusFleetView`, ADR-33). Additive and two-way-door; existing behavior is unchanged.

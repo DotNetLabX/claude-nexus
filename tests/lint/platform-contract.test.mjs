@@ -42,6 +42,20 @@ const CONTRACT = [
     ],
   },
   {
+    assumption: "a subagent completion surfaces as a SubagentStop event carrying agent_type, wired matcher-less (verify-gate → ADR-31). The literal nexus:developer agent_type was live-verified 2026-06-16 (claude 2.1.179); the string itself is pinned in implementation.md, the platform SURFACE the gate reads is pinned here.",
+    checks: [
+      ["verify-gate.js is registered on the SubagentStop event", () => /"SubagentStop"\s*:/.test(hooksJson) && /verify-gate\.js/.test(hooksJson)],
+      ["verify-gate.js reads the completing role from agent_type", () => /agent_type/.test(src('verify-gate.js'))],
+      ["hooks.json wires verify-gate under a matcher-less SubagentStop registration (Stop-family takes no tool matcher — 'absent matcher = *', wiring.test.mjs)", () => {
+        const cfg = JSON.parse(hooksJson);
+        const entries = (cfg.hooks && cfg.hooks.SubagentStop) || [];
+        return entries.length === 1
+          && entries[0].matcher === undefined
+          && /verify-gate\.js/.test(entries[0].hooks[0].command);
+      }],
+    ],
+  },
+  {
     assumption: "the persona registry is .claude/.personas.json, write-triggered by .claude/.current-agent (register/restore)",
     checks: [
       ["register-persona.js writes the registry .personas.json", () => /\.personas\.json/.test(src('register-persona.js'))],
