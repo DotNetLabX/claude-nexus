@@ -11,7 +11,7 @@ It ships a coordinated team of specialized agents, always-on behavioral rules, r
 | Component | Count | Notes |
 |-----------|-------|-------|
 | **Agents** | 8 | architect, po, critic, learner, team-lead (`opus`); developer, reviewer, solo (`sonnet`) |
-| **Rules** | 10 | Always-on, injected at SessionStart (plugins have no auto-loaded `rules/`) |
+| **Rules** | 11 | Always-on, injected at SessionStart (plugins have no auto-loaded `rules/`) |
 | **Skills** | 14 | 9 process recipes (planning, specs, reviews, lessons, TDD, debugging, cleanup, KB schema) + 5 artifact-format schemas (implementation/questions/review/summary/lessons) |
 | **Commands** | 9 | 8 persona activators + `backlog` |
 | **Hooks** | 4 | `inject-rules`, `restore-agent` (SessionStart); `guard`, `audit-logger` (PreToolUse) |

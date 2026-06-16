@@ -1,6 +1,33 @@
 # nexus — Changelog
 
 
+## [1.11.0] — 2026-06-16
+Research-refinements batch — additive, attended-mode improvements distilled from the
+orchestration-fork research (`docs/research/2026-06-16-orchestration-fork-value-extract.md`).
+Every item is purely additive; existing attended behavior is unchanged beyond the named addition.
+
+- **A4 — parallel Options Panel (`architect.md`).** For high-uncertainty designs only, the
+  architect may offer a panel of 2–3 parallel approach sketches (minimal / clean / pragmatic),
+  synthesized into one comparison + a single reasoned recommendation. **Double-gated:** fires only
+  when the master gate (ADR-25) flags the design high cost-of-being-wrong AND the user opts in at
+  the Phase-1 checkpoint; default skip for routine work. Sketches are read-only `general-purpose`
+  helpers, never nested pipeline-role agents (ADR-21).
+- **B5 — confidence-gated, multi-axis review (`reviewer.md` + `review-format`).** Findings now
+  carry a numeric **Confidence (0–100)** with a **report cutoff of ≥80** — below-80 findings move
+  to Open Questions, never silently dropped (bands onto the existing HIGH/MEDIUM/LOW). Step-2 review
+  is documented as three axes (simplicity-DRY / bugs-correctness / conventions) — a checklist by
+  default, with an **optional** read-only fan-out reserved for large diffs.
+- **B6 — Origin taxonomy (`review-format` + `reviewer.md`).** Each finding carries an **Origin**
+  (requirements / design / implementation / external) alongside Severity — a causal tag that routes
+  the process fix (a design-origin finding goes to the architect, not the developer). Never changes
+  the verdict.
+- **B4 — doc drift.** The core README's component table now states **Rules: 11** (was 10),
+  matching the actual `rules/*.md` count and the marketplace README.
+- **B3 — platform-contract smoke test** (`tests/lint/platform-contract.test.mjs`, dev-repo only).
+  Pins the Claude Code contract strings the hooks depend on — the `Skill` tool name + matcher, the
+  `Agent|Task` matcher + `subagent_type`, the `.personas.json` / `.current-agent` registry files —
+  so a silent platform rename fails loudly instead of false-greening a gate.
+
 ## [1.10.0] — 2026-06-15
 - Research-KB: add search-researches (inline recall + forked-execution research skill) and research-entry-schema (entry format + cite-or-drop claim grammar); wire the research-before-asking rule to route capture+recall through them.
   - rule (injected every session)

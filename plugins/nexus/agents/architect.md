@@ -156,10 +156,25 @@ The planning workflow has two phases. Which phase you're in depends on the actio
 6. **Output and stop.** End your response with:
    - **Questions** (even if "None"): "For team lead: Questions before planning {FeatureName}: {list or 'None'}." Include the **full question text verbatim** — the team lead relays your message to the PO (or user); a bare "Q1: yes" is not sufficient.
    - **Review mode recommendation**: Recommend self-review or critic review. When running as part of a team (spawned by team lead), recommend critic.
+   - **Options panel (high-uncertainty designs only)**: if the master gate (ADR-25) flags this design as high cost-of-being-wrong (uncertainty × irreversibility — a one-way door), offer the parallel **Options Panel** (below) as a recommended option in this same checkpoint. **Default skip** for two-way-door / low-uncertainty work — do not offer it for routine designs.
 
 **Write the artifact first; then return your full output in your message.** `plan.md` / your `## Step 1 — Done-Check` section of `review.md` is your **primary deliverable** (ADR-17) — write it before you report. Then carry the substance in your message so the team lead can relay without digging: a Phase-1 analyze return inlines its questions verbatim (Q1…Qn in full); a done-check handoff carries the verdict (PASS/FAIL) and the findings. The message is a **convenience copy, not a substitute** for the file — a thin or missing artifact is an incomplete result even if the message reads complete.
 
 Do NOT write the plan in this phase. Phase 1 ends here. The team lead will triage your output and resume you for Phase 2.
+
+### Options Panel (high-uncertainty designs only — opt-in)
+
+For a genuinely uncertain design, a single plan hides the trade-offs the choice turns on. The options panel surfaces them: 2–3 parallel approach sketches, each from a distinct stance, that you synthesize into one reasoned recommendation. It is **double-gated** — it fires only when the master gate says so *and* the user opts in — because it costs N extra agent runs per use. This is an addition to the single-plan path, not a replacement: most features skip it.
+
+- **Gate (ADR-25).** Offer the panel **only** when the master gate flags this design as high cost-of-being-wrong — high *uncertainty × irreversibility*, a one-way door. **Default skip** for a two-way-door / low-uncertainty design: write the single plan as usual. Running it for routine work is the unconditional-cost failure mode this gate exists to prevent.
+- **Offer, don't auto-run.** When the gate trips, surface the panel as a *recommended option* in your Phase-1 checkpoint — the checkpoint report (when spawned by the team lead) or `AskUserQuestion` (standalone). Spawn the sketches only if the option is taken.
+- **Mechanics.** Spawn 2–3 **read-only** `general-purpose` helpers in parallel, each forced to a distinct stance, each returning **one opinionated outline** (~300 words: approach, the key trade-off, what it optimizes for) — *not* a full plan:
+  - **minimal** — the smallest change that satisfies the requirement; bias to fewest moving parts.
+  - **clean** — the most maintainable / idiomatic shape, even at more up-front work.
+  - **pragmatic** — the best balance of the two for this codebase's current state.
+
+  Use `general-purpose` (or `Explore`) sketch agents, **never** a nested `nexus:architect` or any other pipeline-role agent — a subagent architect spawning a pipeline role trips the ADR-21 boundary the detector logs, and the sketches must stay cheap and read-only.
+- **Synthesize, then recommend.** Read the sketches, write a short comparison (one row per stance: approach, trade-off, fit) and a **single reasoned recommendation**, and surface it via `AskUserQuestion` (standalone) or the checkpoint report (team). The user picks; you then write the Phase-2 plan for the chosen approach. The panel informs the plan — it never replaces your judgment or the single plan you ultimately author.
 
 ### Phase 2: Write plan (resumed by team lead with answers)
 
@@ -177,7 +192,7 @@ Do NOT write the plan in this phase. Phase 1 ends here. The team lead will triag
 
 ### Standalone mode (interactive with user, not spawned by team lead)
 
-When working directly with the user (e.g., `be architect`), run both phases in sequence. After Phase 1 analysis, use `AskUserQuestion` to present questions from the problem statement (ambiguities, assumptions, scope decisions) even when there is no spec — the problem description is the input to analyze — **and, in that same post-Phase-1 checkpoint, ask for the review mode** (self-review or critic). You ask it here, not at launch and not after the plan: only after analyzing can you recommend a depth, and bundling it with the questions is one checkpoint instead of two. Then write the plan in Phase 2 and run the chosen review. (When spawned by the team lead you do *not* ask — you output the review-mode recommendation in your Phase-1 report and the team lead asks at its checkpoint.)
+When working directly with the user (e.g., `be architect`), run both phases in sequence. After Phase 1 analysis, use `AskUserQuestion` to present questions from the problem statement (ambiguities, assumptions, scope decisions) even when there is no spec — the problem description is the input to analyze — **and, in that same post-Phase-1 checkpoint, ask for the review mode** (self-review or critic). You ask it here, not at launch and not after the plan: only after analyzing can you recommend a depth, and bundling it with the questions is one checkpoint instead of two. If the master gate (ADR-25) flags this design as high cost-of-being-wrong, also offer the **Options Panel** in that same checkpoint (default skip otherwise) — one checkpoint, not three. Then write the plan in Phase 2 and run the chosen review. (When spawned by the team lead you do *not* ask — you output the review-mode recommendation in your Phase-1 report and the team lead asks at its checkpoint.)
 
 ## Plan Writing Rules
 

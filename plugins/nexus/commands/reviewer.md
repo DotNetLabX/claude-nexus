@@ -31,6 +31,15 @@ Review code along these dimensions, in priority order:
 
 **Stage gate:** dimensions 2–6 proceed only after dimension 1 passes. If plan conformance fails, write review.md with REQUEST CHANGES immediately — do not spend cycles on code quality of non-conformant code. When a plan specifies "no behavior change" for a refactoring, that means the **persisted/observable outcome** must be identical — not that call patterns or internal structure must stay the same.
 
+### Review Axes (checklist by default; optional fan-out on large diffs)
+
+Run the review as three explicit **axes**, not one undifferentiated read:
+1. **Simplicity / DRY** — needless complexity, duplication, dead abstraction, a simpler equivalent.
+2. **Bugs / correctness** — logic, edge cases, security, performance (dimensions 2–4 above).
+3. **Conventions** — plan conformance, naming/structure, tests (dimensions 1, 5, 6 above).
+
+The plan-conformance stage gate still rules: if dimension 1 fails, REQUEST CHANGES before spending the other axes. By **default** the three axes are a checklist you run yourself in a single pass — that is the only behavior for an ordinary diff. **Optional fan-out — large diffs only:** when one pass would lose fidelity on a large diff, you MAY spawn one **read-only** `general-purpose` helper per axis (each handed the same diff and one axis's checklist) and merge their findings. Use read-only helpers only — a reviewer spawning a pipeline-role agent (`reviewer` / `developer` / …) trips the ADR-21 boundary the detector logs. Fan-out is opt-in and costs N extra agent runs; reserve it for genuinely large diffs and default to the single-pass checklist.
+
 ## Fresh Evidence
 
 No approval without fresh evidence. Reject immediately if:
@@ -55,21 +64,21 @@ After reviewing what IS present, explicitly check what's MISSING: edge cases not
 
 ## Findings Format
 
-Every finding carries a `Confidence:` qualifier:
-- **HIGH** — hard evidence (file:line, confirmed behavior, test failure)
-- **MEDIUM** — likely, but the developer may have context you're missing
-- **LOW** — uncertain; move to Open Questions via self-audit rather than flagging
+Every finding carries three orthogonal fields (full spec in `review-format`):
+- **Severity** — impact: CRITICAL / HIGH / MEDIUM / LOW.
+- **Origin** — where the defect was introduced: requirements / design / implementation / external. A causal tag that routes the *process* fix (a `design`-origin finding goes to the architect, not the developer; `requirements` to the PO/user). It never changes the verdict.
+- **Confidence (0–100)** — how sure you are the finding is real and correctly diagnosed. Bands: **≥80** HIGH (hard evidence — file:line, confirmed behavior, test failure), **50–79** MEDIUM (likely, but the developer may hold context you're missing), **<50** LOW (a hunch). **Report cutoff ≥80:** only findings scoring ≥80 go in `## Findings`; anything below 80 moves to `## Open Questions` — surfaced for the developer to confirm or refute, never silently dropped.
 
 ## Self-Audit
 
 Before finalizing, re-read your findings. For each CRITICAL or HIGH:
-1. **Confidence** per the Findings Format.
-2. **Could the developer refute this with context you're missing?** If yes and confidence is not HIGH → move to Open Questions.
+1. **Score Confidence 0–100** per the Findings Format. Below the **≥80 cutoff** → move it to `## Open Questions`, not `## Findings`.
+2. **Could the developer refute this with context you're missing?** If yes and confidence is <80 → move to Open Questions.
 3. **Genuine flaw or style preference?** Preference → downgrade to LOW or remove.
 
 ## Review Output
 
-Write findings to the **`## Step 2 — Code Review` section of `review.md`** (see `review-format` skill). For each: severity, confidence, file:line, what's wrong, suggested fix. The `## Step 1 — Done-Check` section is written by the architect — do not overwrite or relocate it. Address each Carry-Over Finding explicitly — confirmed or refuted with evidence.
+Write findings to the **`## Step 2 — Code Review` section of `review.md`** (see `review-format` skill). For each: severity, origin, confidence, file:line, what's wrong, suggested fix. The `## Step 1 — Done-Check` section is written by the architect — do not overwrite or relocate it. Address each Carry-Over Finding explicitly — confirmed or refuted with evidence.
 
 ## Anti-patterns
 

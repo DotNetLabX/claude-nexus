@@ -42,6 +42,43 @@ The team lead greps **named sections**, not bare `Verdict:` lines, to avoid stac
 - **MEDIUM**: Suboptimal pattern, minor inconsistency. Consider fixing.
 - **LOW**: Style preference, minor improvement. Optional.
 
+## Origin (causal classification)
+
+Each finding carries an **Origin** alongside its Severity — *where the defect was introduced*.
+Severity says how much it hurts and Confidence how sure you are; Origin says where the *process*
+leaked, so a recurring class of finding points at the stage that should have caught it. It never
+changes the verdict — it is a tag, not a gate.
+
+| Origin | The defect's root | Routes to |
+|--------|-------------------|-----------|
+| **requirements** | The spec / acceptance criteria asked for the wrong thing, or didn't ask. Fixing only the code leaves the spec wrong. | PO / user (via team lead) |
+| **design** | The plan or architecture is the root; the code faithfully implements a flawed plan. | Architect, not developer |
+| **implementation** | The code diverges from a correct plan. The default developer-fix path. | Developer |
+| **external** | A dependency, platform, or upstream contract is the cause (a library bug, a Claude Code platform change, a sibling service). | Often a follow-up, not a same-cycle fix |
+
+A finding whose origin is genuinely unclear defaults to **implementation**. The architect's Step-1
+done-check dispositions are not findings and carry no Origin — Origin is a Step-2 finding field
+(and applies to any standalone remediation finding written in the same block).
+
+## Confidence Score (0–100)
+
+Each finding carries a numeric **Confidence** (0–100) — how sure you are it is real and correctly
+diagnosed. It bands onto the categorical labels the checklist and self-audit use:
+
+| Score | Band | Basis |
+|-------|------|-------|
+| 80–100 | HIGH | Hard evidence — file:line, confirmed behavior, a reproduced failure. |
+| 50–79 | MEDIUM | Likely, but the developer may hold context you don't. |
+| 0–49 | LOW | A hunch, not a finding. |
+
+**Report cutoff — ≥80.** Only findings scoring **≥80** belong in `## Findings` as asserted
+findings. A finding below 80 is **moved to `## Open Questions`** — surfaced for the developer to
+confirm or refute, **never silently dropped**. This is feature-dev's ≥80 noise gate adapted to
+Nexus's existing self-audit (which already routes non-HIGH CRITICAL/HIGH findings to Open
+Questions) — the threshold is now a number. The point is to keep a genuine-but-uncertain CRITICAL
+(say a security risk you're only 70% sure of) visible as an Open Question rather than asserting it
+at full severity or losing it.
+
 ## Verdict
 - **APPROVED**: No CRITICAL or HIGH issues.
 - **REQUEST CHANGES**: Any CRITICAL or HIGH issue present.
@@ -81,9 +118,10 @@ Both steps write to `docs/specs/{slug}/delivery/review.md` under their own label
 
 ### [SEVERITY] Finding title
 **File:** `path/to/file:line`
+**Origin:** requirements | design | implementation | external
 **Issue:** What's wrong
 **Fix:** Specific suggestion
-**Confidence:** HIGH | MEDIUM | LOW
+**Confidence:** NN/100
 
 ## Positive Observations
 - [What was done well]
