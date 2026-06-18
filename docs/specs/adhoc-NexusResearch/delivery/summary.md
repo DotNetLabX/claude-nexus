@@ -36,9 +36,12 @@ Makes `/research` the everyday research command and routes heavy dives to the bu
 
 ## OPERATOR ACTIONS REQUIRED (owner)
 
-1. **Regenerate the omni twin** — `node scripts/gen-omni.mjs` + `node scripts/gen-omni.mjs --check`,
-   commit in `../omni` (absent on this machine; clone first or run from where it lives). Until then
-   `selfcheck` shows 3/4 (`gen-omni --check` fails — expected, not a defect).
+1. **Regenerate the omni twin** — ✅ **RESOLVED (correction).** The twin was *not* absent: Q1 checked
+   `D:/src/omni`, but `gen-omni` resolves the twin to `NEXUS/../omni` = **`D:/src/claude-plugins/omni`**
+   (present). It was *drifted* (the selfcheck message said "drifted", not "missing"), not missing. The
+   twin was regenerated during the follow-up `adhoc-FleetHeartbeatFix` run (covering 1.14.0 + 1.14.1);
+   `gen-omni --check` now passes and `selfcheck` is 4/4. The twin commit rides in the `../omni` repo with
+   the FleetHeartbeatFix close. No owner action remains here.
 2. **Validate capture live** — run `/deep-research` once and confirm the report → pool-entry path is
    cite-check-clean against genuine output (validated here against a representative hand-built report).
 
