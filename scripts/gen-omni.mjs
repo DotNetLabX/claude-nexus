@@ -13,6 +13,11 @@
 //   --check   verify-only (audit B6): regenerate in memory, diff against the omni tree, exit 1
 //             listing any drift (missing / differing / extra files). Changes nothing. Run it after
 //             every bump (release-plugin flow) so the twin can never silently diverge.
+//
+// Commit convention (in the ../omni repo): mirror the nexus change — type = nexus's commit type
+//   (`feat`/`fix`/…, highest-impact wins when bundling releases), scope `(omni)`; body = the plugin
+//   delta since the last `omni X.Y.Z` sync; footer `Generated from the nexus plugin (nexus {sha}).`
+//   NOT a generic `chore: regenerate`. Full rule: CLAUDE.md "Generated artifacts".
 import { readdirSync, statSync, readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { join, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
