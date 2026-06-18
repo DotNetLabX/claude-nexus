@@ -99,9 +99,12 @@ test('fail open: empty tasks, no tasks, and malformed JSON all produce no output
 
 // ---- Heartbeat: the fleet-state.json snapshot (adhoc-NexusFleetView, Step 1) ----
 //
-// Root resolution is from the *payload* (workspace.project_dir), NOT the CLAUDE_PROJECT_DIR env —
-// a statusLine process never sees that env (it is hooks-only). So these tests inject the sandbox
-// root into the payload, mirroring the real statusLine contract.
+// Root resolution uses the base-hook `cwd` (top-level, session root) — the subagentStatusLine
+// payload is hook-shaped (not main-statusLine-shaped), so it carries NO `workspace` object.
+// `workspace.project_dir` is kept in the fallback chain as a forward-compat guard but is absent
+// in real subagent payloads. The CLAUDE_PROJECT_DIR env is hooks-only (absent here). Tests
+// cover both shapes: the real hook-shaped payload (cwd at top level, no workspace) and the
+// forward-compat workspace.project_dir path.
 
 test('heartbeat: a populated payload writes the normalized snapshot under the resolved root', () => {
   const root = makeSandbox('nexus-fleet-');
@@ -143,8 +146,43 @@ test('heartbeat: empty tasks[] with a resolvable root drains to an empty snapsho
   assert.deepEqual(s.tasks, []);
 });
 
+// Regression guard (adhoc-FleetHeartbeatFix): the real subagentStatusLine payload is hook-shaped
+// — it carries top-level `cwd` from the base hook common-input-fields but NO `workspace` object.
+// `workspace.project_dir` is the main statusLine field only. This test exercises the real shape
+// so any future regression to workspace-only resolution is caught immediately.
+test('heartbeat: hook-shaped payload (no workspace, cwd at top level) writes the snapshot', () => {
+  const root = makeSandbox('nexus-fleet-');
+  // Real subagent payload: base hook fields including cwd, no workspace object.
+  const payload = {
+    session_id: 'test-session',
+    cwd: root,
+    columns: 100,
+    tasks: [
+      { id: 'x1', type: 'nexus:developer', description: 'Impl step 3', status: 'in_progress',
+        startTime: 1700000000000, tokenCount: 5000, cwd: '/subagent/work' },
+    ],
+  };
+  runHook(SCRIPT, payload);
+  const s = readState(root);
+  assert.equal(typeof s.ts, 'string');
+  assert.equal(s.columns, 100);
+  assert.equal(s.tasks.length, 1);
+  assert.equal(s.tasks[0].role, 'developer');
+  assert.equal(s.tasks[0].id, 'x1');
+  // tasks[].cwd is the per-subagent dir — must be normalized into the snapshot as-is, not used
+  // as the audit root.
+  assert.equal(s.tasks[0].cwd, '/subagent/work');
+});
+
+test('heartbeat: hook-shaped empty tasks[] via cwd drains to empty snapshot', () => {
+  const root = makeSandbox('nexus-fleet-');
+  runHook(SCRIPT, { cwd: root, tasks: [] });
+  const s = readState(root);
+  assert.deepEqual(s.tasks, []);
+});
+
 test('heartbeat: no root in the payload → no file written', () => {
-  // projectDir omitted from the harness AND no workspace.project_dir in the payload.
+  // Neither workspace.project_dir nor top-level cwd is present → resolveRoot returns null.
   const root = makeSandbox('nexus-fleet-');
   runHook(SCRIPT, { tasks: [{ id: 'a', type: 'nexus:developer' }] });
   assert.equal(existsSync(stateFile(root)), false);
@@ -153,9 +191,9 @@ test('heartbeat: no root in the payload → no file written', () => {
 test('heartbeat: malformed/empty stdin → no throw, no write, exit 0', () => {
   const root = makeSandbox('nexus-fleet-');
   for (const payload of ['{not valid json', '']) {
-    // projectDir sets CLAUDE_PROJECT_DIR, which the script deliberately ignores (root comes only from
-    // the payload's workspace.project_dir). So no file is written for two reasons: the env root is not
-    // a root source, and the payload never parses to yield a payload root either — and it must not throw.
+    // projectDir sets CLAUDE_PROJECT_DIR, which the script deliberately ignores (root comes only
+    // from the payload's base-hook cwd or forward-compat workspace.project_dir). No file is written:
+    // the env root is not a root source, and the payload never parses to yield cwd either.
     const { status } = runHook(SCRIPT, payload, { projectDir: root });
     assert.equal(status, 0);
   }

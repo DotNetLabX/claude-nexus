@@ -19,10 +19,14 @@
  * place the rich live roster (per-task tokenCount/startTime/status/role) is delivered, so the
  * `/nexus:fleet` dashboard reads this file rather than querying on demand (TaskList carries only
  * the task board). The write is:
- *   - Root-resolved from `data.workspace.project_dir` — the documented top-level statusLine
- *     payload field that names the launch root. NOT `CLAUDE_PROJECT_DIR`/`CLAUDE_PLUGIN_ROOT`
- *     (hooks-only env, absent here), NOT `tasks[].cwd` (a per-task subagent dir → wrong audit
- *     location), and NOT bare `process.cwd()` (ADR-8 stray-log). No root → skip the write.
+ *   - Root-resolved from the base-hook `cwd` field — the subagentStatusLine payload is
+ *     hook-shaped (base hook common-input-fields + `columns` + `tasks[]`), so the session's
+ *     working directory is carried as the top-level `cwd`, NOT in a `workspace` object.
+ *     `data.workspace.project_dir` is the *main* statusLine field (absent here; kept as a
+ *     harmless forward-compat fallback in case the schema converges). `tasks[].cwd` is the
+ *     per-subagent working directory — wrong audit location. `CLAUDE_PROJECT_DIR`/
+ *     `CLAUDE_PLUGIN_ROOT` are hooks-only env vars (absent here). `process.cwd()` violates
+ *     ADR-8 stray-log. No root → skip the write.
  *   - Atomic: temp file + rename, so a mid-render reader (the dashboard) never sees a torn file.
  *   - Drain-on-empty: an empty `tasks[]` with a resolvable root writes an empty snapshot, so a
  *     stale roster never lingers after a run ends.
@@ -102,11 +106,14 @@ function clip(s, max) {
 
 // ---- Heartbeat: persist the live fleet snapshot (adhoc-NexusFleetView) ----
 
-// The launch root is the documented top-level statusLine payload field. We deliberately do not
-// fall back to CLAUDE_PROJECT_DIR (hooks-only env, absent for a statusLine process) or to
-// process.cwd() (ADR-8 stray-log); tasks[].cwd is a subagent dir, never the audit root.
+// The subagentStatusLine payload is hook-shaped (base hook common-input-fields + columns +
+// tasks[]). The session root arrives as the top-level `cwd` (main session's working directory
+// at render time — equals the project root in normal usage). `workspace.project_dir` is the
+// main statusLine field and is absent in the subagent payload; kept first as a forward-compat
+// fallback in case the two schemas converge. `tasks[].cwd` is the per-subagent directory —
+// rejected (wrong audit location). No CLAUDE_PROJECT_DIR (hooks-only env, absent here).
 function resolveRoot(data) {
-  const root = data && data.workspace && data.workspace.project_dir;
+  const root = (data && data.workspace && data.workspace.project_dir) || (data && data.cwd);
   return typeof root === 'string' && root.trim() ? root : null;
 }
 

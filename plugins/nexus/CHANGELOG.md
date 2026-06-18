@@ -1,6 +1,20 @@
 # nexus — Changelog
 
 
+## [1.14.1] — 2026-06-18
+Fix the fleet heartbeat: `subagentStatusLine` payload is hook-shaped (no `workspace` object) —
+`resolveRoot()` now reads the base-hook top-level `cwd` as primary, keeping `workspace.project_dir`
+as a forward-compat fallback. Without this fix, `fleet-state.json` was never written in live runs
+(root always null → write always skipped → `/nexus:fleet` always showed "No active fleet").
+
+- **`statusline/subagent-rows.js` — `resolveRoot()` fix** — resolves root from `data.cwd` (base
+  hook field, present in real subagent payloads) instead of `data.workspace.project_dir` (main
+  statusLine field only, absent in subagent payloads). Fallback chain:
+  `workspace.project_dir || cwd`. Block comments corrected to match the real schema.
+- **`skills/fleet/SKILL.md` — activation note** — documents that the `subagentStatusLine`
+  registration in the plugin's `settings.json` is read at plugin-load only; `/reload-plugins` or a
+  session restart is required after install/update.
+
 ## [1.14.0] — 2026-06-18
 The research front door: the `search-researches` skill becomes `research` (invocable as `/research`),
 gains depth-routing, and captures heavy dives from the built-in `/deep-research`.

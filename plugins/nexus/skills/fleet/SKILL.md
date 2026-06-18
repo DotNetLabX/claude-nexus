@@ -22,6 +22,11 @@ heartbeat snapshot to `.claude/audit/fleet-state.json` on every render, and this
 file rather than querying on demand. No team has run since install → no heartbeat → "No active
 fleet." (See ADR-33.)
 
+**Activation:** the `subagentStatusLine` heartbeat is registered in the plugin's bundled
+`settings.json`, which Claude Code reads at plugin-load — **not** hot-reloaded. After installing
+or updating nexus, run `/reload-plugins` or restart the session before starting a team run, or no
+heartbeat is written and this view stays empty.
+
 ## Data sources it joins (single-project, current session)
 
 | Source | Carries | Missing → |
