@@ -25,6 +25,7 @@ The team lead greps **named sections**, not bare `Verdict:` lines, to avoid stac
 - Referenced patterns and skills were followed
 - Naming conventions match coding standards
 - Build passes (fresh output, not assumed)
+- Plan-mandated tests are executed under a filter that *includes* them — a green baseline that *excludes* a required test (e.g. a `--filter Category!=Integration` run when the plan mandates an `Integration`-tagged test) says nothing about that test and can hide it shipping RED. Run the mandated test by name; and verify a tagged test's *actual* dependency before deeming it un-runnable (an in-process integration test with no live dependency still runs)
 - No new patterns invented
 - Business/domain rules enforced at the architectural layer the project's conventions specify (not leaked into transport/handler code)
 - Deviations flagged with verdict: plan wrong or code wrong
@@ -33,6 +34,7 @@ The team lead greps **named sections**, not bare `Verdict:` lines, to avoid stac
 - Performance: check for performance anti-patterns per loaded conventions
 - Data-loading depth: when logic accesses nested/related data, verify the data layer actually loads it to that depth — missing loads cause silent null/zero results, not runtime errors
 - Boundary tests for threshold logic: when code uses `> N` / `>= N` conditions, verify tests exist at exactly N and N+1
+- Negative-assertion gates traced: a "X is never called" / "no regression" / `CallCount == 0` assertion is a real gate **only** if a reachable path exists from the exercised entry point to X in the test wiring. Trace the spy / captured dependency before trusting the negative — a spy on a dependency the path never invokes asserts nothing (a vacuous test that passes for the wrong reason)
 - Skill mapping verified: any "None" disposition in the Skill Mapping was warranted (no existing skill actually covers the step)
 - `Satisfies:` traceability (where present): for any plan step carrying a `Satisfies:` annotation (an `AC-n` or an ADR unit), verify the implemented code actually traces to that target — the defense against intent drift (code that runs but does the wrong thing). This is a **where-present** check, not a mandate: a step without `Satisfies:` is not a finding (the annotation is optional and existing plans predate it)
 

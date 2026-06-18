@@ -114,6 +114,8 @@ These apply to every plan, feature or refactor.
 
 - **On any revision pass, re-ground every step whose execution surface or reference data changed** — re-verify its factual claims and cited acceptance against code even when its governing answer is "unchanged." A surface flip silently invalidates claims in steps nobody re-opened ("unchanged answer" ≠ "unchanged correctness"); a revision's failures cluster in exactly the steps not re-grounded.
 
+- **Write each acceptance line as the *mechanism* that proves it, not the surface outcome.** A done-check should be grep-and-confirm, not read-and-judge — so per load-bearing claim, name the test file + assertion shape (or the exact grep target). Two traps recur: **(i)** where local auth is a *stub that authenticates everyone*, assert the **structural** gate (the policy attribute is present **and** a Prod boot throws without it), never a local `401` — the stub returns `200`, so the surface assertion is unprovable locally; **(ii)** a "no literal `X` in the runtime output" gate must be phrased as the **output/test** assertion, not a **source** grep — a source grep matches the substitution table's own definition of `X` and self-flags. Mechanism-aware acceptance is what makes a done-check deterministic instead of judgmental.
+
 ## Refactoring & Type-Move Plan Rules
 
 Refactoring passes (rename, extract, relocate, delete, type-move) fail in ways feature plans don't. Encode these in the plan, not in the developer's memory. (Stack-specific carve-out examples belong in the stack extension plugin's skills, not here — these are the stack-agnostic principles.)

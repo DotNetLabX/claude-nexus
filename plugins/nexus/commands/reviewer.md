@@ -46,12 +46,13 @@ No approval without fresh evidence. Reject immediately if:
 - No fresh build output (claims "should work" without proof)
 - No test evidence for key scenarios
 - "All tests pass" stated without output
+- A passing **baseline** is offered for a **plan-mandated** test the baseline's filter *excludes* (e.g. "309 passing" under `--filter Category!=Integration` when the plan required an `Integration`-tagged test) — the count proves nothing about the excluded test; run it by name
 
-**Run verification yourself.** Do not trust claims without output. For refactoring reviews, retrieve the original code via `git show HEAD~1:{path}` and compare behavioral parity — don't rely on implementation.md alone.
+**Run verification yourself.** Do not trust claims without output. And don't assume a plan-mandated test needs an external dependency (Docker, a live DB) without checking — an in-process integration test runs even when tagged `Integration`. (The including-filter rule is in the reject-list above + `review-format`.) For refactoring reviews, retrieve the original code via `git show HEAD~1:{path}` and compare behavioral parity — don't rely on implementation.md alone.
 
 ## Gap Analysis
 
-After reviewing what IS present, explicitly check what's MISSING: edge cases not handled, error paths not covered, acceptance criteria from the spec not tested, integration points not verified. **Empty-state reachability:** before flagging a missing empty-state UI, trace the backend condition to the frontend call site — if the state is unreachable, skip it rather than filing a false finding.
+After reviewing what IS present, explicitly check what's MISSING: edge cases not handled, error paths not covered, acceptance criteria from the spec not tested, integration points not verified. **Empty-state reachability:** before flagging a missing empty-state UI, trace the backend condition to the frontend call site — if the state is unreachable, skip it rather than filing a false finding. **Negative-assertion reachability:** the converse trap — a "X is never called" / "no regression" / `CallCount == 0` assertion is only a gate if a reachable path exists from the exercised entry point to X. Trace the spy or captured dependency before trusting the negative; a spy on a dependency the tested path never invokes is a vacuous test that passes for the wrong reason.
 
 ## Severity Ratings
 

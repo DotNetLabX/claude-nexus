@@ -131,6 +131,54 @@ test('verdict integrity: a ### heading containing "no … critical/high" mid-hea
     '"no" mid-heading inside a ### finding is not a negation summary — must still DENY');
 });
 
+// nexus-1.13.0 item 1: the residual the positive-heading anchor fixes. A CRITICAL/HIGH token in
+// NARRATIVE prose — a summary sentence, a cross-reference to a finding ID, a legend phrased outside
+// the known tokens — is not a finding and must NOT false-block a clean APPROVED. (The old blocklist
+// pardoned only a line-INITIAL "No …"; these mid-line/narrative shapes still tripped it.)
+test('verdict integrity: narrative severity mentions (not ### headings) never trip the gate', () => {
+  const dir = sandboxWithState(null);
+  const narrative = [
+    '## Verdict: APPROVED', '',
+    'The reviewer found no CRITICAL or HIGH findings this round.',
+    'Carried forward: critic HIGH-2 was addressed in cycle 1; see also critic HIGH-1.',
+    'Note: a CRITICAL finding would block the merge (none here).',
+    '',
+    '## Findings',
+    '_None._',
+  ].join('\n');
+  assert.equal(denyReason(gate(write('docs/specs/F1/delivery/review.md', narrative), dir)), null,
+    'severity tokens in prose / cross-references / a legend sentence are not findings — must ALLOW');
+});
+
+test('verdict integrity: a real ### finding still DENIES amid narrative severity mentions', () => {
+  const dir = sandboxWithState(null);
+  const mixed = [
+    '## Verdict: APPROVED', '',
+    'The reviewer found no CRITICAL issues in the data layer; see critic HIGH-1 for context.', '',
+    '## Findings', '',
+    '### [HIGH] Missing auth check on the admin endpoint',
+    '**File:** `src/Admin/Endpoint.cs:10`',
+    '**Issue:** the role gate is absent',
+    '**Fix:** add the policy attribute',
+  ].join('\n');
+  assert.match(denyReason(gate(write('docs/specs/F1/delivery/review.md', mixed), dir)) || '',
+    /APPROVED while an unresolved CRITICAL or HIGH/,
+    'the positive anchor still fires on a genuine ### [HIGH] finding even when prose carries the tokens');
+});
+
+test('verdict integrity: a bracket-less "### HIGH: …" finding heading still DENIES (optional-bracket branch)', () => {
+  const dir = sandboxWithState(null);
+  const colonForm = [
+    '## Verdict: APPROVED', '', '## Findings', '',
+    '### HIGH: SQL injection in OrderQuery',
+    '**File:** `src/Orders/OrderQuery.cs:42`',
+    '**Issue:** user input concatenated into the WHERE clause',
+  ].join('\n');
+  assert.match(denyReason(gate(write('docs/specs/F1/delivery/review.md', colonForm), dir)) || '',
+    /APPROVED while an unresolved CRITICAL or HIGH/,
+    'severity-leading heading without brackets is still a finding (FINDING_HEADING bracket is optional)');
+});
+
 test('deliberate edge: table-row findings never trigger the verdict check', () => {
   // In review-format, real findings are ### headings; table rows are step dispositions,
   // evidence, and legends. The gate skips ALL `| ...` lines (conservative by design) —

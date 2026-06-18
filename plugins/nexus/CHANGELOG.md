@@ -1,6 +1,38 @@
 # nexus — Changelog
 
 
+## [1.13.1] — 2026-06-17
+Learner consolidation of the inbound `nexus-1.13.0` plugin-feedback (knowledge-gateway F17–F23 +
+adhoc runs). Six recurring items promoted; two re-raised items were already shipped on the live tree
+and recorded as confirmed-shipped (model-override-on-resume; the developer self-advance prose guard —
+its only net-new ask, a backstop that *aborts* a rogue spawn, stays blocked by ADR-13).
+
+- **`pipeline-gate.js` — verdict scan inverted to a positive finding-heading anchor.** The old
+  blocklist (line-initial negation / Confidence field / legend) kept missing benign shapes — a
+  narrative "the reviewer found no CRITICAL or HIGH findings", a `critic HIGH-2` cross-reference, an
+  off-token legend row — and false-blocked clean APPROVED reviews (4 features). It now fires only when
+  a CRITICAL/HIGH heads an actual `### [SEVERITY]` finding (review-format shape) with no resolution
+  marker. Deliberate fail-open on an off-format finding; backstopped by the team lead's Verdict
+  Validation + the reviewer's Verdict Gate.
+- **`boundary-detector.js` — two false-positive fixes.** `implementation.md` is now owned by
+  `developer` **or** `solo` (solo's own deliverable was flagged); and the read-only stash subcommands
+  `git stash list`/`show` are exempted from the git-write scan (stripped before the verb test, so a
+  chained `git stash list && git commit` still flags — no bypass).
+- **`developer.md` — no git-write to inspect HEAD.** The "stash and rebuild" anti-pattern (a forbidden
+  ADR-18 write the detector flags) is replaced with read-only `git show HEAD:{path}` + documenting the
+  suspected pre-existing failure; the reviewer confirms attribution (it already runs verification).
+- **Mechanism-aware acceptance criteria** (`create-implementation-plan`, `architect.md`) — each
+  load-bearing acceptance line asserts the *mechanism* that proves it (test file + assertion shape, or
+  exact grep target), not a surface outcome; with the stub-auth structural-gate and self-flagging
+  source-grep traps named.
+- **Run plan-mandated tests under an *including* filter** (`review-format`, `reviewer.md`) — a green
+  baseline that *excludes* a required test (e.g. `--filter Category!=Integration`) proves nothing about
+  it; and don't assume a tagged test needs a live dependency.
+- **Broaden the code-grounded / adversarial review trigger** (`architect.md`) to raw-SQL/persistence
+  changes and negative-assertion gates; with a standing reviewer check (`review-format`, `reviewer.md`)
+  that a "X never called" / `CallCount == 0` assertion is a gate only if a reachable path to X exists —
+  catches the vacuous test.
+
 ## [1.13.0] — 2026-06-16
 Unattended autonomy v1 — Nexus runs unattended (`claude -p`) as a **strictly additive** mode
 (`adhoc-UnattendedAutonomy`, ADR-30/31/32). Attended is byte-unchanged, pinned by a golden test.

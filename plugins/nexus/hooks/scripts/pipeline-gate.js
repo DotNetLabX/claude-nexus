@@ -28,6 +28,13 @@
  *     without touching the findings table is not caught (conservative by design).
  *   - Path matches require a directory separator before the filename (`/plan.md`, `/review.md`) —
  *     a bare relative filename in the project root is not matched.
+ *   - The verdict scan anchors POSITIVELY on a finding HEADING (`### [SEVERITY] …`, the review-format
+ *     shape) — a CRITICAL/HIGH written outside that heading shape (e.g. severity-last, or in a plain
+ *     paragraph) is not read as a finding. This is the deliberate inversion of the old token-blocklist
+ *     (which kept false-blocking benign prose — a narrative "no CRITICAL or HIGH findings", a
+ *     "critic HIGH-2" reference, the Confidence field — and corroded the artifact as reviewers
+ *     contorted prose to dodge it; plugin-feedback nexus-1.13.0 item 1). The team lead's Verdict
+ *     Validation + the reviewer's own Verdict Gate are the backstops for an off-format finding.
  *
  * Design rules (so it never wedges a run, including unattended -p):
  *   - Fail open on ANY uncertainty (bad JSON, missing state file, ambiguous content).
@@ -107,7 +114,18 @@ function isCodeFile(fp) {
   return /\.(cs|ts|tsx|js|jsx|mjs|cjs|vue|css|scss|sass|less|py|go|java|kt|rb|rs|php|c|h|cpp|hpp|cc|swift|sql|razor|cshtml)$/.test(p);
 }
 
-// Conservative heuristic: fires only on a clear APPROVED + unresolved-high pattern; else allows.
+// Conservative heuristic: fires only when an APPROVED verdict sits beside a finding HEADING
+// (`### [SEVERITY] …`) for a CRITICAL/HIGH that carries no resolution marker; else allows.
+//
+// Anchored POSITIVELY on the finding heading — NOT on bare token adjacency. The old approach scanned
+// every line for a `CRITICAL|HIGH` token and then tried to subtract benign shapes (line-initial
+// negation, a Confidence field, legend/table rows) with an exemption blocklist; that list kept
+// missing new benign shapes — a narrative "the reviewer found no CRITICAL or HIGH findings", a
+// "critic HIGH-2" cross-reference, a legend row phrased outside the known tokens — and false-blocked
+// clean APPROVED reviews (4 features; plugin-feedback nexus-1.13.0 item 1). review-format mandates
+// that real findings are `### [SEVERITY] title` headings (File/Issue/Fix lines below), so a token
+// that does NOT head such a heading is, by the format, not a finding: prose, a Confidence qualifier,
+// a legend, a table row, or a section heading like "### Summary: no CRITICAL issues" never trips.
 function approvedWithOpenHighSev(text) {
   if (!text) return false;
   const t = text.replace(/\r/g, '');
@@ -117,24 +135,17 @@ function approvedWithOpenHighSev(text) {
   if (/\bREQUEST\s+CHANGES\b/i.test(t.slice(Math.max(0, i - 120), i + 120))) return false;
 
   const RESOLVED = /\b(resolved|fixed|dismissed|false alarm|false[- ]positive|not an issue|won'?t ?fix|deferred|n\/?a)\b/i;
-  const LEGEND = /severity|meaning|must fix before merge|fix or file follow-up|code smell|^\s*\|/i;
-  // Two clean-approval shapes carry the token without being a finding (review-format SKILL.md):
-  //   - NEGATION: a line-initial "No …" summary ("No CRITICAL or HIGH findings.") states ABSENCE.
-  //     Anchored to line-start (optional leading list/quote markers) so a `### [HIGH] No input
-  //     validation on critical path` heading — where "no" is mid-heading, not the line's opener —
-  //     is never pardoned. Bullets ("- No CRITICAL …") and blockquotes ("> No CRITICAL …") are
-  //     still pardoned because they legitimately open with "no".
-  //   - CONFIDENCE field: "**Confidence:** HIGH" is the reviewer's per-finding qualifier
-  //     (review-format `**Confidence:**`), not a severity. Match the field, not token adjacency.
-  const NEGATED = /^[\s>*_-]*no\b[^.]*\b(critical|high)\b/i;
-  const CONFIDENCE_FIELD = /\bconfidence\b\s*[:*]/i;
+  // A finding is a markdown heading whose title LEADS with the severity, optionally bracketed:
+  // "### [HIGH] SQL injection", "### [CRITICAL] …", "### HIGH: …" (review-format `### [SEVERITY]`).
+  // The leading anchor is what excludes "### Summary: no CRITICAL …" (severity not first → not a
+  // finding) while still catching "### [HIGH] No input validation …" (severity first; the "no" is
+  // mid-title, not a negation summary).
+  const FINDING_HEADING = /^\s{0,3}#{2,6}\s+\[?\s*(critical|high)\b/i;
 
   const lines = t.split('\n');
   for (let k = 0; k < lines.length; k++) {
-    const ln = lines[k];
-    if (!/\b(CRITICAL|HIGH)\b/.test(ln) || LEGEND.test(ln)) continue;
-    if (NEGATED.test(ln) || CONFIDENCE_FIELD.test(ln)) continue;
-    // examine the finding line plus the next few lines for a resolution marker
+    if (!FINDING_HEADING.test(lines[k])) continue;
+    // examine the finding heading plus the next few lines for a resolution marker
     const window = lines.slice(k, k + 4).join(' ');
     if (!RESOLVED.test(window)) return true;
   }

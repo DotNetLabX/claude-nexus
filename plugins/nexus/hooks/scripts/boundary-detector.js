@@ -26,7 +26,8 @@
  *   - ANY subagent running a state-changing git write via Bash (ADR-18/20: pipeline agents
  *     never commit; the team lead owns commits — the #1 fabrication vector's commit leg).
  *     Matched by anchored-regex substring (guard.js house style) on the canonical verb list
- *     commit/add/reset/push/stash/restore/switch; read-only git and `git commit-graph` never
+ *     commit/add/reset/push/stash/restore/switch; read-only git (`show`/`log`/`diff`, and the
+ *     read-only stash subcommands `git stash list`/`git stash show`) and `git commit-graph` never
  *     flag. Best-effort early-warning only — the team lead's `git log` author check is the
  *     guaranteed retroactive catch (team-lead.md Enforcing the Rules).
  *
@@ -42,7 +43,10 @@ const PIPELINE_ROLES = new Set(['po', 'architect', 'developer', 'reviewer', 'cri
 const ARTIFACT_OWNERS = [
   [/\/plan\.md$/, new Set(['architect'])],
   [/\/review\.md$/, new Set(['architect', 'reviewer'])],
-  [/\/implementation\.md$/, new Set(['developer'])],
+  // implementation.md is the developer's deliverable AND solo's — solo runs the implement phase
+  // outside the team pipeline and writes its own implementation.md (plugin-feedback nexus-1.13.0
+  // item 2: flagging solo's own deliverable was a false positive that drowned real breaches).
+  [/\/implementation\.md$/, new Set(['developer', 'solo'])],
   [/\/summary\.md$/, new Set(['team-lead'])],
 ];
 
@@ -100,7 +104,16 @@ process.stdin.on('end', () => {
       // The trailing (\s|$) is load-bearing: `\bcommit\b` alone matches INSIDE `git commit-graph` (the `-`
       // is a word boundary), so requiring whitespace-or-end after the verb is what excludes the
       // `git commit-graph` maintenance command while still matching `git add .`, `git add -A`, and chains.
-      const c = String(ti.command || '').toLowerCase();
+      //
+      // `stash` is a write EXCEPT its read-only subcommands `list`/`show` — a developer proving a
+      // pre-existing failure legitimately runs `git stash list` (plugin-feedback nexus-1.13.0 item 5).
+      // Strip those occurrences BEFORE the verb scan rather than after-the-fact exempting, so a chained
+      // `git stash list && git commit -m x` still flags the commit (no bypass hole — the strip removes
+      // only the read-only invocation; any following write verb survives). The `(?:-{1,2}…)*` tolerates
+      // interposed git global flags (`git --no-pager stash list`, `git --git-dir=x stash show`) so they
+      // aren't mis-flagged; it matches only flag-shaped tokens, never a write verb. `git show`/`log`/
+      // `diff` already never match — they are not in the verb list.
+      const c = String(ti.command || '').toLowerCase().replace(/\bgit\s+(?:-{1,2}[\w-]+(?:=\S+)?\s+)*stash\s+(list|show)\b/g, '');
       if (!/\bgit\s+(commit|add|reset|push|stash|restore|switch)(\s|$)/.test(c)) return process.exit(0);
       fp = String(ti.command || '');
       rule = 'subagent ran a git write — pipeline agents never commit; the team lead owns commits (ADR-18, commit strategy ADR-20)';

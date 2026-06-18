@@ -53,11 +53,22 @@ test('legitimate writes are NOT logged — zero footprint when clean', () => {
   const dir = makeSandbox();
   detect(dir, 'developer', 'src/Orders/OrderQuery.cs');                    // code role writes code
   detect(dir, 'developer', 'docs/specs/F1/delivery/implementation.md');    // own artifact
+  detect(dir, 'solo', 'docs/specs/adhoc-X/delivery/implementation.md');    // solo's own deliverable (nexus-1.13.0 item 2)
+  detect(dir, 'solo', 'src/Orders/OrderQuery.cs');                         // solo is a code role
   detect(dir, 'nexus:architect', 'docs/specs/F1/delivery/plan.md');        // own artifact (namespaced)
   detect(dir, 'reviewer', 'docs/specs/F1/delivery/review.md');             // own artifact
   detect(dir, 'developer', 'docs/specs/F1/delivery/lessons.md');           // shared by design
   detect(dir, 'critic', 'docs/notes.md');                                  // docs are not source
   assert.ok(!existsSync(LOG(dir)), 'a clean run leaves no audit dir at all');
+});
+
+test('solo writing another role\'s artifact is STILL logged (the owner map widened, not removed)', () => {
+  const dir = makeSandbox();
+  detect(dir, 'solo', 'docs/specs/adhoc-X/delivery/plan.md');    // architect's file — solo doesn't own it
+  detect(dir, 'solo', 'docs/specs/adhoc-X/delivery/summary.md'); // team lead's file
+  const all = lines(dir);
+  assert.equal(all.length, 2);
+  assert.ok(all.every((v) => /owner/i.test(v.rule)));
 });
 
 test('main-session calls (no agent_type) are ignored — the foreground gate already covers them', () => {
@@ -173,6 +184,11 @@ test('read-only git, git commit-graph, and an empty Bash command append NOTHING 
     'git branch',
     'git remote -v',
     'git fetch',
+    'git show HEAD:src/Feature/Handler.cs', // read file content at HEAD (sanctioned no-write path)
+    'git stash list',                  // read-only stash subcommand (nexus-1.13.0 item 5)
+    'git stash show',                  // read-only stash subcommand
+    'git --no-pager stash list',       // read-only stash behind an interposed global flag
+    'git --git-dir=/r stash show',     // read-only stash behind an =-valued global flag
     'git commit-graph write',          // maintenance — excluded by the trailing (\s|$)
     '',                                 // no verb at all — the :76 zero-footprint no-op
     'npm test',                         // not git
@@ -180,6 +196,14 @@ test('read-only git, git commit-graph, and an empty Bash command append NOTHING 
     bash(dir, 'developer', cmd);
   }
   assert.ok(!existsSync(LOG(dir)), 'no read-only/maintenance/empty/non-git command logs — zero footprint');
+});
+
+test('read-only stash exemption does NOT open a bypass: a chained write still flags', () => {
+  const dir = makeSandbox();
+  bash(dir, 'developer', 'git stash list && git commit -m x'); // the commit must still be caught
+  const [v] = lines(dir);
+  assert.match(v.rule, /git write|never commit|ADR-18|ADR-20/i,
+    'stripping `git stash list` must not exempt the chained `git commit`');
 });
 
 test('a git write by the MAIN session (no agent_type) is NOT logged — only subagents are in scope', () => {
