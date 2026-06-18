@@ -14,8 +14,8 @@ decision content is the routing table and the ambiguity tie-breakers below.
 | When you are… | Reach for | Gate / capture that applies |
 |---|---|---|
 | facing a **fact-shaped unknown** (library capability, does-this-approach-work, what-a-spec-decided), inline in a conversation | `search-researches` (recall first → forked dive → **capture before surface**) | `cite-check`; entry written to `docs/kb/research/` *before* you answer |
-| doing a **landscape / competitive / multi-stream scan** that will inform a spec | `search-researches` **breadth-first fan-out mode** (budget-gated ~3 workers, one topic file with multiple blocks) | same capture rule — **not** a bare generic agent, **not** inline WebSearch |
-| wanting a **standalone deep multi-source research report** (not pipeline capture) | `deep-research` (external skill) | ⚠ emits a report, **does not** write a pool entry — outside the pipeline; ADR-1 keeps `search-researches` decoupled from it |
+| doing a **landscape / competitive / multi-stream scan** (breadth) | the built-in **`deep-research`** workflow (purpose-built for fan-out + adversarial synthesis) | ⚠ emits a report, **does not** write a pool entry — outside the pipeline. If a specific fact from the scan must be captured, run `search-researches` on that fact afterward |
+| wanting a **standalone deep multi-source research report** (not pipeline capture) | the built-in **`deep-research`** workflow (user-invocable only; gated by CLI version / plan) | ⚠ report, no pool entry; ADR-1 keeps `search-researches` decoupled from it — it is a Claude Code BUILT-IN, **not** an external/OMC harness |
 | shaping a **product** feature (the what / why) | `create-feature-spec` (PO) | spec-review gate before `Status: Ready` |
 | shaping a **technical** feature (no product "what") | architect defines: tech-spec + extracted ADRs (ADR-27) | master gate (ADR-25) sizes the artifact |
 | spec is `Ready`, need the **how** | `create-implementation-plan` (architect) | critic Mode 2 (plan vs spec / ADR register) |
@@ -32,9 +32,15 @@ These are where an agent reaches for the wrong tool. The index above encodes the
 explicitly here:
 
 - **A · research routing (the incident that started this).** `search-researches` = inline, pipeline,
-  **captures** (single fact *or* fan-out for breadth). `deep-research` = standalone report, **no
-  capture**, outside pipeline. Bare generic/Explore agent for a fact-shaped unknown = **wrong** — it
-  captures nothing and skips recall. Default for any pipeline research → `search-researches`.
+  **captures** a fact-shaped unknown to the pool (recall first → forked dive → cited entry before you
+  answer). For a **breadth-first landscape / competitive scan**, reach for the built-in **`deep-research`**
+  workflow — it is purpose-built for fan-out and adversarial synthesis (`search-researches` stays the
+  single-fact, captures-to-the-pool path; its fan-out is only a budget-gated option, never the sanctioned
+  breadth mode). `deep-research` is a Claude Code **BUILT-IN workflow** (user-invocable only, gated by CLI
+  version / plan), **not** an external/OMC harness; it emits a report and writes **no** pool entry —
+  outside the pipeline, decoupled per ADR-1. Bare generic/Explore agent for a fact-shaped unknown =
+  **wrong** — it captures nothing and skips recall. Default for any pipeline fact-capture →
+  `search-researches`.
 - **B · spec authorship.** `create-feature-spec` (product, PO-owned) vs. architect technical definition
   (ADR-27). The split is product-"what" vs. technical-"how"; PO owns the former, architect the latter.
 - **C · evaluate vs. improve skills.** `evaluate-skill` **diagnoses** (severity-rated findings);
@@ -43,8 +49,14 @@ explicitly here:
 - **D · `*-format` auto-load gap.** `implementation-format`, `questions-format`, `lessons-format`,
   `review-format` are frontmatter-preloaded onto their producer agents; `proposal-format`,
   `kb-entry-schema`, `research-entry-schema`, `summary-format` are **on-demand only** — an agent writing
-  a proposal or KB entry has no auto-load signal and must remember. (Candidate fix: preload the missing
-  four, or document the on-demand expectation in the index.)
+  a proposal or KB entry has no auto-load signal and must remember. **Resolved (2026-06-18): document the
+  on-demand expectation, do NOT preload the missing four.** The research verdict (minimize always-on
+  weight at our tool count) makes adding four resident format skills the wrong move; the on-demand four
+  stay on-demand. Who reaches for each: `proposal-format` → po/architect/solo writing a proposal under
+  `docs/proposals/`; `kb-entry-schema` → any agent writing a KB entry under `docs/kb/`;
+  `research-entry-schema` → the forked researcher in `search-researches` drafting a pool entry;
+  `summary-format` → the team lead closing a pipeline run. Each agent invokes the matching `*-format` skill
+  by name when it writes that artifact — there is no auto-load, by design.
 - **E · boy-scout vs. simplify.** `boy-scout` = in-file adjacent improvements, always emits a report;
   `simplify` = diff-scoped cleanup. Scope is the tie-breaker.
 - **F · diagnose timing.** Reach for `diagnose` after the first obvious fix fails — before the

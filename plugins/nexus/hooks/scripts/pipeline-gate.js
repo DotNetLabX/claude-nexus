@@ -44,6 +44,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { isCodeFile } = require('./lib/is-code-file');
 
 let input = '';
 process.stdin.setEncoding('utf8');
@@ -106,12 +107,6 @@ function phaseIsAnalyze(root) {
     const s = fs.readFileSync(path.join(root, '.claude', '.pipeline-state'), 'utf8').trim().toLowerCase();
     return /analyze\s*$/.test(s);
   } catch { return false; } // no state -> fail open
-}
-
-function isCodeFile(fp) {
-  const p = String(fp).toLowerCase();
-  if (/(^|\/)(docs|\.claude)\//.test(p)) return false;
-  return /\.(cs|ts|tsx|js|jsx|mjs|cjs|vue|css|scss|sass|less|py|go|java|kt|rb|rs|php|c|h|cpp|hpp|cc|swift|sql|razor|cshtml)$/.test(p);
 }
 
 // Conservative heuristic: fires only when an APPROVED verdict sits beside a finding HEADING

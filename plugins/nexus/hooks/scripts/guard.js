@@ -18,6 +18,7 @@
 'use strict';
 const path = require('path');
 const fs = require('fs');
+const { isCodeFile } = require('./lib/is-code-file');
 
 const mode = (process.argv[2] || 'open').toLowerCase();
 
@@ -83,15 +84,6 @@ function readSessionPersona(sid, cwd) {
     const reg = JSON.parse(fs.readFileSync(path.join(root, '.claude', '.personas.json'), 'utf8'));
     return reg[sid] && reg[sid].agent;
   } catch { return null; }
-}
-
-// Application source by extension. Markdown/JSON/YAML/config are NOT code here — pipeline
-// roles legitimately write plan.md/review.md/specs and configs. docs/ and .claude/ are
-// always allowed (system/doc areas).
-function isCodeFile(fp) {
-  const p = String(fp).replace(/\\/g, '/').toLowerCase();
-  if (/(^|\/)(docs|\.claude)\//.test(p)) return false;
-  return /\.(cs|ts|tsx|js|jsx|mjs|cjs|vue|css|scss|sass|less|py|go|java|kt|rb|rs|php|c|h|cpp|hpp|cc|swift|sql|sh|ps1|razor|cshtml)$/.test(p);
 }
 
 function isSecret(fp) {

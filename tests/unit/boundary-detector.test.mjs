@@ -32,6 +32,26 @@ test('a non-code role writing application source is logged', () => {
   assert.ok(res.json?.systemMessage, 'a violation surfaces a systemMessage for visibility');
 });
 
+// RecipeEstateAudit (2026-06-18): the source predicate is now the shared lib/is-code-file.js. This
+// detector already had .sh/.ps1; the assertions below pin the shared predicate's behavior in this caller
+// (union extension set + backslash normalization) so a future drift in the lib is caught here too.
+test('a non-code role writing a shell script (.sh) is logged (union extension set)', () => {
+  const dir = makeSandbox();
+  detect(dir, 'critic', 'scripts/deploy.sh');
+  const [v] = lines(dir);
+  assert.match(v.rule, /non-code role/i, '.sh is application source for the shared predicate');
+});
+
+test('a non-code role writing a Windows backslash source path is logged; backslash doc areas are not', () => {
+  const dir = makeSandbox();
+  detect(dir, 'critic', 'src\\Orders\\OrderQuery.cs');   // normalized → caught
+  detect(dir, 'critic', 'docs\\notes.cs');               // backslash docs/ → still a doc area
+  detect(dir, 'critic', '.claude\\scratch.js');          // backslash .claude/ → still a system area
+  const all = existsSync(LOG(dir)) ? lines(dir) : [];
+  assert.equal(all.length, 1, 'only the real source path logs; backslash doc/system paths do not');
+  assert.match(all[0].rule, /non-code role/i);
+});
+
 test('artifact ownership: a role writing another role\'s artifact is logged', () => {
   const dir = makeSandbox();
   detect(dir, 'developer', 'docs/specs/F1/delivery/plan.md');          // architect's file

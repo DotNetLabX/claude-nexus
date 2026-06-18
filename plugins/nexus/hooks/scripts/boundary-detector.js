@@ -37,6 +37,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { isCodeFile } = require('./lib/is-code-file');
 
 const NONCODE_ROLES = new Set(['architect', 'reviewer', 'po', 'critic', 'team-lead', 'learner']);
 const PIPELINE_ROLES = new Set(['po', 'architect', 'developer', 'reviewer', 'critic', 'learner', 'team-lead', 'solo']);
@@ -49,14 +50,6 @@ const ARTIFACT_OWNERS = [
   [/\/implementation\.md$/, new Set(['developer', 'solo'])],
   [/\/summary\.md$/, new Set(['team-lead'])],
 ];
-
-// Same source-file test as guard.js/pipeline-gate.js: markdown/config are not code; docs/ and
-// .claude/ are doc/system areas.
-function isCodeFile(fp) {
-  const p = String(fp).toLowerCase();
-  if (/(^|\/)(docs|\.claude)\//.test(p)) return false;
-  return /\.(cs|ts|tsx|js|jsx|mjs|cjs|vue|css|scss|sass|less|py|go|java|kt|rb|rs|php|c|h|cpp|hpp|cc|swift|sql|sh|ps1|razor|cshtml)$/.test(p);
-}
 
 function violation(role, fp) {
   if (/(^|\/)\.claude\/\.pipeline-state$/.test(fp)) {

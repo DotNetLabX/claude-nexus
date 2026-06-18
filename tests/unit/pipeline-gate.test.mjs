@@ -30,6 +30,28 @@ test('analyze phase: plan.md and source writes are denied, docs and artifacts pa
   assert.equal(denyReason(gate(write('.claude/scratch.js'), dir)), null, '.claude/ is never "source"');
 });
 
+// RecipeEstateAudit (2026-06-18): the source predicate is now the shared lib/is-code-file.js, whose
+// extension set is the UNION of the three prior hook copies. The net effect on THIS gate: it now treats
+// .sh/.ps1 as source (the old pipeline-gate copy omitted them). The shared predicate also normalizes
+// backslashes, so a Windows path is classified the same as its POSIX form.
+test('analyze phase: shell scripts (.sh/.ps1) are now source and are denied (union extension set)', () => {
+  const dir = sandboxWithState('architect:analyze');
+  assert.match(denyReason(gate(write('scripts/deploy.sh'), dir)) || '', /analyze phase/,
+    '.sh is now in the source set — pipeline-gate gained it from the shared predicate');
+  assert.match(denyReason(gate(write('scripts/build.ps1'), dir)) || '', /analyze phase/,
+    '.ps1 is now in the source set');
+});
+
+test('analyze phase: a Windows backslash source path is denied; backslash docs/.claude paths still pass', () => {
+  const dir = sandboxWithState('architect:analyze');
+  assert.match(denyReason(gate(write('src\\Feature\\Handler.cs'), dir)) || '', /analyze phase/,
+    'the shared predicate normalizes \\ so a Windows source path is caught');
+  assert.equal(denyReason(gate(write('docs\\specs\\F1\\notes.cs'), dir)), null,
+    'a backslash docs/ path is still a doc area — never source');
+  assert.equal(denyReason(gate(write('.claude\\scratch.js'), dir)), null,
+    'a backslash .claude/ path is still a system area — never source');
+});
+
 test('implement phase and missing state file pass (fail open)', () => {
   const implementing = sandboxWithState('developer:implement');
   assert.equal(denyReason(gate(write('docs/specs/F1/delivery/plan.md'), implementing)), null);

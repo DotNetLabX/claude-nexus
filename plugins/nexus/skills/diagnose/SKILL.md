@@ -1,6 +1,6 @@
 ---
 name: diagnose
-description: Structured debugging protocol — phased loop for bugs and regressions. Loaded by developer and solo agents when a bug is encountered or a test fails unexpectedly.
+description: Structured debugging protocol — phased loop for bugs and regressions. Loaded by developer and solo agents when a bug is encountered or a test fails unexpectedly. Timing: reach for it AFTER the first obvious fix fails and BEFORE the 3-attempt circuit-breaker escalates — not on the first error (try the obvious fix first), not after escalation (too late).
 ---
 
 # Diagnose

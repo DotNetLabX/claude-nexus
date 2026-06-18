@@ -1,6 +1,6 @@
 ---
 name: search-researches
-description: Research a fact-shaped unknown once, then reuse it — grep the local research pool first, and on a miss spawn a forked read-only researcher for the web dive that returns a cited entry. Use when po/architect/solo hit a fact-shaped unknown (a library capability, whether an approach is known to work, what a spec elsewhere decided) that current context cannot resolve.
+description: Research a fact-shaped unknown once, then reuse it — grep the local research pool first, and on a miss spawn a forked read-only researcher for the web dive that returns a cited entry written to docs/kb/research/ before you answer. Use when po/architect/solo hit a fact-shaped unknown (a library capability, whether an approach is known to work, what a spec elsewhere decided) that current context cannot resolve. NOT for a standalone report with no pipeline capture (that is the built-in deep-research workflow, decoupled per ADR-1), and NOT a bare generic/Explore agent for a fact-shaped unknown (it recalls nothing and captures nothing). Limitation: inline + grep-based recall only; the dive is isolated in a forked researcher.
 user-invocable: true
 ---
 
@@ -25,8 +25,10 @@ The imperative Agent-tool spawn isolates **only** the dive while keeping recall 
 `context: fork` stays a future option only if execution is later split into its own skill.)
 
 The researcher is **read-only** and **self-contained**: it uses **`WebSearch` / `WebFetch` only** — no
-dependency on OMC or the external `deep-research` harness (ADR-1). `Explore` is the recommended subagent
-type (read-only, web-capable); `general-purpose` is the alternative.
+dependency on OMC, and **deliberately decoupled from the built-in `deep-research` workflow (ADR-1)**:
+`deep-research` is a standalone, user-invocable Claude Code workflow that emits a report and writes no pool
+entry, so this skill never delegates capture to it. `Explore` is the recommended subagent type (read-only,
+web-capable); `general-purpose` is the alternative.
 
 ## Recall first (inline, local-first)
 
@@ -101,11 +103,33 @@ When recall finds no usable entry (no match, or a match that failed the validity
 6. **Then surface the answer** to the caller (verdict + the recommendation). The entry is written *before*
    the summary is presented — the pool is the durable record.
 
+## Fallback when the forked researcher is unavailable
+
+The fork is the *default* execution path, not a precondition for capture. If the forked researcher cannot
+be spawned (an infra failure — the Agent tool is unavailable) and **you have web access**, do the dive
+**inline in the caller's own context** — and you **still owe the cited entry**. Infra failure must not
+silently drop capture: this exact leak (a dive run, the answer surfaced, nothing written to the pool) is
+what started this skill. So the fallback path still:
+
+1. drafts the entry in the `research-entry-schema` shape (fields + 8-part body + claim grammar),
+2. validates it through `node {search-researches folder}/scripts/cite-check.mjs {drafted-entry.md}`
+   (the same enforcement Step 4 runs — a failing draft is not written),
+3. writes it to `docs/kb/research/{topic}.md` **before** surfacing the answer.
+
+When the researcher is unavailable **and you also have no web access**, do not invent an answer. Either
+**block** (report that the fact-shaped unknown is unresolvable right now and stop), or — if a decision must
+proceed — **answer cold at explicitly lowered confidence** (never High; tag it `Confidence: low` with the
+one-line reason that no source was checked, per `agents-workflow.md` L93) and record the open unknown as a
+research target. The cold answer is a stopgap, not a captured verdict — no pool entry is written for an
+uncited cold answer.
+
 ## Default a single researcher
 
 Spawn **one** forked researcher by default. Fan-out to ~3 parallel workers is a **budget-gated option for
 breadth-first topics only** (it costs roughly 15× the tokens of a single dive); do not fan out for a
-focused fact-shaped question.
+focused fact-shaped question. For a genuine landscape / competitive / multi-stream scan that wants
+breadth, the built-in **`deep-research`** workflow is the better fit — it is purpose-built for fan-out and
+adversarial synthesis; this skill stays the inline, captures-to-the-pool path.
 
 ## Scope (this skill)
 

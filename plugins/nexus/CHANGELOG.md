@@ -1,6 +1,15 @@
 # nexus — Changelog
 
 
+## [1.13.2] — 2026-06-18
+- PATCH bump.
+  - hook behavior/enforcement change
+  - skill change (boy-scout)
+  - skill change (diagnose)
+  - skill change (evaluate-skill)
+  - skill change (improve-skills)
+  - skill change (search-researches)
+
 ## [1.13.1] — 2026-06-17
 Learner consolidation of the inbound `nexus-1.13.0` plugin-feedback (knowledge-gateway F17–F23 +
 adhoc runs). Six recurring items promoted; two re-raised items were already shipped on the live tree

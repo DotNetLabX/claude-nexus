@@ -189,7 +189,7 @@ agent(s) that *produce* that artifact** via the agent's `skills:` frontmatter:
 | `implementation-format` | developer |
 | `questions-format` | developer, architect |
 | `review-format` | reviewer, architect |
-| `lessons-format` | architect |
+| `lessons-format` | architect, developer, reviewer |
 | `summary-format` | team-lead |
 
 **Why.** Skills are the right carrier (single source, on-demand). Naming a skill in prose is a model

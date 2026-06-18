@@ -1,6 +1,6 @@
 ---
 name: evaluate-skill
-description: Evaluates an existing skill's implementation quality and job fitness — lint first, then the judgment layers of the shipped rubric, producing a severity-rated findings doc and consolidating fixes. Use when a skill misbehaves or underdelivers, after major changes to a skill, or for a periodic review of the skill estate.
+description: Evaluates an existing skill's implementation quality and job fitness — lint first, then the judgment layers of the shipped rubric, producing a severity-rated findings doc and consolidating fixes. Use when a skill misbehaves or underdelivers, after major changes to a skill, or for a periodic review of the skill estate. This is the DIAGNOSE half (it produces findings); improve-skills is the APPLY half that acts on them. Order: evaluate-skill first, then improve-skills — they are not interchangeable.
 user-invocable: true
 ---
 
