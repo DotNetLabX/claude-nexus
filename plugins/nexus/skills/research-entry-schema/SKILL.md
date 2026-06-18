@@ -5,12 +5,12 @@ description: Standard format for research-pool entries under docs/kb/research/ �
 
 # Research Entry Schema
 
-The format for every entry the `search-researches` skill writes to the research pool
+The format for every entry the `research` skill writes to the research pool
 (`docs/kb/research/{topic}.md` in the **consuming** project — created lazily, never shipped; ADR-1).
 Sibling to `kb-entry-schema`. An entry exists so a *later* question can recall a verdict instead of
 re-running the dive — so the fields are the recall key and the staleness signal, and the body is the
 cited answer. Use these headings and the claim grammar exactly: a deterministic validator
-(`search-researches/scripts/cite-check.mjs`) asserts against them, and recall greps them.
+(`research/scripts/cite-check.mjs`) asserts against them, and recall greps them.
 
 ## Required Fields
 
@@ -63,7 +63,7 @@ scan by:
 
 ## The claim/citation grammar (machine-checkable)
 
-The validator (`cite-check.mjs`, shipped in `search-researches`) keys on this grammar — keep to it or an
+The validator (`cite-check.mjs`, shipped in `research`) keys on this grammar — keep to it or an
 entry will not persist:
 
 - Claims under `## Finding`, `## Fix`, and `## Alternatives` are written as **bullet lines** (`- …`),
@@ -106,6 +106,6 @@ Example (the shape, not the content):
 
 | Consumer | Uses | Impact if malformed |
 |----------|------|---------------------|
-| `search-researches` recall | Question heading, As-of, Validity scope, Status, Reconfirm trigger | A miss-classified entry recalls a stale verdict or misses a fresh one |
+| `research` recall | Question heading, As-of, Validity scope, Status, Reconfirm trigger | A miss-classified entry recalls a stale verdict or misses a fresh one |
 | `cite-check.mjs` | Claim grammar, Sources, Corroboration | An uncited or single-source-high-stakes entry ships unchecked |
 | po / architect / solo | Verdict, Finding, Recommendation | A verdict with no validity scope is trusted past its life |

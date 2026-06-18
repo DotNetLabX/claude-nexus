@@ -1,6 +1,27 @@
 # nexus — Changelog
 
 
+## [1.14.0] — 2026-06-18
+The research front door: the `search-researches` skill becomes `research` (invocable as `/research`),
+gains depth-routing, and captures heavy dives from the built-in `/deep-research`.
+
+- **`search-researches` skill renamed to `research`** — folder, frontmatter, and all live internal
+  references (the `research-entry-schema` cross-refs, the `research-before-asking` rule, the
+  `cite-check.mjs` path/comment, and `tests/unit/cite-check.test.mjs`). Now invocable as `/research`.
+  Historical changelog entries keep the old name (audit trail — supersede-don't-delete).
+- **Depth-routing branch** — on a recall miss, `/research` routes by depth: a **low–medium** fact runs the
+  self-contained forked researcher now (today's behavior); a **heavy / breadth-first** question is routed
+  to the built-in `/deep-research` (the user runs it) and its report is captured.
+- **Capture path** — a `/deep-research` report is reshaped into `research-entry-schema` format, the three
+  fields a report doesn't supply (Evidence tier, Validity scope + Reconfirm trigger, Corroboration) are
+  derived, gated through `cite-check`, and persisted (supersede-don't-delete) — so the breadth dive
+  compounds in the pool like every other.
+- **`/deep-research` re-labeled** inside the skill as a **Claude Code built-in workflow** — user-invocable
+  only and gated (CLI version / plan / `disableWorkflows`), so the skill routes to it and captures its
+  result, never auto-invokes it. This gating is why the low–medium path stays self-contained.
+- **`research-before-asking` rule** — depth dial extended with the engine split (low–medium `/research`
+  forked vs. heavy `/research` → `/deep-research` + capture); the skill owns the heuristic and mechanics.
+
 ## [1.13.2] — 2026-06-18
 - PATCH bump.
   - hook behavior/enforcement change

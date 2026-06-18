@@ -133,9 +133,17 @@ Add a *Capture a `/deep-research` report* section to `research/SKILL.md`:
     platform the answer holds for). **Never leave blank** — the schema treats a blank Validity scope as
     stale.
   - **Corroboration** → map `/deep-research`'s per-claim cross-check to the cite-check grammar: record the
-    source **count** (≥ 2 clears the high-stakes floor) or the literal `second independent source agreed`;
-    if a high-stakes verdict rests on a single source, set `Status: uncertain` so the validator does not
-    fail-closed on it.
+    source **count** (≥ 2 clears the high-stakes floor) or the literal `second independent source agreed`.
+    **If a high-stakes verdict rests on a single source, do NOT label its Corroboration `high-stakes`** —
+    `cite-check.mjs` pass C keys the floor on the `high-stakes` token in the `**Corroboration:**` line and
+    fails `high-stakes && <2 sources` **unconditionally** (it never reads `Status`; verified against
+    cite-check.mjs:130-141 + the tested contract cite-check.test.mjs:77-85). Instead record the source
+    count, set `Status: uncertain`, and state the single-source limitation in prose (`## Caveat`). This is
+    the honest capture the validator accepts (cite-check exit 0): a high-stakes verdict that genuinely
+    cannot meet the second-source floor is recorded as uncertain, never asserted as a *cleared* high-stakes
+    claim. (Corrected 2026-06-18 — Q3: the original prose said `Status: uncertain` bypasses the floor; it
+    does not, and loosening the gate to make it do so would weaken a deliberately fail-closed safety check
+    and break its test.)
 - **Fail-closed enforcement (P1, pairs the prompt obligation):** run
   `node plugins/nexus/skills/research/scripts/cite-check.mjs {drafted-entry}` before persisting — an
   uncited / single-source-high-stakes / placeholder entry does not get written. The prompt rule is the

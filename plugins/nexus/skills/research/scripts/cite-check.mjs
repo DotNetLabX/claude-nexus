@@ -3,7 +3,7 @@
 //
 // Usage: node cite-check.mjs <entry.md>
 //
-// The post-generation enforcement layer for the search-researches skill (plan Step 3): a
+// The post-generation enforcement layer for the research skill (plan Step 3): a
 // prompt instruction to "cite every claim" is a request; this check is the enforcement that
 // runs before an entry is persisted. Keyed on the research-entry-schema claim grammar (Step 1):
 //   - Every claim line under ## Finding / ## Fix / ## Alternatives ends with an inline [n]

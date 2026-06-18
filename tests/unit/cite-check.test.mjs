@@ -1,4 +1,4 @@
-// cite-check.mjs — the deterministic cite-or-drop gate the search-researches skill runs
+// cite-check.mjs — the deterministic cite-or-drop gate the research skill runs
 // before persisting a research entry (plan Step 3, the paired enforcement for the Step-2
 // prompt obligation). Keyed on the research-entry-schema claim grammar (Step 1).
 // Born as TDD reds.
@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { writeFileSync } from 'node:fs';
 import { pluginRoot, run, makeSandbox, cleanupSandboxes } from '../helpers.mjs';
 
-const CHECK = join(pluginRoot('nexus'), 'skills', 'search-researches', 'scripts', 'cite-check.mjs');
+const CHECK = join(pluginRoot('nexus'), 'skills', 'research', 'scripts', 'cite-check.mjs');
 const check = (...args) => run(process.execPath, [CHECK, ...args]);
 
 function entryFile(name, contents) {

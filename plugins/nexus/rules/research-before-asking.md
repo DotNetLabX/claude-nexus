@@ -36,12 +36,24 @@ Match the research effort to the cost of getting it, and decide whether to surfa
   direction?"* Offer only when research would genuinely change the question or your recommendation — a
   reflexive offer on every question is noise.
 
-## Capture and recall through `search-researches`
+For a **fact-shaped unknown** (the third category above), the expensive route splits by depth — and the
+`research` skill owns the split:
+
+- **Low–medium** (a focused fact: one library capability, "does X work", what a spec elsewhere decided)
+  → `/research` runs a **self-contained forked dive now** and captures the cited verdict.
+- **Heavy / breadth-first** (a landscape or multi-source comparison) → `/research` recommends the built-in
+  **`/deep-research`** (user-invocable, gated — the skill can't auto-invoke it) and **captures its report**
+  into the pool.
+
+Either way you call `/research`; it decides the engine. The depth heuristic and the capture mechanics live
+in the skill (one owner — don't restate them here).
+
+## Capture and recall through `research`
 
 Research **compounds** — the same fact-shaped dive is never run twice. Route both the recall and the
-capture through the `search-researches` skill:
+capture through the `research` skill:
 
-- **Recall first.** Before you dive on a fact-shaped unknown, run the `search-researches` skill — it greps
+- **Recall first.** Before you dive on a fact-shaped unknown, run the `research` skill — it greps
   the local research pool (`docs/kb/research/*.md` in the consuming project) keyed on your question and,
   on a still-valid hit, returns the prior verdict instead of re-researching. A hit that has gone stale (its
   reconfirm-trigger fired or it is past its validity scope) is re-researched automatically.
