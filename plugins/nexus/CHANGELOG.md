@@ -1,6 +1,21 @@
 # nexus — Changelog
 
 
+## [1.16.0] — 2026-06-20
+Make the skill-authoring **harness** standing: every new skill now runs it automatically, instead of
+a planner hand-listing the steps each time. Two additions to `improve-skills`' New-Skill flow, plus an
+ADR-23 amendment. New standard step → MINOR (owner-escalated).
+
+- **`skills/improve-skills/SKILL.md` — domain-grounding step** — the "study existing skills" step
+  becomes "ground the design in the authoritative sources, not from memory": consult the canonical
+  reference for the skill's *subject* (e.g. `claude-api` for a prompt/LLM skill) **and** design against
+  `references/proven-patterns.md`, before writing the recipe.
+- **`skills/improve-skills/SKILL.md` — Judgment Gate (new section)** — after `skill-lint` exits 0, every
+  **new** skill runs `evaluate-skill` (the rubric's judgment layers the lint can't check) and folds its
+  CRITICAL/HIGH findings back as a consolidating pass. Done = lint exits 0 **and** findings resolved.
+  Mandatory for new skills (owner decision 2026-06-20); fixes to existing skills keep the lint alone.
+  Carve-out + Deterministic-Gate clauses updated so the rule lands on every surface (AP2).
+
 ## [1.15.0] — 2026-06-20
 Add the `distill-prompt` skill — a user-invocable utility (`/nexus:distill-prompt`,
 human-triggered only) that rewrites a verbose, rambling, or underspecified prompt into a tight,

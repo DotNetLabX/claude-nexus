@@ -18,7 +18,7 @@ Two callers, one process:
 
 Shipped nexus skills live in the plugin's version-keyed cache — not editable from a consuming project.
 
-> **Dev-repo carve-out (ADR-1).** In the plugin *source* repo itself, this inverts: shipped skills are authored and fixed **directly** in `plugins/{plugin}/skills/` and the skill's own lint is the done-condition. The feedback-file channel below is the *consuming-project* path (where the cache is read-only) — don't route a dev-repo fix to it.
+> **Dev-repo carve-out (ADR-1).** In the plugin *source* repo itself, this inverts: shipped skills are authored and fixed **directly** in `plugins/{plugin}/skills/` and the skill's own lint is the done-condition — and a **new** shipped skill runs the full New-Skill recipe here, including its Judgment Gate (below). The feedback-file channel below is the *consuming-project* path (where the cache is read-only) — don't route a dev-repo fix to it.
 
 - **Fix to a shipped (plugin) skill** → append to the portable feedback file `docs/plugin-feedback/nexus-{plugin-version}-{date}.md` (same entry format as improve-flow: suggested target = the skill + section, action, evidence, condensed lesson). Never edit the cache.
 - **Fix to a project-local skill** (one that lives in this project's `.claude/skills/`) → apply directly **as a consolidating pass**: read the SKILL.md fully, fold the fix into the section it belongs to — net complexity flat or down, never additive patching. A skill that only ever grows becomes unreadable and stops being followed. Check the fix against `references/proven-patterns.md` — especially AP2 (sweep every normative surface the rule lives on, not just where it was reported) and AP3 (one owner per fact).
@@ -32,7 +32,15 @@ Shipped nexus skills live in the plugin's version-keyed cache — not editable f
    - Check the skills already surfaced in your context (plugin skills are listed there — directory globbing under-reports them) AND grep the project's own `.claude/skills/` — confirm no existing skill covers it.
    - Check that reference files mentioned in the lesson still exist.
    - Confirm the pattern is repeatable — will be needed again, not a one-off.
-2. **Study 2-3 existing skills** closest in type (project-local ones, or shipped ones from your context) and match their structure. Consult `references/proven-patterns.md` for the mechanisms that earned their keep (state-first writing, deterministic post-conditions, …) and the anti-patterns to design out.
+2. **Ground the design in the authoritative sources — design against them, not from memory:**
+   - **Domain reference** — consult the canonical reference for the skill's *subject* before
+     writing the recipe (e.g. invoke `claude-api` for a prompt/LLM skill, the relevant stack
+     skill for a framework skill). A skill *about* X must reflect X's authoritative source.
+   - **`references/proven-patterns.md`** — design the recipe against the P1–P11 mechanisms that
+     earned their keep (state-first writing, deterministic post-conditions, …) and the AP1–AP7
+     anti-patterns to design out.
+   - **2–3 existing skills** closest in type (project-local, or shipped from your context) —
+     match their structure.
 3. **Scaffold:** `.claude/skills/{skill-name}/SKILL.md` (add `workflows/` or `references/` only if variant-aware or template-bearing).
 4. **Write SKILL.md born compliant** — frontmatter first:
    - `name:` — must equal the folder name.
@@ -56,7 +64,25 @@ node {improve-skills folder}/scripts/skill-lint.mjs .claude/skills/{name}
 
 `scripts/skill-lint.mjs` sits next to this SKILL.md; in a consuming project resolve it via the plugin cache (glob `~/.claude/plugins/cache/**/skills/improve-skills/scripts/skill-lint.mjs`, highest version). It checks: SKILL.md exists, no BOM, frontmatter valid, `name` matches the folder, `description` present, cited `references/`/`workflows/` files exist.
 
-**Exit 0 is the done-condition.** Fix every ERROR before reporting the item complete; WARNs are advice. A prose rule no machine executes decays silently — this gate is the machine. (If node is genuinely unavailable, walk the checklist above by hand and say so in the report.)
+**Exit 0 is the done-condition.** (For a **new** skill this is the form half — the Judgment Gate below is the other half.) Fix every ERROR before reporting the item complete; WARNs are advice. A prose rule no machine executes decays silently — this gate is the machine. (If node is genuinely unavailable, walk the checklist above by hand and say so in the report.)
+
+## Judgment Gate (new skills — on top of the lint)
+
+The lint checks *form*; a well-formed bad skill passes it (ADR-23). So for every **new** skill —
+project-local or a shipped skill authored under the dev-repo carve-out — after the lint exits 0,
+run the judgment layer too (mandatory; owner decision 2026-06-20):
+
+1. **Invoke `evaluate-skill`** on the new skill folder — it runs the rubric's judgment layers
+   (job fitness, repeatability, no-overlap, concrete steps, capability overlays) the lint
+   structurally cannot. This runs the prose **Quality Gate** below as an actual pass, not an eyeball.
+2. **Fold every CRITICAL/HIGH finding back through this skill** as a consolidating pass (net
+   complexity flat or down — never additive patching), then re-run the lint.
+
+**Done = lint exits 0 AND the evaluate-skill findings are resolved** (or waived with a reason in
+the report). This standardizes *running* the judgment layer — not a claim that quality is now
+mechanical (evaluate-skill is itself model-judgment). It costs an extra agent pass; the meta-loop's
+force-multiplier property — a defect propagates into every skill that follows — is why a new skill
+is worth it. (Fixes to an existing skill keep the lint alone as their done-condition.)
 
 ## Skill Backlog
 

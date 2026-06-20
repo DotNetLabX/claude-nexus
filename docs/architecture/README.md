@@ -636,6 +636,8 @@ or foreground a one-off spawn manually.
 
 **Extended (1.7.0).** The quality system completed per the consumer's Lane A plan: the proven-pattern catalog ships genericized as `improve-skills/references/proven-patterns.md` (P1–P11 / AP1–AP7 — the design-judgment layer the lint can't check), and a new **`evaluate-skill`** process skill ships the *review* standard (lint-first Layer 0 → judgment Layers 1–4 + capability overlays → severity-rated findings doc → fixes routed through improve-skills or the feedback file per ADR-1). The lint engine gained the generic Layer-0 checks (XML-tag tokens in prose, mojibake markers, description caps); project-specific checks (retired-name lists, index-sync, convergence pins) deliberately stay consumer-local. Enforcement tests pin both wirings — AP1 applied to the system itself.
 
+**Extended (1.16.0).** New-skill authoring now ends in a standard **judgment pass on top of the deterministic form gate**: after `skill-lint` exits 0, every new skill runs `evaluate-skill` (the rubric's judgment layers), and its CRITICAL/HIGH findings are resolved through a consolidating `improve-skills` pass before the skill is done (mandatory — owner decision 2026-06-20). This standardizes *running* the judgment layer; it does **not** make quality mechanically deterministic — `evaluate-skill` is itself model-judgment, so the form/quality split above still holds (the lint checks form; quality stays prose, now reliably *executed* rather than left to a per-plan reminder).
+
 *An instance of the [allocation principle](#the-allocation-principle--cheapest-correct-locus): a prose rule that kept decaying was moved to its cheapest non-decaying locus — a lint that runs at the moment of writing.*
 
 ---
