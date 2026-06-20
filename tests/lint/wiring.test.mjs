@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { listAgents, agentName, pluginRoot } from '../helpers.mjs';
+import { listAgents, listSkills, agentName, pluginRoot } from '../helpers.mjs';
 
 // ── 1. No duplicate (event, matcher) hook registrations ──────────────────────
 test('no two hook entries under the same event share a matcher', () => {
@@ -78,6 +78,10 @@ const PLATFORM_SUBAGENT_TYPES = new Set(['Explore', 'general-purpose']);
 
 test('subagent_type and nexus: agent references resolve to shipped agents', () => {
   const agents = new Set(listAgents('nexus').map(agentName));
+  // A /nexus:X reference is valid if X is a shipped agent (persona command) OR a shipped
+  // skill — the platform auto-discovers skills/*/SKILL.md and invokes them as /nexus:{name}
+  // too, so the resolver must accept both (skill name = its folder name).
+  const skills = new Set(listSkills('nexus').map((f) => f.replace(/[\\/]SKILL\.md$/, '').split(/[\\/]/).pop()));
   const surfaces = [];
   for (const dir of ['agents', 'rules', 'skills']) {
     const base = join(pluginRoot('nexus'), dir);
@@ -94,12 +98,12 @@ test('subagent_type and nexus: agent references resolve to shipped agents', () =
         `${file}: subagent_type "${name}" resolves to neither agents/${name}.md nor an allowlisted platform type`
       );
     }
-    // /nexus:X and nexus:X persona/command references.
+    // /nexus:X and nexus:X persona/command/skill references.
     for (const m of text.matchAll(/\/?nexus:([a-z][a-z0-9-]*)/g)) {
       const name = m[1];
       assert.ok(
-        agents.has(name),
-        `${file}: reference "nexus:${name}" resolves to no agents/${name}.md`
+        agents.has(name) || skills.has(name),
+        `${file}: reference "nexus:${name}" resolves to neither agents/${name}.md nor skills/${name}/SKILL.md`
       );
     }
   }

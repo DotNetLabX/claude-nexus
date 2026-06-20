@@ -1,6 +1,13 @@
 # nexus — Changelog
 
 
+## [1.15.0] — 2026-06-20
+Add the `distill-prompt` skill — a user-invocable utility (`/nexus:distill-prompt`,
+human-triggered only) that rewrites a verbose, rambling, or underspecified prompt into a tight,
+effective one — clear task, explicit constraints, defined output shape — **without dropping any
+load-bearing requirement** (distillation is lossless on requirements, not a lossy summary). Stack-
+agnostic, so it ships in nexus core. New user-facing capability → MINOR (owner-escalated).
+
 ## [1.14.1] — 2026-06-18
 Fix the fleet heartbeat: `subagentStatusLine` payload is hook-shaped (no `workspace` object) —
 `resolveRoot()` now reads the base-hook top-level `cwd` as primary, keeping `workspace.project_dir`
