@@ -31,12 +31,20 @@ Tracks every skill created or fixed by the learner/developer pipeline. One entry
 - **Status:** Created
 - **Type:** Gap
 - **Source:** adhoc-DistillPrompt
+- **Superseded by the Fixed entry below (adhoc-DistillPromptContractFix) — the original build drifted from contract (this entry describes a verbose-prompt-sharpener; the real contract is conversation→reusable-prompt). Kept as the audit trail of what was first built.**
 - **Description:** User-invocable nexus-core utility (`/nexus:distill-prompt`, `disable-model-invocation: true`). Rewrites a verbose/underspecified prompt into a tight one without dropping load-bearing requirements — 7-stage method (extract core ask → inventory keep-list → hold lossless rule → cut padding → surface/never-invent gaps → restructure + Cut/Still-ambiguous note), grounded in canonical Anthropic prompt-engineering structure (claude-api). Step-2 evaluate-skill verdict ACCEPT (`docs/skill-evals/2026-06-20-distill-prompt.md`); improve-skills consolidating pass ran and applied **no change** — sole finding was a keep-as-is LOW (lossless rule has one normative owner in stage 4; already AP3-compliant, no net-complexity reduction available). skill-lint exit 0.
 - **Date:** 2026-06-20
 
 ---
 
 ## Skills Fixed
+
+### distill-prompt
+- **Status:** Fixed
+- **Type:** Fix
+- **Source:** adhoc-DistillPromptContractFix
+- **Description:** Contract correction — whole-skill reframe from the drifted **verbose-prompt-sharpener** (see the superseded `Skills Created` entry) to its real graduated-proposal contract: **conversation/transcript → ONE reusable prompt + a short title**. Cardinal rule **inverted** from lossless / keep-values to **STRIP every run-specific data value** (categories, dates, brand/SKU names, IDs, sheet URLs, retrieved figures → generalized to role-descriptive prose) while **KEEPING the converged intent + final working approach**; added the inseparable-datum rule (generalize the role, flag the literal). **Prose-only** output (no `[placeholder]` parameterization — deferred, owner D1 2026-06-20). Source-agnostic transcript input; never auto-saved / nothing to disk; never-invent rule kept. Scope fence names **`learner`** (no recurrence threshold / approval gate / shared-source write — they compose) and **`improve-skills`** (distill output is ephemeral/in-conversation vs improve-skills' durable, stored, lint-gated SKILL.md) as the adjacent owners. Re-eval verdict **ACCEPT** against the corrected job statement (`docs/skill-evals/2026-06-20-distill-prompt-contractfix.md`); prior eval marked superseded (wrong job statement). skill-lint exit 0. Plugin bump 1.16.1 → 1.17.0 (MINOR, owner-decided; behavior reversal, days-old skill, no adopters).
+- **Date:** 2026-06-20
 
 ### analytics-computation-service
 - **Status:** Fixed

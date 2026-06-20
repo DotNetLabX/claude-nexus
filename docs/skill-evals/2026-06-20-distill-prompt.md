@@ -1,5 +1,14 @@
 # Skill Evaluation — distill-prompt
 
+> **Status: SUPERSEDED (adhoc-DistillPromptContractFix, 2026-06-20).** This evaluation graded the
+> **wrong job statement** — the verbose-prompt-sharpener lens ("Input: a verbose / rambling /
+> underspecified prompt", lossless-on-requirements cardinal rule), which is the *drift*, not the
+> skill's real contract. The graduated proposal defines a **conversation→reusable-prompt** skill whose
+> cardinal rule is the **inverse** (STRIP every run-specific data value / KEEP the converged intent).
+> Because this eval used the wrong lens, its ACCEPT verdict does not carry to the corrected skill.
+> The current evaluation is **`docs/skill-evals/2026-06-20-distill-prompt-contractfix.md`**. Kept for
+> the audit trail (supersede-don't-delete); do not read the verdict below as current.
+
 **Evaluator:** developer (Step 2 job-fitness pass, adhoc-DistillPrompt)
 **Date:** 2026-06-20
 **Scope:** `plugins/nexus/skills/distill-prompt/SKILL.md` (authored this round; 114 lines, closed 4-key frontmatter). No `references/`/`workflows/`/changelog (light single-SKILL.md skill).
