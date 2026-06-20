@@ -2,6 +2,8 @@
 
 Use this template for every `docs/specs/{slug}/delivery/plan.md` file. This template extends the plan format in `agents-workflow.md`. The Skill Mapping section and anti-pattern rules are additions — all other sections follow the existing format.
 
+**Section map (targeting index).** `plan.md`'s fixed top-level headings — the set agents target for a section read (ADR-22 Extended): `## Context`, `## Scope`, `## Skill Mapping`, `## Domain Model Changes`, `## Data Model Changes`, `## Implementation Steps`, `## Cross-Service Changes`, `## Migration Notes`, `## Testing Strategy`, `## KB Impact`, `## Open Questions`. Grep `^##` for live line numbers, then `Read` with `offset/limit` around the section you need rather than the whole file.
+
 ---
 
 ```markdown

@@ -9,6 +9,8 @@ Written by any agent when blocked or needing clarification. The recipient answer
 
 **Write first, message second.** Every agent must write its questions to the file before sending them as a message. The file is the log; the message is the notification.
 
+**No section map — variable headings (ADR-22 Extended).** `questions.md` has **no fixed heading set** to document: its sections are runtime-numbered (`## Q1`, `## Q2`, …) and grow per blocker. A section read here targets by the **grep step alone** (`grep '^## Q'` for the live numbers), not a documented index. (`communication-log.md` is likewise excluded — it has one growing `## Messages` catch-all and no format skill to annotate; both rely on the grep step plus the size trigger.)
+
 ```
 # {Feature Name} — Questions
 

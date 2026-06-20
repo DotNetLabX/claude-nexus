@@ -7,6 +7,8 @@ description: Format spec for docs/specs/{slug}/delivery/summary.md — written b
 
 Written by team lead after reviewer approval: `docs/specs/{slug}/delivery/summary.md`. Its existence means the pipeline completed successfully.
 
+**Section map (targeting index).** `summary.md`'s fixed top-level headings — the set agents target for a section read (ADR-22 Extended): `## Status`, `## What Was Built`, `## Key Outcomes`, `## Deviations from Plan`, `## Notes`. Grep `^##` for live line numbers, then `Read` with `offset/limit` around the section you need rather than the whole file.
+
 ```
 # {Feature Name} — Summary
 

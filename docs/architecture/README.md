@@ -615,6 +615,8 @@ or foreground a one-off spawn manually.
 
 **Rejected.** *PreToolUse read-blocking* — wedges legitimate re-reads and is inert on background subagents. *Stronger prompt wording alone* — disproven in-run. *Granting the critic an artifact* — trades away the physical no-write guarantee (`disallowedTools`) for a stranding problem the salvage fix already covers; the team-lead persist step keeps a durable record (owner's decision, 2026-06-11).
 
+**Extended (this release).** The read rule gains a second dimension — *section-targeting*, not only *read-once*. A 2026-06-20 live audit (KG/SR, `docs/kb/research/plugin-token-optimization.md`) found caching already healthy (92–98%); the spend is agents reading **whole** artifacts/docs when they need a section (`nexus:critic` the clearest case, 59% efficiency, contexts 150–250K). So for a **large or multi-section input**, read the section you need — **locate the heading (`grep '^#'`) → `Read` with `offset/limit`** — rather than the whole file. It is non-lossy and the **whole-read fallback is preserved** (no `^#` match, an ambiguous/duplicate heading, or one oversized section each resolves to a wider/whole read). This is a **two-way-door amendment, not a new ADR** (ADR-25): the artifact on disk is never shrunk, so reverting is dropping the prose. The rule lives canonically in `agents-workflow.md` and is duplicated into each heavy-loader agent file (ADR-14), since a spawned subagent sees only its own file (ADR-2 #2).
+
 ---
 
 ## ADR-23 — The skill meta-loop ends in a deterministic gate (born-compliant skills)

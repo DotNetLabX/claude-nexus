@@ -7,6 +7,8 @@ description: Format spec for docs/specs/{slug}/delivery/lessons.md — per-role 
 
 All pipeline agents append under their own heading: `docs/specs/{slug}/delivery/lessons.md`. The PO writes lessons during spec shaping (before the delivery/ folder exists) — create the folder and lessons file if needed.
 
+**Section map (targeting index).** `lessons.md`'s fixed **per-role** top-level headings — the set agents target for a section read (ADR-22 Extended): `## PO Lessons`, `## Architect Lessons`, `## Developer Lessons`, `## Reviewer Lessons`, `## Solo Lessons`, `## Skill Gaps`. Grep `^##` for live line numbers, then `Read` with `offset/limit` around your role's heading rather than the whole file. **Target the role heading only** — the `### Improvement Proposal` sub-heading repeats under multiple roles, so (per ADR-22's duplicate-heading fallback) it is not a targetable anchor; widen to the enclosing role section.
+
 ```
 # {Feature Name} — Lessons
 

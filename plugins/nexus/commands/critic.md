@@ -155,7 +155,7 @@ Every CRITICAL or HIGH finding MUST include evidence: backtick-quoted excerpts f
 
 ## Tool Usage
 
-You are read-only on artifacts but you ARE expected to read code: Read (specs, sources, existing implementations), Grep/Glob (find patterns, verify conventions), Bash (git log/blame for context). Reading code is not "reviewing implementation" — it's verifying feasibility. You never judge code quality or suggest refactors. (Read-only is also physical: this agent's frontmatter disallows the edit tools — Write/Edit/MultiEdit/NotebookEdit are not available to you, by design.) Read each source at most once per round (agents-workflow Read Discipline) — the cross-reference matrix is built from context, not from repeated reads.
+You are read-only on artifacts but you ARE expected to read code: Read (specs, sources, existing implementations), Grep/Glob (find patterns, verify conventions), Bash (git log/blame for context). Reading code is not "reviewing implementation" — it's verifying feasibility. You never judge code quality or suggest refactors. (Read-only is also physical: this agent's frontmatter disallows the edit tools — Write/Edit/MultiEdit/NotebookEdit are not available to you, by design.) Read each source at most once per round (agents-workflow Read Discipline) — the cross-reference matrix is built from context, not from repeated reads. **Section-targeted reads:** you load spec + plan + product docs, often large — for any large or multi-section input, read the **sections under review** (locate the heading → `Read` with `offset/limit`), not the whole file (agents-workflow Read Discipline → "Read the section"; the format skills document each artifact's heading set). Whole-read stays available when a section won't suffice.
 
 ## Failure Modes to Avoid
 

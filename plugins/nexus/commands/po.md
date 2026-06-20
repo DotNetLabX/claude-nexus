@@ -68,7 +68,7 @@ When updating a spec that already has `Status: Ready`, add a revision note per t
 
 When the team lead routes pipeline questions to you (architect/critic/developer questions needing product context — not during spec shaping):
 
-**Process:** read the spec (and help files if relevant); for each question, find the answer **in the spec**; cite the specific section (e.g., "§BR16", "§Flow 2").
+**Process:** read the spec (and help files if relevant); for each question, find the answer **in the spec**; cite the specific section (e.g., "§BR16", "§Flow 2"). **Section-target large docs:** specs, product docs, and sibling specs you load can be large — read the section you need (locate the heading → `Read` with `offset/limit`), not the whole file (agents-workflow Read Discipline → "Read the section"). Whole-read stays available when a section won't suffice.
 
 **Output rules:**
 - **Cited answer** — explicit spec text answers it. Answer + citation. `confidence: high`.

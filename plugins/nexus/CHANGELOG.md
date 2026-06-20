@@ -1,6 +1,25 @@
 # nexus — Changelog
 
 
+## [1.16.1] — 2026-06-20
+**Section-addressable reads** — extend Read Discipline from *"don't re-read"* to *"read only the
+section you need."* A 2026-06-20 live audit (KG/SR) found caching already healthy (92–98%); the spend
+is agents reading **whole** artifacts/docs when a section suffices (`nexus:critic` the clearest case,
+59% efficiency, 150–250K contexts). Prose/skill/agent change only — non-lossy, whole-read fallback
+preserved (PATCH). Extends ADR-22 (two-way-door amendment, not a new ADR).
+
+- **`rules/agents-workflow.md` — Read Discipline gains a section-targeting bullet** — for a large
+  (> ~400 lines) or multi-section input, locate the heading (`grep '^#'`) → `Read` with `offset/limit`
+  rather than the whole file; names all three whole-read fallbacks (no `^#` match, ambiguous/duplicate
+  heading, oversized single section).
+- **Format skills document a fixed-heading section map** — `review-format`, `implementation-format`,
+  `summary-format`, `lessons-format`, and the plan template each list their stable `##` heading set as
+  the targeting index; `questions-format` states the variable-heading (`## Q{N}`) exclusion.
+- **Heavy-loader agents get a duplicated targeted-read pointer** (ADR-14, since a subagent sees only
+  its own file — ADR-2 #2) — `critic`, `reviewer`, `architect`, and `po` are directed to read the
+  sections their job needs for large inputs.
+- **`rules/kb-navigation.md`** — step 4 extended to section-target large entries/source.
+
 ## [1.16.0] — 2026-06-20
 Make the skill-authoring **harness** standing: every new skill now runs it automatically, instead of
 a planner hand-listing the steps each time. Two additions to `improve-skills`' New-Skill flow, plus an

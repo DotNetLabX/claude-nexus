@@ -7,6 +7,8 @@ description: Format spec for docs/specs/{slug}/delivery/implementation.md — se
 
 Written by developer after each implementation round: `docs/specs/{slug}/delivery/implementation.md`.
 
+**Section map (targeting index).** `implementation.md`'s fixed top-level headings — the set agents target for a section read (ADR-22 Extended): `## Files Created`, `## Files Modified`, `## Key Decisions`, `## Skills Used`, `## Carry-Over Findings`, `## KB Changes`, `## Deviations from Plan`. Grep `^##` for live line numbers, then `Read` with `offset/limit` around the section you need rather than the whole file.
+
 ```
 # {Feature Name} — Implementation
 

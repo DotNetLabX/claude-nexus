@@ -10,6 +10,8 @@ description: Format spec for the review artifact — severity ratings, verdict, 
 - **`## Step 1 — Done-Check`** — written by the architect. Contains step dispositions and a single PASS/FAIL verdict line.
 - **`## Step 2 — Code Review`** — written by the reviewer. Contains severity findings and a single APPROVED/REQUEST CHANGES verdict line.
 
+**Section map (targeting index).** `review.md`'s fixed top-level headings — the set agents target for a section read (ADR-22 Extended): `## Step 1 — Done-Check`, `## Step 2 — Code Review`. Grep `^##` for live line numbers, then `Read` with `offset/limit` around the section you need rather than the whole file.
+
 The team lead greps **named sections**, not bare `Verdict:` lines, to avoid stacked-verdict ambiguity.
 
 ## Review Checklist
