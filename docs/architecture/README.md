@@ -49,6 +49,7 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-31 — The verification gate at the `SubagentStop` boundary: runs + records, never blocks *(Accepted — adhoc-UnattendedAutonomy, 2026-06-16)*
 - ADR-32 — Unattended fails closed → a structured, resumable review queue *(Accepted — adhoc-UnattendedAutonomy, 2026-06-16)*
 - ADR-33 — The fleet view: a consolidated observability skill over a statusline heartbeat *(Accepted — adhoc-NexusFleetView, 2026-06-16)*
+- ADR-34 — Distillation is a portable nexus skill: the pure compaction mechanism only *(Accepted — adhoc-DistillPromptContractFix, 2026-06-20)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -832,6 +833,22 @@ The altitude rule (research §2a, "same thinking at two altitudes, one authorita
 **Tradeoffs.** The statusline gains a side effect (a guarded file write) on top of a previously pure transform — accepted because it is fail-open and the only delivery point for the data. The depth columns are inert unless `token_audit` is on (ADR-11 is off by default), so the common case shows the roster without per-agent calls plus an "enable token_audit" hint. Single-session/single-project scope means a multi-run history view is out of band (the audit logs already serve that; see `consumption-report`).
 
 **Rejected.** *Skill calls `TaskList`* — the task board lacks `tokenCount`/`startTime`/role/run-state, so the dashboard would have nothing live to render; the heartbeat exists precisely because this source is insufficient. *A Vue dashboard now* — deferred; the snapshot + parser is the reusable substrate a future visual surface would consume, but shipping it now is scope the two-way-door change does not warrant.
+
+---
+
+## ADR-34 — Distillation is a portable nexus skill: the pure compaction mechanism only — Accepted
+
+> **Status: Accepted — adhoc-DistillPromptContractFix, 2026-06-20.** Graduates the `distill-prompt` proposal (2026-06-19, authored from the `knowledge-gateway` session as the reinstall-safe carrier) per ADR-28; an additive two-way-door skill, so per ADR-25 it collapses to this one ADR rather than a tech-spec.
+
+**Context.** `distill-prompt`'s job is to compact a multi-turn conversation/transcript that *worked* into ONE clean, generalized, reusable prompt + a title. The valuable atom is the *compaction mechanism*, and it is domain-generic — so it lives once in the plugin and every consumer reuses it (analytics design-time, gateway F25 runtime, and future repos). The hazard it sits beside is the promotion/storage machinery that surrounds it in any real consumer (a prompt library, recurrence detection, a 2-occurrence promotion threshold, idempotency tagging) — which is **not** the skill's job and would destroy its portability if folded in. The original 1.15.0 build drifted the *other* way — it narrowed to a single-prompt sharpener with the opposite, keep-values rule, and a wrong-lens job-fitness eval graded the drift ACCEPT — precisely because this boundary was never recorded.
+
+**Decision.** `distill-prompt` is the **pure compaction mechanism only.** It contains **none** of the promotion/storage pipeline: no storage/sharing/dedup/recurrence-detection/shared library, no Sheet/YAML prompt library, no parameter format, no AM role, no grounding dictionaries, no SQL/category linting, no promotion threshold, no `[APPLIED]`/`[TRACKED]` tagging. Those are **project-local (analytics) or the `learner`'s / `improve-skills`' job** — the "spot a pattern → promote it to a durable artifact" family. The generalization contract is fixed: **KEEP** the converged intent + final working approach; **STRIP** iteration noise, verbatim message text, and run-specific data values (categories, dates, brand/SKU names, IDs, sheet URLs, retrieved figures) so a re-fired prompt carries no stale data. Output is **prose-only** — the optional `[placeholder]` parameterization is deferred until a consumer needs it. Input is **source-agnostic**: adapting a project's logs into a transcript is the consumer's job. Runtime surfaces (gateway F25) **embed the same instruction** rather than re-authoring it — the skill is the single source of truth. Standalone / user-invocable; the `learner` may invoke it later (they **compose, not overlap**).
+
+**Why.** Build the atom once; both design-time and runtime surfaces plus future repos reuse it, and F25 sheds a bespoke instruction copy. The boundary is what keeps it portable — a skill polluted with any one project's promotion/storage concern stops being reusable by the others. Recording the boundary as an ADR is the durable fix for the drift class that produced 1.15.0: an unrecorded boundary let the charter re-scope freely.
+
+**Tradeoffs.** The skill is deliberately *incomplete* on its own — it produces a reusable prompt but does nothing to store, share, or promote it; every consumer supplies that half. That incompleteness *is* the portability. The 1.15.0 → 1.17.0 behavior change is a reversal (keep-values → strip-values, prompt → conversation), shipped as **MINOR not MAJOR** because the skill was days old with no adopters and the change corrects a drift to the original contract — the plugin `version` is plugin-wide, and a MAJOR would over-signal a breaking change to every nexus user for a one-skill fix.
+
+**Rejected.** *Fold promotion/recurrence/library into the skill* — destroys portability; those belong to project-local analytics or the learner/improve-skills. *Keep the 1.15.0 single-prompt sharpener* — it solved a narrower, different job than the contract (input, cardinal rule, and output all differ); not interchangeable. *A second sibling skill beside the sharpener* — the contract is one skill superseding the sharpener, not two. *Ship without recording the boundary* — the exact gap that let the original build drift.
 
 ---
 

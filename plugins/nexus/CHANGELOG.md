@@ -20,6 +20,13 @@ preserved (PATCH). Extends ADR-22 (two-way-door amendment, not a new ADR).
   sections their job needs for large inputs.
 - **`rules/kb-navigation.md`** — step 4 extended to section-target large entries/source.
 
+**Also in 1.16.1 — `distill-prompt` rewritten to its real contract** (separate feature,
+`adhoc-DistillPromptContractFix`; its code landed in this release tree). The 1.15.0 build had drifted to
+a single-prompt sharpener (lossless / keep-values); this restores the graduated-proposal contract —
+*conversation/transcript → ONE reusable prompt + a title*, **strip** run-specific data values / **keep**
+the converged intent, prose-only. Supersedes the sharpener. See ADR-34 (pure compaction mechanism only;
+promotion/storage stays project-local or with `learner`/`improve-skills`).
+
 ## [1.16.0] — 2026-06-20
 Make the skill-authoring **harness** standing: every new skill now runs it automatically, instead of
 a planner hand-listing the steps each time. Two additions to `improve-skills`' New-Skill flow, plus an
