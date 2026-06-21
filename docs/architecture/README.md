@@ -50,6 +50,8 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-32 — Unattended fails closed → a structured, resumable review queue *(Accepted — adhoc-UnattendedAutonomy, 2026-06-16)*
 - ADR-33 — The fleet view: a consolidated observability skill over a statusline heartbeat *(Accepted — adhoc-NexusFleetView, 2026-06-16)*
 - ADR-34 — Distillation is a portable nexus skill: the pure compaction mechanism only *(Accepted — adhoc-DistillPromptContractFix, 2026-06-20)*
+- ADR-35 — The PR + AI-review tail: project the pipeline's review onto an opt-in PR; the human curates and merges *(Accepted — adhoc-PRReviewTail, 2026-06-21)*
+- ADR-36 — PR-tail host operations route through a thin host adapter; gh (GitHub) is the only adapter, and the tail is host-gated *(Accepted — adhoc-PRReviewTail, 2026-06-21)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -849,6 +851,38 @@ The altitude rule (research §2a, "same thinking at two altitudes, one authorita
 **Tradeoffs.** The skill is deliberately *incomplete* on its own — it produces a reusable prompt but does nothing to store, share, or promote it; every consumer supplies that half. That incompleteness *is* the portability. The 1.15.0 → 1.17.0 behavior change is a reversal (keep-values → strip-values, prompt → conversation), shipped as **MINOR not MAJOR** because the skill was days old with no adopters and the change corrects a drift to the original contract — the plugin `version` is plugin-wide, and a MAJOR would over-signal a breaking change to every nexus user for a one-skill fix.
 
 **Rejected.** *Fold promotion/recurrence/library into the skill* — destroys portability; those belong to project-local analytics or the learner/improve-skills. *Keep the 1.15.0 single-prompt sharpener* — it solved a narrower, different job than the contract (input, cardinal rule, and output all differ); not interchangeable. *A second sibling skill beside the sharpener* — the contract is one skill superseding the sharpener, not two. *Ship without recording the boundary* — the exact gap that let the original build drift.
+
+---
+
+## ADR-35 — The PR + AI-review tail: project the pipeline's review onto an opt-in PR; the human curates and merges — Accepted
+
+> **Status: Accepted — adhoc-PRReviewTail, 2026-06-21.** Graduates the PR-review-tail tech-spec (`docs/specs/adhoc-PRReviewTail/definition/tech-spec.md`) per ADR-27/28 — extracted (not re-authored) at Ready. Owner-ratified design forks D1–D4 + MINOR release tier; attaches after the push gate (ADR — `adhoc-BranchPreflightGuard`, 1.16.2).
+
+**Context.** The pipeline ended at the final commit (and, with the push gate, at a controlled push). There was no controlled hand-off from "pushed" to "reviewed and merged," and no place for the AI review the pipeline already produces to reach a PR.
+
+**Decision.** An **opt-in, attended-only, host-gated** tail, owned by the **team-lead**, that after push: (a) opens a PR; (b) posts the AI review **first** — by **default *projecting* the reviewer's existing `review.md`** as a single PR review body (*not* a second reviewer), with an **opt-in** hand-off to `/code-review ultra` for an independent fresh-eyes pass + inline comments; then (c) **STOPS** and hands to **one human** who curates via native GitHub/`gh` UX and **controls the merge.** The team-lead **never auto-merges**; merge runs only on explicit user instruction, sequenced **after** the human review, never at commit closure. Under `[UNATTENDED]` the tail is unreachable (fail-closed, ADR-32); hardened mode skips it (prose deferral, like the push gate).
+
+**Why.** Reuse over rebuild — the reviewer already emits severity-rated `file:line` findings, so *projecting* them is one coherent review with no reconciliation; a second reviewer is the *opt-in*, not the default. "AI first, human curates" keeps the human in control of the one-way action (merge). Attended-only + fail-closed unattended honors ADR-18/20/32; the team-lead is the existing owner of outward actions.
+
+**Tradeoffs.** MEDIUM/LOW review.md findings may lack `file:line` and post in the body, not inline (inline is the opt-in independent pass's job). `gh` is not blocked by hardened mode, so the hardened deferral is prose-level in v1 (a hook block is roadmap).
+
+**Rejected.** *A second on-PR reviewer as default* — reconciliation cost; fresh eyes is the opt-in. *Auto-merge* (even unattended-flagged) — a one-way action unwatched is the OMC/ADR-32 failure mode. *A custom curation UI* — GitHub's native dismiss/resolve/approve already is the curation surface.
+
+---
+
+## ADR-36 — PR-tail host operations route through a thin host adapter; gh (GitHub) is the only adapter, and the tail is host-gated — Accepted
+
+> **Status: Accepted — adhoc-PRReviewTail, 2026-06-21.** Extracted with ADR-35 from the same tech-spec per ADR-27/28.
+
+**Context.** PR/merge operations are host-specific. Hard-coding `gh`/GitHub into the team-lead prose would exclude offline / non-GitHub / no-remote repos and silently turn the tail into a hard step.
+
+**Decision.** All outward PR operations (**open-PR / post-review / view-PR / merge**) route through a **named host-adapter seam** documented once in `agents-workflow.md`. The **only adapter shipped is `gh` (GitHub).** Host capability is **resolved first** (GitHub remote + `gh` installed/authed); absent → the tail is **unavailable** and the pipeline closes at push exactly as today — never an error, never a hard step.
+
+**Why.** The seam keeps offline/non-GitHub repos first-class (the tail is always optional) and lets a future GitLab/Gitea/Azure adapter slot in without re-architecting. Mirrors the push gate's best-effort, host-aware, never-blocks posture.
+
+**Tradeoffs.** v1 ships a single adapter, so the "abstraction" is a documented concept, not code — accepted: it is exactly what stops GitHub being hard-wired into the agent prose.
+
+**Rejected.** *Hard-code `gh` inline in team-lead prose* — excludes non-GitHub, makes the tail a hard step. *A third-party `gh` extension for inline comments* — an external dependency outside the thin seam.
 
 ---
 
