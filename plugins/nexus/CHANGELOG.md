@@ -1,6 +1,39 @@
 # nexus — Changelog
 
 
+## [1.17.0] — 2026-06-21
+**PR + AI-review tail (v1)** — the pipeline's optional *end*, after the push gate. An **opt-in,
+attended-only, host-gated** tail owned by the team lead: after a successful push it opens (or reuses)
+a PR, posts the AI review **first** — by default **projecting** the reviewer's existing
+`## Step 2 — Code Review` from `review.md` as a single PR review body — then **STOPS** and hands to one
+human who curates via native GitHub/`gh` UX and **controls the merge** ("AI goes first, human
+curates"). The model never auto-merges and only *suggests* the opt-in `/code-review ultra` independent
+pass (user-triggered + billed). Host capability (`gh` + GitHub remote) is resolved first; absent → the
+tail is **silently skipped** and the pipeline closes at push exactly as today. Unattended is
+**unreachable** (fail-closed, ADR-32) and hardened mode skips it. Additive only — no pre-push path
+changes. Three optional `.claude/nexus-agents.json` keys added (`prTail`, `prDraft`, `prReviewMode`) —
+absent → documented defaults, fully backward-compatible. Prose/agent/rule change only; owner-escalated
+to MINOR (new opt-in capability). Implements ADR-35 (the tail policy) + ADR-36 (the gh-only host-adapter
+seam).
+
+- **`rules/agents-workflow.md` — new canonical `Host Adapter & PR Tail` section** (the post-push
+  companion to `Branch Pre-Flight`; both team-lead and solo load it). Defines once: the host-adapter
+  surface (**open-PR / post-review / view-PR / merge**, ADR-36), the **`gh`-only** adapter (a documented
+  concept, not code — the seam a future GitLab/Gitea/Azure adapter slots into), **host capability
+  resolved first** (`gh auth status` + `github.com` origin → else **silently skipped**), and the
+  **attended-only / unattended-unreachable / hardened-skip** posture. Points at `Branch Pre-Flight` for
+  `{defaultBranch}` (does not re-derive); `gh` command recipes live in the team-lead subsection.
+- **`agents/team-lead.md` — Pre-Flight 4b extended + new Commit-Protocol `PR Tail` subsection.** 4b now
+  captures `prTail`/`prDraft`/`prReviewMode` (with defaults) in the **same one read** as
+  `defaultBranch`/`autoPush`, cached for closure. A new **PR Tail** subsection (after the Push gate, left
+  unchanged) adds the after-push, OFF-by-default gate, the `gh pr view` idempotency check, the
+  `gh pr create --base {defaultBranch} --head {branch} --fill` (+`--draft`) open, the
+  `gh pr review --comment --body-file` projection (with the explicit **"--comment, not self-approve"**
+  rationale — GitHub forbids self-approval; verdict + severity + `file:line` ride in the body), the
+  suggest-not-run `/code-review ultra` opt-in, and the STOP + single-human hand-off + human-controlled
+  `gh pr merge` (only on explicit instruction, never auto, never at closure). A new **Unattended Mode**
+  bullet records the tail is unreachable unattended.
+
 ## [1.16.2] — 2026-06-21
 **Branch pre-flight guard + closure push gate** — strengthen the pipeline's bookends. At launch the
 team lead now resolves the repo's default branch and runs a branch-state matrix (new-branch vs continue

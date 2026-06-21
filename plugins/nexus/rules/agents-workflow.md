@@ -57,6 +57,30 @@ Resolution is best-effort: a detached or remote-less repo simply falls through (
 - **Dirty tree:** warn and offer to isolate (new branch or worktree) before proceeding (attended); abort if it can't be cleanly isolated (unattended). This is the team lead's existing dirty-tree behavior stated here as the shared rule — its meaning is unchanged.
 - **Stale default:** when creating a branch *from* the default, `git fetch` the default and warn if local is behind `origin` before branching — never base new work on a stale default silently. The fetch is **unconditionally best-effort**: if it fails or errors for *any* reason (offline, no remote, a guard policy, a detached/remote-less repo), **warn-and-skip — never block or error**. (Unlike the closure push gate, this is *not* a hardened-mode deferral — hardened mode does **not** block `git fetch`, and an agent has no runtime signal for the active guard mode anyway; the best-effort posture covers the fetch failing for any reason, which subsumes the policy case.)
 
+## Host Adapter & PR Tail
+
+The **post-push** companion to Branch Pre-Flight above: the closure-side git/host-boundary rule. Both the team lead (Commit Protocol → PR Tail) and solo load this always-on rule, so the canonical definition lives here once and the team lead references it (the existing "canonical in agents-workflow" pattern). Branch Pre-Flight is git-only and host-agnostic; this section is where the outward, host-specific PR operations live. It is **opt-in, attended-only, and never a hard step** — with the tail off or unavailable the pipeline closes at push exactly as today.
+
+**Host-adapter surface (ADR-36).** The outward PR operations route through a named adapter seam — four ops only:
+
+| Adapter op | Purpose |
+|---|---|
+| **open-PR** | open (or reuse) the PR for the pushed branch |
+| **post-review** | post the AI review onto the PR |
+| **view-PR** | look up an existing PR (idempotency check) |
+| **merge** | merge the PR (human-controlled, one-way) |
+
+The **only adapter shipped is `gh` (GitHub).** This is a **documented concept, not code** — a single adapter in v1 — but it is what keeps `gh`/GitHub from being hard-wired into the agent prose, and it is the seam a future GitLab / Gitea / Azure adapter slots into without re-architecting.
+
+**Host capability is resolved FIRST.** Before any adapter call, confirm the origin is a **GitHub remote** **and** `gh` is **installed + authed** (e.g. the origin URL matches `github.com`; `gh auth status` succeeds). Absent → the tail is **unavailable** and **silently skipped** — never an error, never a hard step; the pipeline closes at push exactly as today. (Mirrors the Branch Pre-Flight stale-default overlay's best-effort, host-aware, never-blocks posture.)
+
+**Posture (stated once; the team-lead subsection references it, does not restate it):**
+- **Attended-only.** The tail runs **attended only**.
+- **Unattended → unreachable.** Under `[UNATTENDED]` the tail is **unreachable** — no PR open, no review post, no merge (fail-closed, ADR-32; curation and the one-way merge need a human).
+- **Hardened mode → skips it.** Hardened guard mode **skips** the tail (prose deferral, mirroring the closure push gate). Note `gh` is **not** actually blocked by `guard.js` today (which blocks `git push`/fetch/curl only), so this is a **convention, not an enforcement,** in v1 — the `guard.js` hook block is roadmap.
+
+`{defaultBranch}` for the PR base comes from **`## Branch Pre-Flight & Default-Branch Resolution`** above (`origin/HEAD` → config `defaultBranch` → `main`) — **do not re-derive it here.** The `gh` command recipes (the exact `gh pr create|view|review|merge` invocations) live in the team-lead PR-Tail subsection, not here.
+
 ## Pipeline State (`.claude/.pipeline-state`)
 
 The team lead is the **sole writer** of `.claude/.pipeline-state`. Every phase transition writes the next token before the spawn or resume. The `pipeline-gate` hook reads this file as a **best-effort tripwire** — it can deny a *foreground* (main-session) write under the wrong token, but a **background subagent's deny is not honored by the platform** (ADR-13), so it does **not** reliably stop a backgrounded pipeline agent. The real enforcement of the analyze→stop boundary is the agent's own hard-stop rule (it asks before assuming — see "All Agents") plus the team lead's verify-and-intervene. No pipeline subagent may write this file — a subagent's write cannot be blocked (ADR-13) but is detected by the boundary detector and logged to `.claude/audit/violations.log`.
