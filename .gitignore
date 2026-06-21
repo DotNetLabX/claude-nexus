@@ -24,6 +24,11 @@
 .claude/audit/
 docs/audit/
 
+# --- Harness Cover runner output (Inc 2) -------------------------------------
+# The Cover Workflow's runner agent Write()s its results here, NEXUS-SIDE, so they never strand in the
+# sprint-rituals commit (cover.workflow.js: RUNS_DIR). Regenerated each run — local runtime state.
+harness/.runs/
+
 # --- Node (scripts/*.mjs may gain dependencies) -----------------------------
 node_modules/
 npm-debug.log*

@@ -26,14 +26,19 @@ Build **dev-repo-first; harden to a shipped skill last** — the repo's own pilo
 
 ## Build increments (dependency order)
 
-1. **Verify — productionized (batched + sliced).** The spike-corrected cost fix as the real Verify phase:
-   triage → slice once → batched sliced verify (~5 rules/call) → tier. Pure nexus, self-contained; yields
-   the clean per-class token number still owed to #4. *No cross-repo dependency.* **NOT the dropped v3
-   spike** — that was a throwaway measurement; this is the durable component.
-2. **Cover.** TDD test-writing + Stryker mutation gate on the verified rules — completes the loop AND
-   produces our Cover cost, the phase that actually maps to VWH's ~73s/experiment (closes #4). *Touches
-   sprint-rituals + the .NET/Stryker toolchain — coordinate with the sprint-rituals Cover work (HealthScore
-   done there; BugRatio pending) to avoid collision.*
+1. **Verify — productionized (batched + sliced).** ✅ **DONE** (recall 3/3 on BugRatioAnalyzer). The
+   spike-corrected cost fix as the real Verify phase: triage → slice once → batched sliced verify
+   (~5 rules/call) → tier. Pure nexus, self-contained; yields the clean per-class token number still owed
+   to #4. *No cross-repo dependency.* **NOT the dropped v3 spike** — that was a throwaway measurement; this
+   is the durable component. Shipped: `harness/mine-verify.workflow.js` + `harness/lib/recall-score.mjs`.
+2. **Cover.** ✅ **BUILT** (`harness/cover.workflow.js` + `harness/lib/cover-gates.mjs`; the Stryker config
+   + KB ledger flip land in sprint-rituals). TDD test-writing + Stryker mutation gate on the verified rules
+   — completes the loop AND produces our Cover cost, the phase that actually maps to VWH's ~73s/experiment
+   (closes #4). *Touches sprint-rituals + the .NET/Stryker toolchain — coordinate with the sprint-rituals
+   Cover work (HealthScore done there; BugRatio pending) to avoid collision.*
+   **Operator-owed to fully close:** the live Cover run on BugRatioAnalyzer (mutation floor ≥75 reachable),
+   the KB ledger flip, the recorded Cover cost, and the SR commit — see
+   `delivery/implementation-increment2-cover.md` ## Operator Actions Required.
 3. **Loop controller.** Wrap Mine→Verify→Cover→Discover with external-signal stopping (dry-counter,
    mutation ratchet, hard budget), the 5-gate honesty battery, the KB ledger write (project schema,
    supersede-not-delete), and clean-room enforced via `disallowedTools` (the mechanism, not a prompt).

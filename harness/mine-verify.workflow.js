@@ -25,7 +25,7 @@
 // meta MUST be the first statement (Workflow tool requirement).
 export const meta = {
   name: 'mine-verify-bugratio',
-  description: 'Harness Inc 1: clean-room Mine (3 samples) + triage + BATCHED sliced Verify on BugRatioCalculator. Returns consensus rules + verdicts + counts + a token cost signal for the #4 comparison.',
+  description: 'Harness Inc 1: clean-room Mine (3 samples) + triage + BATCHED sliced Verify on BugRatioAnalyzer. Returns consensus rules + verdicts + counts + a token cost signal for the #4 comparison.',
   phases: [
     { title: 'Mine', detail: '3 clean-room miners, source-only (prompt-enforced)' },
     { title: 'Consolidate', detail: 'merge + agreement + consistency + transcribed/interpretive triage' },
@@ -36,7 +36,7 @@ export const meta = {
 // --- Target ---------------------------------------------------------------------------------------
 // Pilot target. Mirrors harness/targets/bugratio.json (kept inline so the Workflow is self-contained
 // when run by the platform Workflow tool, which executes this file directly).
-const SRC = 'D:\\src\\sprint-rituals\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\BugRatioCalculator.cs'
+const SRC = 'D:\\src\\sprint-rituals\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\BugRatioAnalyzer.cs'
 const BATCH_SIZE = 5 // interpretive rules per batched verifier call (design §2: cluster ~5/call).
 
 // --- Schemas --------------------------------------------------------------------------------------
@@ -257,7 +257,7 @@ log(
 )
 return {
   variant: 'inc1-batched-sliced',
-  target: { class: 'BugRatioCalculator', source: SRC },
+  target: { class: 'BugRatioAnalyzer', source: SRC },
   consistencyScore: consensus.consistencyScore,
   contradictions: consensus.contradictions,
   counts: {

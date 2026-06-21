@@ -1,6 +1,6 @@
 # harness/ — Mine→Verify→Cover automation harness (dev-repo build)
 
-**Status:** Increment 1 (batched Verify component). Dev-repo machinery — like `scripts/` and
+**Status:** Increment 2 (Cover stage). Dev-repo machinery — like `scripts/` and
 `tests/`, this directory **ships nothing** to users and triggers **no plugin version bump**.
 
 This is the dev-repo-first build of the **Mine→Verify→Cover** business-rule mining harness. It
@@ -12,17 +12,38 @@ Design & roadmap (the binding definition for this ad-hoc work, ADR-27):
   verifier is the load-bearing piece built here).
 - `docs/proposals/mine-verify-pilot-method.md` — the manually-proven loop (recall 3/3 over 2 classes).
 
-## What's here (Increment 1)
+## What's here
 
-| Path | Purpose |
-|------|---------|
-| `mine-verify.workflow.js` | The runnable Mine→batched-Verify Workflow (`Workflow({ scriptPath })`). |
-| `targets/bugratio.json` | The pilot target config — source path, class name, **golden ids only**. |
-| `lib/recall-score.mjs` | Deterministic recall-scoring helper (pure pairing fn + thin CLI). |
+| Path | Purpose | Increment |
+|------|---------|-----------|
+| `mine-verify.workflow.js` | The runnable Mine→batched-Verify Workflow (`Workflow({ scriptPath })`). | 1 |
+| `targets/bugratio.json` | The pilot target config — source path, class name, **golden ids only**. | 1 |
+| `lib/recall-score.mjs` | Deterministic recall-scoring helper (pure pairing fn + thin CLI). | 1 |
+| `cover.workflow.js` | The runnable **Cover** Workflow — 3-actor (orchestrator + clean-room Cover agent + runner agent); turns verified rules into mutation-gated tests, gated on the §6 battery. | 2 |
+| `lib/cover-gates.mjs` | The §6 gate battery as deterministic pure fns (5 gates + mutation ratchet) over the runner's JSON output. | 2 |
+| `.runs/` | **Git-ignored.** Where the Cover runner agent writes its results — nexus-side, never in the sprint-rituals commit. | 2 |
 
-The recall-scorer's unit test lives at `tests/unit/recall-score.test.mjs` (inside the repo CI glob
-`node --test tests/lint/*.test.mjs tests/unit/*.test.mjs`), not co-located here, so it runs in CI and
-`scripts/selfcheck.mjs` with no wiring changes.
+Both helpers' unit tests live under `tests/unit/` (`recall-score.test.mjs`, `cover-gates.test.mjs`) —
+inside the repo CI glob `node --test tests/lint/*.test.mjs tests/unit/*.test.mjs`, not co-located here,
+so they run in CI and `scripts/selfcheck.mjs` with no wiring changes.
+
+## The three actors (Cover — Increment 2, read before running)
+
+Cover separates three actors and **never collapses them** (design §1 + §6 reward-hacking defense):
+
+1. **Orchestrator** (`cover.workflow.js` JS) — reads the verified KB rules orchestrator-side, spawns the
+   agents, computes the §6 gates via `lib/cover-gates.mjs`, applies the `// Stryker disable` annotation on
+   KB-documented dead lines, and (Step 6, operator-owed) flips the KB ledger. Holds every privilege.
+2. **Cover agent** (clean-room) — input = `BugRatioAnalyzer.cs` source + verified rules + surviving-mutant
+   list + the `mutation-testing.md` API contract. **Only** writes the two test files. **No** write to the
+   production class, `stryker-config.json`, the gate infra, or the KB. A red-on-current test is **kept +
+   flagged** as a candidate bug, never deleted.
+3. **Runner agent** — a **distinct** `agent()` call; double-runs `dotnet test` then `dotnet stryker`; writes
+   results to `.runs/` (nexus-side, git-ignored). The golden set is **never** passed to either agent.
+
+The acceptance gate is **mutation kill**, never coverage. First-pass floor = **per-file reachable kill ≥ 75**
+(the 70→75→80 ratchet toward 100 is Increment 3). KB-documented dead-code survivors (`startIndex` L17/L133,
+the `== 0` streak guard L268) are **expected-survivors**, excluded from the floor denominator — not chased.
 
 ## The clean-room boundary (read before running)
 
