@@ -1,6 +1,37 @@
 # nexus — Changelog
 
 
+## [1.16.2] — 2026-06-21
+**Branch pre-flight guard + closure push gate** — strengthen the pipeline's bookends. At launch the
+team lead now resolves the repo's default branch and runs a branch-state matrix (new-branch vs continue
+by state) instead of just warning on a dirty tree and staying put; at closure a controlled, opt-in push
+gate replaces "commit and stop." Solo gets the same guard, lightweight. Git-only and host-agnostic; the
+PR / AI-review / merge-to-main tail is explicitly out of scope (a separate feature). Two optional
+`.claude/nexus-agents.json` keys added (`defaultBranch`, `autoPush`) — absent → documented defaults,
+fully backward-compatible. Prose/agent/rule change only (PATCH).
+
+- **`rules/agents-workflow.md` — new canonical `Branch Pre-Flight & Default-Branch Resolution`
+  section** (near the Slug area; both team-lead and solo load it). Defines once: the best-effort
+  default-branch resolution order (`origin/HEAD` → config `defaultBranch` → `main`), the 4-state
+  attended|unattended decision matrix (ask-when-unrelated; unattended auto-branches `{slug}` from the
+  default), and two overlays — dirty-tree (offer to isolate) and stale-default (`git fetch` is
+  **unconditionally best-effort**: warn-and-skip on any failure, never block — hardened mode does *not*
+  block `git fetch`). Stated as the **launch-only** guard, distinct from the team-lead Resume
+  branch-check (which is unchanged).
+- **`agents/team-lead.md` — Pre-Flight rewired + closure push gate.** Pre-Flight #1 (Dirty tree) and #2
+  (Branch) collapse into a single **#1 Branch guard** applying the canonical rule, dirty-tree overlay
+  folded in (numbering becomes `0,1,3,4,4b,5,6,7` — no #2, nothing below renumbered, so the `4b`
+  cross-references stay valid). The #0 idempotency note now states the guard runs on the clean-start
+  path only (an interrupted run takes Resume and skips it). Pre-Flight 4b additionally captures
+  `defaultBranch` + `autoPush` in its one config read (`autoPush` cached for closure). Commit Protocol
+  gains a **Push gate** (attended asks; unattended never pushes unless `autoPush:true`; defers to
+  hardened mode's `git push` block; merge-to-main explicitly out of scope). Unattended Mode gains a
+  matching branch-guard bullet.
+- **`agents/solo.md` — lightweight guard + push gate.** Workflow step 1 (Understand) folds in a branch
+  pre-flight referencing the canonical rule (attended column governs; matrix not restated); step 4
+  (Document) adds "before pushing, ask."
+- **`commands/team-lead.md`, `commands/solo.md`** regenerated from the agents.
+
 ## [1.16.1] — 2026-06-20
 **Section-addressable reads** — extend Read Discipline from *"don't re-read"* to *"read only the
 section you need."* A 2026-06-20 live audit (KG/SR) found caching already healthy (92–98%); the spend

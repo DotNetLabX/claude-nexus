@@ -31,6 +31,32 @@ Ad-hoc work has no `definition/` folder — only `delivery/`.
 
 `communication-log.md` is the **canonical filename** for the inter-agent message log. A consumer project preferring another name is their concern — the plugin always uses this name.
 
+## Branch Pre-Flight & Default-Branch Resolution
+
+The **launch-time** branch guard, defined once here because both the team lead (Pre-Flight) and solo (Workflow) load this always-on rule and both reference it. It runs **only on a fresh launch** (a clean start, after the team lead's idempotency fork routes an interrupted run to **Resume** instead). It is git-only and host-agnostic — no `gh`/PR coupling. **This is distinct from the team-lead Resume branch-check** (which guards against *resuming* onto the wrong branch, team-lead.md → Resume); the two never double-fire because the guard sits on the clean-start path only.
+
+**Default-branch resolution order (best-effort, never blocks):**
+1. `git symbolic-ref --quiet refs/remotes/origin/HEAD` → strip the `refs/remotes/origin/` prefix (the repo's actual default branch).
+2. On miss → `.claude/nexus-agents.json` → `defaultBranch` (config override).
+3. On miss → the literal `main` (fallback).
+
+Resolution is best-effort: a detached or remote-less repo simply falls through (1)→(2)→(3). It never blocks — an unresolved default just means the fallback is used.
+
+**Branch-state decision matrix.** "Matches the slug" = the current branch name contains the slug or the slug contains the branch name (the cheap heuristic). Anything that is **not** a clear match is treated as *unrelated*, and unrelated → **ask, never auto-classify** (D2):
+
+| State | Attended | Unattended |
+|---|---|---|
+| On the default branch | Ask: new branch (named `{slug}`) or continue here | Auto-create `{slug}` from the default, proceed |
+| Branch matches the slug | Proceed silently ("Working on `{branch}`") | Proceed silently |
+| Unrelated branch | Ask: continue here, or new branch `{slug}` from the default | Auto-create `{slug}` from the default, proceed |
+| Detached HEAD / no slug | Ask to create a branch | **Abort** (can't safely auto-branch) |
+
+**New-branch name = the slug.**
+
+**Overlays (apply on top of the matrix):**
+- **Dirty tree:** warn and offer to isolate (new branch or worktree) before proceeding (attended); abort if it can't be cleanly isolated (unattended). This is the team lead's existing dirty-tree behavior stated here as the shared rule — its meaning is unchanged.
+- **Stale default:** when creating a branch *from* the default, `git fetch` the default and warn if local is behind `origin` before branching — never base new work on a stale default silently. The fetch is **unconditionally best-effort**: if it fails or errors for *any* reason (offline, no remote, a guard policy, a detached/remote-less repo), **warn-and-skip — never block or error**. (Unlike the closure push gate, this is *not* a hardened-mode deferral — hardened mode does **not** block `git fetch`, and an agent has no runtime signal for the active guard mode anyway; the best-effort posture covers the fetch failing for any reason, which subsumes the policy case.)
+
 ## Pipeline State (`.claude/.pipeline-state`)
 
 The team lead is the **sole writer** of `.claude/.pipeline-state`. Every phase transition writes the next token before the spawn or resume. The `pipeline-gate` hook reads this file as a **best-effort tripwire** — it can deny a *foreground* (main-session) write under the wrong token, but a **background subagent's deny is not honored by the platform** (ADR-13), so it does **not** reliably stop a backgrounded pipeline agent. The real enforcement of the analyze→stop boundary is the agent's own hard-stop rule (it asks before assuming — see "All Agents") plus the team lead's verify-and-intervene. No pipeline subagent may write this file — a subagent's write cannot be blocked (ADR-13) but is detected by the boundary detector and logged to `.claude/audit/violations.log`.

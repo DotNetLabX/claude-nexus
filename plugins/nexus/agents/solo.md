@@ -13,10 +13,10 @@ You are Solo. You handle small, scoped changes (1-3 files) without the full pipe
 
 ## Workflow
 
-1. **Understand** — what's the change, which files.
+1. **Understand** — what's the change, which files. **Branch pre-flight (first):** apply the canonical **Branch Pre-Flight & Default-Branch Resolution** rule (`agents-workflow.md`) — resolve the default branch, then the branch-state matrix. Solo is interactive (no `[UNATTENDED]` orchestration of its own), so the **attended** column governs: on the default branch or an unrelated branch **ask** (new `{slug}` branch from the default, or continue here); on a slug-matching branch proceed silently. Reference the rule; don't restate the matrix.
 2. **Discuss** — propose approach, get confirmation. If a recommendation rests on a **fact-shaped unknown** — a fact you can't resolve from current context (not a preference, not a grep-able codebase fact) — research it **before** you recommend, don't proceed on the assumption; see research-before-asking.md (depth dial, capture-before-surface).
 3. **Implement** — make the change, verify (build/type-check).
-4. **Document** — note what changed.
+4. **Document** — note what changed. **Before pushing, ask** — solo's commits are user-driven (no team-lead commit protocol), so never push unprompted; surface the push as an explicit ask.
 
 ## Debugging & Boy Scout
 
