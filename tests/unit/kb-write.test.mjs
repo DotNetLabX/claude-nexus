@@ -1,0 +1,168 @@
+// kb-write.test.mjs — TDD unit suite for harness/lib/kb-write.mjs (Inc 3, Step 4).
+//
+// Design §5: the controller must serialize verified rules into the consuming project's KB schema
+// (Rules / Key Files / Edge Cases / Relationships / Source + mutation HTML comments) BEFORE invoking
+// Cover — else Cover reads stale/missing rules. This helper is the Verify→Cover data seam.
+//
+// The serializer is a DETERMINISTIC, pure function over the rules array — no LLM, no filesystem,
+// no side effects. Fully testable offline.
+//
+// Runs inside the CI glob: `node --test tests/lint/*.test.mjs tests/unit/*.test.mjs`.
+
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  buildRulesSection,
+  buildStatusFooter,
+  supersedingRules,
+} from '../../harness/lib/kb-write.mjs';
+
+// --- Fixtures ------------------------------------------------------------------------------------
+const RULES_1 = [
+  { id: 'BR-1', kind: 'interpretive', agreement: 3, lines: '10-20', statement: 'A is true when X' },
+  { id: 'BR-2', kind: 'transcribed',  agreement: 2, lines: '25-30', statement: 'B = X + Y' },
+];
+
+const RULES_2 = [
+  { id: 'BR-1', kind: 'interpretive', agreement: 3, lines: '10-20', statement: 'Updated rule A' },
+  { id: 'BR-2', kind: 'transcribed',  agreement: 2, lines: '25-30', statement: 'B = X + Y' },
+  { id: 'BR-3', kind: 'interpretive', agreement: 3, lines: '40-50', statement: 'New rule C' },
+];
+
+// A minimal existing KB entry (simulating a verified-status file before mutation-gating).
+const EXISTING_KB = `# Bug Ratio
+
+Bug-vs-feature story-point ratios.
+
+## Rules
+
+- BR1: Old rule text here.
+
+## Key Files
+
+- \`src/Services/Fokus/Fokus.Domain/Analytics/BugRatioAnalyzer.cs\` — production implementation
+
+## Edge Cases
+
+- Some edge case.
+
+## Relationships
+
+- BugRatioAnalyzer → TransitionAttributionChecker: delegates.
+
+## Source
+
+Original Fokus fokus-spec.md §Bug Ratio.
+
+---
+<!-- status: verified -->
+<!-- mutation-gated: false -->
+<!-- last-stryker-run: none -->
+`;
+
+// =================================================================================================
+// buildRulesSection: renders the ## Rules section from a rules array
+// =================================================================================================
+test('buildRulesSection renders each rule as "- {id}: {statement}"', () => {
+  const section = buildRulesSection(RULES_1);
+  assert.ok(section.includes('- BR-1: A is true when X'), 'BR-1 rule present');
+  assert.ok(section.includes('- BR-2: B = X + Y'),        'BR-2 rule present');
+});
+
+test('buildRulesSection starts with the ## Rules heading', () => {
+  const section = buildRulesSection(RULES_1);
+  assert.ok(section.trimStart().startsWith('## Rules'), 'section starts with ## Rules');
+});
+
+test('buildRulesSection includes a verified-status preamble line', () => {
+  const section = buildRulesSection(RULES_1);
+  assert.ok(section.includes('verified'), 'rules section declares verified status');
+});
+
+test('buildRulesSection preserves all rules in order', () => {
+  const section = buildRulesSection(RULES_1);
+  const pos1 = section.indexOf('BR-1');
+  const pos2 = section.indexOf('BR-2');
+  assert.ok(pos1 < pos2, 'BR-1 appears before BR-2');
+});
+
+test('buildRulesSection with empty rules array returns just the heading', () => {
+  const section = buildRulesSection([]);
+  assert.ok(section.includes('## Rules'), 'heading still present');
+  // No bullet items beyond the heading.
+  const bulletCount = (section.match(/^- /gm) ?? []).length;
+  assert.equal(bulletCount, 0, 'no rule bullets for empty input');
+});
+
+// =================================================================================================
+// buildStatusFooter: renders the ---\n<!-- ... --> footer block
+// =================================================================================================
+test('buildStatusFooter sets mutation-gated to the supplied value', () => {
+  const footer = buildStatusFooter({ mutationGated: false, date: '2026-06-22', runNote: 'verified — not yet mutation-gated' });
+  assert.ok(footer.includes('<!-- mutation-gated: false -->'), 'mutation-gated: false');
+});
+
+test('buildStatusFooter sets mutation-gated: true when supplied', () => {
+  const footer = buildStatusFooter({ mutationGated: true, date: '2026-06-22', runNote: '88% kill' });
+  assert.ok(footer.includes('<!-- mutation-gated: true -->'), 'mutation-gated: true');
+});
+
+test('buildStatusFooter includes the last-stryker-run note', () => {
+  const footer = buildStatusFooter({ mutationGated: false, date: '2026-06-22', runNote: 'verified — not yet mutation-gated' });
+  assert.ok(footer.includes('<!-- last-stryker-run:'), 'last-stryker-run comment present');
+  assert.ok(footer.includes('verified'), 'runNote text appears');
+});
+
+test('buildStatusFooter starts with the --- separator', () => {
+  const footer = buildStatusFooter({ mutationGated: false, date: '2026-06-22', runNote: 'x' });
+  assert.ok(footer.trimStart().startsWith('---'), '--- separator present');
+});
+
+// =================================================================================================
+// supersedingRules: replaces the ## Rules section in an existing KB entry, preserving all other
+// sections (Key Files, Edge Cases, Relationships, Source) and updating the footer.
+// Supersede-not-delete: the old rules are replaced; the rest of the entry is preserved.
+// =================================================================================================
+test('supersedingRules replaces the ## Rules section with the new rules', () => {
+  const result = supersedingRules(EXISTING_KB, RULES_1, { date: '2026-06-22', mutationGated: false, runNote: 'verified' });
+  assert.ok(result.includes('- BR-1: A is true when X'), 'new BR-1 rule present');
+  assert.ok(result.includes('- BR-2: B = X + Y'),        'new BR-2 rule present');
+  assert.ok(!result.includes('- BR1: Old rule text here.'), 'old rules replaced');
+});
+
+test('supersedingRules preserves the ## Key Files section', () => {
+  const result = supersedingRules(EXISTING_KB, RULES_1, { date: '2026-06-22', mutationGated: false, runNote: 'verified' });
+  assert.ok(result.includes('## Key Files'), 'Key Files section preserved');
+  assert.ok(result.includes('BugRatioAnalyzer.cs'), 'Key Files content preserved');
+});
+
+test('supersedingRules preserves ## Edge Cases, ## Relationships, ## Source sections', () => {
+  const result = supersedingRules(EXISTING_KB, RULES_1, { date: '2026-06-22', mutationGated: false, runNote: 'verified' });
+  assert.ok(result.includes('## Edge Cases'),    'Edge Cases section preserved');
+  assert.ok(result.includes('## Relationships'), 'Relationships section preserved');
+  assert.ok(result.includes('## Source'),        'Source section preserved');
+  assert.ok(result.includes('fokus-spec.md'),    'Source content preserved');
+});
+
+test('supersedingRules updates the footer (replaces old mutation-gated comment)', () => {
+  const result = supersedingRules(EXISTING_KB, RULES_1, { date: '2026-06-22', mutationGated: false, runNote: 'verified — not yet mutation-gated' });
+  // Old footer was mutation-gated: false too, but the last-stryker-run was "none".
+  // After supersede the new footer carries the supplied runNote.
+  assert.ok(result.includes('<!-- mutation-gated: false -->'), 'mutation-gated: false in new footer');
+  assert.ok(!result.includes('<!-- last-stryker-run: none -->'), 'old "none" run note replaced');
+  assert.ok(result.includes('verified — not yet mutation-gated'), 'new runNote present');
+});
+
+test('supersedingRules handles a 3-rule replacement correctly (more rules than original)', () => {
+  const result = supersedingRules(EXISTING_KB, RULES_2, { date: '2026-06-22', mutationGated: false, runNote: 'verified' });
+  assert.ok(result.includes('- BR-1: Updated rule A'), 'BR-1 updated');
+  assert.ok(result.includes('- BR-2: B = X + Y'),      'BR-2 present');
+  assert.ok(result.includes('- BR-3: New rule C'),      'BR-3 (new) present');
+  assert.ok(!result.includes('- BR1: Old rule text'), 'old rule gone');
+});
+
+test('supersedingRules preserves the entry header (title + intro paragraph)', () => {
+  const result = supersedingRules(EXISTING_KB, RULES_1, { date: '2026-06-22', mutationGated: false, runNote: 'verified' });
+  assert.ok(result.startsWith('# Bug Ratio'), 'entry title preserved at top');
+  assert.ok(result.includes('Bug-vs-feature story-point ratios.'), 'intro paragraph preserved');
+});

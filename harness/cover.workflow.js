@@ -45,7 +45,7 @@
 export const meta = {
   name: 'cover-bugratio',
   description:
-    'Harness Inc 2: Cover stage on BugRatioAnalyzer — clean-room Cover agent writes example + property tests; a distinct runner agent double-runs dotnet test then dotnet stryker; the orchestrator gates on the §6 battery (mutation floor >= 75 per-file reachable) via cover-gates.mjs. Three actors, reward-hacking defended.',
+    'Harness Inc 2 (Inc-3 parameterized): Cover stage — clean-room Cover agent writes example + property tests; a distinct runner agent double-runs dotnet test then dotnet stryker; the orchestrator gates on the §6 battery (mutation floor >= 75 per-file reachable) via cover-gates.mjs. Target from args when provided; defaults to BugRatioAnalyzer (back-compat). Three actors, reward-hacking defended.',
   phases: [
     { title: 'Setup', detail: 'orchestrator passes KB_RULES + TEST_STYLE paths to Cover agent (agent reads them; orchestrator has no fs access; golden set NEVER passed)' },
     { title: 'Cover', detail: 'clean-room Cover agent writes the 2 test files; red-on-current tests kept + flagged, never deleted' },
@@ -110,13 +110,17 @@ function mutationFloor(strykerReport, sourcePath, opts) {
   for (const m of mutants) {
     if (!DENOMINATOR_STATUSES.has(m.status)) continue; // Ignored / CompileError / Pending — never counted.
     const line = mutantLine(m);
-    const isSurvivor = m.status !== 'Killed';
+    // Timeout is treated as killed (Inc-3 Step 3): a timeout = the mutant was detected by a slow/hanging
+    // test — it counts as a kill for the numerator. So isSurvivor excludes both Killed and Timeout.
+    const isSurvivor = m.status !== 'Killed' && m.status !== 'Timeout';
     if (isSurvivor && deadLines.has(line)) {
       expectedSurvivorsExcluded++;
       continue;
     }
     reachableDenominator++;
-    if (m.status === 'Killed') killed++;
+    // Timeout counts as killed (standard Stryker semantics: a timeout = a detected mutation — the test
+    // ran long enough to break the mutant, which is a kill signal). Inc-3 Step 3 fix.
+    if (m.status === 'Killed' || m.status === 'Timeout') killed++;
     else reachableSurvivors.push({ status: m.status, line, mutatorName: m.mutatorName, replacement: m.replacement });
   }
 
@@ -187,23 +191,30 @@ const EXPECTED_SURVIVOR_LINES = [17, 133, 268];
 // --- Target + contract paths ----------------------------------------------------------------------
 // All consuming-project (sprint-rituals) paths. Mirrors harness/targets/bugratio.json (kept inline so
 // the Workflow is self-contained when the platform Workflow tool executes this file directly).
+//
+// Inc-3 parameterization: if the Workflow runtime injects an `args` global (unverified — Step-1/8
+// bringup check), the controller passes { src, kbRules, testStyle, exampleTests, propertyTests,
+// runnerResult, targetClass } to retarget. Default to the BugRatio consts so standalone invocations
+// are back-compatible. If `args` injection is absent, the controller can parameterize another way
+// (see loop.workflow.js header).
+const _args = (typeof args !== 'undefined' && args) ? args : {}
 const SR = 'D:\\src\\sprint-rituals'
-const SRC = `${SR}\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\BugRatioAnalyzer.cs`
+const SRC = _args.src ?? `${SR}\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\BugRatioAnalyzer.cs`
 // The VERIFIED rules — path passed to Cover agent (the agent reads this; golden set NEVER passed — clean-room §3).
-const KB_RULES = `${SR}\\docs\\kb\\bug-ratio.md`
+const KB_RULES = _args.kbRules ?? `${SR}\\docs\\kb\\bug-ratio.md`
 // The test-style contract: FsCheck-3.x C# API + MTP runner facts. Clean-room-safe — it is the API
 // contract that prevents FsCheck-API compile failures in the generated property tests, NOT the golden set.
-const TEST_STYLE = `${SR}\\docs\\conventions\\mutation-testing.md`
+const TEST_STYLE = _args.testStyle ?? `${SR}\\docs\\conventions\\mutation-testing.md`
 
 // The Cover agent's ONLY two write targets (design §1 / §6 — its entire write set).
 const TEST_DIR = `${SR}\\src\\Services\\Fokus\\Fokus.Domain.Tests\\Analytics`
-const EXAMPLE_TESTS = `${TEST_DIR}\\BugRatioAnalyzerTests.cs`
-const PROPERTY_TESTS = `${TEST_DIR}\\BugRatioAnalyzerPropertyTests.cs`
+const EXAMPLE_TESTS = _args.exampleTests ?? `${TEST_DIR}\\BugRatioAnalyzerTests.cs`
+const PROPERTY_TESTS = _args.propertyTests ?? `${TEST_DIR}\\BugRatioAnalyzerPropertyTests.cs`
 
 // Runner results land HERE — nexus-side + git-ignored (.gitignore: harness/.runs/). NEVER in the SR tree
 // (Step-7 hazard: a runner result file in the SR working tree would strand in the SR commit).
 const RUNS_DIR = 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
-const RUNNER_RESULT = `${RUNS_DIR}\\cover-bugratio-run.json`
+const RUNNER_RESULT = _args.runnerResult ?? `${RUNS_DIR}\\cover-bugratio-run.json`
 
 // First-pass acceptance floor (design §6 / plan Step 5 stop rule): per-file REACHABLE kill >= 75. The
 // 70→75→80 ratchet toward 100 is Increment 3 — NOT chased here.
@@ -438,7 +449,7 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
 log(`Cover done: ${result.stopped} after ${result.iter} iteration(s); achieved ${result.achievedScore}% reachable kill.`)
 return {
   variant: 'inc2-cover-bugratio',
-  target: { class: 'BugRatioAnalyzer', source: SRC },
+  target: { class: _args.targetClass ?? 'BugRatioAnalyzer', source: SRC },
   ...result,
   // On all-gates-green the orchestrator (Step 6, operator-owed) flips the KB footer + index to
   // mutation-gated and captures the Cover cost. This Workflow returns the gate verdicts + the score; it

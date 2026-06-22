@@ -25,7 +25,7 @@
 // meta MUST be the first statement (Workflow tool requirement).
 export const meta = {
   name: 'mine-verify-bugratio',
-  description: 'Harness Inc 1: clean-room Mine (3 samples) + triage + BATCHED sliced Verify on BugRatioAnalyzer. Returns consensus rules + verdicts + counts + a token cost signal for the #4 comparison.',
+  description: 'Harness Inc 1 (Inc-3 parameterized): clean-room Mine (3 samples) + triage + BATCHED sliced Verify. Target from args.src when provided; defaults to BugRatioAnalyzer (back-compat). Returns consensus rules + verdicts + counts + a token cost signal.',
   phases: [
     { title: 'Mine', detail: '3 clean-room miners, source-only (prompt-enforced)' },
     { title: 'Consolidate', detail: 'merge + agreement + consistency + transcribed/interpretive triage' },
@@ -36,7 +36,14 @@ export const meta = {
 // --- Target ---------------------------------------------------------------------------------------
 // Pilot target. Mirrors harness/targets/bugratio.json (kept inline so the Workflow is self-contained
 // when run by the platform Workflow tool, which executes this file directly).
-const SRC = 'D:\\src\\sprint-rituals\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\BugRatioAnalyzer.cs'
+//
+// Inc-3 parameterization: if the Workflow runtime injects an `args` global (unverified — Step-1/8
+// bringup check), the controller passes { src } to retarget. Default to the BugRatio consts so
+// standalone invocations (`Workflow({ scriptPath })` without a 2nd arg) are back-compatible.
+// Fallback (if `args` injection is absent): the defaults below reproduce current behavior unchanged;
+// the controller can parameterize via a different mechanism — see loop.workflow.js header.
+const _args = (typeof args !== 'undefined' && args) ? args : {}
+const SRC = _args.src ?? 'D:\\src\\sprint-rituals\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\BugRatioAnalyzer.cs'
 const BATCH_SIZE = 5 // interpretive rules per batched verifier call (design §2: cluster ~5/call).
 
 // --- Schemas --------------------------------------------------------------------------------------
@@ -257,7 +264,7 @@ log(
 )
 return {
   variant: 'inc1-batched-sliced',
-  target: { class: 'BugRatioAnalyzer', source: SRC },
+  target: { class: _args.targetClass ?? 'BugRatioAnalyzer', source: SRC },
   consistencyScore: consensus.consistencyScore,
   contradictions: consensus.contradictions,
   counts: {

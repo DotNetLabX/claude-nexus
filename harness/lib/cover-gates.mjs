@@ -99,16 +99,17 @@ export function mutationFloor(strykerReport, sourcePath, opts) {
   for (const m of mutants) {
     if (!DENOMINATOR_STATUSES.has(m.status)) continue; // Ignored / CompileError / Pending — never counted.
     const line = mutantLine(m);
-    const isSurvivor = m.status !== 'Killed';
-    // A SURVIVOR on a KB-pre-documented dead line is an expected-survivor — excluded from the denominator,
-    // not chased with a test (Domain section / plan Step 5). A KILLED mutant on a dead line still counts
-    // (it was killed — no reason to drop it).
+    // Timeout is treated as killed (Inc-3 Step 3): a timeout = the mutant was detected by a slow/hanging
+    // test — it counts as a kill for the numerator. So isSurvivor excludes both Killed and Timeout.
+    const isSurvivor = m.status !== 'Killed' && m.status !== 'Timeout';
     if (isSurvivor && deadLines.has(line)) {
       expectedSurvivorsExcluded++;
       continue;
     }
     reachableDenominator++;
-    if (m.status === 'Killed') killed++;
+    // Timeout counts as killed (standard Stryker semantics: a timeout = a detected mutation — the test
+    // ran long enough to break the mutant, which is a kill signal). Inc-3 Step 3 fix.
+    if (m.status === 'Killed' || m.status === 'Timeout') killed++;
     else reachableSurvivors.push({ status: m.status, line, mutatorName: m.mutatorName, replacement: m.replacement });
   }
 

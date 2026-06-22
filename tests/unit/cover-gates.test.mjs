@@ -162,8 +162,10 @@ test('mutationFloor still counts a KILLED mutant on a dead line (killing it is f
   assert.equal(res.detail.expectedSurvivorsExcluded, 0, 'no dead-line SURVIVOR to exclude');
 });
 
-test('mutationFloor fails below the floor and lists the reachable survivors for feedback', () => {
-  // 6 killed + 4 live survivors = 60% < 75. The 4 reachable survivors must surface to feed back to Cover.
+test('mutationFloor counts Timeout as killed and lists only non-Timeout reachable survivors', () => {
+  // Inc-3 Step 3 fix: Timeout counts as killed (standard Stryker semantics — a detected mutation).
+  // With the fix: 6 Killed + 1 Timeout = 7 killed; 10 reachable; scorePct = round(7/10*100) = 70%.
+  // reachableSurvivors = Survived×2 + NoCoverage×1 = 3 (Timeout is no longer a survivor).
   const report = {
     schemaVersion: '2',
     files: {
@@ -178,9 +180,12 @@ test('mutationFloor fails below the floor and lists the reachable survivors for 
     },
   };
   const res = mutationFloor(report, SRC_PATH, { floor: 75, expectedSurvivorLines: EXPECTED_SURVIVOR_LINES });
-  assert.equal(res.detail.scorePct, 60, '6 killed / 10 reachable = 60%');
-  assert.equal(res.pass, false, '60% < 75 floor');
-  assert.equal(res.detail.reachableSurvivors.length, 4, 'all 4 non-killed reachable mutants feed back (Survived/NoCoverage/Timeout)');
+  assert.equal(res.detail.scorePct, 70, '7 killed (6 Killed + 1 Timeout) / 10 reachable = 70%');
+  assert.equal(res.pass, false, '70% < 75 floor');
+  assert.equal(res.detail.reachableSurvivors.length, 3, 'Timeout is now killed — only 3 non-killed reachable mutants feed back (Survived/Survived/NoCoverage)');
+  // New assertion (Inc-3 Step 3): confirm the Timeout mutant landed in killed, not survivors.
+  const survivorStatuses = res.detail.reachableSurvivors.map((m) => m.status);
+  assert.equal(survivorStatuses.includes('Timeout'), false, 'Timeout must not appear in reachableSurvivors — it is counted as killed');
 });
 
 test('mutationFloor fails loud when the target file has no per-file Stryker entry (bad mutate glob)', () => {
