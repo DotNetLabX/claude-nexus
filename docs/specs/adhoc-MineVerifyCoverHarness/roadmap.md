@@ -5,9 +5,11 @@ design). **Pilot record:** `mine-verify-pilot-method.md`, `mine-verify-pass3-eva
 **Architecture home:** the VERIFY-stage gate named by reference in ADR-26 — *"promote to its own ADR
 when built."* This feature is that build; it graduates to **ADR-30** when shipped.
 
-**Status:** Mine→Verify proven over 2 sessions (recall 3/3 on HealthScore + BugRatio; cost shape learned
-— see design §2). VWH ruled out as host (engine eval, `vwh-engine-eval-result` memory). Substrate decided:
-**standalone nexus skill + Workflow.**
+**Status (2026-06-22):** Mine→Verify proven (recall 3/3); **Cover live-proven** (BugRatioAnalyzer, 88%
+reachable kill, all gates green, committed in sprint-rituals `a86ad4d`); **Inc-3a pipeline controller BUILT +
+APPROVED** (`harness/loop.workflow.js`, 291 tests) — its live proof (Step 8) is the immediate next step. VWH
+ruled out as host. Substrate: **standalone nexus skill + Workflow.** The harness IS the product (automated,
+.NET → C++ → Flutter — see Multi-language end goal).
 
 ## Delivery model (the architectural decision)
 
@@ -31,36 +33,60 @@ Build **dev-repo-first; harden to a shipped skill last** — the repo's own pilo
    (~5 rules/call) → tier. Pure nexus, self-contained; yields the clean per-class token number still owed
    to #4. *No cross-repo dependency.* **NOT the dropped v3 spike** — that was a throwaway measurement; this
    is the durable component. Shipped: `harness/mine-verify.workflow.js` + `harness/lib/recall-score.mjs`.
-2. **Cover.** ✅ **BUILT** (`harness/cover.workflow.js` + `harness/lib/cover-gates.mjs`; the Stryker config
-   + KB ledger flip land in sprint-rituals). TDD test-writing + Stryker mutation gate on the verified rules
-   — completes the loop AND produces our Cover cost, the phase that actually maps to VWH's ~73s/experiment
-   (closes #4). *Touches sprint-rituals + the .NET/Stryker toolchain — coordinate with the sprint-rituals
-   Cover work (HealthScore done there; BugRatio pending) to avoid collision.*
-   **Operator-owed to fully close:** the live Cover run on BugRatioAnalyzer (mutation floor ≥75 reachable),
-   the KB ledger flip, the recorded Cover cost, and the SR commit — see
-   `delivery/implementation-increment2-cover.md` ## Operator Actions Required.
-3. **Loop controller.** Wrap Mine→Verify→Cover→Discover with external-signal stopping (dry-counter,
-   mutation ratchet, hard budget), the 5-gate honesty battery, the KB ledger write (project schema,
-   supersede-not-delete), and clean-room enforced via `disallowedTools` (the mechanism, not a prompt).
-4. **Harden to a shipped nexus skill.** Resolve delivery, write the born-compliant `SKILL.md`, add
-   lint/unit tests under `tests/`, ship via `release-plugin`, promote the ADR-26 reference to **ADR-30**.
+2. **Cover.** ✅ **DONE + LIVE-PROVEN.** `harness/cover.workflow.js` + `harness/lib/cover-gates.mjs`. First
+   live Cover run on BugRatioAnalyzer: **88% reachable mutation kill** (132/150), all 5 gates green, 0
+   candidate bugs; KB flipped verified→mutation-gated; tests + stryker-config committed in sprint-rituals
+   (`a86ad4d`). Cover cost recorded (~231k output tokens, ~27 min) — closes #4. Report: `delivery/cover-bugratio.md`.
+3. **Loop controller — SPLIT into 3a / 3b (owner decision, 2026-06-22).**
+   - **3a — automated single-class pipeline controller.** ✅ **BUILT + APPROVED** (`harness/loop.workflow.js`
+     + `harness/lib/kb-write.mjs`; 291 tests). One invocation runs Mine→Verify→(KB write)→Cover→KB flip→
+     auto-report for ONE class. Stopping signals that stay meaningful single-class: budget cap
+     (`budget.spent()` vs ceiling) + mutation ratchet. Clean-room: **PROMPT-ONLY** (the `agentType` seal is
+     unverified — sanctioned fallback). **Live proof PENDING (Step 8):** re-fire `loop.workflow.js` on
+     BugRatio (re-prove automated) + CycleTime (generalize). All five Workflow-runtime rules (below) now
+     caught offline by `tests/unit/workflow-contract.test.mjs`.
+   - **3b — DEFERRED.** Discover (boundary analysis → candidate BRs re-enter at Mine), the multi-class
+     worklist sweep, the dry-counter stopping signal, the **mechanical** clean-room seal (disallowedTools/
+     agentType), and the real char_pin manifest-pin. None needed to prove the single-class controller.
+4. **Harden to a shipped nexus skill.** Born-compliant `SKILL.md`, lint/unit tests, ship via `release-plugin`;
+   **core → nexus, .NET adapter → nexus-dotnet** (ADR-3); promote the ADR-26 reference to a new ADR.
+
+## Multi-language end goal (the harness IS the product)
+
+Applied first to **.NET**, then **C++**, then **Flutter** — automated. The language-neutral core / per-language
+adapter split (Delivery model above) is the mechanism. **Adapter extraction is DEFERRED until C++ actually
+lands** (owner decision): abstracting the seam from one language risks a .NET-shaped contract; keep the .NET
+calls cleanly isolated so the later extraction is mechanical, not a rewrite. Adapter contract = 5 capabilities:
+evidence indexer · test runner · mutation tool · test-style contract · prod-source-diff scoping. **Flutter
+risk — de-risk BEFORE committing:** Dart mutation tooling is immature (Stryker/.NET solid; C++ has mull/
+dextool; Flutter may need a custom mutator or a coverage+property fallback). Probe it first.
+
+## Workflow runtime contract (learned the hard way — now encoded in the offline guard)
+
+Workflow scripts run in a constrained runtime. Each rule below was found via an expensive live run before
+`tests/unit/workflow-contract.test.mjs` was hardened to catch them all offline (mock-globals sandbox + meta
+parse). Author future workflows (and adapters) against the guard, not against a live run:
+1. **No static `import`** — non-module context; inline helpers + config.
+2. **No `read()` / `fs` / `require` / `process`** — the orchestrator has NO filesystem. Agents do all file
+   I/O and return via schema; the orchestrator works from returns. (The Verify→Cover seam is a KB *file* hop:
+   Mine→Verify returns rules in memory → a write-agent persists them → Cover reads the file.)
+3. **`meta` must be a PURE LITERAL** — no string concat, template interpolation, or calls.
+4. **No `Date.now()` / `new Date()` / `Math.random()`** — they throw (break resume). Source the date from a
+   cheap start-of-run agent, or pass via args, or stamp after return.
+5. **`agent()` has no `disallowedTools` opt** — the mechanical clean-room seal needs a custom `agentType`
+   (unverified) or stays prompt-only.
 
 ## Versioning & blockers (per `docs/research/2026-06-14-next-major-selection.md`)
 
-- **This is a big *effort*, not a MAJOR *version*.** Semver MAJOR = breaking / behavior reversal
-  (`release-plugin` policy); a new skill is new *capability* → **MINOR**. Increments **1–3 are no-bump
-  dev-repo work** (the Workflow + helper scripts ship nothing to users); only **increment 4 (ship the
-  skill) bumps — MINOR.** Don't force a MAJOR.
-- **No CI-auth blocker.** The loop runs via Workflow/agents on the subscription session — no
-  `ANTHROPIC_API_KEY` / CI-auth decision gates it (unlike the promptfoo plugin-evals, which are a
-  *different* artifact and already shipped subscription-local). The next-major research eliminated this
-  harness partly on a CI-auth blocker that does not apply to it.
-- **The research's premises are stale/resolved** — the unit-test "collision" (that suite shipped), the
-  "unbound substrate" (decided standalone + recall proven this session), and CI-auth (above). De-staled,
-  this harness is the correct next big build; that is the path here.
+- **Big *effort*, not a MAJOR *version*.** A new skill is new *capability* → **MINOR**. Increments **1–3 are
+  no-bump dev-repo work** (the Workflow + helpers ship nothing); only **increment 4 (ship the skill) bumps —
+  MINOR.** Don't force a MAJOR.
+- **No CI-auth blocker** — the loop runs via Workflow/agents on the subscription session.
 
-## Start
+## Next
 
-**Increment 1 (Verify, batched)** — the safe, no-coordination foundation that also closes an open #4
-number. **Cover (2)** is the bigger de-risk (it's the heart of the value), but it needs the sprint-rituals
-side and the .NET toolchain, so it sequences next, coordinated — not unilaterally.
+**Re-fire Step-8 Run 1** (the live proof of the 3a controller):
+`Workflow({ scriptPath: "D:\\src\\claude-plugins\\nexus\\harness\\loop.workflow.js" })` on BugRatioAnalyzer
+(expect ~100% now Timeout counts as killed). Then **Run 2** on CycleTimeAnalyzer (generalize; skips recall —
+no golden set). Both pause for owner go (they run the .NET toolchain + write to sprint-rituals). After 3a is
+live-proven → Inc 4 (ship .NET skill), then the C++ adapter (extract the contract THEN), then Flutter.
