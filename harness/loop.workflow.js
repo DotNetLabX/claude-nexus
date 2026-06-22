@@ -92,7 +92,12 @@ const BUDGET_CEILING_TOKENS = 1_500_000
 const MUTATION_FLOOR   = 75   // per-file REACHABLE kill >= 75% (design §6)
 const MAX_ITERATIONS   = 5    // hard cap: stop and report, never fake green
 const BASELINE_SKIPS   = 0    // measured baseline skip count (0 today in sprint-rituals)
-const EXPECTED_SURVIVOR_LINES = [17, 133, 268] // KB-pre-documented dead lines in BugRatioAnalyzer.cs
+// KB-pre-documented dead lines to exclude from the REACHABLE denominator. Per-class — must NOT carry
+// one class's dead lines onto another (that would wrongly exclude real survivors = fake green). Default
+// [] for any class without a pre-documented dead-line list; BugRatio keeps its back-compat list when no
+// override is passed. A class with no known dead code MUST run with [] so genuine survivors surface.
+const EXPECTED_SURVIVOR_LINES = _args.expectedSurvivorLines
+  ?? (TARGET_CLASS === 'BugRatioAnalyzer' ? [17, 133, 268] : [])
 
 // =================================================================================================
 // COMPOSITION MODE
