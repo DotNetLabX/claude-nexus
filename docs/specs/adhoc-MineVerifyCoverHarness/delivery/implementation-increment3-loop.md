@@ -263,4 +263,26 @@ auto-written; CycleTimeAnalyzer run demonstrates the controller is not BugRatio-
   Plan Step 2 specifies testing "each workflow script" — loop.workflow.js is a third script born in
   Step 5. Added "no static import" + sandbox execution slices for it. Test count: 10 (not 8).
 
+## Run-1 Date fix + guard hardening (post-Run-1 fix, 2026-06-22)
+
+Run 1 died at `loop.workflow.js:325` with "Date.now() / new Date() are unavailable in workflow scripts (breaks resume)." — the 5th Workflow-runtime rule discovered live.
+
+**Part A — eliminated every `new Date()` from the Workflow-runtime path (3 sites):**
+
+- `harness/lib/kb-write.mjs` — `buildRulesSection` now takes a `year` parameter (with `new Date()` as Node-module-only fallback for non-workflow callers). `supersedingRules` derives `year` from `date.slice(0,4)` and threads it to `buildRulesSection` and `_insertRulesIntoNew`. Zero `new Date()` calls on the Workflow path.
+- `harness/loop.workflow.js` — inline `buildRulesSection` copy updated identically (takes `year`, caller threads it from `date`). Inline `supersedingRules` / `_insertRulesIntoNew` updated to thread `year` from date.slice. `new Date().toISOString()` at KB Write phase removed — replaced by a comment pointing to the agent-sourced `today`.
+- `harness/loop.workflow.js` — added a `date-stamp` agent call at controller start (before Phase 1) that asks an agent for today's date as YYYY-MM-DD. `today` is sourced there and threaded into all downstream KB / report uses. Agents have Date; the orchestrator VM does not.
+
+**Part B — hardened sandbox in `tests/unit/workflow-contract.test.mjs`:**
+
+- `Date` in the sandbox is now a throwing shim: constructor and `.now` both throw `ReferenceError` with the exact Workflow runtime message.
+- `Math` in the sandbox is a copy of the real `Math` with `.random` overridden to throw. All other `Math.*` methods remain available (e.g. `Math.round`, `Math.max`) — only `random` is forbidden.
+- Added 2 synthetic-negative tests (Slices 11–12) proving the sandbox catches `new Date()` and `Math.random()` in a workflow body.
+- Updated Slice 9 (loop sandbox) to include the same throwing Date/Math shims + the new date-stamp agent fixture as the first agent call.
+- Updated `tests/unit/kb-write.test.mjs` to pass `FIXED_YEAR = '2026'` to all `buildRulesSection` calls (deterministic, no live Date).
+
+**Grep-zero confirmation:** `new Date()|Date\.now()|Math\.random()` executable calls in `harness/` = ZERO (remaining matches are all comments or the Node-module-safe fallback guard in kb-write.mjs:34).
+
+**Test count:** 291 pass / 0 fail (up from 283 before this fix round, net +8 = 5 kb-write date-param updates + 2 new synthetic-negative slices + 1 loop sandbox update).
+
 *Status: COMPLETE — developer, 2026-06-22*

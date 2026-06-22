@@ -193,8 +193,8 @@ function mutationRatchet(priorScore, currentScore) {
 // agent (the orchestrator has no fs access). The same functions are in kb-write.mjs for unit tests.
 // SOURCE OF TRUTH: harness/lib/kb-write.mjs. Inlined here because Workflow scripts cannot import.
 
-function buildRulesSection(rules) {
-  const year = new Date().getFullYear();
+function buildRulesSection(rules, year) {
+  // year must be passed by the caller — new Date() throws in the Workflow runtime (breaks resume).
   const preamble = `Rules below are **verified** via the Mine→Verify pass (automated harness, ${year} — ${rules.length} rule${rules.length !== 1 ? 's' : ''} confirmed).`;
   if (!rules.length) return `## Rules\n\n${preamble}`;
   const bullets = rules.map((r) => `- ${r.id}: ${r.statement}`).join('\n');
@@ -207,8 +207,10 @@ function buildStatusFooter({ mutationGated, date, runNote }) {
 }
 function supersedingRules(existingKb, rules, { date, mutationGated, runNote }) {
   const text = existingKb ?? '';
+  // Derive year from the ISO date string — never call new Date() in a Workflow script (throws, breaks resume).
+  const year = date ? date.slice(0, 4) : '';
   const rulesHeadingIdx = text.indexOf('\n## Rules');
-  if (rulesHeadingIdx === -1) { return _insertRulesIntoNew(text, rules, { date, mutationGated, runNote }); }
+  if (rulesHeadingIdx === -1) { return _insertRulesIntoNew(text, rules, { date, mutationGated, runNote, year }); }
   const afterRules = rulesHeadingIdx + '\n## Rules'.length;
   const nextSectionMatch = text.slice(afterRules).match(/\n##\s+\w/);
   const footerSepMatch   = text.slice(afterRules).match(/\n---/);
@@ -217,7 +219,7 @@ function supersedingRules(existingKb, rules, { date, mutationGated, runNote }) {
   else if (nextSectionMatch) { nextSectionIdx = afterRules + nextSectionMatch.index; }
   else if (footerSepMatch)   { nextSectionIdx = afterRules + footerSepMatch.index; }
   else { nextSectionIdx = text.length; }
-  const newRulesBlock = '\n' + buildRulesSection(rules);
+  const newRulesBlock = '\n' + buildRulesSection(rules, year);
   const footerIdx = text.lastIndexOf('\n---');
   const newFooter = '\n' + buildStatusFooter({ mutationGated, date, runNote });
   if (footerIdx !== -1 && footerIdx >= nextSectionIdx) {
@@ -225,12 +227,12 @@ function supersedingRules(existingKb, rules, { date, mutationGated, runNote }) {
   }
   return text.slice(0, rulesHeadingIdx) + newRulesBlock + text.slice(nextSectionIdx).replace(/\n---[\s\S]*$/, '') + '\n\n' + newFooter;
 }
-function _insertRulesIntoNew(text, rules, { date, mutationGated, runNote }) {
+function _insertRulesIntoNew(text, rules, { date, mutationGated, runNote, year }) {
   const firstSectionMatch = text.match(/\n## /);
   const insertAt = firstSectionMatch ? text.indexOf('\n## ') : text.length;
   const before = text.slice(0, insertAt);
   const after  = text.slice(insertAt).replace(/\n---[\s\S]*$/, '');
-  const newRulesBlock = '\n\n' + buildRulesSection(rules);
+  const newRulesBlock = '\n\n' + buildRulesSection(rules, year);
   const footer = '\n\n---\n' + buildStatusFooter({ mutationGated, date, runNote });
   return before + newRulesBlock + after + footer;
 }
@@ -254,6 +256,20 @@ const RUNNER_RESULT_SCHEMA = {
   },
   required: ['testRuns', 'strykerReportPath', 'mutants'],
 }
+
+// =================================================================================================
+// DATE STAMP — sourced from an agent (new Date() / Date.now() throw in the Workflow runtime)
+// =================================================================================================
+// The orchestrator VM has no Date object (calling it breaks workflow resume). Source today's date
+// from a cheap agent call whose only job is to return the current date. This `today` string is then
+// threaded into buildRulesSection (via supersedingRules) and the report header — zero Date calls
+// in orchestrator code anywhere in this file.
+const DATE_STAMP_SCHEMA = { type: 'object', properties: { date: { type: 'string' } }, required: ['date'] }
+const dateStampResult = await agent(
+  'Output ONLY today\'s date as YYYY-MM-DD (e.g. 2026-06-22). Return nothing else.',
+  { label: 'date-stamp', phase: 'Init', schema: DATE_STAMP_SCHEMA }
+)
+const today = dateStampResult?.date ?? '(date-unavailable)'
 
 // =================================================================================================
 // PHASE 1: MINE → VERIFY
@@ -374,7 +390,7 @@ if (!kbReadResult?.content) {
 }
 const existingKbContent = kbReadResult?.content ?? ''
 
-const today = new Date().toISOString().slice(0, 10)
+// `today` was sourced from the date-stamp agent at controller start (before Phase 1).
 const newKbText = supersedingRules(
   existingKbContent,
   mineVerifyResult.consensusRules,

@@ -63,31 +63,35 @@ Original Fokus fokus-spec.md §Bug Ratio.
 // =================================================================================================
 // buildRulesSection: renders the ## Rules section from a rules array
 // =================================================================================================
+// Pass a fixed year (2026) to avoid relying on new Date() — mirrors the Workflow-script constraint
+// and keeps the test deterministic regardless of when it runs.
+const FIXED_YEAR = '2026';
+
 test('buildRulesSection renders each rule as "- {id}: {statement}"', () => {
-  const section = buildRulesSection(RULES_1);
+  const section = buildRulesSection(RULES_1, FIXED_YEAR);
   assert.ok(section.includes('- BR-1: A is true when X'), 'BR-1 rule present');
   assert.ok(section.includes('- BR-2: B = X + Y'),        'BR-2 rule present');
 });
 
 test('buildRulesSection starts with the ## Rules heading', () => {
-  const section = buildRulesSection(RULES_1);
+  const section = buildRulesSection(RULES_1, FIXED_YEAR);
   assert.ok(section.trimStart().startsWith('## Rules'), 'section starts with ## Rules');
 });
 
 test('buildRulesSection includes a verified-status preamble line', () => {
-  const section = buildRulesSection(RULES_1);
+  const section = buildRulesSection(RULES_1, FIXED_YEAR);
   assert.ok(section.includes('verified'), 'rules section declares verified status');
 });
 
 test('buildRulesSection preserves all rules in order', () => {
-  const section = buildRulesSection(RULES_1);
+  const section = buildRulesSection(RULES_1, FIXED_YEAR);
   const pos1 = section.indexOf('BR-1');
   const pos2 = section.indexOf('BR-2');
   assert.ok(pos1 < pos2, 'BR-1 appears before BR-2');
 });
 
 test('buildRulesSection with empty rules array returns just the heading', () => {
-  const section = buildRulesSection([]);
+  const section = buildRulesSection([], FIXED_YEAR);
   assert.ok(section.includes('## Rules'), 'heading still present');
   // No bullet items beyond the heading.
   const bulletCount = (section.match(/^- /gm) ?? []).length;

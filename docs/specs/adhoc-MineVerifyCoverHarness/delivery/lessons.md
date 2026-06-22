@@ -129,6 +129,7 @@
   not a parse error) — only an actual run or careful read does. For platform-Workflow files (not
   `node`-runnable due to injected globals), order all loop-referenced `const`s before the loop deliberately.
 - **(Inc 2 live-run fix) `node --check` is insufficient for Workflow scripts — they must be validated by an actual Workflow run, because the runtime contract (no fs, no static import, agents return via schema) is invisible to a parse check.**
+- **(Inc 3a Run-1 fix) The offline guard must mirror EVERY runtime-forbidden global, not just `read`.** Run 1 died on `new Date()` at line 325 — the 5th Workflow-runtime rule discovered live. The sandbox had a comment "Date is ok" while the real runtime throws on it. Lesson: every rule in the Workflow-runtime contract must have a corresponding shim in the sandbox; "the sandbox doesn't need to block X" is only safe when the runtime docs explicitly confirm X is available. Fix: Date constructor+.now throw, Math.random throws; synthetic-negative tests (Slices 11–12) prove the sandbox catches both. The pattern for future Workflow scripts: source any date/time/random value from a cheap agent call, never from the orchestrator.
 - **(Inc 2 live-run fix) The TDD anti-horizontal-slicing rule maps cleanly onto a multi-gate battery: one gate =
   one red→green slice.** Six gates (`suite_green`, `no_flaky`, `mutation_floor`, `no_new_skips`, `char_pin`,
   `mutationRatchet`) built as six slices. A throwing `_notYet` stub for the not-yet-built exports keeps the

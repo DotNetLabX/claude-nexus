@@ -30,10 +30,11 @@
  *   The consensus rules from Mine→Verify, in order.
  * @returns {string}  The rendered section (including the `## Rules` heading), without a trailing newline.
  */
-export function buildRulesSection(rules) {
+export function buildRulesSection(rules, year) {
+  const y = year ?? new Date().getFullYear(); // year param: caller passes when in a Workflow script (no Date allowed)
   const preamble =
     'Rules below are **verified** via the Mine→Verify pass (automated harness, ' +
-    `${new Date().getFullYear()} — ${rules.length} rule${rules.length !== 1 ? 's' : ''} confirmed).`;
+    `${y} — ${rules.length} rule${rules.length !== 1 ? 's' : ''} confirmed).`;
 
   if (!rules.length) {
     return `## Rules\n\n${preamble}`;
@@ -84,6 +85,9 @@ export function buildStatusFooter({ mutationGated, date, runNote }) {
  */
 export function supersedingRules(existingKb, rules, { date, mutationGated, runNote }) {
   const text = existingKb ?? '';
+  // Derive year from the ISO date string so callers never need to pass it separately and
+  // buildRulesSection never falls back to new Date() (which throws in Workflow scripts).
+  const year = date ? date.slice(0, 4) : undefined;
 
   // --- 1. Locate the ## Rules section boundaries -------------------------------------------------
   // Find `## Rules` and the next `## ` heading after it (or the `---` footer separator).
@@ -91,7 +95,7 @@ export function supersedingRules(existingKb, rules, { date, mutationGated, runNo
   if (rulesHeadingIdx === -1) {
     // No existing ## Rules section — insert after the first paragraph break.
     // Locate the first ## heading that is NOT Rules, or the --- separator.
-    return _insertRulesIntoNew(text, rules, { date, mutationGated, runNote });
+    return _insertRulesIntoNew(text, rules, { date, mutationGated, runNote, year });
   }
 
   // Find the next section after ## Rules (next `\n## ` or `\n---`).
@@ -111,7 +115,7 @@ export function supersedingRules(existingKb, rules, { date, mutationGated, runNo
   }
 
   // --- 2. Build the replacement ## Rules block ---------------------------------------------------
-  const newRulesBlock = '\n' + buildRulesSection(rules);
+  const newRulesBlock = '\n' + buildRulesSection(rules, year);
 
   // --- 3. Locate the footer (--- separator) and replace it ---------------------------------------
   const footerIdx = text.lastIndexOf('\n---');
@@ -134,7 +138,7 @@ export function supersedingRules(existingKb, rules, { date, mutationGated, runNo
 }
 
 // --- Private helper (new-entry path) -------------------------------------------------------------
-function _insertRulesIntoNew(text, rules, { date, mutationGated, runNote }) {
+function _insertRulesIntoNew(text, rules, { date, mutationGated, runNote, year }) {
   // For a brand-new entry that has no ## Rules yet: insert the Rules section before
   // the first non-title ## heading, and append the footer.
   const firstSectionMatch = text.match(/\n## /);
@@ -143,7 +147,7 @@ function _insertRulesIntoNew(text, rules, { date, mutationGated, runNote }) {
     : text.length;
   const before = text.slice(0, insertAt);
   const after  = text.slice(insertAt).replace(/\n---[\s\S]*$/, '');
-  const newRulesBlock = '\n\n' + buildRulesSection(rules);
+  const newRulesBlock = '\n\n' + buildRulesSection(rules, year);
   const footer = '\n\n---\n' + buildStatusFooter({ mutationGated, date, runNote });
   return before + newRulesBlock + after + footer;
 }

@@ -53,6 +53,24 @@ async function runInSandbox(src, agentFixtures = []) {
 
   const mockBudget = { spent: () => 42000 };
 
+  // Throwing shims for Workflow-forbidden globals.
+  // The real Workflow runtime disallows Date.now() / new Date() / Math.random() — they throw and
+  // break resume. Mirror that here so the sandbox catches the same class of defect offline.
+  function throwingDateShim() {
+    throw new ReferenceError('Date.now() / new Date() are unavailable in workflow scripts (breaks resume).');
+  }
+  throwingDateShim.now = function () {
+    throw new ReferenceError('Date.now() / new Date() are unavailable in workflow scripts (breaks resume).');
+  };
+
+  // Math: expose all standard methods EXCEPT random, which throws like the real Workflow runtime.
+  const throwingMath = Object.create(null);
+  for (const k of Object.getOwnPropertyNames(Math)) {
+    throwingMath[k] = typeof Math[k] === 'function'
+      ? (k === 'random' ? function () { throw new ReferenceError('Math.random() is unavailable in workflow scripts (breaks resume).'); } : Math[k].bind(Math))
+      : Math[k];
+  }
+
   // Mock Workflow globals:
   const sandbox = {
     // agent(prompt, opts) — returns the next fixture, records the call.
@@ -79,7 +97,11 @@ async function runInSandbox(src, agentFixtures = []) {
     }),
     // args global — present so `typeof args` succeeds; _args fallback reads it.
     args: null, // null → falsy → _args = {} → defaults kick in.
-    // Deliberately NOT provided: read, require, fs, process, Date (well, Date is ok), Math.random.
+    // Forbidden globals: Date and Math.random throw exactly as in the real Workflow runtime.
+    // Any script that calls new Date() / Date.now() / Math.random() will throw — which is correct.
+    Date: throwingDateShim,
+    Math: throwingMath,
+    // Deliberately NOT provided: read, require, fs, process.
     // Any script that uses `read(...)` will throw ReferenceError — which is what we want to catch.
   };
 
@@ -332,8 +354,10 @@ test('loop.workflow.js runs in mock-globals sandbox without ReferenceError (MONO
   // This exercises the full controller code path with mock agents.
   const src = readWorkflow(LOOP_PATH);
 
-  // The controller calls: workflow (mine-verify sub) → agent(kb-read) → agent(kb-write-file)
-  //   → workflow (cover sub) → agent(kb-flip) → agent(report-write)
+  // The controller calls (in order):
+  //   agent(date-stamp) → workflow(mine-verify sub) → agent(kb-read) → agent(kb-write-file)
+  //   → workflow(cover sub) → agent(kb-flip) → agent(report-write)
+  const dateStampReturn    = { date: '2026-06-22' };
   const mineVerifySubReturn = {
     consensusRules: [{ id: 'BR-1', kind: 'interpretive', agreement: 3, lines: '10-20', statement: 'rule A' }],
     counts: { consensusRules: 1 },
@@ -347,20 +371,24 @@ test('loop.workflow.js runs in mock-globals sandbox without ReferenceError (MONO
   const kbFlipReturn   = { written: true };
   const reportReturn   = { written: true };
 
-  // workflow() is called twice (mine-verify + cover). agent() is called 4 times.
-  // runInSandbox consumes agentFixtures in order per agent() call.
-  // The mock workflow() in runInSandbox ignores scriptPath and returns the mine-verify shape for
-  // the first call, and the cover shape for the second. We override the sandbox's workflow mock:
-  const agentFixtures = [kbReadReturn, kbWriteReturn, kbFlipReturn, reportReturn];
+  // workflow() is called twice (mine-verify + cover). agent() is called 5 times
+  // (date-stamp + kb-read + kb-write-file + kb-flip + report-write).
+  const agentFixtures = [dateStampReturn, kbReadReturn, kbWriteReturn, kbFlipReturn, reportReturn];
 
-  // We need a custom sandbox for this test to return different workflow results per call.
+  // We need a custom sandbox for this test to return different workflow results per call,
+  // and to expose throwing Date/Math shims matching the real Workflow runtime.
   let workflowCallCount = 0;
   const workflowReturns = [mineVerifySubReturn, coverSubReturn];
+
+  function sandboxThrowingDate() {
+    throw new ReferenceError('Date.now() / new Date() are unavailable in workflow scripts (breaks resume).');
+  }
+  sandboxThrowingDate.now = () => { throw new ReferenceError('Date.now() / new Date() are unavailable in workflow scripts (breaks resume).'); };
 
   let threw = null;
   let loopResult = null;
   try {
-    // Build a custom sandbox with a stateful workflow mock.
+    // Build a custom sandbox with a stateful workflow mock and throwing Date/Math shims.
     const { createContext: cc, Script: S } = await import('node:vm');
     let agentIdx2 = 0;
     const sandbox2 = {
@@ -371,6 +399,8 @@ test('loop.workflow.js runs in mock-globals sandbox without ReferenceError (MONO
       budget: { spent: () => 50000 },
       workflow: async () => workflowReturns[workflowCallCount++] ?? null,
       args: null,
+      Date: sandboxThrowingDate,
+      Math: { random: () => { throw new ReferenceError('Math.random() is unavailable in workflow scripts (breaks resume).'); } },
     };
     const patchedSrc = src.replace(/^export\s+const\s+meta\s*=/m, 'const meta =');
     const ctx = cc(sandbox2);
@@ -421,4 +451,46 @@ for (const [name, path] of [['mine-verify', MINE_VERIFY_PATH], ['cover', COVER_P
 test('meta-purity detector catches a string-concat meta (synthetic negative)', () => {
   const synthetic = `export const meta = { name: 'x', description: 'a ' + 'b', phases: [] };`;
   assert.equal(metaNonLiteralReason(synthetic), 'string concatenation (`+`) — BinaryExpression');
+});
+
+// ==================================================================================================
+// Slices 11–12: sandbox catches Date / Math.random violations (synthetic negative proofs)
+// The sandbox Date shim throws exactly like the real Workflow runtime — confirm it fires.
+// ==================================================================================================
+test('sandbox throws on new Date() in workflow body (synthetic negative)', async () => {
+  // A minimal body that calls new Date() — must throw in the hardened sandbox.
+  const syntheticSrc = `
+const meta = { name: 'test', description: 'test', phases: [] };
+const _args = (typeof args !== 'undefined' && args) ? args : {};
+const d = new Date(); // <-- must throw in the Workflow sandbox
+return { d };
+`;
+  let threw = null;
+  try {
+    await runInSandbox(syntheticSrc, []);
+  } catch (err) {
+    threw = err;
+  }
+  assert.ok(threw !== null, 'expected an error to be thrown for new Date()');
+  assert.match(threw?.message ?? '', /unavailable in workflow scripts/i,
+    'error message identifies the Workflow runtime restriction');
+});
+
+test('sandbox throws on Math.random() in workflow body (synthetic negative)', async () => {
+  // A minimal body that calls Math.random() — must throw in the hardened sandbox.
+  const syntheticSrc = `
+const meta = { name: 'test', description: 'test', phases: [] };
+const _args = (typeof args !== 'undefined' && args) ? args : {};
+const r = Math.random(); // <-- must throw in the Workflow sandbox
+return { r };
+`;
+  let threw = null;
+  try {
+    await runInSandbox(syntheticSrc, []);
+  } catch (err) {
+    threw = err;
+  }
+  assert.ok(threw !== null, 'expected an error to be thrown for Math.random()');
+  assert.match(threw?.message ?? '', /unavailable in workflow scripts/i,
+    'error message identifies the Workflow runtime restriction');
 });
