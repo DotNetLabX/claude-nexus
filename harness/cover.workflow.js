@@ -9,7 +9,7 @@
 // THE THREE ACTORS (design §1 + §6 reward-hacking defense — never collapse them):
 //
 //   ORCHESTRATOR (this JS, trusted, deterministic)
-//     • reads the VERIFIED rules from the consuming project's KB (orchestrator-side)
+//     • passes KB_RULES + TEST_STYLE paths to the Cover agent (has no filesystem access itself — agents do all I/O)
 //     • spawns the Cover agent, then the runner agent (distinct agent() calls)
 //     • computes the §6 gate battery via harness/lib/cover-gates.mjs (NOT in this file — pure helpers)
 //     • applies the `// Stryker disable` annotation on KB-pre-documented dead lines (NOT the Cover agent)
@@ -17,23 +17,25 @@
 //     • NEVER writes the test files itself and NEVER lets the Cover agent touch config/gates/KB
 //
 //   COVER AGENT (clean-room writer)
-//     • input: BugRatioAnalyzer.cs source + the verified KB rules + the current surviving-mutant list
-//       + the project's mutation-testing.md test-style contract (FsCheck-3.x / MTP API — NOT the golden set)
+//     • input: reads BugRatioAnalyzer.cs source + KB_RULES (bug-ratio.md, verified rules) + TEST_STYLE
+//       (mutation-testing.md, FsCheck-3.x / MTP API — NOT the golden set) + the current surviving-mutant list
 //     • ONLY writes: BugRatioAnalyzerTests.cs + BugRatioAnalyzerPropertyTests.cs
 //     • forbidden: BugRatioAnalyzer.cs, stryker-config.json, the KB, the gate infra
 //     • a test that is RED on current code is KEPT and FLAGGED as a candidate bug — NEVER deleted
 //
 //   RUNNER AGENT (executor — a DISTINCT agent() call from the Cover agent)
 //     • runs `dotnet test` twice (double-run for suite_green + no_flaky) then `dotnet stryker`
-//     • Write()s structured results to a NEXUS-SIDE, git-ignored path (harness/.runs/), NEVER into the
-//       sprint-rituals working tree (Step-7 hazard: stray files must not land in the SR commit)
+//     • reads the emitted mutation-report.json; extracts the BugRatioAnalyzer.cs per-file mutants array
+//     • returns testRuns + strykerReportPath + mutants in its schema'd result (source of truth)
+//     • also Write()s the same data to a NEXUS-SIDE, git-ignored path (harness/.runs/) for the record
 //
 // CLEAN-ROOM (design §3): the golden set is NEVER passed into the Cover or runner agent. Cover scores
 // against MUTANTS, not golden — its input is source + verified KB rules + surviving-mutant list only.
 // (The golden set path appears nowhere in any agent prompt in this file — that is a Step-2 acceptance.)
 //
 // DELIVERABLE = A FILE WRITE, NEVER THE FINAL MESSAGE (design §4): the Cover agent Write()s the test
-// files; the runner Write()s its results; the orchestrator reads the files. This makes the run resumable.
+// files; the runner Write()s its results nexus-side for the record and returns them via schema. The
+// orchestrator uses the schema return (not file reads — it has no fs access) to compute gates.
 //
 // SCOPE (Increment 2, bounded loop only): one target class (BugRatioAnalyzer), the already-done
 // HealthScore Cover as the pattern, mutation floor >= 75 on REACHABLE mutants (no ratchet-to-100 — that
@@ -45,29 +47,149 @@ export const meta = {
   description:
     'Harness Inc 2: Cover stage on BugRatioAnalyzer — clean-room Cover agent writes example + property tests; a distinct runner agent double-runs dotnet test then dotnet stryker; the orchestrator gates on the §6 battery (mutation floor >= 75 per-file reachable) via cover-gates.mjs. Three actors, reward-hacking defended.',
   phases: [
-    { title: 'Setup', detail: 'orchestrator reads verified KB rules + the test-style contract (golden set NEVER read here)' },
+    { title: 'Setup', detail: 'orchestrator passes KB_RULES + TEST_STYLE paths to Cover agent (agent reads them; orchestrator has no fs access; golden set NEVER passed)' },
     { title: 'Cover', detail: 'clean-room Cover agent writes the 2 test files; red-on-current tests kept + flagged, never deleted' },
-    { title: 'Run', detail: 'distinct runner agent: double `dotnet test` + `dotnet stryker`; results Write()n nexus-side/git-ignored' },
+    { title: 'Run', detail: 'distinct runner agent: double `dotnet test` + `dotnet stryker`; reads mutation-report.json; returns testRuns + mutants via schema (source of truth); also Write()s nexus-side/git-ignored artifact' },
     { title: 'Gate', detail: 'orchestrator computes the 5-gate battery + mutation ratchet via cover-gates.mjs; reachable survivors feed back' },
   ],
 }
 
-import {
-  suiteGreen,
-  noFlaky,
-  mutationFloor,
-  noNewSkips,
-  charPin,
-  mutationRatchet,
-  EXPECTED_SURVIVOR_LINES,
-} from './lib/cover-gates.mjs'
+// --- Inlined §6 gate battery (self-contained — the Workflow runtime has no module/fs access) -------
+// SOURCE OF TRUTH: harness/lib/cover-gates.mjs (unit-tested in tests/unit/cover-gates.test.mjs). The
+// Workflow runtime parses this body in a non-module context, so a static `import` is a syntax error and
+// there is no filesystem to load a sibling module — the workflow must be self-contained (same reason the
+// Inc-1 workflow inlines its target config). Copied VERBATIM from cover-gates.mjs; keep in sync until a
+// build step dedupes them (Inc-3 debt).
+
+function suiteGreen(testRuns) {
+  const runs = testRuns ?? [];
+  const everyGreen = runs.length >= 2 && runs.every((r) => r.failed === 0 && r.passed > 0);
+  return {
+    pass: everyGreen,
+    detail: { runs: runs.map((r) => ({ passed: r.passed, failed: r.failed })) },
+  };
+}
+
+function noFlaky(testRuns) {
+  const runs = testRuns ?? [];
+  const key = (r) => `${r.passed}/${r.failed}/${r.skipped}`;
+  const keys = runs.map(key);
+  const identical = runs.length >= 2 && keys.every((k) => k === keys[0]);
+  return { pass: identical, detail: { counts: keys } };
+}
+
+const DENOMINATOR_STATUSES = new Set(['Killed', 'Survived', 'Timeout', 'NoCoverage']);
+
+function mutantLine(m) {
+  return m?.location?.start?.line ?? null;
+}
+
+function mutationFloor(strykerReport, sourcePath, opts) {
+  const floor = opts?.floor ?? 75;
+  const deadLines = new Set(opts?.expectedSurvivorLines ?? []);
+  const files = strykerReport?.files ?? {};
+  const entry = files[sourcePath];
+  if (!entry) {
+    return {
+      pass: false,
+      detail: {
+        scorePct: 0,
+        killed: 0,
+        reachableDenominator: 0,
+        error: `no per-file Stryker entry for ${sourcePath} (check the mutate glob + the json reporter)`,
+        reachableSurvivors: [],
+      },
+    };
+  }
+  const mutants = entry.mutants ?? [];
+  let killed = 0;
+  let reachableDenominator = 0;
+  let expectedSurvivorsExcluded = 0;
+  const reachableSurvivors = [];
+
+  for (const m of mutants) {
+    if (!DENOMINATOR_STATUSES.has(m.status)) continue; // Ignored / CompileError / Pending — never counted.
+    const line = mutantLine(m);
+    const isSurvivor = m.status !== 'Killed';
+    if (isSurvivor && deadLines.has(line)) {
+      expectedSurvivorsExcluded++;
+      continue;
+    }
+    reachableDenominator++;
+    if (m.status === 'Killed') killed++;
+    else reachableSurvivors.push({ status: m.status, line, mutatorName: m.mutatorName, replacement: m.replacement });
+  }
+
+  const scorePct = reachableDenominator > 0 ? Math.round((killed / reachableDenominator) * 100) : 0;
+  return {
+    pass: reachableDenominator > 0 && scorePct >= floor,
+    detail: { scorePct, killed, reachableDenominator, expectedSurvivorsExcluded, floor, reachableSurvivors },
+  };
+}
+
+function noNewSkips(testRuns, baselineSkips) {
+  const runs = testRuns ?? [];
+  const maxSkips = runs.length ? Math.max(...runs.map((r) => r.skipped ?? 0)) : 0;
+  return { pass: maxSkips <= baselineSkips, detail: { maxSkips, baselineSkips } };
+}
+
+const STRYKER_DISABLE_RE = /^\/\/\s*Stryker\s+disable\b/i;
+
+function isDiffMetaLine(line) {
+  return (
+    line.startsWith('+++') ||
+    line.startsWith('---') ||
+    line.startsWith('@@') ||
+    line.startsWith('diff ') ||
+    line.startsWith('index ') ||
+    line.startsWith('new file mode') ||
+    line.startsWith('deleted file mode') ||
+    line.startsWith('rename ') ||
+    line.startsWith('similarity index') ||
+    line.startsWith('\\ No newline')
+  );
+}
+
+function charPin(prodSourceDiff) {
+  const text = prodSourceDiff ?? '';
+  if (text.trim() === '') return { pass: true, detail: { changedLines: 0, disallowed: [] } };
+
+  const disallowed = [];
+  let changedLines = 0;
+  for (const raw of text.split(/\r?\n/)) {
+    if (isDiffMetaLine(raw)) continue;
+    const isAdd = raw.startsWith('+');
+    const isDel = raw.startsWith('-');
+    if (!isAdd && !isDel) continue; // context line — unchanged.
+    changedLines++;
+    if (isDel) {
+      disallowed.push(raw);
+      continue;
+    }
+    const content = raw.slice(1).trim();
+    if (!STRYKER_DISABLE_RE.test(content)) disallowed.push(raw);
+  }
+  return { pass: disallowed.length === 0, detail: { changedLines, disallowed } };
+}
+
+function mutationRatchet(priorScore, currentScore) {
+  if (priorScore === null || priorScore === undefined) {
+    return { pass: true, detail: `first iteration — no prior score to regress against (current ${currentScore}%)` };
+  }
+  if (currentScore < priorScore) {
+    return { pass: false, detail: `mutation kill regressed ${priorScore}% → ${currentScore}% (harness broken — halt)` };
+  }
+  return { pass: true, detail: `kill held/improved ${priorScore}% → ${currentScore}%` };
+}
+
+const EXPECTED_SURVIVOR_LINES = [17, 133, 268];
 
 // --- Target + contract paths ----------------------------------------------------------------------
 // All consuming-project (sprint-rituals) paths. Mirrors harness/targets/bugratio.json (kept inline so
 // the Workflow is self-contained when the platform Workflow tool executes this file directly).
 const SR = 'D:\\src\\sprint-rituals'
 const SRC = `${SR}\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\BugRatioAnalyzer.cs`
-// The VERIFIED rules — read orchestrator-side (the Cover agent receives them inline, never the golden set).
+// The VERIFIED rules — path passed to Cover agent (the agent reads this; golden set NEVER passed — clean-room §3).
 const KB_RULES = `${SR}\\docs\\kb\\bug-ratio.md`
 // The test-style contract: FsCheck-3.x C# API + MTP runner facts. Clean-room-safe — it is the API
 // contract that prevents FsCheck-API compile failures in the generated property tests, NOT the golden set.
@@ -94,8 +216,10 @@ const MAX_ITERATIONS = 5 // hard cap (plan Step 5: ~5 iterations / budget) — s
 // in the loop body cannot be hoisted, so its declaration must precede first use).
 const BASELINE_SKIPS = 0
 
-// --- Runner result schema (what the runner agent Write()s) ----------------------------------------
+// --- Runner result schema (what the runner agent returns via schema) --------------------------------
 // The gate helpers (cover-gates.mjs) are pure fns over THIS shape. Keep it in lockstep with the helpers.
+// NOTE: strykerReportPath is still returned (so the runner can Write() the artifact nexus-side for the
+// record), but the orchestrator no longer reads the file — it uses runRaw.mutants directly.
 const RUNNER_RESULT_SCHEMA = {
   type: 'object',
   properties: {
@@ -113,9 +237,29 @@ const RUNNER_RESULT_SCHEMA = {
         required: ['passed', 'failed', 'skipped'],
       },
     },
-    // Absolute path to the Stryker JSON report (schemaVersion 2) the runner produced. The orchestrator
-    // reads the per-file BugRatioAnalyzer.cs score from it — the runner does NOT compute the score.
+    // Absolute path to the Stryker JSON report (schemaVersion 2) the runner produced. Returned for the
+    // record; the orchestrator does NOT read this file — it uses `mutants` below instead.
     strykerReportPath: { type: 'string' },
+    // The per-file mutant array for BugRatioAnalyzer.cs extracted by the runner from the Stryker JSON.
+    // Each mutant: { status, location: { start: { line } }, mutatorName, replacement }.
+    // This is the source of truth the orchestrator uses — eliminates the need for a filesystem read.
+    mutants: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          status: { type: 'string' },
+          location: {
+            type: 'object',
+            properties: { start: { type: 'object', properties: { line: { type: 'integer' } }, required: ['line'] } },
+            required: ['start'],
+          },
+          mutatorName: { type: 'string' },
+          replacement: { type: 'string' },
+        },
+        required: ['status', 'location', 'mutatorName'],
+      },
+    },
     // The runner's own list of red-on-current-code tests (kept + flagged, never deleted). May be empty.
     redOnCurrent: {
       type: 'array',
@@ -126,18 +270,20 @@ const RUNNER_RESULT_SCHEMA = {
       },
     },
   },
-  required: ['testRuns', 'strykerReportPath'],
+  required: ['testRuns', 'strykerReportPath', 'mutants'],
 }
 
-// --- Phase: Setup (orchestrator-side reads; NO golden set) -----------------------------------------
+// --- Phase: Setup ----------------------------------------------------------------------------------
+// The orchestrator has no filesystem access — the Cover agent reads KB_RULES + TEST_STYLE itself
+// (they are passed as paths in coverPrompt). The golden set is NEVER read here or in any agent prompt
+// (clean-room §3).
 phase('Setup')
-const verifiedRules = read(KB_RULES) // orchestrator-side — the Cover agent gets this inline, never the golden set.
-const testStyleContract = read(TEST_STYLE)
-log(`Setup: read ${verifiedRules.length} chars of verified rules + ${testStyleContract.length} chars of test-style contract. Golden set NOT read (clean-room §3).`)
+log(`Setup: paths passed to Cover agent — KB_RULES=${KB_RULES}, TEST_STYLE=${TEST_STYLE}. Golden set NOT read (clean-room §3).`)
 
 // The Cover agent's standing prompt. `survivingMutants` is injected per iteration (empty on the first pass).
-// NOTE: SRC + the verified rules + the surviving-mutant list + the test-style contract are the ENTIRE
-// input surface — the golden set path appears NOWHERE here (Step-2 acceptance / design §3).
+// NOTE: SRC path + KB_RULES path + TEST_STYLE path + the surviving-mutant list are the ENTIRE input
+// surface — the agent reads the files itself (has Read tool). The golden set path appears NOWHERE here
+// (Step-2 acceptance / design §3). The orchestrator passes PATHS, not file content — it has no fs access.
 function coverPrompt(survivingMutants) {
   const survBlock = survivingMutants.length
     ? `SURVIVING MUTANTS to target this iteration (each is a REACHABLE mutation no current test killed — write a test that fails on the mutated behavior):\n${survivingMutants
@@ -163,15 +309,16 @@ NON-NEGOTIABLE RULES:
     >=/> and ==/!= comparison) so Stryker's relational/equality mutants are caught.
   • Deliverable = the file write. Write() both files; do not summarize them in your final message.
 
-PRODUCTION SOURCE (read it; this is the SUT):
-${SRC}
+STEP 1 — READ THE PRODUCTION SOURCE (the SUT):
+  ${SRC}
 
-VERIFIED RULES (from the consuming project's KB — these are GROUND TRUTH, already Mine→Verify'd):
-${verifiedRules}
+STEP 2 — READ THE VERIFIED RULES (from the consuming project's KB — GROUND TRUTH, already Mine→Verify'd;
+this is NOT the golden set — it is the verified rule document used as test input):
+  ${KB_RULES}
 
-TEST-STYLE CONTRACT (the project's xUnit-v3 + FsCheck-3.x C# API + MTP facts — follow it EXACTLY so the
-property tests COMPILE; this is the API contract, not an answer key):
-${testStyleContract}
+STEP 3 — READ THE TEST-STYLE CONTRACT (the project's xUnit-v3 + FsCheck-3.x C# API + MTP facts — follow
+it EXACTLY so the property tests COMPILE; this is the API contract, not an answer key):
+  ${TEST_STYLE}
 
 PATTERN TO FOLLOW (the already-done, mutation-gated HealthScore Cover — same shape, same project):
   • ${SR}\\src\\Services\\Fokus\\Fokus.Domain.Tests\\Analytics\\HealthScoreCalculatorTests.cs
@@ -185,7 +332,9 @@ Write both files now.`
 }
 
 // The runner agent prompt — a DISTINCT agent() call from the Cover agent (design §6). It executes the
-// .NET toolchain in sprint-rituals and Write()s structured results NEXUS-SIDE (never into the SR tree).
+// .NET toolchain in sprint-rituals, reads the Stryker JSON report, and returns the per-file mutant array
+// in its schema'd result. It also Write()s the results nexus-side for the record, but the schema return
+// is the source of truth — the orchestrator does NOT read any files (no fs access in the orchestrator).
 const runnerPrompt = `You are the RUNNER agent. You execute the .NET toolchain — you do NOT write tests and you do NOT edit production code.
 
 STEPS (run from the test project directory ${SR}\\src\\Services\\Fokus\\Fokus.Domain.Tests):
@@ -193,15 +342,23 @@ STEPS (run from the test project directory ${SR}\\src\\Services\\Fokus\\Fokus.Do
      Record { passed, failed, skipped } for EACH run.
   2. Run \`dotnet stryker\` (MTP runner, per the project's mutation-testing.md). It emits a JSON report under
      StrykerOutput/<timestamp>/reports/mutation-report.json (schemaVersion 2). Capture its ABSOLUTE path.
-  3. Note any test that FAILS on the current production code (red-on-current) — list it; do NOT delete it.
+  3. Read the emitted mutation-report.json. Find the per-file entry whose key ends with BugRatioAnalyzer.cs
+     (the \`files\` object is keyed by absolute path). Extract its \`mutants\` array. Each element has:
+       { "status": "Killed"|"Survived"|"NoCoverage"|"Timeout"|"Ignored"|...,
+         "location": { "start": { "line": N }, "end": { "line": M } },
+         "mutatorName": "...", "replacement": "..." }
+     Return the FULL mutants array from that per-file entry in your schema'd result.
+  4. Note any test that FAILS on the current production code (red-on-current) — list it; do NOT delete it.
 
-WRITE YOUR RESULTS HERE (nexus-side, git-ignored — NEVER into the sprint-rituals tree):
+ALSO WRITE YOUR RESULTS HERE for the record (nexus-side, git-ignored — NEVER into the sprint-rituals tree):
   ${RUNNER_RESULT}
 
 as JSON: { "testRuns": [{passed,failed,skipped}, {passed,failed,skipped}], "strykerReportPath": "<abs>",
+           "mutants": [<the per-file BugRatioAnalyzer.cs mutants array from the Stryker JSON>],
            "redOnCurrent": [{ "test": "...", "note": "..." }] }
 
-Deliverable = the file write. Write() the JSON; do not summarize it in your final message.`
+IMPORTANT: return the same data in your schema'd response AND in the Write() — the orchestrator uses the
+schema return directly and does NOT read files.`
 
 // --- The bounded Cover loop (orchestrator-driven) -------------------------------------------------
 // Each iteration: Cover agent writes/updates the tests → runner double-runs + Stryker → orchestrator
@@ -225,11 +382,12 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
 
   phase('Run')
   // DISTINCT agent() call — the runner is a different actor from the Cover agent (design §6).
+  // The runner returns testRuns + strykerReportPath + mutants in its schema'd result — the orchestrator
+  // uses that return directly; no file reads here (the orchestrator has no filesystem access).
   const runRaw = await agent(runnerPrompt, { label: `runner:iter-${iter}`, phase: 'Run', schema: RUNNER_RESULT_SCHEMA })
   if (!runRaw) throw new Error(`Cover iteration ${iter}: runner returned no result`)
-  // Re-read the runner's durable artifact (deliverable = file write; the schema'd return is a convenience).
-  const run = JSON.parse(read(RUNNER_RESULT))
-  const strykerReport = JSON.parse(read(run.strykerReportPath))
+  // Reconstruct the shape mutationFloor expects from the schema'd return — no file reads needed.
+  const strykerReport = { files: { [SRC]: { mutants: runRaw.mutants } } }
 
   phase('Gate')
   // §6 gate battery — pure fns over the runner output (Step-3 helpers). The orchestrator gates; no agent
@@ -237,10 +395,10 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
   // orchestrator (it has git; the helper stays pure) — see Step-7 operator note for how it is produced.
   const prodSourceDiff = readProdSourceDiffPlaceholder() // operator supplies the scoped diff at run time (Step 5/7).
   const gates = {
-    suite_green: suiteGreen(run.testRuns),
-    no_flaky: noFlaky(run.testRuns),
+    suite_green: suiteGreen(runRaw.testRuns),
+    no_flaky: noFlaky(runRaw.testRuns),
     mutation_floor: mutationFloor(strykerReport, SRC, { floor: MUTATION_FLOOR, expectedSurvivorLines: EXPECTED_SURVIVOR_LINES }),
-    no_new_skips: noNewSkips(run.testRuns, BASELINE_SKIPS),
+    no_new_skips: noNewSkips(runRaw.testRuns, BASELINE_SKIPS),
     char_pin: charPin(prodSourceDiff),
   }
   const score = gates.mutation_floor.detail.scorePct
@@ -249,7 +407,7 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
   const ratchet = mutationRatchet(lastScore, score)
   if (!ratchet.pass) {
     log(`HALT (ratchet): ${ratchet.detail} — a kill-rate regression means the harness is broken. Not continuing.`)
-    result = { stopped: 'ratchet-regression', iter, gates, ratchet, run, achievedScore: score }
+    result = { stopped: 'ratchet-regression', iter, gates, ratchet, runRaw, achievedScore: score }
     break
   }
   lastScore = score
@@ -262,7 +420,7 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
   )
 
   if (allGreen) {
-    result = { stopped: 'all-gates-green', iter, gates, achievedScore: score, redOnCurrent: run.redOnCurrent ?? [] }
+    result = { stopped: 'all-gates-green', iter, gates, achievedScore: score, redOnCurrent: runRaw.redOnCurrent ?? [] }
     break
   }
 
@@ -276,7 +434,7 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
   }
 }
 
-// --- Return (orchestrator reads the files; KB flip + cost capture are Step 6, operator-owed) -------
+// --- Return (KB flip + cost capture are Step 6, operator-owed) -------------------------------------
 log(`Cover done: ${result.stopped} after ${result.iter} iteration(s); achieved ${result.achievedScore}% reachable kill.`)
 return {
   variant: 'inc2-cover-bugratio',

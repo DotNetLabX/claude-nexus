@@ -128,7 +128,8 @@
   Moved it into the config block above the loop. `node --check` does NOT catch this (it's a runtime TDZ,
   not a parse error) — only an actual run or careful read does. For platform-Workflow files (not
   `node`-runnable due to injected globals), order all loop-referenced `const`s before the loop deliberately.
-- **(Inc 2 build) The TDD anti-horizontal-slicing rule maps cleanly onto a multi-gate battery: one gate =
+- **(Inc 2 live-run fix) `node --check` is insufficient for Workflow scripts — they must be validated by an actual Workflow run, because the runtime contract (no fs, no static import, agents return via schema) is invisible to a parse check.**
+- **(Inc 2 live-run fix) The TDD anti-horizontal-slicing rule maps cleanly onto a multi-gate battery: one gate =
   one red→green slice.** Six gates (`suite_green`, `no_flaky`, `mutation_floor`, `no_new_skips`, `char_pin`,
   `mutationRatchet`) built as six slices. A throwing `_notYet` stub for the not-yet-built exports keeps the
   shared import statement resolving (so the green slices run) while any premature use of an unbuilt gate

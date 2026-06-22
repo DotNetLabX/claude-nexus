@@ -303,4 +303,20 @@ Two LOW findings from `review-increment2-cover.md § Step 2` addressed:
   the binding acceptance is `harness/` → zero. Inc-1 records are accurate history + out of write-scope — not
   rewritten. (Not a deviation from acceptance; a deviation from a literal reading of the plan's prose, sanctioned by Q2.)
 
-*Status: COMPLETE — developer, 2026-06-21 (reviewer fix cycle 1 applied 2026-06-21)*
+## Live-run Fix (2026-06-22)
+
+Three runtime defects surfaced during live-run of the Cover Workflow, plus a class-of-defect audit:
+
+**Defect 1 — `read is not defined` (Setup phase, lines 254-255)**
+`const verifiedRules = read(KB_RULES)` and `const testStyleContract = read(TEST_STYLE)` — `read()` is NOT a Workflow global. The orchestrator has no filesystem access. Fix: removed both calls and the `log` that used their `.length`. The Cover agent now receives KB_RULES and TEST_STYLE as paths in `coverPrompt` with explicit "READ THIS FILE" instructions. The agent has the Read tool; the orchestrator does not.
+
+**Defect 2 — orchestrator `read()` calls in the loop body (lines 351-352)**
+`JSON.parse(read(RUNNER_RESULT))` and `JSON.parse(read(run.strykerReportPath))` — same class: orchestrator-side filesystem reads. Fix: extended `RUNNER_RESULT_SCHEMA` to include a `mutants` field (the per-file BugRatioAnalyzer.cs mutant array from the Stryker JSON). Updated `runnerPrompt` to instruct the runner to read the emitted `mutation-report.json`, extract the per-file mutants, and return them in its schema'd result. In the loop, both `read()` calls replaced by direct use of `runRaw.mutants`. `mutationFloor` receives `{ files: { [SRC]: { mutants: runRaw.mutants } } }` — unchanged call site. All gate calls updated from `run.*` to `runRaw.*`.
+
+**Defect 3 — class-of-defect audit (required fix)**
+Full-file grep and line-by-line trace for `read`, `require`, `fs`, `process`, `Date`, `Math.random` in the orchestrator body: **zero hits after fixes**. `readProdSourceDiffPlaceholder()` confirmed as a defined local function at line 455-457 returning `''` (empty diff → char_pin passes on no prod-source change — by design, noted in Operator Actions Required). No other fs/global violations found.
+
+**I/O model correction:**
+The orchestrator body now follows the Workflow runtime contract: globals only (`phase`, `agent`, `log`, `budget`), no filesystem, agents do all I/O and hand data back via schema. Comments and `meta.phases` updated to reflect the corrected model.
+
+*Status: COMPLETE — developer, 2026-06-21 (reviewer fix cycle 1 applied 2026-06-21; live-run fix applied 2026-06-22)*

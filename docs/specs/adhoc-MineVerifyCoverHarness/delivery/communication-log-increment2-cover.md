@@ -29,6 +29,8 @@
 | 12 | developer → team-lead | developer:implement | 2 LOWs fixed (a11172bc1c5865fa8): suiteGreen>=2 + single-run test; 75% pass + 74% fail boundary tests; 260 pass/0 fail/0 skip | — |
 | 13 | team-lead (verify checkpoint) | close | GREEN: node --test 260 pass/0 fail/0 skip; selfcheck 4/4 (bump-check: no shipped change); no plugins/ (no bump); no rogue commits; no new violations.log this run | — |
 | 14 | team-lead | close | commit 1 (plan) 72eb545; summary-increment2-cover.md written; finalizing log → commit 2 (implementation) next | — |
+| 15 | team-lead | close | commit 2 (implementation) 45d3e50; scoped (unrelated slugs excluded) | — |
+| 16 | user → team-lead | close | Decisions: (1) live Cover run (Steps 4-run→7) DEFERRED to a focused session; (2) Stay local — no push/PR; (3) Lessons processing SKIPPED | — |
 
 ## Completion Dashboard
 
