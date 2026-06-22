@@ -383,3 +383,42 @@ test('loop.workflow.js runs in mock-globals sandbox without ReferenceError (MONO
   assert.equal(loopResult?.allGatesGreen, true, 'controller returns allGatesGreen: true on sub-workflow green');
   assert.ok(loopResult?.reportPath, 'controller returns reportPath');
 });
+
+// ==================================================================================================
+// Slice 10: `meta` must be a PURE LITERAL (4th Workflow-runtime rule — Inc-3a bringup)
+// ==================================================================================================
+// The Workflow tool rejects any non-literal node in `meta` ("meta must be a pure literal: non-literal
+// node type in meta: BinaryExpression"). Inc-3a hit this: a `'...' + '...'` string-concat in
+// meta.description was rejected AT LAUNCH. Both `node --check` (valid JS) and the sandbox above (which
+// STRIPS the export, line 89) miss it — so we check the meta initializer source directly.
+// Heuristic, zero-dep: extract the `meta {...}` block and reject the realistic non-literal signatures
+// (string concatenation + template interpolation). Not a full AST walk, but it catches the class we hit.
+function extractMetaBlock(src) {
+  const m = src.match(/\bmeta\s*=\s*\{/);
+  if (!m) return null;
+  const start = m.index + m[0].length - 1; // index of the opening `{`
+  let depth = 0;
+  for (let i = start; i < src.length; i++) {
+    if (src[i] === '{') depth++;
+    else if (src[i] === '}' && --depth === 0) return src.slice(start, i + 1);
+  }
+  return null;
+}
+function metaNonLiteralReason(src) {
+  const block = extractMetaBlock(src);
+  if (!block) return 'no meta block found';
+  if (/['"]\s*\+\s*['"]/.test(block)) return 'string concatenation (`+`) — BinaryExpression';
+  if (/`[^`]*\$\{/.test(block)) return 'template interpolation (`${...}`)';
+  return null; // pure literal by these heuristics
+}
+
+for (const [name, path] of [['mine-verify', MINE_VERIFY_PATH], ['cover', COVER_PATH], ['loop', LOOP_PATH]]) {
+  test(`${name}.workflow.js meta is a pure literal (no concat / interpolation)`, () => {
+    const reason = metaNonLiteralReason(readWorkflow(path));
+    assert.equal(reason, null, `meta must be a pure literal — found: ${reason}`);
+  });
+}
+test('meta-purity detector catches a string-concat meta (synthetic negative)', () => {
+  const synthetic = `export const meta = { name: 'x', description: 'a ' + 'b', phases: [] };`;
+  assert.equal(metaNonLiteralReason(synthetic), 'string concatenation (`+`) — BinaryExpression');
+});

@@ -42,10 +42,7 @@
 export const meta = {
   name: 'mine-verify-cover-loop',
   description:
-    'Harness Inc 3a: automated Mine→Verify→Cover pipeline controller for ONE target class. ' +
-    'Composes the proven sub-workflows, writes the KB ledger, enforces the §6 gate battery, ' +
-    'writes the self-contained run report. Budget cap + mutation ratchet safety rails. ' +
-    'Seal: PROMPT-ONLY (agentType investigation is Step-8 bringup — see controller header).',
+    'Harness Inc 3a: automated Mine→Verify→Cover pipeline controller for ONE target class. Composes the proven sub-workflows, writes the KB ledger, enforces the §6 gate battery, writes the self-contained run report. Budget cap + mutation ratchet safety rails. Seal: PROMPT-ONLY (agentType investigation is Step-8 bringup — see controller header).',
   phases: [
     { title: 'Mine→Verify', detail: 'clean-room Mine (3 samples) + batched-sliced Verify (sub-workflow or inlined)' },
     { title: 'KB Write', detail: 'serialize verified rules into the consuming project KB (verified status) before Cover reads it' },
