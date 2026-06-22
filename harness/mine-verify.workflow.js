@@ -154,7 +154,8 @@ Read ONLY this one source file: ${SRC}
 Do NOT read any other file — no docs/, no tests, no knowledge base, no golden set, no other source. Extract rules from this code alone.
 
 For every business rule the code ENCODES:
-- Quote-first: capture the verbatim code quote + line numbers that prove it. No quote -> drop the rule.
+- Quote-first: capture the verbatim code quote in \`quote\` and its line range in \`lines\`. No quote -> drop the rule.
+- The \`statement\` is DURABLE KB prose: describe the rule by SYMBOL and CONDITION (method/property/variable names + the actual predicate), NEVER by source line number. Do NOT write "L35", "line 76", "lines 48/145", or similar inside \`statement\` — line numbers rot the moment the file changes and belong ONLY in the structural \`lines\` field. To point at a site, name it by its symbol (e.g. "the team-totals aggregation"), not its line.
 - Be exhaustive across branches: main computations, every guard/degenerate branch, clamps, boundary inclusivity, aggregation semantics (ratio-of-totals vs average-of-ratios), case-sensitivity of EACH string comparison, ordering/tie behavior, rounding, and streak/loop termination.
 - State only what the code does. Never infer intent the code does not show.
 
@@ -190,7 +191,7 @@ Produce the consensus rule set:
 - Classify each consensus rule's kind:
   - "transcribed" = a formula/value lifted directly from code where the quote alone entails it (band math, sums, a ratio expression).
   - "interpretive" = a claim needing judgment: guard reachability / dead code, branch discontinuity, aggregation semantics, case-sensitivity asymmetry, ordering/tie behavior, streak/loop termination, "never reaches X" claims.
-Keep the verbatim quote + line numbers on each consensus rule.`
+Keep the verbatim quote + line range in the quote/lines fields on each consensus rule. The consensus \`statement\`, however, must be LINE-NUMBER-FREE durable prose — refer to code by SYMBOL/CONDITION (names, predicates), never "L35"/"line 76"/"lines 48". If a miner statement embeds line numbers, rewrite it to name the site by its symbol. Line numbers live ONLY in the \`lines\` field, never in \`statement\`.`
 const consensus = await agent(consolidatePrompt, { label: 'consolidate', phase: 'Consolidate', schema: CONSOLIDATE_SCHEMA })
 if (!consensus) throw new Error('consolidation failed')
 

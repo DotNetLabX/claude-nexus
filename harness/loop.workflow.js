@@ -301,7 +301,7 @@ if (!MONOLITH_FALLBACK) {
   const BATCH_SIZE = 5
   function chunk(arr, size) { const out = []; for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size)); return out; }
 
-  const minerPrompt = `You are a clean-room business-rule miner. Read ONLY this one source file: ${SRC}. Do NOT read any other file — no docs/, no tests, no knowledge base, no golden set. Extract every business rule the code ENCODES. Quote-first: capture the verbatim code quote + line numbers. Be exhaustive. Return the full rule list.`
+  const minerPrompt = `You are a clean-room business-rule miner. Read ONLY this one source file: ${SRC}. Do NOT read any other file — no docs/, no tests, no knowledge base, no golden set. Extract every business rule the code ENCODES. Quote-first: capture the verbatim code quote + line range in the quote/lines fields. The \`statement\` is durable KB prose — describe rules by SYMBOL/CONDITION (names + predicates), NEVER embed source line numbers ("L35"/"line 76") in the statement (they rot; keep them in \`lines\` only). Be exhaustive. Return the full rule list.`
   const MINER_SCHEMA = { type: 'object', properties: { rules: { type: 'array', items: { type: 'object', properties: { statement: { type: 'string' }, quote: { type: 'string' }, lines: { type: 'string' } }, required: ['statement', 'quote', 'lines'] } } }, required: ['rules'] }
   const miners = await parallel([
     () => agent(minerPrompt, { label: 'miner-1', phase: 'Mine→Verify', schema: MINER_SCHEMA }),
@@ -314,7 +314,7 @@ if (!MONOLITH_FALLBACK) {
 
   const CONSOLIDATE_SCHEMA = { type: 'object', properties: { consistencyScore: { type: 'string' }, contradictions: { type: 'array', items: { type: 'string' } }, consensusRules: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, statement: { type: 'string' }, quote: { type: 'string' }, lines: { type: 'string' }, agreement: { type: 'integer' }, kind: { type: 'string', enum: ['transcribed', 'interpretive'] } }, required: ['id', 'statement', 'quote', 'lines', 'agreement', 'kind'] } } }, required: ['consistencyScore', 'contradictions', 'consensusRules'] }
   const consensus = await agent(
-    `You are the consolidation step. Merge and deduplicate these 3 miner outputs. Give each rule a stable id (BR-1, BR-2...), agreement count, and classify kind (transcribed/interpretive). Miner outputs:\n\nMINER 1:\n${JSON.stringify(valid[0]?.rules ?? [], null, 1)}\n\nMINER 2:\n${JSON.stringify(valid[1]?.rules ?? [], null, 1)}\n\nMINER 3:\n${JSON.stringify(valid[2]?.rules ?? [], null, 1)}`,
+    `You are the consolidation step. Merge and deduplicate these 3 miner outputs. Give each rule a stable id (BR-1, BR-2...), agreement count, and classify kind (transcribed/interpretive). Keep quote/lines in their fields; the consensus \`statement\` must be LINE-NUMBER-FREE durable prose — refer to code by SYMBOL/CONDITION (names, predicates), never "L35"/"line 76"/"lines 48". Miner outputs:\n\nMINER 1:\n${JSON.stringify(valid[0]?.rules ?? [], null, 1)}\n\nMINER 2:\n${JSON.stringify(valid[1]?.rules ?? [], null, 1)}\n\nMINER 3:\n${JSON.stringify(valid[2]?.rules ?? [], null, 1)}`,
     { label: 'consolidate', phase: 'Mine→Verify', schema: CONSOLIDATE_SCHEMA }
   )
   if (!consensus) return { stopped: 'consolidate-fail', reason: 'consolidation returned no result', outputTokensThisTurn: budget.spent() }

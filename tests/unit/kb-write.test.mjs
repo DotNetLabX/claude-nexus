@@ -15,6 +15,7 @@ import {
   buildRulesSection,
   buildStatusFooter,
   supersedingRules,
+  stripLineRefs,
 } from '../../harness/lib/kb-write.mjs';
 
 // --- Fixtures ------------------------------------------------------------------------------------
@@ -169,4 +170,55 @@ test('supersedingRules preserves the entry header (title + intro paragraph)', ()
   const result = supersedingRules(EXISTING_KB, RULES_1, { date: '2026-06-22', mutationGated: false, runNote: 'verified' });
   assert.ok(result.startsWith('# Bug Ratio'), 'entry title preserved at top');
   assert.ok(result.includes('Bug-vs-feature story-point ratios.'), 'intro paragraph preserved');
+});
+
+// =================================================================================================
+// stripLineRefs: fail-closed sanitizer — no source line number may reach the durable KB
+// =================================================================================================
+// The fixture is the ACTUAL Run-1 BR-3 statement (the one that motivated the rule): a parenthetical
+// list of "label L<n>" pairs. After stripping, the symbol labels must survive and every L<n> must be
+// gone — proving the sanitizer cleans real output without mangling the meaning.
+const REAL_BR3 = 'The guard appears at every non-alert ratio site (per-sprint trend L35, per-dev sprint trend L76, team totals L48, single-sprint team L145, single-sprint dev L186, prior team L161, prior dev L201, multi-sprint dev aggregate L95).';
+
+test('stripLineRefs removes every L<n> token from the real Run-1 BR-3 statement', () => {
+  const out = stripLineRefs(REAL_BR3);
+  assert.ok(!/\bL\d+\b/.test(out), `no L<n> tokens remain: ${out}`);
+});
+
+test('stripLineRefs keeps the symbol labels (the part we WANT in the KB)', () => {
+  const out = stripLineRefs(REAL_BR3);
+  for (const label of ['per-sprint trend', 'per-dev sprint trend', 'team totals', 'single-sprint team', 'multi-sprint dev aggregate']) {
+    assert.ok(out.includes(label), `label preserved: ${label}`);
+  }
+  assert.ok(!/,\s*,/.test(out), 'no doubled commas left behind');
+  assert.ok(!/\(\s*,/.test(out), 'no stray leading comma in the parenthetical');
+});
+
+test('stripLineRefs removes "line N" and "lines N, M" prose forms', () => {
+  assert.equal(stripLineRefs('the divide guard at line 76 returns 0m'), 'the divide guard at returns 0m');
+  assert.equal(stripLineRefs('summed across lines 48, 76 and 95'), 'summed across and 95');
+  assert.equal(stripLineRefs('slice covering lines 35-50'), 'slice covering');
+});
+
+test('stripLineRefs leaves clean statements untouched (no false positives)', () => {
+  for (const clean of [
+    'A SprintMembership is a bug iff Ticket.IssueType == "Bug"',
+    'rounds ratioPercent to 1 decimal via Math.Round(x, 1)',
+    'ratio = bugSp / completedSp * 100 when completedSp > 0, else 0m',
+    'GetEffectiveSp(defaultSpPerBug) ?? 0m',
+    'grouping uses StringComparer.OrdinalIgnoreCase',
+  ]) {
+    assert.equal(stripLineRefs(clean), clean, `unchanged: ${clean}`);
+  }
+});
+
+test('stripLineRefs drops a parenthetical that held only a line ref', () => {
+  assert.equal(stripLineRefs('the streak loop terminates (L268) on the first zero-SP sprint'),
+    'the streak loop terminates on the first zero-SP sprint');
+});
+
+test('buildRulesSection sanitizes line refs out of emitted statements', () => {
+  const section = buildRulesSection([{ id: 'BR-1', kind: 'interpretive', agreement: 3, lines: '35', statement: REAL_BR3 }], FIXED_YEAR);
+  assert.ok(!/\bL\d+\b/.test(section), 'no L<n> tokens in the rendered KB section');
+  assert.ok(section.includes('team totals'), 'symbol label survives into the KB section');
 });

@@ -19,6 +19,41 @@
 //   `mutation-gated` after Cover passes all gates (Step 7 / operator-owed flip on all-gates-green).
 
 // =================================================================================================
+// stripLineRefs — fail-closed sanitizer: strip source line references from durable KB prose
+// =================================================================================================
+// The miner/consolidate prompts instruct "describe rules by SYMBOL/CONDITION, never by line number"
+// — but a prompt is a request, not a guarantee. Line numbers (L35, "line 76", "lines 48/145") rot the
+// moment the source file shifts, so they must NEVER reach the durable KB. This is the enforcement
+// boundary: buildRulesSection runs every rule statement through it, so a stray ref a future miner
+// emits despite the prompt is stripped before it lands. The structural `lines` field (used only for
+// internal slicing) is untouched — only the human-facing `statement` prose is sanitized.
+/**
+ * Removes source line-number references from a rule statement, leaving the symbol/condition prose.
+ * Strips `L<n>` tokens and `line(s) <n>[,/&- <n>]*` forms, then cleans up the punctuation artifacts
+ * (empty parens, doubled commas, stray spaces) the removal leaves behind.
+ *
+ * @param {string} statement  The rule statement prose.
+ * @returns {string}  The statement with line references removed.
+ */
+export function stripLineRefs(statement) {
+  if (!statement) return statement;
+  let s = statement;
+  // "L35", "L145" line tokens (with any leading whitespace).
+  s = s.replace(/\s*\bL\d+\b/g, '');
+  // "line 76", "lines 48", "lines 48, 76", "lines 48/145", "lines 35-50" forms.
+  s = s.replace(/\s*\blines?\s+\d+(?:\s*[,/&-]\s*\d+)*/gi, '');
+  // Cleanup artifacts left by the removals.
+  s = s.replace(/\(\s*[,;]\s*/g, '(');   // "( , " -> "("
+  s = s.replace(/\s*,\s*,/g, ',');        // ", ," -> ","
+  s = s.replace(/,\s*\)/g, ')');          // ", )" -> ")"
+  s = s.replace(/\(\s*\)/g, '');          // "()" -> ""  (parenthetical that held only refs)
+  s = s.replace(/\s+([.,;)])/g, '$1');    // space before punctuation
+  s = s.replace(/\(\s+/g, '(');           // "( x" -> "(x"
+  s = s.replace(/\s{2,}/g, ' ');          // collapse doubled spaces
+  return s.trim();
+}
+
+// =================================================================================================
 // buildRulesSection — renders the ## Rules section from a rules array
 // =================================================================================================
 /**
@@ -40,7 +75,7 @@ export function buildRulesSection(rules, year) {
     return `## Rules\n\n${preamble}`;
   }
 
-  const bullets = rules.map((r) => `- ${r.id}: ${r.statement}`).join('\n');
+  const bullets = rules.map((r) => `- ${r.id}: ${stripLineRefs(r.statement)}`).join('\n');
   return `## Rules\n\n${preamble}\n\n${bullets}`;
 }
 
