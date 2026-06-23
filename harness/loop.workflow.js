@@ -42,7 +42,7 @@
 export const meta = {
   name: 'mine-verify-cover-loop',
   description:
-    'Harness Inc 3a: automated Mine→Verify→Cover pipeline controller for ONE target class. Composes the proven sub-workflows, writes the KB ledger, enforces the §6 gate battery, writes the self-contained run report. Budget cap + mutation ratchet safety rails. Seal: PROMPT-ONLY (agentType investigation is Step-8 bringup — see controller header).',
+    'Harness Inc 3a: automated Mine→Verify→Cover pipeline controller for ONE target class. Composes the proven sub-workflows, writes the KB ledger, enforces the §6 gate battery, writes the self-contained run report. Budget cap + mutation ratchet safety rails. DEFAULT MODEL: Sonnet for every agent (override via args.model) — the mutation gate MEASURES test quality, so the model is validated by the gate, not assumed; typical run cost ~400k output tokens marginal. Seal: PROMPT-ONLY (agentType investigation is Step-8 bringup — see controller header).',
   phases: [
     { title: 'Mine→Verify', detail: 'clean-room Mine (3 samples) + batched-sliced Verify (sub-workflow or inlined)' },
     { title: 'KB Write', detail: 'serialize verified rules into the consuming project KB (verified status) before Cover reads it' },
@@ -662,7 +662,9 @@ const reportContent = `# Cover run — ${TARGET_CLASS} (${today})
 | Stopped | ${coverResult.stopped} |
 | Iterations | ${coverResult.iter ?? '?'} |
 | Achieved score | ${achievedScore}% reachable kill |
-| Budget spent | ${budget.spent().toLocaleString()} tokens |
+| Model | ${MODEL} (every agent; default Sonnet) |
+| Run cost (marginal) | ${runSpent().toLocaleString()} output tokens — THIS run only |
+| Session total at finish | ${budget.spent().toLocaleString()} tokens (shared pool: main loop + all workflows — NOT this run's cost) |
 | Date | ${today} |
 
 ## Gate Battery (§6)

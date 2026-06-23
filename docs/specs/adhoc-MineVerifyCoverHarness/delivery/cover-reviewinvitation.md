@@ -11,8 +11,10 @@
 | Stopped | all-gates-green |
 | Iterations | 1 |
 | Achieved score | 91% reachable kill |
-| Budget spent | 1,658,906 tokens |
-| Date | 2026-06-21 |
+| Model | sonnet (every agent) |
+| Run cost (actual) | ~395k output tokens (193k mine-verify + 203k cover, Sonnet) |
+| Session total shown | 1,658,906 tokens — the SHARED session pool (prep + builds + run), NOT this run's cost; the old budget gate misread this (now fixed → reports marginal) |
+| Date | 2026-06-21 (date-stamp agent guessed wrong; real date 2026-06-23) |
 
 ## Gate Battery (§6)
 
