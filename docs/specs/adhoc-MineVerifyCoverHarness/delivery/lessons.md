@@ -287,6 +287,7 @@ here are the part the Workflow cannot self-capture — operator/session appends 
 | Date | Target | Repo | Result | Cost (marginal) | Notes |
 |------|--------|------|--------|-----------------|-------|
 | 2026-06-23 | ReviewInvitation.Accept/Decline | dotnet-microservices | 91% (10/11), 6 gates green, 39 tests, 7 rules | ~395k, Sonnet | first cross-repo; honest survivor (`<` vs `<=`); full eval in `run-eval-reviewinvitation-2026-06-23.md` |
+| 2026-06-23 | Article behaviors | dotnet-microservices | **100%** (60/60), 6 gates green, 127 tests, 25 rules, **1 Cover iteration** | **~103k**, Sonnet | heaviest target yet (faked `IArticleAction` + `ArticleStateMachineFactory` delegate + domain-event assertions); green on first pass; completed on the 4th attempt after a 3-failure Anthropic API outage (harness halted cleanly each time) |
 
 ### Improvement Proposal — automate the test-project scaffold
 **Target:** `plugins/nexus-dotnet/skills/mine-verify-cover-dotnet/SKILL.md` + a harness scaffold step
@@ -297,8 +298,8 @@ here are the part the Workflow cannot self-capture — operator/session appends 
 ### Improvement Proposal — source the date via args, not a guessing agent
 **Target:** `harness/loop.workflow.js` (date-stamp agent)
 **Change:** pass the run date through args (or stamp after return). The date-stamp agent can't call `Date()` (Workflow rule 4), so it infers the date and guessed wrong.
-**Evidence:** ReviewInvitation run — the KB footer + report header read `2026-06-21` (real date `2026-06-23`).
-**Priority:** low (cosmetic, trivially fixable)
+**Evidence:** ReviewInvitation run — the KB footer + report header read `2026-06-21` (real date `2026-06-23`). **Recurred** on the Article run (same `2026-06-21` mis-stamp) → now 2× consecutive.
+**Priority:** low→medium (cosmetic but now a confirmed recurrence; the cheapest fix on the board, do it before the next run)
 
 ### Improvement Proposal — keep same-basename partial handling adapter-owned (DONE, recorded so it isn't regressed)
 **Target:** `plugins/nexus-dotnet/skills/mine-verify-cover-dotnet/SKILL.md`
@@ -317,3 +318,21 @@ here are the part the Workflow cannot self-capture — operator/session appends 
 **Change:** the auto `cover-{class}.md` is mechanical (gates + survivors + cost). Add survivor-cluster analysis and a "what to strengthen next" line so each run self-documents toward the hand-authored eval depth; the full eval stays an **on-demand synthesis** from accumulated run findings (this section), not a per-run auto-artifact.
 **Evidence:** the run records are the self-improvement input; the mechanical report is thinner than the VWH `ENGINE-EVAL` analog (`run-eval-reviewinvitation-2026-06-23.md`).
 **Priority:** medium
+
+### Improvement Proposal — tighten the mutate glob so it can't match a sibling file (new, Article run)
+**Target:** `harness/loop.workflow.js` / `cover.workflow.js` (`MUTATE_GLOB`) + the `mine-verify-cover-dotnet` adapter
+**Change:** a `**/Articles/Behaviors/Article.cs` glob also mutated `IArticleStateMachine.cs` (Stryker reported `mutatedFiles: ["Article.cs:76","IArticleStateMachine.cs:4"]`). Not a fake-green — `target_mutated` verified the real target got its 76 mutants and the floor scored only the 60 reachable Article.cs mutants — but the glob is looser than intended. Scope to the exact relative path (or assert `mutatedFiles`'s target entry is the *only* non-trivial one) so a sibling interface/partial in the same folder can't silently enter the mutant set.
+**Evidence:** Article run — `IArticleStateMachine.cs` picked up 4 stray mutants under a glob meant to isolate `Behaviors/Article.cs`.
+**Priority:** low (cosmetic; the gate stayed honest)
+
+### Improvement Proposal — report the Mine→Verify cost as marginal, not the absolute pool snapshot (new, Article run)
+**Target:** `harness/loop.workflow.js` report phase
+**Change:** the "Run cost (marginal)" line is correct (`runSpent()` = 102,563 on the Article run), but the "Mine→Verify Summary → cost" line prints `mineVerify.outputTokensThisTurn` (1,923,691) — the *absolute* shared-pool `budget.spent()` snapshot, not the phase's marginal cost. The two cost numbers in one report disagree by ~19×, which reads as a defect even though the marginal headline is right. Compute the Mine→Verify phase cost relative to `RUN_START_SPENT` too (or drop the absolute line).
+**Evidence:** Article report — marginal 102,563 vs Mine→Verify "cost" 1,923,691 in the same file.
+**Priority:** medium (it undermines trust in the cost ledger, which the budget story leans on)
+
+### Finding — resilience held across a real outage; recalibrate the cost estimate down (Article run)
+**Not a defect — a validated positive + an estimate correction.**
+- **Resilience proven end-to-end:** the Article target took 4 attempts. The first 3 hit an Anthropic API 500 outage; each **halted cleanly** (no crash, no KB corruption, no fake-green — the dca4746 verify-failed guard + the existing Mine guard both fired). The 4th completed green. This is the resilience fix doing exactly its job against a live outage, not a synthetic test.
+- **Cost recalibration:** the *heaviest* target (richest rule set, most faked collaborators) cost **~103k marginal** — well under the ReviewInvitation run's ~395k and ~20× under my pre-run 1–2M estimate. Collaborator-faking did **not** blow up cost. Future estimates for rich-but-bounded domain classes should anchor near ~100–400k marginal, not seven figures. (The 1–2M fear came from reading the shared-pool `budget.spent()` as if it were run cost — the same confusion the marginal-accounting fix addresses.)
+- **Harness read-discipline (minor):** the read-tracker flagged the workflow subagents re-reading `Article.cs` ~11× and the ReviewInvitation behaviors ~7× in the round. Most is legitimate fan-out (3 independent miners + Cover each read once), not one agent thrashing — but the Cover/runner loop does re-open the source across iterations. Low priority; revisit only if a future multi-iteration run shows it dominating cost.
