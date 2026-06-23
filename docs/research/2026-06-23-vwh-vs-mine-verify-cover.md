@@ -146,9 +146,11 @@ extract our adapter. Do **not** host on VWH's kernel.
 
 ---
 
-## Caveat on freshness
+## Update — second-class proof now real
 
-Our second-class generalization data point (CycleTimeAnalyzer) is **being re-run** after the fake-green fix;
-this report cites our *design + the BugRatio 100% real result*, not the (now-invalid) CycleTime number. When
-the re-run lands, the only line that changes here is "2 live runs (1 real, 1 fake-green being re-run)" → the
-real CycleTime result. It does not change the verdict.
+The CycleTime re-run (after the fake-green fix) landed **real**: Stryker mutated CycleTimeAnalyzer.cs (399
+mutants, 275 reachable), `target_mutated` confirmed the right file, **100% reachable kill**, 216 tests, all
+gates green, on Sonnet (SR `c628dc1`). So our side now has **two genuine 100% proofs** (BugRatio 177 mutants,
+CycleTime 399). This strengthens — but does not change — the verdict: the fake-green was a real maturity gap
+vs. VWH, and closing it (by adopting VWH's read-the-real-report posture) is exactly the hybrid move §Verdict
+recommends.

@@ -5,11 +5,14 @@ design). **Pilot record:** `mine-verify-pilot-method.md`, `mine-verify-pass3-eva
 **Architecture home:** the VERIFY-stage gate named by reference in ADR-26 — *"promote to its own ADR
 when built."* This feature is that build; it graduates to **ADR-30** when shipped.
 
-**Status (2026-06-22):** Mine→Verify proven (recall 3/3); **Cover live-proven** (BugRatioAnalyzer, 88%
-reachable kill, all gates green, committed in sprint-rituals `a86ad4d`); **Inc-3a pipeline controller BUILT +
-APPROVED** (`harness/loop.workflow.js`, 291 tests) — its live proof (Step 8) is the immediate next step. VWH
-ruled out as host. Substrate: **standalone nexus skill + Workflow.** The harness IS the product (automated,
-.NET → C++ → Flutter — see Multi-language end goal).
+**Status (2026-06-23):** Mine→Verify proven (recall 3/3); **Inc-3a pipeline controller LIVE-PROVEN on TWO
+classes** — BugRatioAnalyzer (100% reachable kill, SR `d5550bd`) and CycleTimeAnalyzer (100%, 399 mutants,
+SR `c628dc1`), both fully automated on **Sonnet** (the gate validates quality, so the model is measured not
+assumed). A fake-green was found + fixed mid-run (Stryker mutated the wrong class and the gate scored it as
+the target — new `target_mutated` gate + `--mutate` pin, `4bfaa25`). VWH ruled out as host (see
+`docs/research/2026-06-23-vwh-vs-mine-verify-cover.md`). Substrate: **standalone nexus skill + Workflow.** The
+harness IS the product (automated, **.NET → Flutter** next; C++ deferred — see Multi-language end goal). Full
+narrative + Flutter plan: `delivery/journey-and-flutter-plan.md`.
 
 ## Delivery model (the architectural decision)
 

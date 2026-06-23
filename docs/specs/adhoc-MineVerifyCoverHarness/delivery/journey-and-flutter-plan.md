@@ -53,7 +53,13 @@ report-on-halt. The gate cannot be fooled — a weak test that doesn't kill muta
 ### Runs ledger
 - **Run 1 — BugRatioAnalyzer (Opus):** 100% reachable kill (150/150), 134 tests, all gates green. Live proof of the controller. Committed (SR `d5550bd`).
 - **Run 2a — MISFIRE:** ran BugRatio again (args-shape bug), ~960k tokens wasted, fully reverted. Bought 3 committed fixes + settled the "does `workflow()` composition inject args" unknown (it does — as objects).
-- **Run 2b — CycleTimeAnalyzer (Sonnet):** in flight at time of writing — Mine→Verify produced **53 verified rules** (Sonnet mined richer than BugRatio's 37), KB written, Cover running. The real generalization proof: a second, larger, fresh class.
+- **Run 2b — CycleTimeAnalyzer, FAKE-GREEN then FIXED:** the first attempt reported "100%" but Stryker had
+  mutated BugRatio (177 mutants), not CycleTime (0) — the gate scored the wrong class. Root-caused, fixed
+  (the `target_mutated` gate + `--mutate` CLI pin, commit `4bfaa25`), churn reverted.
+- **Run 2c — CycleTimeAnalyzer (Sonnet), REAL:** 59 verified rules; Stryker mutated **CycleTimeAnalyzer.cs
+  (399 mutants, 275 reachable)** — `target_mutated` confirmed the right file — **100% reachable kill, 0
+  survivors**, 216 tests, all gates green. The genuine second-class generalization proof, on Sonnet
+  (SR `c628dc1`). CycleTime's 399 mutants vs BugRatio's 177 prove it really mutated the target.
 
 ---
 
