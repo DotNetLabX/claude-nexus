@@ -260,7 +260,7 @@ const RUNNER_RESULT = _args.runnerResult ?? `${RUNS_DIR}\\cover-bugratio-run.jso
 // First-pass acceptance floor (design §6 / plan Step 5 stop rule): per-file REACHABLE kill >= 75. The
 // 70→75→80 ratchet toward 100 is Increment 3 — NOT chased here.
 const MUTATION_FLOOR = 75
-const MAX_ITERATIONS = 5 // hard cap (plan Step 5: ~5 iterations / budget) — stop + report, never fake green.
+const MAX_ITERATIONS = _args.maxIterations ?? 5 // hard cap (plan Step 5: ~5 iterations / budget) — stop + report, never fake green.
 
 // The MEASURED baseline skip count (design §6 / plan Step 3: read the baseline, do NOT assert a literal 0).
 // The project's current suite skips 0 today; the runner re-measures it each run and no_new_skips gates on

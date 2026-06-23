@@ -105,7 +105,7 @@ const COVER_SCRIPT       = 'D:\\src\\claude-plugins\\nexus\\harness\\cover.workf
 // Budget cap: halt when budget.spent() exceeds this ceiling (tokens). One class typically costs
 // ~100k–300k tokens across Mine→Verify + Cover iterations; 1.5M is a generous per-class ceiling.
 // Adjust downward for tighter cost control.
-const BUDGET_CEILING_TOKENS = 1_500_000
+const BUDGET_CEILING_TOKENS = _args.budgetCeiling ?? 1_500_000
 // MARGINAL accounting (fix, 2026-06-23): budget.spent() is the SHARED session pool (main loop + ALL
 // workflows), not this run's cost. A run fired late in a long session trips the ceiling on the session's
 // prior spend — ReviewInvitation run 1 halted post-mine-verify at 1.62M shared though its own cost was
@@ -115,7 +115,7 @@ const runSpent = () => budget.spent() - RUN_START_SPENT
 
 // Cover loop constants (passed to the sub-workflow or used inline in the monolith).
 const MUTATION_FLOOR   = 75   // per-file REACHABLE kill >= 75% (design §6)
-const MAX_ITERATIONS   = 5    // hard cap: stop and report, never fake green
+const MAX_ITERATIONS   = _args.maxIterations ?? 5    // hard cap on Cover passes: stop + report, never fake green
 const BASELINE_SKIPS   = 0    // measured baseline skip count (0 today in sprint-rituals)
 // KB-pre-documented dead lines to exclude from the REACHABLE denominator. Per-class — must NOT carry
 // one class's dead lines onto another (that would wrongly exclude real survivors = fake green). Default
@@ -538,7 +538,7 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
       { src: SRC, kbRules: KB_RULES, testStyle: TEST_STYLE, exampleTests: EXAMPLE_TESTS,
         propertyTests: PROPERTY_TESTS, runnerResult: RUNNER_RESULT, targetClass: TARGET_CLASS, model: MODEL,
         testDir: TEST_DIR, testProjectDir: TEST_PROJECT_DIR, mutateGlob: MUTATE_GLOB,
-        expectedSurvivorLines: EXPECTED_SURVIVOR_LINES, patternTests: PATTERN_TESTS },
+        expectedSurvivorLines: EXPECTED_SURVIVOR_LINES, patternTests: PATTERN_TESTS, maxIterations: MAX_ITERATIONS },
     )
     if (!coverSubResult) {
       log('WARNING: cover sub-workflow returned no result. Bringup check failed — switch MONOLITH_FALLBACK=true.')
