@@ -339,6 +339,12 @@ if (!MONOLITH_FALLBACK) {
     { scriptPath: MINE_VERIFY_SCRIPT },
     { src: SRC, targetClass: TARGET_CLASS, model: MODEL },   // args forwarded as an OBJECT (composition injects objects)
   )
+  if (mineVerifyResult?.stopped) {
+    // mine-verify halted cleanly (e.g. a transient-API verify-failed) — do NOT proceed to KB write
+    // (the rules are unverified). Surface the stop reason; the operator re-runs.
+    log(`HALT: mine-verify stopped (${mineVerifyResult.stopped}): ${mineVerifyResult.reason ?? ''}`)
+    return { stopped: mineVerifyResult.stopped, reason: mineVerifyResult.reason, after: 'mine-verify', outputTokensThisTurn: budget.spent() }
+  }
   if (!mineVerifyResult?.consensusRules) {
     log('WARNING: workflow() composition returned no consensusRules. Bringup check failed — switch to MONOLITH_FALLBACK = true.')
     return { stopped: 'bringup-fail', reason: 'mine-verify sub-workflow returned no consensusRules; set MONOLITH_FALLBACK=true', outputTokensThisTurn: budget.spent() }
@@ -387,10 +393,10 @@ if (!MONOLITH_FALLBACK) {
   }))
   const verdicts = batchResults.filter(Boolean).flatMap((b) => b.verdicts ?? [])
 
-  const transcribedCheck = transcribed.length ? await agent(
+  const transcribedCheck = transcribed.length ? ((await agent(
     `Quote-entailment check. Judge ONLY from inline quotes — do NOT read any file.\n${transcribed.map((r) => `${r.id}: ${r.statement}\n  quote: ${r.quote}`).join('\n')}`,
     { label: 'verify:transcribed-batch', phase: 'Mine→Verify', schema: TRANSCRIBED_SCHEMA, model: MODEL }
-  ) : { failures: [] }
+  )) ?? { failures: [] }) : { failures: [] }
 
   mineVerifyResult = {
     consensusRules: consensus.consensusRules.map((r) => ({ id: r.id, kind: r.kind, agreement: r.agreement, lines: r.lines, statement: r.statement })),

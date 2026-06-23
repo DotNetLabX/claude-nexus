@@ -251,6 +251,24 @@ test('mine-verify falls back to BugRatio defaults when args absent (null)', asyn
   assert.ok(result?.target?.source.endsWith('BugRatioAnalyzer.cs'), 'null args → BugRatio default src');
 });
 
+// Transient-API resilience (surfaced live by the Article run): an API 500 returned null from the verify
+// agents. The old code crashed on `transcribedCheck.failures`; worse, a naive null-guard would have emitted
+// a hollow "verified" result with zero verdicts (fake-verify). The fix halts with `verify-failed` instead.
+test('mine-verify halts with verify-failed when every verify batch returns null (no crash, no fake-verify)', async () => {
+  const src = readWorkflow(MINE_VERIFY_PATH);
+  const miner = { rules: [{ statement: 'rule A', quote: 'code()', lines: '10-12' }] };
+  const consolidate = {
+    consistencyScore: '1', contradictions: [],
+    consensusRules: [{ id: 'BR-1', statement: 'rule A', quote: 'code()', lines: '10-12', agreement: 3, kind: 'interpretive' }],
+  };
+  const slicer = { slices: [{ id: 'BR-1', slice: 'slice text' }] };
+  // The batch verifier returns null (the API-500 shape) → verdicts become empty; transcribed=0 (rule is interpretive).
+  const fixtures = [miner, miner, miner, consolidate, slicer, null];
+  const { result } = await runInSandbox(src, fixtures, { src: 'D:\\x\\Foo.cs', targetClass: 'Foo' });
+  assert.equal(result?.stopped, 'verify-failed',
+    'all-null verify batches halt with verify-failed — not a crash, not a hollow verified result');
+});
+
 // ==================================================================================================
 // Slice 4: mine-verify rejects a script that references an undefined global
 // ==================================================================================================

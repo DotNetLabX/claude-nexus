@@ -256,13 +256,23 @@ const verdicts = batchResults.filter(Boolean).flatMap((b) => b.verdicts ?? [])
 // 3) Transcribed rules: a SINGLE batched quote-entailment check (no per-rule fan-out).
 //    The verbatim quote is INLINE in the prompt — no file read needed or permitted.
 const transcribedCheck = transcribed.length
-  ? await agent(
+  ? (await agent(
       `Quote-entailment check. For each transcribed rule below, the verbatim quote is provided inline. Judge ONLY from the inline quote — do NOT read any file. Return ONLY the rules that FAIL entailment (where the inline quote does not entail the stated rule).
 
 ${transcribed.map((r) => `${r.id}: ${r.statement}\n  quote: ${r.quote} (lines ${r.lines})`).join('\n')}`,
       { label: 'verify:transcribed-batch', phase: 'Verify', schema: TRANSCRIBED_SCHEMA, model: MODEL },
-    )
+    )) ?? { failures: [] }
   : { failures: [] }
+
+// Resilience (transient API): if interpretive rules existed but EVERY verify batch returned null (all
+// agents errored — e.g. an API 500 outage), do NOT emit a hollow "verified" result that the controller
+// would persist to the KB as verified. Signal a stopped state so the controller halts (operator re-runs)
+// rather than fake-verifying unverified rules. (Surfaced live by the Article run: an API 500 hit the
+// slicer + all verify batches, and the old code crashed on null.failures.)
+if (interpretive.length > 0 && verdicts.length === 0) {
+  log(`HALT: all ${batches.length} interpretive verify batch(es) returned null (transient API failure?) — not emitting unverified rules as verified.`)
+  return { stopped: 'verify-failed', reason: `all ${batches.length} interpretive verify batch(es) returned null (likely a transient API 500) — re-run`, outputTokensThisTurn: budget.spent() }
+}
 
 // --- Return: consensus rules + verdicts + counts + cost signal ------------------------------------
 const tally = (k) => verdicts.filter((x) => x.verdict === k).length
