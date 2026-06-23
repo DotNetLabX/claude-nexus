@@ -272,3 +272,48 @@
   excluding `Ignored/CompileError/Pending`), the dead-line expected-survivor exclusion, and the char_pin
   diff-classification proxy (vs the Inc-3 manifest pin). Built TDD against a real on-disk `mutation-report.json`
   + the `tdd` skill. Both gaps converge on the **Inc-4 harness skill** the roadmap already plans.
+
+## Harness Runs — Post-Ship Operation (Inc 4+)
+
+The Inc-4 skill shipped (`plugins/nexus/skills/mine-verify-cover` + `plugins/nexus-dotnet/skills/
+mine-verify-cover-dotnet`), so the two `## Skill Gaps` above (author-cover-workflow, stryker-gate-battery)
+are now **FILLED** by those skills. This section is the **self-improvement seam**: each post-ship run appends
+a one-line ledger entry + any judgment findings as Improvement Proposals; the **Learner sweeps them into
+improve-skills**. (The mechanical per-run record is the auto-written `cover-{class}.md`; the judgment findings
+here are the part the Workflow cannot self-capture — operator/session appends them, like the entries below.)
+
+### Run ledger
+
+| Date | Target | Repo | Result | Cost (marginal) | Notes |
+|------|--------|------|--------|-----------------|-------|
+| 2026-06-23 | ReviewInvitation.Accept/Decline | dotnet-microservices | 91% (10/11), 6 gates green, 39 tests, 7 rules | ~395k, Sonnet | first cross-repo; honest survivor (`<` vs `<=`); full eval in `run-eval-reviewinvitation-2026-06-23.md` |
+
+### Improvement Proposal — automate the test-project scaffold
+**Target:** `plugins/nexus-dotnet/skills/mine-verify-cover-dotnet/SKILL.md` + a harness scaffold step
+**Change:** turn the documented "scaffold a test project" into an automated step. A fresh repo (zero tests) currently needs a manual scaffold (csproj + `.config/dotnet-tools.json` + `stryker-config.json` + smoke test) before the first run.
+**Evidence:** dotnet-microservices had zero test projects; the ReviewInvitation run required a manual scaffold. This is the single gate to one-command runs on a new repo.
+**Priority:** high
+
+### Improvement Proposal — source the date via args, not a guessing agent
+**Target:** `harness/loop.workflow.js` (date-stamp agent)
+**Change:** pass the run date through args (or stamp after return). The date-stamp agent can't call `Date()` (Workflow rule 4), so it infers the date and guessed wrong.
+**Evidence:** ReviewInvitation run — the KB footer + report header read `2026-06-21` (real date `2026-06-23`).
+**Priority:** low (cosmetic, trivially fixable)
+
+### Improvement Proposal — keep same-basename partial handling adapter-owned (DONE, recorded so it isn't regressed)
+**Target:** `plugins/nexus-dotnet/skills/mine-verify-cover-dotnet/SKILL.md`
+**Change:** full-path mutant extraction + mutate-glob scoped to the behaviors file for split aggregates (shipped this run). Keep it a first-class adapter concern — it is the silent fake-green for any DDD codebase that splits `Foo.cs` / `Behaviors/Foo.cs`.
+**Evidence:** `Review.Domain` splits every aggregate; basename-keyed extraction would have scored the 0-mutant data partial as a false 100%.
+**Priority:** high (shipped)
+
+### Improvement Proposal — own a per-run cost ledger (marginal, not the shared pool)
+**Target:** `harness/loop.workflow.js`
+**Change:** the budget gate measured `budget.spent()` (the shared session pool), so the run halted on its own ceiling on the session's prior spend (fixed this run with `RUN_START_SPENT` marginal accounting). Generalize to a per-run cost ledger (start, marginal, per-phase) so cost is always attributed to the run — matters once a sweep fires N runs in one turn.
+**Evidence:** ReviewInvitation Run 1 halted at 1.62M shared though its own cost was ~193k.
+**Priority:** medium
+
+### Improvement Proposal — richer auto-report toward the eval depth
+**Target:** `harness/loop.workflow.js` report phase + `mine-verify-cover` skill
+**Change:** the auto `cover-{class}.md` is mechanical (gates + survivors + cost). Add survivor-cluster analysis and a "what to strengthen next" line so each run self-documents toward the hand-authored eval depth; the full eval stays an **on-demand synthesis** from accumulated run findings (this section), not a per-run auto-artifact.
+**Evidence:** the run records are the self-improvement input; the mechanical report is thinner than the VWH `ENGINE-EVAL` analog (`run-eval-reviewinvitation-2026-06-23.md`).
+**Priority:** medium
