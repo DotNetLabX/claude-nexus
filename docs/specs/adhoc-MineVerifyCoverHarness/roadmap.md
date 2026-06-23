@@ -19,7 +19,10 @@ narrative + Flutter plan: `delivery/journey-and-flutter-plan.md`.
 and harness parameterization (`testProjectDir`/`mutateGlob`/`patternTests`/`testDir` args + full-path report
 extraction) are **done + validated offline** (307 tests; baseline Stryker = 11 testable mutants on the target).
 Surfaced + fixed the **same-basename partial hazard** (the repo splits `Foo.cs`/`Behaviors/Foo.cs`; basename
-report-key matching could fake-green). The live run is the owner-gated next step. See journey-and-flutter-plan §5.5.
+report-key matching could fake-green). **LIVE-PROVEN GREEN (2026-06-23):** all 6 gates, **91% reachable kill**
+(10/11), 39 tests, 7 rules, `target_mutated` confirmed the behaviors partial (13 mutants). One honest survivor
+(`< → <=` exact-instant). Also fixed a budget-gate bug (it measured the shared session pool, not the run's
+marginal spend). The harness is now **live-proven on 3 classes across 2 repos**. See journey-and-flutter-plan §5.5.
 
 ## Delivery model (the architectural decision)
 

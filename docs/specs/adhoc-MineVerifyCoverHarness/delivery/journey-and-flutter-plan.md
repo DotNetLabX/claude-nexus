@@ -96,8 +96,12 @@ is necessary but NOT sufficient.
 
 The third proof target is a **different repo + different code shape** (DDD behavior guards, not analytics
 math) — the real test that the harness generalizes across codebases, not just classes. First target:
-`ReviewInvitation.Accept/Decline` (pure logic, no DbContext/IMemoryCache). Two halves of prep, both **done +
-validated offline** (the ~1M-token live run is the next, owner-gated step):
+`ReviewInvitation.Accept/Decline` (pure logic, no DbContext/IMemoryCache). **RESULT: LIVE-PROVEN GREEN
+(2026-06-23)** — all 6 gates pass, **91% reachable kill** (10/11), 39 tests, 7 verified rules (BR-1…BR-7),
+KB flipped to mutation-gated. `target_mutated` confirmed **13 mutants on the behaviors partial** — the
+same-basename fix worked (it mutated `Behaviors/ReviewInvitation.cs`, not the 0-mutant data partial). The
+single honest survivor (line 13 `< → <=`, the `ExpiresOn == UtcNow` exact instant) is unkillable without a
+clock injection — a legitimate sub-100%, reported not hidden. Two halves of prep, both done + validated:
 
 **1. Scaffold (in dotnet-microservices) — the "scaffold a test project" capability, done manually first.**
 - `src/Services/Review/Review.Domain.Tests/` — net9.0 test project, **opts out of the repo's central package
@@ -128,6 +132,17 @@ files share basename `Foo.cs`**. The harness runner extracted "the entry whose k
 runner now keys extraction on the **full SRC path**, and the mutate glob is scoped to the behaviors partial
 (`**/Invitations/Behaviors/ReviewInvitation.cs`). This is exactly the class of generalization bug a
 cross-repo proof exists to surface — found offline, before spending a live run.
+
+**Two live-run findings (both fixed/noted):**
+- **Budget gate measured the SHARED pool, not the run.** Run 1 halted on `budget-ceiling` right after
+  Mine→Verify (1.62M > 1.5M) though its *own* cost was ~193k — `budget.spent()` is the shared session pool
+  (main loop + all workflows), so a run fired late in a long session trips on the session's prior spend.
+  Fixed: capture `RUN_START_SPENT` at controller start, gate on `runSpent()` = marginal. Run 2 (resume) then
+  cleared the gate and completed green. **Lesson: a live run shares the session token pool — account for the
+  run's *marginal* spend, never the absolute.**
+- **The date-stamp agent guessed wrong** (2026-06-21 vs the real 2026-06-23). It can't call `Date()` (Workflow
+  rule 4), so it infers the date from context and can be stale — the KB footer + report header carry the
+  wrong date. Cosmetic, but the date-stamp-via-agent design is fragile; pass the date via args next.
 
 ---
 

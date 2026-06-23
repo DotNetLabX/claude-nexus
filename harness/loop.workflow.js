@@ -106,6 +106,12 @@ const COVER_SCRIPT       = 'D:\\src\\claude-plugins\\nexus\\harness\\cover.workf
 // ~100k–300k tokens across Mine→Verify + Cover iterations; 1.5M is a generous per-class ceiling.
 // Adjust downward for tighter cost control.
 const BUDGET_CEILING_TOKENS = 1_500_000
+// MARGINAL accounting (fix, 2026-06-23): budget.spent() is the SHARED session pool (main loop + ALL
+// workflows), not this run's cost. A run fired late in a long session trips the ceiling on the session's
+// prior spend — ReviewInvitation run 1 halted post-mine-verify at 1.62M shared though its own cost was
+// ~193k. Capture the baseline at controller start and gate on the run's MARGINAL spend.
+const RUN_START_SPENT = budget.spent()
+const runSpent = () => budget.spent() - RUN_START_SPENT
 
 // Cover loop constants (passed to the sub-workflow or used inline in the monolith).
 const MUTATION_FLOOR   = 75   // per-file REACHABLE kill >= 75% (design §6)
@@ -319,7 +325,7 @@ const today = dateStampResult?.date ?? '(date-unavailable)'
 // =================================================================================================
 phase('Mine→Verify')
 log(`Controller start: target=${TARGET_CLASS}, src=${SRC}`)
-log(`Budget ceiling: ${BUDGET_CEILING_TOKENS.toLocaleString()} tokens (safety rail — halts before exceeding).`)
+log(`Budget ceiling: ${BUDGET_CEILING_TOKENS.toLocaleString()} tokens run-marginal (safety rail; baseline session spend at start = ${RUN_START_SPENT.toLocaleString()}).`)
 log(`Seal status: PROMPT-ONLY (agentType investigation is Step-8 bringup — see controller header).`)
 
 let mineVerifyResult
@@ -398,9 +404,9 @@ if (!MONOLITH_FALLBACK) {
 log(`Mine→Verify complete: ${mineVerifyResult.consensusRules.length} consensus rules.`)
 
 // Budget check after Mine→Verify.
-if (budget.spent() > BUDGET_CEILING_TOKENS) {
-  log(`HALT: budget ceiling breached after Mine→Verify (${budget.spent().toLocaleString()} > ${BUDGET_CEILING_TOKENS.toLocaleString()} tokens).`)
-  return { stopped: 'budget-ceiling', after: 'mine-verify', spent: budget.spent(), ceiling: BUDGET_CEILING_TOKENS, outputTokensThisTurn: budget.spent() }
+if (runSpent() > BUDGET_CEILING_TOKENS) {
+  log(`HALT: budget ceiling breached after Mine→Verify (run-marginal ${runSpent().toLocaleString()} > ${BUDGET_CEILING_TOKENS.toLocaleString()} tokens; session-total ${budget.spent().toLocaleString()}).`)
+  return { stopped: 'budget-ceiling', after: 'mine-verify', spent: runSpent(), sessionTotal: budget.spent(), ceiling: BUDGET_CEILING_TOKENS, outputTokensThisTurn: budget.spent() }
 }
 
 // =================================================================================================
@@ -576,9 +582,9 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
     }
     survivingMutants = gates.mutation_floor.detail.reachableSurvivors
 
-    if (budget.spent() > BUDGET_CEILING_TOKENS) {
-      log(`HALT: budget ceiling breached during Cover (${budget.spent().toLocaleString()} tokens).`)
-      coverResult = { stopped: 'budget-ceiling', iter, gates, achievedScore: score, spent: budget.spent() }
+    if (runSpent() > BUDGET_CEILING_TOKENS) {
+      log(`HALT: budget ceiling breached during Cover (run-marginal ${runSpent().toLocaleString()} tokens; session-total ${budget.spent().toLocaleString()}).`)
+      coverResult = { stopped: 'budget-ceiling', iter, gates, achievedScore: score, spent: runSpent(), sessionTotal: budget.spent() }
       break
     }
 
@@ -591,8 +597,8 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
 log(`Cover done: ${coverResult.stopped} after ${coverResult.iter ?? '?'} iteration(s); achieved ${coverResult.achievedScore ?? '?'}% reachable kill.`)
 
 // Budget check after Cover.
-if (budget.spent() > BUDGET_CEILING_TOKENS) {
-  log(`HALT: budget ceiling breached after Cover (${budget.spent().toLocaleString()} tokens).`)
+if (runSpent() > BUDGET_CEILING_TOKENS) {
+  log(`HALT: budget ceiling breached after Cover (run-marginal ${runSpent().toLocaleString()} tokens; session-total ${budget.spent().toLocaleString()}).`)
 }
 
 // =================================================================================================
