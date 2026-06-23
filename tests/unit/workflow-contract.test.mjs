@@ -296,6 +296,7 @@ test('cover.workflow.js runs in mock-globals sandbox without ReferenceError', as
         replacement: '+',
       })),
     ],
+    mutatedFiles: [{ file: 'D:\\x\\BugRatioAnalyzer.cs', count: 10 }], // target was mutated → target_mutated passes
     redOnCurrent: [],
   };
 
@@ -329,6 +330,7 @@ test('cover sandbox return has gates + achievedScore on all-green', async () => 
       { status: 'Killed', location: { start: { line: 20 } }, mutatorName: 'Arithmetic', replacement: '*' },
       { status: 'Killed', location: { start: { line: 30 } }, mutatorName: 'Equality', replacement: '==' },
     ],
+    mutatedFiles: [{ file: 'D:\\x\\BugRatioAnalyzer.cs', count: 4 }],
     redOnCurrent: [],
   };
 
@@ -362,6 +364,7 @@ test('cover sandbox halts with ratchet-regression when score drops iteration to 
       ...[1,2,3,4,5,6,7,8].map(l => ({ status: 'Killed',   location: { start: { line: l } }, mutatorName: 'A', replacement: '+' })),
       ...[9,10].map(l =>              ({ status: 'Survived', location: { start: { line: l } }, mutatorName: 'B', replacement: '-' })),
     ],
+    mutatedFiles: [{ file: 'D:\\x\\BugRatioAnalyzer.cs', count: 10 }],
     redOnCurrent: [],
   };
   const runnerIter2 = {
@@ -375,6 +378,7 @@ test('cover sandbox halts with ratchet-regression when score drops iteration to 
       ...[1,2,3,4,5,6].map(l => ({ status: 'Killed',   location: { start: { line: l } }, mutatorName: 'A', replacement: '+' })),
       ...[7,8,9,10].map(l =>    ({ status: 'Survived', location: { start: { line: l } }, mutatorName: 'B', replacement: '-' })),
     ],
+    mutatedFiles: [{ file: 'D:\\x\\BugRatioAnalyzer.cs', count: 10 }],
     redOnCurrent: [],
   };
 

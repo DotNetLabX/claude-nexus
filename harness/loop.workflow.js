@@ -173,6 +173,19 @@ function noNewSkips(testRuns, baselineSkips) {
   const maxSkips = runs.length ? Math.max(...runs.map((r) => r.skipped ?? 0)) : 0;
   return { pass: maxSkips <= baselineSkips, detail: { maxSkips, baselineSkips } };
 }
+// target_mutated — anti-fake-green: the Stryker report ACTUALLY mutated the target file. (Inlined from
+// cover-gates.mjs — keep in sync.) Fed by runRaw.mutatedFiles (per-file counts straight from the report);
+// fails if the target basename is absent or count 0 (Stryker mutated a different class → score untrustworthy).
+function targetMutated(mutatedFiles, sourcePath) {
+  const base = (p) => (p ?? '').split(/[\\/]/).pop();
+  const target = base(sourcePath);
+  const list = mutatedFiles ?? [];
+  const entry = list.find((f) => base(f.file) === target);
+  const count = entry?.count ?? 0;
+  const detail = { target, count, mutatedFiles: list.map((f) => `${base(f.file)}:${f.count}`) };
+  if (count <= 0) detail.error = `target ${target} was NOT mutated (0 mutants in the Stryker report) — mutate scope wrong or a different file mutated; kill-rate untrustworthy (fake-green guard)`;
+  return { pass: count > 0, detail };
+}
 const STRYKER_DISABLE_RE = /^\/\/\s*Stryker\s+disable\b/i;
 function isDiffMetaLine(line) {
   return line.startsWith('+++') || line.startsWith('---') || line.startsWith('@@') ||
@@ -268,9 +281,15 @@ const RUNNER_RESULT_SCHEMA = {
       type: 'array',
       items: { type: 'object', properties: { status: { type: 'string' }, location: { type: 'object', properties: { start: { type: 'object', properties: { line: { type: 'integer' } }, required: ['line'] } }, required: ['start'] }, mutatorName: { type: 'string' }, replacement: { type: 'string' } }, required: ['status', 'location', 'mutatorName'] },
     },
+    // Per-file mutant counts straight from the Stryker report — EVERY file with >=1 mutant. Independent of
+    // `mutants`; the target_mutated gate uses it to verify the TARGET file was actually mutated (anti-fake-green).
+    mutatedFiles: {
+      type: 'array',
+      items: { type: 'object', properties: { file: { type: 'string' }, count: { type: 'integer' } }, required: ['file', 'count'] },
+    },
     redOnCurrent: { type: 'array', items: { type: 'object', properties: { test: { type: 'string' }, note: { type: 'string' } }, required: ['test'] } },
   },
-  required: ['testRuns', 'strykerReportPath', 'mutants'],
+  required: ['testRuns', 'strykerReportPath', 'mutants', 'mutatedFiles'],
 }
 
 // =================================================================================================
@@ -464,16 +483,27 @@ Write both files now.`
 
 const runnerPromptStr = `You are the RUNNER agent. Execute the .NET toolchain — do NOT write tests, do NOT edit production code.
 
+TARGET CLASS: ${TARGET_CLASS}  (source: ${SRC})
+
 STEPS (from ${SR}\\src\\Services\\Fokus\\Fokus.Domain.Tests):
   1. Run \`dotnet test\` TWICE. Record { passed, failed, skipped } for EACH run.
-  2. Run \`dotnet stryker\`. Capture the JSON report path.
-  3. Read mutation-report.json. Find the per-file entry for ${TARGET_CLASS}.cs. Extract its \`mutants\` array.
+  2. Run \`dotnet stryker\` SCOPED TO THE TARGET CLASS: pass \`--mutate "**/${TARGET_CLASS}.cs"\` so Stryker
+     mutates ONLY ${TARGET_CLASS}.cs (do NOT rely on the static config's mutate list — pin it on the CLI).
+     Capture the JSON report path.
+  3. Read mutation-report.json.
+     a. Extract the \`mutants\` array from the per-file entry for ${TARGET_CLASS}.cs SPECIFICALLY (the key
+        whose path ends in ${TARGET_CLASS}.cs). If that entry has NO mutants, return an EMPTY mutants array —
+        do NOT substitute another file's mutants.
+     b. Build \`mutatedFiles\`: for EVERY file in the report that has >=1 mutant, one { "file": <full path>,
+        "count": <number of mutants> }. This is the honest record of what Stryker actually mutated — the gate
+        uses it to verify ${TARGET_CLASS}.cs was the file mutated (a mismatch is a fake-green and FAILS the run).
   4. Note any red-on-current tests — list them, do NOT delete them.
 
 WRITE YOUR RESULTS HERE (nexus-side, git-ignored): ${RUNNER_RESULT}
-as JSON: { "testRuns": [...], "strykerReportPath": "...", "mutants": [...], "redOnCurrent": [...] }
+as JSON: { "testRuns": [...], "strykerReportPath": "...", "mutants": [...], "mutatedFiles": [...], "redOnCurrent": [...] }
 
-IMPORTANT: return the same data in your schema'd response AND in the Write().`
+IMPORTANT: return the same data in your schema'd response AND in the Write(). NEVER report mutants from a file
+other than ${TARGET_CLASS}.cs — an empty mutants array is the correct answer if the target was not mutated.`
 
 let survivingMutants = []
 let lastScore = null
@@ -509,6 +539,7 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
     const strykerReport = { files: { [SRC]: { mutants: runRaw.mutants } } }
     const prodSourceDiff = '' // prompt-only clean-room; char_pin passes (no prod diff at controller level).
     const gates = {
+      target_mutated:  targetMutated(runRaw.mutatedFiles, SRC),
       suite_green:     suiteGreen(runRaw.testRuns),
       no_flaky:        noFlaky(runRaw.testRuns),
       mutation_floor:  mutationFloor(strykerReport, SRC, { floor: MUTATION_FLOOR, expectedSurvivorLines: EXPECTED_SURVIVOR_LINES }),

@@ -16,8 +16,46 @@ import {
   noNewSkips,
   charPin,
   mutationRatchet,
+  targetMutated,
   EXPECTED_SURVIVOR_LINES,
 } from '../../harness/lib/cover-gates.mjs';
+
+// =================================================================================================
+// Gate: target_mutated — the report actually mutated the TARGET file (anti-fake-green)
+// =================================================================================================
+// Regression for the live fake-green: a CycleTime run reported "100% (150/150)" but the Stryker report
+// had 177 mutants under BugRatioAnalyzer.cs and 0 under CycleTimeAnalyzer.cs — the gate scored BugRatio's
+// mutants as CycleTime's. This gate must FAIL when the target file has no mutants in the report.
+test('targetMutated passes when the target file has mutants in the report', () => {
+  const res = targetMutated(
+    [{ file: 'D:\\src\\...\\Analytics\\CycleTimeAnalyzer.cs', count: 96 }],
+    'D:\\src\\sprint-rituals\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\CycleTimeAnalyzer.cs',
+  );
+  assert.equal(res.pass, true);
+  assert.equal(res.detail.count, 96);
+});
+
+test('targetMutated FAILS the exact live fake-green (BugRatio mutated, CycleTime scored)', () => {
+  const res = targetMutated(
+    [{ file: 'D:\\...\\Analytics\\BugRatioAnalyzer.cs', count: 177 }], // Stryker mutated the WRONG class
+    'D:\\src\\sprint-rituals\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\CycleTimeAnalyzer.cs',
+  );
+  assert.equal(res.pass, false, 'must fail: target was never mutated');
+  assert.match(res.detail.error, /NOT mutated/);
+});
+
+test('targetMutated fails when the target appears with a zero count', () => {
+  const res = targetMutated(
+    [{ file: 'CycleTimeAnalyzer.cs', count: 0 }, { file: 'BugRatioAnalyzer.cs', count: 177 }],
+    'X:\\a\\CycleTimeAnalyzer.cs',
+  );
+  assert.equal(res.pass, false);
+});
+
+test('targetMutated fails on an empty / missing mutatedFiles summary', () => {
+  assert.equal(targetMutated([], 'X:\\a\\Foo.cs').pass, false);
+  assert.equal(targetMutated(undefined, 'X:\\a\\Foo.cs').pass, false);
+});
 
 // =================================================================================================
 // Gate: suite_green — all tests pass on BOTH runs (design §6)

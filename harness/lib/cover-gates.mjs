@@ -120,6 +120,35 @@ export function mutationFloor(strykerReport, sourcePath, opts) {
   };
 }
 // =================================================================================================
+// target_mutated — the Stryker report ACTUALLY mutated the target file (anti-fake-green, Inc-3 Step 9)
+// =================================================================================================
+// Why this exists: the orchestrator fabricates `{ files: { [SRC]: runner-returned mutants } }` and trusts
+// the runner to have extracted the TARGET file's mutants. A config drift (Stryker's `mutate` glob pointing
+// at a different class) or a runner error makes Stryker mutate file A while the gate scores those mutants
+// AS IF they were the target's — a silent FAKE GREEN (observed live: CycleTime "100%" was actually
+// BugRatio's 177 mutants; CycleTime had 0). This gate is the independent cross-check: from a faithful
+// per-file mutant-count summary (every file in the report with ≥1 mutant), assert the TARGET basename is
+// present with count > 0. If the target was never mutated, the kill-rate proves nothing → FAIL the run.
+/**
+ * @param {{file:string,count:number}[]} mutatedFiles  Per-file mutant counts straight from the Stryker
+ *        report — EVERY file with ≥1 mutant. The runner returns this independently of the scored `mutants`.
+ * @param {string} sourcePath  Absolute path of the target source file.
+ * @returns {{pass:boolean, detail:object}}
+ */
+export function targetMutated(mutatedFiles, sourcePath) {
+  const base = (p) => (p ?? '').split(/[\\/]/).pop();
+  const target = base(sourcePath);
+  const list = mutatedFiles ?? [];
+  const entry = list.find((f) => base(f.file) === target);
+  const count = entry?.count ?? 0;
+  const detail = { target, count, mutatedFiles: list.map((f) => `${base(f.file)}:${f.count}`) };
+  if (count <= 0) {
+    detail.error = `target ${target} was NOT mutated (0 mutants in the Stryker report) — the mutate scope is wrong or Stryker mutated a different file; the kill-rate cannot be trusted (fake-green guard)`;
+  }
+  return { pass: count > 0, detail };
+}
+
+// =================================================================================================
 // no_new_skips — skip count <= the MEASURED baseline (design §6 / MED-2: read the baseline, not 0)
 // =================================================================================================
 /**

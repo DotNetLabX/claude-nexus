@@ -136,6 +136,18 @@ function noNewSkips(testRuns, baselineSkips) {
   const maxSkips = runs.length ? Math.max(...runs.map((r) => r.skipped ?? 0)) : 0;
   return { pass: maxSkips <= baselineSkips, detail: { maxSkips, baselineSkips } };
 }
+// target_mutated — anti-fake-green: the Stryker report ACTUALLY mutated the target file. (Inlined from
+// cover-gates.mjs — keep in sync.) Fed by runRaw.mutatedFiles; fails if the target basename is absent/0.
+function targetMutated(mutatedFiles, sourcePath) {
+  const base = (p) => (p ?? '').split(/[\\/]/).pop();
+  const target = base(sourcePath);
+  const list = mutatedFiles ?? [];
+  const entry = list.find((f) => base(f.file) === target);
+  const count = entry?.count ?? 0;
+  const detail = { target, count, mutatedFiles: list.map((f) => `${base(f.file)}:${f.count}`) };
+  if (count <= 0) detail.error = `target ${target} was NOT mutated (0 mutants in the Stryker report) — mutate scope wrong or a different file mutated; kill-rate untrustworthy (fake-green guard)`;
+  return { pass: count > 0, detail };
+}
 
 const STRYKER_DISABLE_RE = /^\/\/\s*Stryker\s+disable\b/i;
 
@@ -207,6 +219,7 @@ const SR = 'D:\\src\\sprint-rituals'
 // is validated by the gate, not assumed); override via _args.model.
 const MODEL = _args.model ?? 'sonnet'
 const SRC = _args.src ?? `${SR}\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\BugRatioAnalyzer.cs`
+const TARGET_CLASS = _args.targetClass ?? 'BugRatioAnalyzer' // the class name (drives the runner's mutate scope + report lookup)
 // The VERIFIED rules — path passed to Cover agent (the agent reads this; golden set NEVER passed — clean-room §3).
 const KB_RULES = _args.kbRules ?? `${SR}\\docs\\kb\\bug-ratio.md`
 // The test-style contract: FsCheck-3.x C# API + MTP runner facts. Clean-room-safe — it is the API
@@ -278,6 +291,12 @@ const RUNNER_RESULT_SCHEMA = {
         required: ['status', 'location', 'mutatorName'],
       },
     },
+    // Per-file mutant counts straight from the report — EVERY file with >=1 mutant. Independent of `mutants`;
+    // the target_mutated gate uses it to verify the TARGET file was actually mutated (anti-fake-green).
+    mutatedFiles: {
+      type: 'array',
+      items: { type: 'object', properties: { file: { type: 'string' }, count: { type: 'integer' } }, required: ['file', 'count'] },
+    },
     // The runner's own list of red-on-current-code tests (kept + flagged, never deleted). May be empty.
     redOnCurrent: {
       type: 'array',
@@ -288,7 +307,7 @@ const RUNNER_RESULT_SCHEMA = {
       },
     },
   },
-  required: ['testRuns', 'strykerReportPath', 'mutants'],
+  required: ['testRuns', 'strykerReportPath', 'mutants', 'mutatedFiles'],
 }
 
 // --- Phase: Setup ----------------------------------------------------------------------------------
@@ -358,25 +377,32 @@ const runnerPrompt = `You are the RUNNER agent. You execute the .NET toolchain �
 STEPS (run from the test project directory ${SR}\\src\\Services\\Fokus\\Fokus.Domain.Tests):
   1. Run \`dotnet test\` TWICE (two independent invocations — this is the double-run for suite_green + no_flaky).
      Record { passed, failed, skipped } for EACH run.
-  2. Run \`dotnet stryker\` (MTP runner, per the project's mutation-testing.md). It emits a JSON report under
+  2. Run \`dotnet stryker\` (MTP runner, per the project's mutation-testing.md) SCOPED TO THE TARGET CLASS:
+     pass \`--mutate "**/${TARGET_CLASS}.cs"\` so Stryker mutates ONLY ${TARGET_CLASS}.cs (do NOT rely on the
+     static config's mutate list — pin it on the CLI). It emits a JSON report under
      StrykerOutput/<timestamp>/reports/mutation-report.json (schemaVersion 2). Capture its ABSOLUTE path.
-  3. Read the emitted mutation-report.json. Find the per-file entry whose key ends with BugRatioAnalyzer.cs
-     (the \`files\` object is keyed by absolute path). Extract its \`mutants\` array. Each element has:
-       { "status": "Killed"|"Survived"|"NoCoverage"|"Timeout"|"Ignored"|...,
-         "location": { "start": { "line": N }, "end": { "line": M } },
-         "mutatorName": "...", "replacement": "..." }
-     Return the FULL mutants array from that per-file entry in your schema'd result.
+  3. Read the emitted mutation-report.json (the \`files\` object is keyed by absolute path).
+     a. Extract the \`mutants\` array from the per-file entry whose key ends with ${TARGET_CLASS}.cs
+        SPECIFICALLY. Each element has:
+          { "status": "Killed"|"Survived"|"NoCoverage"|"Timeout"|"Ignored"|...,
+            "location": { "start": { "line": N }, "end": { "line": M } }, "mutatorName": "...", "replacement": "..." }
+        If the ${TARGET_CLASS}.cs entry has NO mutants, return an EMPTY mutants array — NEVER substitute
+        another file's mutants.
+     b. Build \`mutatedFiles\`: for EVERY file in the report with >=1 mutant, one { "file": <full path>,
+        "count": <mutant count> }. This is the honest record of what Stryker actually mutated; the gate uses
+        it to verify ${TARGET_CLASS}.cs was the mutated file (a mismatch is a fake-green and FAILS the run).
   4. Note any test that FAILS on the current production code (red-on-current) — list it; do NOT delete it.
 
 ALSO WRITE YOUR RESULTS HERE for the record (nexus-side, git-ignored — NEVER into the sprint-rituals tree):
   ${RUNNER_RESULT}
 
 as JSON: { "testRuns": [{passed,failed,skipped}, {passed,failed,skipped}], "strykerReportPath": "<abs>",
-           "mutants": [<the per-file BugRatioAnalyzer.cs mutants array from the Stryker JSON>],
+           "mutants": [<the per-file ${TARGET_CLASS}.cs mutants array from the Stryker JSON; EMPTY if it has none>],
+           "mutatedFiles": [{ "file": "<abs path>", "count": <int> }, ...],
            "redOnCurrent": [{ "test": "...", "note": "..." }] }
 
 IMPORTANT: return the same data in your schema'd response AND in the Write() — the orchestrator uses the
-schema return directly and does NOT read files.`
+schema return directly and does NOT read files. NEVER report mutants from a file other than ${TARGET_CLASS}.cs.`
 
 // --- The bounded Cover loop (orchestrator-driven) -------------------------------------------------
 // Each iteration: Cover agent writes/updates the tests → runner double-runs + Stryker → orchestrator
@@ -414,6 +440,7 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
   // orchestrator (it has git; the helper stays pure) — see Step-7 operator note for how it is produced.
   const prodSourceDiff = readProdSourceDiffPlaceholder() // operator supplies the scoped diff at run time (Step 5/7).
   const gates = {
+    target_mutated: targetMutated(runRaw.mutatedFiles, SRC),
     suite_green: suiteGreen(runRaw.testRuns),
     no_flaky: noFlaky(runRaw.testRuns),
     mutation_floor: mutationFloor(strykerReport, SRC, { floor: MUTATION_FLOOR, expectedSurvivorLines: EXPECTED_SURVIVOR_LINES }),
