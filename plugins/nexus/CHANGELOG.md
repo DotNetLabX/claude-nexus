@@ -1,6 +1,18 @@
 # nexus — Changelog
 
 
+## [1.18.0] — 2026-06-23
+**Mine→Verify→Cover (new skill)** — the stack-neutral method that discovers, verifies, and mutation-gates the
+business rules of ONE class. Clean-room miners extract the rules a class encodes, a skeptic re-checks each
+against the code, a Cover agent writes example + property tests, and a 6-gate battery (incl. `target_mutated`
+anti-fake-green + a reachable `mutation_floor`) proves the tests actually catch bugs. Outputs a verified rule
+KB entry + a mutation-gated suite; never edits the production class, never deletes a red test. Two modes: full
+(needs a stack adapter) or Mine→Verify-only (a verified rule KB with no test toolchain). Defines the
+5-capability adapter contract the stack skills fill (.NET = `mine-verify-cover-dotnet` in nexus-dotnet).
+Live-proven on 3 classes across 2 repos. Owner-escalated to MINOR (new capability).
+  - skill change (mine-verify-cover)
+  - owner-escalated to minor
+
 ## [1.17.0] — 2026-06-21
 **PR + AI-review tail (v1)** — the pipeline's optional *end*, after the push gate. An **opt-in,
 attended-only, host-gated** tail owned by the team lead: after a successful push it opens (or reuses)

@@ -1,6 +1,18 @@
 # nexus-dotnet — Changelog
 
 
+## [1.2.0] — 2026-06-23
+**mine-verify-cover .NET adapter (new skill)** — fills the 5 toolchain capabilities of the `mine-verify-cover`
+method for .NET: Stryker.NET (MTP runner, JSON report), `dotnet test` (xUnit v3), the xUnit v3 +
+AwesomeAssertions + FsCheck test-style contract, and a self-contained test-project scaffold (opts out of
+central package management; pins the proven xUnit-v3/Stryker set; Stryker as a local tool). Handles the DDD
+same-basename-partial hazard (`Foo.cs` + `Behaviors/Foo.cs`) by scoping the mutate glob to the behaviors file
+and extracting the report entry by full path, not basename (the classic fake-green). plugin.json skill count
+32→33. Owner-escalated to MINOR (new capability).
+  - plugin.json metadata change
+  - skill change (mine-verify-cover-dotnet)
+  - owner-escalated to minor
+
 ## [1.1.1] — 2026-06-13
 - nexus-dotnet description fixes — plugin blurb skill count 29→32; 7 pattern-skill descriptions Use-when uniformity
   - plugin.json metadata change

@@ -96,10 +96,39 @@ parse). Author future workflows (and adapters) against the guard, not against a 
   MINOR.** Don't force a MAJOR.
 - **No CI-auth blocker** — the loop runs via Workflow/agents on the subscription session.
 
+## Knowledge-layer integration (forward vision — captured, not yet built)
+
+The harness's KB is one layer of a **3-layer knowledge stack** for agentic development. Each layer is
+code-derived (so it does not drift) and serves a different agent/phase:
+
+| Layer | Tool | Answers | Most valuable to |
+|-------|------|---------|------------------|
+| Structure | **graphify** | where things are, what's coupled, blast radius | architect (orient), impact analysis |
+| Behavior (deep) | **mine-verify KB** | what each class *does*, verified + mutation-gated | developer, reviewer, architect-modifying-code |
+| Product (broad) | a doc-set KB (e.g. omnishelf `docs-bootstrap`/`kb-sync`) | what exists, intent, ownership | PO, architect (scope) |
+
+**The seams (thin, sequenced — do NOT build before the single-class skill ships):**
+- **graphify → mine-verify** (the deferred *Discover* / 3b phase): the structural map selects which classes
+  are rule-rich and where rules cross file boundaries — structure *scopes* behavior. graphify is the engine
+  for graph-scoped target selection; it is an INPUT, not a new skill.
+- **mine-verify → graphify**: verified rules can enrich graphify's semantic labels (deep mode) — cleaner than
+  raw source for *meaning*, though source stays the ground truth for *structure*.
+- **mine-verify → broad KB**: the verified rules are high-confidence, code-grounded facts a `kb-sync`-style
+  ingest would want. A separate **rule-graph** (rules as nodes) built FROM the KB is the clean "semantic graph"
+  — distinct from graphify's code graph.
+
+Do not build graphify *on* the KB: the clean-room KB has no structural edges by design. The stack composes by
+*layering*, not by feeding one into another's core.
+
 ## Next
 
-**Re-fire Step-8 Run 1** (the live proof of the 3a controller):
-`Workflow({ scriptPath: "D:\\src\\claude-plugins\\nexus\\harness\\loop.workflow.js" })` on BugRatioAnalyzer
-(expect ~100% now Timeout counts as killed). Then **Run 2** on CycleTimeAnalyzer (generalize; skips recall —
-no golden set). Both pause for owner go (they run the .NET toolchain + write to sprint-rituals). After 3a is
-live-proven → Inc 4 (ship .NET skill), then the C++ adapter (extract the contract THEN), then Flutter.
+**Inc 4 — ship the skill (IN PROGRESS):** authored as a **two-part split** (ADR-3) —
+`plugins/nexus/skills/mine-verify-cover` (the stack-neutral method) + `plugins/nexus-dotnet/skills/
+mine-verify-cover-dotnet` (the .NET toolchain adapter). Both lint-clean; MINOR bumps (nexus, nexus-dotnet).
+Evidence gate cleared: **live-proven on 3 classes across 2 repos** (BugRatio 100% / CycleTime 100% in
+sprint-rituals; ReviewInvitation 91% in dotnet-microservices). The skill-doc split is safe now (the
+generic/stack boundary is drawn from 3 real .NET runs, not guessed); the deeper *code-level* adapter interface
+stays deferred until Flutter forces it.
+
+**After Inc 4:** Discover / 3b (graph-scoped multi-class sweep — the structure→behavior seam above), then
+**Flutter Phase 0** (de-risk Dart mutation tooling — BLOCKING), then the Dart adapter. C++ deferred.
