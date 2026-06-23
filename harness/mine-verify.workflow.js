@@ -49,6 +49,9 @@ let _args = {}
 try { _args = typeof _argsRaw === 'string' ? JSON.parse(_argsRaw) : _argsRaw } catch { _args = {} }
 const SRC = _args.src ?? 'D:\\src\\sprint-rituals\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\BugRatioAnalyzer.cs'
 const BATCH_SIZE = 5 // interpretive rules per batched verifier call (design §2: cluster ~5/call).
+// Model for every agent in this workflow. Default Sonnet (cheaper; the mutation/verify gates measure
+// quality, so model choice is validated by the gate, not assumed). Override via _args.model.
+const MODEL = _args.model ?? 'sonnet'
 
 // --- Schemas --------------------------------------------------------------------------------------
 const MINER_SCHEMA = {
@@ -167,9 +170,9 @@ Return the full rule list.`
 
 phase('Mine')
 const miners = await parallel([
-  () => agent(minerPrompt, { label: 'miner-1', phase: 'Mine', schema: MINER_SCHEMA }),
-  () => agent(minerPrompt, { label: 'miner-2', phase: 'Mine', schema: MINER_SCHEMA }),
-  () => agent(minerPrompt, { label: 'miner-3', phase: 'Mine', schema: MINER_SCHEMA }),
+  () => agent(minerPrompt, { label: 'miner-1', phase: 'Mine', schema: MINER_SCHEMA, model: MODEL }),
+  () => agent(minerPrompt, { label: 'miner-2', phase: 'Mine', schema: MINER_SCHEMA, model: MODEL }),
+  () => agent(minerPrompt, { label: 'miner-3', phase: 'Mine', schema: MINER_SCHEMA, model: MODEL }),
 ])
 const valid = miners.filter(Boolean)
 log(`Mine: ${valid.length}/3 miners returned; rule counts = ${valid.map((m) => m.rules.length).join(', ')}`)
@@ -196,7 +199,7 @@ Produce the consensus rule set:
   - "transcribed" = a formula/value lifted directly from code where the quote alone entails it (band math, sums, a ratio expression).
   - "interpretive" = a claim needing judgment: guard reachability / dead code, branch discontinuity, aggregation semantics, case-sensitivity asymmetry, ordering/tie behavior, streak/loop termination, "never reaches X" claims.
 Keep the verbatim quote + line range in the quote/lines fields on each consensus rule. The consensus \`statement\`, however, must be LINE-NUMBER-FREE durable prose — refer to code by SYMBOL/CONDITION (names, predicates), never "L35"/"line 76"/"lines 48". If a miner statement embeds line numbers, rewrite it to name the site by its symbol. Line numbers live ONLY in the \`lines\` field, never in \`statement\`.`
-const consensus = await agent(consolidatePrompt, { label: 'consolidate', phase: 'Consolidate', schema: CONSOLIDATE_SCHEMA })
+const consensus = await agent(consolidatePrompt, { label: 'consolidate', phase: 'Consolidate', schema: CONSOLIDATE_SCHEMA, model: MODEL })
 if (!consensus) throw new Error('consolidation failed')
 
 const interpretive = consensus.consensusRules.filter((r) => r.kind === 'interpretive')
@@ -215,7 +218,7 @@ const sliced = interpretive.length
       `Read ${SRC} exactly ONCE. For each rule below, return a verbatim code slice covering its stated line range PLUS about 15 lines of context above and below (enough to independently judge the rule). Preserve line numbers in each slice.
 
 ${sliceReq}`,
-      { label: 'slicer', phase: 'Verify', schema: SLICE_SCHEMA },
+      { label: 'slicer', phase: 'Verify', schema: SLICE_SCHEMA, model: MODEL },
     )
   : { slices: [] }
 const sliceById = Object.fromEntries((sliced?.slices ?? []).map((s) => [s.id, s.slice]))
@@ -244,7 +247,7 @@ ${sliceById[r.id] ?? '(no slice returned -> verdict IMPRECISE: missing context)'
 Return one verdict (CONFIRMED / WRONG / IMPRECISE) per rule, keyed by the rule id, with evidence (and the correction if WRONG/IMPRECISE).
 
 ${rulesBlock}`,
-      { label: `verify:batch-${bi + 1}`, phase: 'Verify', schema: BATCH_VERDICT_SCHEMA },
+      { label: `verify:batch-${bi + 1}`, phase: 'Verify', schema: BATCH_VERDICT_SCHEMA, model: MODEL },
     )
   }),
 )
@@ -257,7 +260,7 @@ const transcribedCheck = transcribed.length
       `Quote-entailment check. For each transcribed rule below, the verbatim quote is provided inline. Judge ONLY from the inline quote — do NOT read any file. Return ONLY the rules that FAIL entailment (where the inline quote does not entail the stated rule).
 
 ${transcribed.map((r) => `${r.id}: ${r.statement}\n  quote: ${r.quote} (lines ${r.lines})`).join('\n')}`,
-      { label: 'verify:transcribed-batch', phase: 'Verify', schema: TRANSCRIBED_SCHEMA },
+      { label: 'verify:transcribed-batch', phase: 'Verify', schema: TRANSCRIBED_SCHEMA, model: MODEL },
     )
   : { failures: [] }
 

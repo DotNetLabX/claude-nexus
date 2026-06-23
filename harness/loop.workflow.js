@@ -67,6 +67,10 @@ let _args = {}
 try { _args = typeof _argsRaw === 'string' ? JSON.parse(_argsRaw) : _argsRaw } catch { _args = {} }
 
 const SR = 'D:\\src\\sprint-rituals'
+// Model for every agent in this controller AND forwarded to both sub-workflows. Default Sonnet
+// (cheaper; the mutation/verify gates measure output quality, so the model is validated by the gate,
+// not assumed). Escalate a stage to Opus via _args.model only if a gate can't be met on Sonnet.
+const MODEL = _args.model ?? 'sonnet'
 const TARGET_CLASS = _args.targetClass ?? 'BugRatioAnalyzer'
 const SRC          = _args.src         ?? `${SR}\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\BugRatioAnalyzer.cs`
 const KB_RULES     = _args.kbRules     ?? `${SR}\\docs\\kb\\bug-ratio.md`
@@ -279,7 +283,7 @@ const RUNNER_RESULT_SCHEMA = {
 const DATE_STAMP_SCHEMA = { type: 'object', properties: { date: { type: 'string' } }, required: ['date'] }
 const dateStampResult = await agent(
   'Output ONLY today\'s date as YYYY-MM-DD (e.g. 2026-06-22). Return nothing else.',
-  { label: 'date-stamp', phase: 'Init', schema: DATE_STAMP_SCHEMA }
+  { label: 'date-stamp', phase: 'Init', schema: DATE_STAMP_SCHEMA, model: MODEL }
 )
 const today = dateStampResult?.date ?? '(date-unavailable)'
 
@@ -300,7 +304,7 @@ if (!MONOLITH_FALLBACK) {
   log('Attempting workflow() composition for Mine→Verify (Step-8 bringup: verifies nesting + args injection).')
   mineVerifyResult = await workflow(
     { scriptPath: MINE_VERIFY_SCRIPT },
-    { src: SRC, targetClass: TARGET_CLASS },   // args forwarding (unverified at build time)
+    { src: SRC, targetClass: TARGET_CLASS, model: MODEL },   // args forwarded as an OBJECT (composition injects objects)
   )
   if (!mineVerifyResult?.consensusRules) {
     log('WARNING: workflow() composition returned no consensusRules. Bringup check failed — switch to MONOLITH_FALLBACK = true.')
@@ -316,9 +320,9 @@ if (!MONOLITH_FALLBACK) {
   const minerPrompt = `You are a clean-room business-rule miner. Read ONLY this one source file: ${SRC}. Do NOT read any other file — no docs/, no tests, no knowledge base, no golden set. Extract every business rule the code ENCODES. Quote-first: capture the verbatim code quote + line range in the quote/lines fields. The \`statement\` is durable KB prose — describe rules by SYMBOL/CONDITION (names + predicates), NEVER embed source line numbers ("L35"/"line 76") in the statement (they rot; keep them in \`lines\` only). Be exhaustive. Return the full rule list.`
   const MINER_SCHEMA = { type: 'object', properties: { rules: { type: 'array', items: { type: 'object', properties: { statement: { type: 'string' }, quote: { type: 'string' }, lines: { type: 'string' } }, required: ['statement', 'quote', 'lines'] } } }, required: ['rules'] }
   const miners = await parallel([
-    () => agent(minerPrompt, { label: 'miner-1', phase: 'Mine→Verify', schema: MINER_SCHEMA }),
-    () => agent(minerPrompt, { label: 'miner-2', phase: 'Mine→Verify', schema: MINER_SCHEMA }),
-    () => agent(minerPrompt, { label: 'miner-3', phase: 'Mine→Verify', schema: MINER_SCHEMA }),
+    () => agent(minerPrompt, { label: 'miner-1', phase: 'Mine→Verify', schema: MINER_SCHEMA, model: MODEL }),
+    () => agent(minerPrompt, { label: 'miner-2', phase: 'Mine→Verify', schema: MINER_SCHEMA, model: MODEL }),
+    () => agent(minerPrompt, { label: 'miner-3', phase: 'Mine→Verify', schema: MINER_SCHEMA, model: MODEL }),
   ])
   const valid = miners.filter(Boolean)
   if (!valid.length) return { stopped: 'mine-fail', reason: 'no miner returned a valid rule set', outputTokensThisTurn: budget.spent() }
@@ -327,7 +331,7 @@ if (!MONOLITH_FALLBACK) {
   const CONSOLIDATE_SCHEMA = { type: 'object', properties: { consistencyScore: { type: 'string' }, contradictions: { type: 'array', items: { type: 'string' } }, consensusRules: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, statement: { type: 'string' }, quote: { type: 'string' }, lines: { type: 'string' }, agreement: { type: 'integer' }, kind: { type: 'string', enum: ['transcribed', 'interpretive'] } }, required: ['id', 'statement', 'quote', 'lines', 'agreement', 'kind'] } } }, required: ['consistencyScore', 'contradictions', 'consensusRules'] }
   const consensus = await agent(
     `You are the consolidation step. Merge and deduplicate these 3 miner outputs. Give each rule a stable id (BR-1, BR-2...), agreement count, and classify kind (transcribed/interpretive). Keep quote/lines in their fields; the consensus \`statement\` must be LINE-NUMBER-FREE durable prose — refer to code by SYMBOL/CONDITION (names, predicates), never "L35"/"line 76"/"lines 48". Miner outputs:\n\nMINER 1:\n${JSON.stringify(valid[0]?.rules ?? [], null, 1)}\n\nMINER 2:\n${JSON.stringify(valid[1]?.rules ?? [], null, 1)}\n\nMINER 3:\n${JSON.stringify(valid[2]?.rules ?? [], null, 1)}`,
-    { label: 'consolidate', phase: 'Mine→Verify', schema: CONSOLIDATE_SCHEMA }
+    { label: 'consolidate', phase: 'Mine→Verify', schema: CONSOLIDATE_SCHEMA, model: MODEL }
   )
   if (!consensus) return { stopped: 'consolidate-fail', reason: 'consolidation returned no result', outputTokensThisTurn: budget.spent() }
 
@@ -339,20 +343,20 @@ if (!MONOLITH_FALLBACK) {
 
   const sliced = interpretive.length ? await agent(
     `Read ${SRC} ONCE. For each rule, return the code slice (±15 lines context):\n${interpretive.map((r) => `${r.id} (lines ${r.lines}): ${r.statement.slice(0, 130)}`).join('\n')}`,
-    { label: 'slicer', phase: 'Mine→Verify', schema: SLICE_SCHEMA }
+    { label: 'slicer', phase: 'Mine→Verify', schema: SLICE_SCHEMA, model: MODEL }
   ) : { slices: [] }
   const sliceById = Object.fromEntries((sliced?.slices ?? []).map((s) => [s.id, s.slice]))
 
   const batches = chunk(interpretive, BATCH_SIZE)
   const batchResults = await parallel(batches.map((batch, bi) => () => {
     const rulesBlock = batch.map((r) => `--- Rule ${r.id} ---\nStatement: ${r.statement}\nCODE SLICE:\n${sliceById[r.id] ?? '(missing)'}`).join('\n\n')
-    return agent(`Verify this BATCH of rules from inline slices ONLY — do NOT read files.\n\n${rulesBlock}`, { label: `verify:batch-${bi + 1}`, phase: 'Mine→Verify', schema: BATCH_VERDICT_SCHEMA })
+    return agent(`Verify this BATCH of rules from inline slices ONLY — do NOT read files.\n\n${rulesBlock}`, { label: `verify:batch-${bi + 1}`, phase: 'Mine→Verify', schema: BATCH_VERDICT_SCHEMA, model: MODEL })
   }))
   const verdicts = batchResults.filter(Boolean).flatMap((b) => b.verdicts ?? [])
 
   const transcribedCheck = transcribed.length ? await agent(
     `Quote-entailment check. Judge ONLY from inline quotes — do NOT read any file.\n${transcribed.map((r) => `${r.id}: ${r.statement}\n  quote: ${r.quote}`).join('\n')}`,
-    { label: 'verify:transcribed-batch', phase: 'Mine→Verify', schema: TRANSCRIBED_SCHEMA }
+    { label: 'verify:transcribed-batch', phase: 'Mine→Verify', schema: TRANSCRIBED_SCHEMA, model: MODEL }
   ) : { failures: [] }
 
   mineVerifyResult = {
@@ -396,7 +400,7 @@ const KB_READ_SCHEMA = {
   required: ['content'],
 }
 
-const kbReadResult = await agent(kbWritePrompt, { label: 'kb-read', phase: 'KB Write', schema: KB_READ_SCHEMA })
+const kbReadResult = await agent(kbWritePrompt, { label: 'kb-read', phase: 'KB Write', schema: KB_READ_SCHEMA, model: MODEL })
 if (!kbReadResult?.content) {
   log('WARNING: KB-read agent returned no content. Proceeding with empty base (new entry path).')
 }
@@ -420,7 +424,7 @@ ${newKbText}
 Write the file now using the Write tool. Confirm by returning { "written": true } in your response.`
 
 const KB_WRITE_SCHEMA = { type: 'object', properties: { written: { type: 'boolean' } }, required: ['written'] }
-const kbWriteConfirm = await agent(kbWriteFilePrompt, { label: 'kb-write-file', phase: 'KB Write', schema: KB_WRITE_SCHEMA })
+const kbWriteConfirm = await agent(kbWriteFilePrompt, { label: 'kb-write-file', phase: 'KB Write', schema: KB_WRITE_SCHEMA, model: MODEL })
 if (!kbWriteConfirm?.written) {
   log('WARNING: KB-write-file agent did not confirm the write. The KB file may not have been updated.')
 }
@@ -486,7 +490,7 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
     const coverSubResult = await workflow(
       { scriptPath: COVER_SCRIPT },
       { src: SRC, kbRules: KB_RULES, testStyle: TEST_STYLE, exampleTests: EXAMPLE_TESTS,
-        propertyTests: PROPERTY_TESTS, runnerResult: RUNNER_RESULT, targetClass: TARGET_CLASS },
+        propertyTests: PROPERTY_TESTS, runnerResult: RUNNER_RESULT, targetClass: TARGET_CLASS, model: MODEL },
     )
     if (!coverSubResult) {
       log('WARNING: cover sub-workflow returned no result. Bringup check failed — switch MONOLITH_FALLBACK=true.')
@@ -497,9 +501,9 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
     break
   } else {
     // Monolith: inline Cover agent + runner agent + gate battery.
-    await agent(makeCoverPrompt(survivingMutants), { label: `cover:iter-${iter}`, phase: 'Cover' })
+    await agent(makeCoverPrompt(survivingMutants), { label: `cover:iter-${iter}`, phase: 'Cover', model: MODEL })
 
-    const runRaw = await agent(runnerPromptStr, { label: `runner:iter-${iter}`, phase: 'Cover', schema: RUNNER_RESULT_SCHEMA })
+    const runRaw = await agent(runnerPromptStr, { label: `runner:iter-${iter}`, phase: 'Cover', schema: RUNNER_RESULT_SCHEMA, model: MODEL })
     if (!runRaw) throw new Error(`Cover iteration ${iter}: runner returned no result`)
 
     const strykerReport = { files: { [SRC]: { mutants: runRaw.mutants } } }
@@ -570,7 +574,7 @@ if (allGatesGreen) {
   const kbEntryFile = KB_RULES.split('\\').pop()
   const kbFlipPrompt = `You are the KB-FLIP agent. Write EXACTLY this content to ${KB_RULES} — no changes.\n\nCONTENT:\n${flippedKbText}\n\nAlso update ${KB_INDEX}: find the row for ${kbEntryFile} and change its Status from "verified" to "mutation-gated".\n\nReturn { "written": true } when done.`
   const KB_FLIP_SCHEMA = { type: 'object', properties: { written: { type: 'boolean' } }, required: ['written'] }
-  await agent(kbFlipPrompt, { label: 'kb-flip', phase: 'Report', schema: KB_FLIP_SCHEMA })
+  await agent(kbFlipPrompt, { label: 'kb-flip', phase: 'Report', schema: KB_FLIP_SCHEMA, model: MODEL })
   log('KB ledger flipped to mutation-gated.')
 } else {
   log(`Cover did not reach all-gates-green (stopped: ${coverResult.stopped}). KB remains at verified status.`)
@@ -645,7 +649,7 @@ ${reportContent}
 
 Write the file now using the Write tool. Return { "written": true } when done.`
 const REPORT_SCHEMA = { type: 'object', properties: { written: { type: 'boolean' } }, required: ['written'] }
-await agent(reportWritePrompt, { label: 'report-write', phase: 'Report', schema: REPORT_SCHEMA })
+await agent(reportWritePrompt, { label: 'report-write', phase: 'Report', schema: REPORT_SCHEMA, model: MODEL })
 log(`Report written: ${REPORT_PATH}`)
 
 // =================================================================================================

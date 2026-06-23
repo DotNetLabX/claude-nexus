@@ -203,6 +203,9 @@ const _argsRaw = (typeof args !== 'undefined' && args) ? args : {}
 let _args = {}
 try { _args = typeof _argsRaw === 'string' ? JSON.parse(_argsRaw) : _argsRaw } catch { _args = {} }
 const SR = 'D:\\src\\sprint-rituals'
+// Model for every agent here. Default Sonnet (the mutation gate measures test quality, so the model
+// is validated by the gate, not assumed); override via _args.model.
+const MODEL = _args.model ?? 'sonnet'
 const SRC = _args.src ?? `${SR}\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\BugRatioAnalyzer.cs`
 // The VERIFIED rules — path passed to Cover agent (the agent reads this; golden set NEVER passed — clean-room §3).
 const KB_RULES = _args.kbRules ?? `${SR}\\docs\\kb\\bug-ratio.md`
@@ -390,6 +393,7 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
   await agent(coverPrompt(survivingMutants), {
     label: `cover:iter-${iter}`,
     phase: 'Cover',
+    model: MODEL,
     // Mechanical clean-room sealing (disallowedTools restricting the write set + golden path) is the
     // Increment-3 hardening; this increment the boundary is prompt-enforced (design §3 / ADR-13), exactly
     // as Inc-1's miners were. The Cover agent's prompt carries the full forbidden-list above.
@@ -399,7 +403,7 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
   // DISTINCT agent() call — the runner is a different actor from the Cover agent (design §6).
   // The runner returns testRuns + strykerReportPath + mutants in its schema'd result — the orchestrator
   // uses that return directly; no file reads here (the orchestrator has no filesystem access).
-  const runRaw = await agent(runnerPrompt, { label: `runner:iter-${iter}`, phase: 'Run', schema: RUNNER_RESULT_SCHEMA })
+  const runRaw = await agent(runnerPrompt, { label: `runner:iter-${iter}`, phase: 'Run', schema: RUNNER_RESULT_SCHEMA, model: MODEL })
   if (!runRaw) throw new Error(`Cover iteration ${iter}: runner returned no result`)
   // Reconstruct the shape mutationFloor expects from the schema'd return — no file reads needed.
   const strykerReport = { files: { [SRC]: { mutants: runRaw.mutants } } }
