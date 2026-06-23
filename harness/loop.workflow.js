@@ -57,7 +57,14 @@ export const meta = {
 // Step-8 bringup check: does `Workflow({scriptPath}, {target})` inject `args`?
 // YES → retargeting works via _args.src / _args.targetClass / etc.
 // NO  → the sub-workflows use their own BugRatio defaults (standalone fallback).
-const _args = (typeof args !== 'undefined' && args) ? args : {}
+// Args arrive two ways with DIFFERENT shapes (probe-confirmed 2026-06-23):
+//   • Workflow TOOL ({scriptPath}, args)  -> args is a JSON STRING  -> must JSON.parse.
+//   • workflow() composition (2nd param)  -> args is a real OBJECT  -> use as-is.
+// Parse the string form so _args.X resolves in both cases (the missing parse made Step-8 Run 2
+// silently default to BugRatio and waste a full run).
+const _argsRaw = (typeof args !== 'undefined' && args) ? args : {}
+let _args = {}
+try { _args = typeof _argsRaw === 'string' ? JSON.parse(_argsRaw) : _argsRaw } catch { _args = {} }
 
 const SR = 'D:\\src\\sprint-rituals'
 const TARGET_CLASS = _args.targetClass ?? 'BugRatioAnalyzer'

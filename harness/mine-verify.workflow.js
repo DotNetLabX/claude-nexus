@@ -42,7 +42,11 @@ export const meta = {
 // standalone invocations (`Workflow({ scriptPath })` without a 2nd arg) are back-compatible.
 // Fallback (if `args` injection is absent): the defaults below reproduce current behavior unchanged;
 // the controller can parameterize via a different mechanism — see loop.workflow.js header.
-const _args = (typeof args !== 'undefined' && args) ? args : {}
+// Workflow-tool args arrive JSON-STRINGIFIED; workflow() composition args arrive as an object.
+// Parse the string form so _args.X resolves in both cases (see loop.workflow.js for the why).
+const _argsRaw = (typeof args !== 'undefined' && args) ? args : {}
+let _args = {}
+try { _args = typeof _argsRaw === 'string' ? JSON.parse(_argsRaw) : _argsRaw } catch { _args = {} }
 const SRC = _args.src ?? 'D:\\src\\sprint-rituals\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\BugRatioAnalyzer.cs'
 const BATCH_SIZE = 5 // interpretive rules per batched verifier call (design §2: cluster ~5/call).
 

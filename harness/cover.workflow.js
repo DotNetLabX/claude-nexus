@@ -197,7 +197,11 @@ const EXPECTED_SURVIVOR_LINES = [17, 133, 268];
 // runnerResult, targetClass } to retarget. Default to the BugRatio consts so standalone invocations
 // are back-compatible. If `args` injection is absent, the controller can parameterize another way
 // (see loop.workflow.js header).
-const _args = (typeof args !== 'undefined' && args) ? args : {}
+// Workflow-tool args arrive JSON-STRINGIFIED; workflow() composition args arrive as an object.
+// Parse the string form so _args.X resolves in both cases (see loop.workflow.js for the why).
+const _argsRaw = (typeof args !== 'undefined' && args) ? args : {}
+let _args = {}
+try { _args = typeof _argsRaw === 'string' ? JSON.parse(_argsRaw) : _argsRaw } catch { _args = {} }
 const SR = 'D:\\src\\sprint-rituals'
 const SRC = _args.src ?? `${SR}\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\BugRatioAnalyzer.cs`
 // The VERIFIED rules — path passed to Cover agent (the agent reads this; golden set NEVER passed — clean-room §3).

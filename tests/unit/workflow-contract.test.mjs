@@ -47,7 +47,7 @@ function hasStaticImport(src) {
 //
 // The function signature: run(src, agentFixtures) → the `return` value of the script.
 // agentFixtures: a list of return values, consumed in order per `agent()` call.
-async function runInSandbox(src, agentFixtures = []) {
+async function runInSandbox(src, agentFixtures = [], argsValue = null) {
   let callIndex = 0;
   const calls = []; // records every agent() call shape
 
@@ -96,7 +96,9 @@ async function runInSandbox(src, agentFixtures = []) {
       outputTokensThisTurn: 1000,
     }),
     // args global — present so `typeof args` succeeds; _args fallback reads it.
-    args: null, // null → falsy → _args = {} → defaults kick in.
+    // The Workflow TOOL injects this as a JSON STRING; workflow() composition injects an OBJECT.
+    // Tests pass argsValue to exercise both shapes; default null → falsy → _args = {} → defaults.
+    args: argsValue,
     // Forbidden globals: Date and Math.random throw exactly as in the real Workflow runtime.
     // Any script that calls new Date() / Date.now() / Math.random() will throw — which is correct.
     Date: throwingDateShim,
@@ -200,6 +202,49 @@ test('mine-verify sandbox return has consensusRules array with expected shape', 
   assert.ok(rule.statement, 'rule has statement');
   // The golden set MUST NOT appear in the return — the test simply checks there is no goldenSet field.
   assert.equal(rule.goldenSet, undefined, 'consensusRules must not carry the golden set');
+});
+
+// ==================================================================================================
+// Slice 4: args arrive in TWO shapes — the workflow must handle both (Step-8 Run 2 regression)
+// ==================================================================================================
+// The Workflow TOOL ({scriptPath}, args) injects `args` as a JSON STRING; workflow() composition
+// injects it as a real OBJECT (probe-confirmed 2026-06-23). The missing JSON.parse made the loop
+// controller read `_args.targetClass` off a string (→ undefined → BugRatio default), silently
+// defaulting Run 2 to the wrong class and wasting a full live run. These tests pin the parse fix:
+// a string `args` must be honored identically to an object `args`.
+const _mvFixtures = () => {
+  const minerResult = { rules: [{ statement: 'rule A', quote: 'code()', lines: '10-12' }] };
+  const consolidateResult = {
+    consistencyScore: '1 rule in all 3', contradictions: [],
+    consensusRules: [{ id: 'BR-1', statement: 'rule A', quote: 'code()', lines: '10-12', agreement: 3, kind: 'interpretive' }],
+  };
+  return [minerResult, minerResult, minerResult, consolidateResult,
+    { slices: [{ id: 'BR-1', slice: 'slice text' }] },
+    { verdicts: [{ id: 'BR-1', verdict: 'CONFIRMED', evidence: 'ok' }] },
+    { failures: [] }];
+};
+
+test('mine-verify parses JSON-STRING args (Workflow-tool injection shape)', async () => {
+  const src = readWorkflow(MINE_VERIFY_PATH);
+  const customSrc = 'D:\\custom\\Target.cs';
+  // Tool delivers args as a STRING — the regression that bit Run 2.
+  const { result } = await runInSandbox(src, _mvFixtures(), JSON.stringify({ src: customSrc, targetClass: 'CycleTimeAnalyzer' }));
+  assert.equal(result?.target?.source, customSrc,         'string args JSON.parsed → _args.src honored');
+  assert.equal(result?.target?.class,  'CycleTimeAnalyzer', 'string args → _args.targetClass honored');
+});
+
+test('mine-verify honors OBJECT args (workflow() composition shape)', async () => {
+  const src = readWorkflow(MINE_VERIFY_PATH);
+  const customSrc = 'D:\\custom\\Obj.cs';
+  const { result } = await runInSandbox(src, _mvFixtures(), { src: customSrc, targetClass: 'CycleTimeAnalyzer' });
+  assert.equal(result?.target?.source, customSrc,         'object args honored as-is');
+  assert.equal(result?.target?.class,  'CycleTimeAnalyzer', 'object args targetClass honored');
+});
+
+test('mine-verify falls back to BugRatio defaults when args absent (null)', async () => {
+  const src = readWorkflow(MINE_VERIFY_PATH);
+  const { result } = await runInSandbox(src, _mvFixtures(), null);
+  assert.ok(result?.target?.source.endsWith('BugRatioAnalyzer.cs'), 'null args → BugRatio default src');
 });
 
 // ==================================================================================================
