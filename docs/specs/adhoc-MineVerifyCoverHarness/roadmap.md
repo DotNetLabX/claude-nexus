@@ -14,6 +14,13 @@ the target — new `target_mutated` gate + `--mutate` pin, `4bfaa25`). VWH ruled
 harness IS the product (automated, **.NET → Flutter** next; C++ deferred — see Multi-language end goal). Full
 narrative + Flutter plan: `delivery/journey-and-flutter-plan.md`.
 
+**Cross-repo bringup (2026-06-23):** third target = `dotnet-microservices` `ReviewInvitation.Accept/Decline`
+(different repo, DDD behavior guards, not analytics). Scaffold (isolated net9.0 test project + Stryker MTP)
+and harness parameterization (`testProjectDir`/`mutateGlob`/`patternTests`/`testDir` args + full-path report
+extraction) are **done + validated offline** (307 tests; baseline Stryker = 11 testable mutants on the target).
+Surfaced + fixed the **same-basename partial hazard** (the repo splits `Foo.cs`/`Behaviors/Foo.cs`; basename
+report-key matching could fake-green). The live run is the owner-gated next step. See journey-and-flutter-plan §5.5.
+
 ## Delivery model (the architectural decision)
 
 Build **dev-repo-first; harden to a shipped skill last** — the repo's own pilot-before-harden pattern

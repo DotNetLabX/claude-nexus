@@ -76,7 +76,11 @@ async function runInSandbox(src, agentFixtures = [], argsValue = null) {
     // agent(prompt, opts) — returns the next fixture, records the call.
     agent: async (prompt, opts) => {
       const fixture = agentFixtures[callIndex++] ?? null;
-      calls.push({ prompt: typeof prompt === 'string' ? prompt.slice(0, 80) : prompt, opts, returned: fixture });
+      calls.push({
+        prompt: typeof prompt === 'string' ? prompt.slice(0, 80) : prompt,
+        promptFull: typeof prompt === 'string' ? prompt : '',
+        opts, returned: fixture,
+      });
       return fixture;
     },
     // parallel(fns) — runs each fn sequentially (no true parallelism needed in the test).
@@ -388,6 +392,63 @@ test('cover sandbox halts with ratchet-regression when score drops iteration to 
 });
 
 // ==================================================================================================
+// Slice 7b: cover runner prompt honors the cross-repo params (testProjectDir / mutateGlob / full-path SRC).
+// Regression guard for the dotnet-microservices parameterization: re-hardcoding the Fokus test dir, the
+// `**/${TARGET_CLASS}.cs` glob, or a basename-only report-key match must be caught offline. The basename
+// match is the same-basename-partial fake-green hazard (Foo.cs vs Behaviors/Foo.cs).
+// ==================================================================================================
+test('cover runner prompt uses testProjectDir + mutateGlob + full-path SRC extraction', async () => {
+  const src = readWorkflow(COVER_PATH);
+  const coverAgentReturn = null;
+  const runnerReturn = {
+    testRuns: [{ passed: 1, failed: 0, skipped: 0 }, { passed: 1, failed: 0, skipped: 0 }],
+    strykerReportPath: 'D:\\x\\r.json',
+    mutants: [{ status: 'Killed', location: { start: { line: 9 } }, mutatorName: 'A', replacement: '+' }],
+    mutatedFiles: [{ file: 'D:\\repo\\Invitations\\Behaviors\\ReviewInvitation.cs', count: 1 }],
+    redOnCurrent: [],
+  };
+  const customArgs = {
+    src: 'D:\\repo\\src\\Services\\Review\\Review.Domain\\Invitations\\Behaviors\\ReviewInvitation.cs',
+    targetClass: 'ReviewInvitation',
+    testProjectDir: 'D:\\repo\\src\\Services\\Review\\Review.Domain.Tests',
+    mutateGlob: '**/Invitations/Behaviors/ReviewInvitation.cs',
+  };
+  const { calls } = await runInSandbox(src, [coverAgentReturn, runnerReturn], customArgs);
+  const runner = calls.find((c) => (c.promptFull || '').includes('RUNNER agent'));
+  assert.ok(runner, 'runner agent call recorded');
+  assert.ok(runner.promptFull.includes(`run from the test project directory ${customArgs.testProjectDir}`),
+    'runner runs from the parameterized test project dir, not the hardcoded Fokus path');
+  assert.ok(runner.promptFull.includes(`--mutate "${customArgs.mutateGlob}"`),
+    'runner pins the parameterized mutate glob on the CLI');
+  assert.ok(runner.promptFull.includes(customArgs.src),
+    'extraction targets the FULL SRC path (disambiguates same-basename partials)');
+  assert.ok(!runner.promptFull.includes('whose key ends with ReviewInvitation.cs'),
+    'no basename-only extraction instruction (that is the same-basename fake-green hazard)');
+});
+
+test('cover EXPECTED_SURVIVOR_LINES defaults to [] for a non-BugRatio class (no stale dead-line exclusion)', async () => {
+  const src = readWorkflow(COVER_PATH);
+  // 8 Killed + 1 Survived on line 17. For BugRatio, line 17 is a KB dead line → excluded. For any OTHER
+  // class the default is [] → line 17 must be COUNTED (expectedSurvivorsExcluded === 0), else a fresh
+  // class inherits BugRatio's dead lines and fake-greens.
+  const runnerReturn = {
+    testRuns: [{ passed: 5, failed: 0, skipped: 0 }, { passed: 5, failed: 0, skipped: 0 }],
+    strykerReportPath: 'D:\\x\\r.json',
+    mutants: [
+      ...[1, 2, 3, 4, 5, 6, 7, 8].map((l) => ({ status: 'Killed', location: { start: { line: l } }, mutatorName: 'A', replacement: '+' })),
+      { status: 'Survived', location: { start: { line: 17 } }, mutatorName: 'B', replacement: '-' },
+    ],
+    mutatedFiles: [{ file: 'D:\\x\\ReviewInvitation.cs', count: 9 }],
+    redOnCurrent: [],
+  };
+  const { result } = await runInSandbox(src, [null, runnerReturn], { targetClass: 'ReviewInvitation', src: 'D:\\x\\ReviewInvitation.cs' });
+  assert.equal(result?.gates?.mutation_floor?.detail?.expectedSurvivorsExcluded, 0,
+    'non-BugRatio class excludes ZERO dead lines (default [])');
+  assert.equal(result?.gates?.mutation_floor?.detail?.reachableDenominator, 9,
+    'line 17 survivor is counted in the reachable denominator, not excluded');
+});
+
+// ==================================================================================================
 // Slices 8–9: loop.workflow.js (the Inc-3a pipeline controller)
 // ==================================================================================================
 test('loop.workflow.js has no static import', () => {
@@ -461,6 +522,59 @@ test('loop.workflow.js runs in mock-globals sandbox without ReferenceError (MONO
   assert.equal(threw, null, `loop.workflow.js threw in sandbox: ${threw?.message}`);
   assert.equal(loopResult?.allGatesGreen, true, 'controller returns allGatesGreen: true on sub-workflow green');
   assert.ok(loopResult?.reportPath, 'controller returns reportPath');
+});
+
+// ==================================================================================================
+// Slice 9b: the controller FORWARDS the cross-repo params to the cover sub-workflow.
+// Regression guard: dropping testProjectDir/mutateGlob/patternTests from the composition args would
+// silently re-point the toolchain at Fokus. Capture the workflow() call args and assert they carry through.
+// ==================================================================================================
+test('loop controller forwards testProjectDir/mutateGlob/patternTests to the cover sub-workflow', async () => {
+  const src = readWorkflow(LOOP_PATH);
+  const agentFixtures = [
+    { date: '2026-06-22' },                                                                   // date-stamp
+    { content: '# KB\n\n## Rules\n\n- BR-old: old.\n\n---\n<!-- mutation-gated: false -->\n' }, // kb-read
+    { written: true },                                                                         // kb-write-file
+    { written: true },                                                                         // kb-flip
+    { written: true },                                                                         // report-write
+  ];
+  const workflowReturns = [
+    { consensusRules: [{ id: 'BR-1', kind: 'interpretive', agreement: 3, lines: '10-20', statement: 'rule A' }], counts: { consensusRules: 1 }, outputTokensThisTurn: 5000 },
+    { stopped: 'all-gates-green', iter: 1, achievedScore: 100, gates: { suite_green: { pass: true, detail: {} }, mutation_floor: { pass: true, detail: { scorePct: 100, reachableSurvivors: [] } } }, redOnCurrent: [] },
+  ];
+  const customArgs = {
+    targetClass: 'ReviewInvitation',
+    src: 'D:\\repo\\src\\Services\\Review\\Review.Domain\\Invitations\\Behaviors\\ReviewInvitation.cs',
+    testProjectDir: 'D:\\repo\\src\\Services\\Review\\Review.Domain.Tests',
+    mutateGlob: '**/Invitations/Behaviors/ReviewInvitation.cs',
+    patternTests: 'FOLLOW THE TEST-STYLE CONTRACT — no in-repo precedent yet.',
+  };
+
+  function thr() { throw new ReferenceError('Date unavailable in workflow scripts'); }
+  thr.now = () => { throw new ReferenceError('Date unavailable in workflow scripts'); };
+  const wfCalls = [];
+  let wfIdx = 0, agentIdx = 0;
+  const sandbox = {
+    agent: async () => agentFixtures[agentIdx++] ?? null,
+    parallel: async (fns) => { const r = []; for (const fn of fns) r.push(await fn()); return r; },
+    phase: () => {}, log: () => {},
+    budget: { spent: () => 50000 },
+    workflow: async (ref, extraArgs) => { wfCalls.push({ ref, extraArgs }); return workflowReturns[wfIdx++] ?? null; },
+    args: customArgs,
+    Date: thr,
+    Math: { random: () => { throw new ReferenceError('Math.random() unavailable'); } },
+  };
+  const patched = src.replace(/^export\s+const\s+meta\s*=/m, 'const meta =');
+  const ctx = createContext(sandbox);
+  await new Script(`(async () => { ${patched} })()`, { filename: 'loop-fwd.js' }).runInContext(ctx);
+
+  // workflow() calls: [0] = mine-verify, [1] = cover.
+  const coverCall = wfCalls[1];
+  assert.ok(coverCall, 'cover sub-workflow was invoked');
+  assert.equal(coverCall.extraArgs.testProjectDir, customArgs.testProjectDir, 'testProjectDir forwarded to cover');
+  assert.equal(coverCall.extraArgs.mutateGlob, customArgs.mutateGlob, 'mutateGlob forwarded to cover');
+  assert.equal(coverCall.extraArgs.patternTests, customArgs.patternTests, 'patternTests forwarded to cover');
+  assert.equal(coverCall.extraArgs.src, customArgs.src, 'src forwarded to cover');
 });
 
 // ==================================================================================================

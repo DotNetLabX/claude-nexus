@@ -76,9 +76,17 @@ const SRC          = _args.src         ?? `${SR}\\src\\Services\\Fokus\\Fokus.Do
 const KB_RULES     = _args.kbRules     ?? `${SR}\\docs\\kb\\bug-ratio.md`
 const KB_INDEX     = _args.kbIndex     ?? `${SR}\\docs\\kb\\index.md`
 const TEST_STYLE   = _args.testStyle   ?? `${SR}\\docs\\conventions\\mutation-testing.md`
-const TEST_DIR     = `${SR}\\src\\Services\\Fokus\\Fokus.Domain.Tests\\Analytics`
+const TEST_DIR     = _args.testDir ?? `${SR}\\src\\Services\\Fokus\\Fokus.Domain.Tests\\Analytics`
 const EXAMPLE_TESTS = _args.exampleTests  ?? `${TEST_DIR}\\${TARGET_CLASS}Tests.cs`
 const PROPERTY_TESTS = _args.propertyTests ?? `${TEST_DIR}\\${TARGET_CLASS}PropertyTests.cs`
+// Runner working dir (where dotnet test/stryker execute) + the Stryker mutate glob — parameterized so the
+// controller can point the toolchain at a different repo and scope a same-basename partial precisely
+// (dotnet-microservices splits aggregates into `Foo.cs` + `Behaviors/Foo.cs` — same basename).
+const TEST_PROJECT_DIR = _args.testProjectDir ?? `${SR}\\src\\Services\\Fokus\\Fokus.Domain.Tests`
+const MUTATE_GLOB      = _args.mutateGlob ?? `**/${TARGET_CLASS}.cs`
+// Optional Cover "pattern to follow" example block — override for a repo with no in-repo test precedent
+// (null → the Cover sub-workflow uses its Fokus HealthScore default).
+const PATTERN_TESTS    = _args.patternTests ?? null
 
 // Runner results: nexus-side + git-ignored (harness/.runs/). NEVER in the SR tree.
 const RUNS_DIR     = 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
@@ -485,25 +493,27 @@ const runnerPromptStr = `You are the RUNNER agent. Execute the .NET toolchain �
 
 TARGET CLASS: ${TARGET_CLASS}  (source: ${SRC})
 
-STEPS (from ${SR}\\src\\Services\\Fokus\\Fokus.Domain.Tests):
+STEPS (from ${TEST_PROJECT_DIR}):
   1. Run \`dotnet test\` TWICE. Record { passed, failed, skipped } for EACH run.
-  2. Run \`dotnet stryker\` SCOPED TO THE TARGET CLASS: pass \`--mutate "**/${TARGET_CLASS}.cs"\` so Stryker
-     mutates ONLY ${TARGET_CLASS}.cs (do NOT rely on the static config's mutate list — pin it on the CLI).
+  2. Run \`dotnet stryker\` SCOPED TO THE TARGET FILE: pass \`--mutate "${MUTATE_GLOB}"\` so Stryker
+     mutates ONLY the target file (do NOT rely on the static config's mutate list — pin it on the CLI).
      Capture the JSON report path.
   3. Read mutation-report.json.
-     a. Extract the \`mutants\` array from the per-file entry for ${TARGET_CLASS}.cs SPECIFICALLY (the key
-        whose path ends in ${TARGET_CLASS}.cs). If that entry has NO mutants, return an EMPTY mutants array —
+     a. Extract the \`mutants\` array from the per-file entry for the TARGET SOURCE FILE: ${SRC}
+        Match the FULL path (the key equals or ends with this exact path) — NOT the basename alone: the
+        codebase may have multiple same-basename partials (\`Foo.cs\` + \`Behaviors/Foo.cs\`) and a basename
+        match can grab the wrong one. If that entry has NO mutants, return an EMPTY mutants array —
         do NOT substitute another file's mutants.
      b. Build \`mutatedFiles\`: for EVERY file in the report that has >=1 mutant, one { "file": <full path>,
         "count": <number of mutants> }. This is the honest record of what Stryker actually mutated — the gate
-        uses it to verify ${TARGET_CLASS}.cs was the file mutated (a mismatch is a fake-green and FAILS the run).
+        uses it to verify the target file was mutated (a mismatch is a fake-green and FAILS the run).
   4. Note any red-on-current tests — list them, do NOT delete them.
 
 WRITE YOUR RESULTS HERE (nexus-side, git-ignored): ${RUNNER_RESULT}
 as JSON: { "testRuns": [...], "strykerReportPath": "...", "mutants": [...], "mutatedFiles": [...], "redOnCurrent": [...] }
 
 IMPORTANT: return the same data in your schema'd response AND in the Write(). NEVER report mutants from a file
-other than ${TARGET_CLASS}.cs — an empty mutants array is the correct answer if the target was not mutated.`
+other than the target ${SRC} — an empty mutants array is the correct answer if the target was not mutated.`
 
 let survivingMutants = []
 let lastScore = null
@@ -520,7 +530,9 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
     const coverSubResult = await workflow(
       { scriptPath: COVER_SCRIPT },
       { src: SRC, kbRules: KB_RULES, testStyle: TEST_STYLE, exampleTests: EXAMPLE_TESTS,
-        propertyTests: PROPERTY_TESTS, runnerResult: RUNNER_RESULT, targetClass: TARGET_CLASS, model: MODEL },
+        propertyTests: PROPERTY_TESTS, runnerResult: RUNNER_RESULT, targetClass: TARGET_CLASS, model: MODEL,
+        testDir: TEST_DIR, testProjectDir: TEST_PROJECT_DIR, mutateGlob: MUTATE_GLOB,
+        expectedSurvivorLines: EXPECTED_SURVIVOR_LINES, patternTests: PATTERN_TESTS },
     )
     if (!coverSubResult) {
       log('WARNING: cover sub-workflow returned no result. Bringup check failed — switch MONOLITH_FALLBACK=true.')

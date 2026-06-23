@@ -198,8 +198,6 @@ function mutationRatchet(priorScore, currentScore) {
   return { pass: true, detail: `kill held/improved ${priorScore}% → ${currentScore}%` };
 }
 
-const EXPECTED_SURVIVOR_LINES = [17, 133, 268];
-
 // --- Target + contract paths ----------------------------------------------------------------------
 // All consuming-project (sprint-rituals) paths. Mirrors harness/targets/bugratio.json (kept inline so
 // the Workflow is self-contained when the platform Workflow tool executes this file directly).
@@ -227,9 +225,32 @@ const KB_RULES = _args.kbRules ?? `${SR}\\docs\\kb\\bug-ratio.md`
 const TEST_STYLE = _args.testStyle ?? `${SR}\\docs\\conventions\\mutation-testing.md`
 
 // The Cover agent's ONLY two write targets (design §1 / §6 — its entire write set).
-const TEST_DIR = `${SR}\\src\\Services\\Fokus\\Fokus.Domain.Tests\\Analytics`
-const EXAMPLE_TESTS = _args.exampleTests ?? `${TEST_DIR}\\BugRatioAnalyzerTests.cs`
-const PROPERTY_TESTS = _args.propertyTests ?? `${TEST_DIR}\\BugRatioAnalyzerPropertyTests.cs`
+// TEST_DIR defaults to the Fokus analytics test folder; override via _args.testDir for another repo/area.
+const TEST_DIR = _args.testDir ?? `${SR}\\src\\Services\\Fokus\\Fokus.Domain.Tests\\Analytics`
+const EXAMPLE_TESTS = _args.exampleTests ?? `${TEST_DIR}\\${TARGET_CLASS}Tests.cs`
+const PROPERTY_TESTS = _args.propertyTests ?? `${TEST_DIR}\\${TARGET_CLASS}PropertyTests.cs`
+
+// The directory the runner executes `dotnet test` / `dotnet stryker` from (the TEST PROJECT root).
+// Default Fokus.Domain.Tests; override via _args.testProjectDir to point the toolchain at another repo.
+const TEST_PROJECT_DIR = _args.testProjectDir ?? `${SR}\\src\\Services\\Fokus\\Fokus.Domain.Tests`
+// The Stryker mutate glob. Default `**/${TARGET_CLASS}.cs`; override via _args.mutateGlob when the target is
+// a same-basename partial (e.g. a `Behaviors/` split — dotnet-microservices's house style) so Stryker
+// mutates exactly the intended file and the runner's report-key lookup is unambiguous.
+const MUTATE_GLOB = _args.mutateGlob ?? `**/${TARGET_CLASS}.cs`
+// KB-pre-documented dead lines to exclude from the REACHABLE denominator. Per-class — carrying one class's
+// dead lines to another wrongly excludes real survivors (fake-green). Default [] (no known dead code); the
+// BugRatio back-compat list applies only when no override is passed and the target is BugRatioAnalyzer.
+const EXPECTED_SURVIVOR_LINES = _args.expectedSurvivorLines
+  ?? (TARGET_CLASS === 'BugRatioAnalyzer' ? [17, 133, 268] : [])
+
+// The Cover agent's "pattern to follow" reference. Defaults to the Fokus HealthScore precedent; override
+// via _args.patternTests when targeting a repo with no in-repo precedent (the agent then leans on the
+// TEST-STYLE CONTRACT for the API shape instead of an example file that doesn't exist).
+const PATTERN_BLOCK = _args.patternTests ?? `PATTERN TO FOLLOW (the already-done, mutation-gated HealthScore Cover — same shape, same project):
+  • ${SR}\\src\\Services\\Fokus\\Fokus.Domain.Tests\\Analytics\\HealthScoreCalculatorTests.cs
+    (xUnit v3 + AwesomeAssertions, one [Fact] per rule boundary, epsilon-pinned threshold cases)
+  • ${SR}\\src\\Services\\Fokus\\Fokus.Domain.Tests\\Analytics\\MetricCardBuilderPropertyTests.cs
+    (FsCheck [Property] invariants — direct bool return, FsCheck.Xunit.v3, no Prop.ForAll)`
 
 // Runner results land HERE — nexus-side + git-ignored (.gitignore: harness/.runs/). NEVER in the SR tree
 // (Step-7 hazard: a runner result file in the SR working tree would strand in the SR commit).
@@ -357,11 +378,7 @@ STEP 3 — READ THE TEST-STYLE CONTRACT (the project's xUnit-v3 + FsCheck-3.x C#
 it EXACTLY so the property tests COMPILE; this is the API contract, not an answer key):
   ${TEST_STYLE}
 
-PATTERN TO FOLLOW (the already-done, mutation-gated HealthScore Cover — same shape, same project):
-  • ${SR}\\src\\Services\\Fokus\\Fokus.Domain.Tests\\Analytics\\HealthScoreCalculatorTests.cs
-    (xUnit v3 + AwesomeAssertions, one [Fact] per rule boundary, epsilon-pinned threshold cases)
-  • ${SR}\\src\\Services\\Fokus\\Fokus.Domain.Tests\\Analytics\\MetricCardBuilderPropertyTests.cs
-    (FsCheck [Property] invariants — direct bool return, FsCheck.Xunit.v3, no Prop.ForAll)
+${PATTERN_BLOCK}
 
 ${survBlock}
 
@@ -374,35 +391,38 @@ Write both files now.`
 // is the source of truth — the orchestrator does NOT read any files (no fs access in the orchestrator).
 const runnerPrompt = `You are the RUNNER agent. You execute the .NET toolchain — you do NOT write tests and you do NOT edit production code.
 
-STEPS (run from the test project directory ${SR}\\src\\Services\\Fokus\\Fokus.Domain.Tests):
+STEPS (run from the test project directory ${TEST_PROJECT_DIR}):
   1. Run \`dotnet test\` TWICE (two independent invocations — this is the double-run for suite_green + no_flaky).
      Record { passed, failed, skipped } for EACH run.
-  2. Run \`dotnet stryker\` (MTP runner, per the project's mutation-testing.md) SCOPED TO THE TARGET CLASS:
-     pass \`--mutate "**/${TARGET_CLASS}.cs"\` so Stryker mutates ONLY ${TARGET_CLASS}.cs (do NOT rely on the
-     static config's mutate list — pin it on the CLI). It emits a JSON report under
+  2. Run \`dotnet stryker\` (MTP runner, per the project's mutation-testing.md) SCOPED TO THE TARGET FILE:
+     pass \`--mutate "${MUTATE_GLOB}"\` so Stryker mutates ONLY the target file (do NOT rely on the static
+     config's mutate list — pin it on the CLI). It emits a JSON report under
      StrykerOutput/<timestamp>/reports/mutation-report.json (schemaVersion 2). Capture its ABSOLUTE path.
   3. Read the emitted mutation-report.json (the \`files\` object is keyed by absolute path).
-     a. Extract the \`mutants\` array from the per-file entry whose key ends with ${TARGET_CLASS}.cs
-        SPECIFICALLY. Each element has:
+     a. Extract the \`mutants\` array from the per-file entry for the TARGET SOURCE FILE:
+          ${SRC}
+        Match the FULL path (the report key equals or ends with this exact path) — do NOT match on basename
+        alone: the codebase may contain multiple same-basename partial files (e.g. \`Foo.cs\` and
+        \`Behaviors/Foo.cs\`), and matching the basename can grab the WRONG partial. Each mutant element:
           { "status": "Killed"|"Survived"|"NoCoverage"|"Timeout"|"Ignored"|...,
             "location": { "start": { "line": N }, "end": { "line": M } }, "mutatorName": "...", "replacement": "..." }
-        If the ${TARGET_CLASS}.cs entry has NO mutants, return an EMPTY mutants array — NEVER substitute
-        another file's mutants.
+        If the target-file entry has NO mutants, return an EMPTY mutants array — NEVER substitute another
+        file's mutants.
      b. Build \`mutatedFiles\`: for EVERY file in the report with >=1 mutant, one { "file": <full path>,
         "count": <mutant count> }. This is the honest record of what Stryker actually mutated; the gate uses
-        it to verify ${TARGET_CLASS}.cs was the mutated file (a mismatch is a fake-green and FAILS the run).
+        it to verify the target file was the mutated file (a mismatch is a fake-green and FAILS the run).
   4. Note any test that FAILS on the current production code (red-on-current) — list it; do NOT delete it.
 
-ALSO WRITE YOUR RESULTS HERE for the record (nexus-side, git-ignored — NEVER into the sprint-rituals tree):
+ALSO WRITE YOUR RESULTS HERE for the record (nexus-side, git-ignored — NEVER into the consuming project tree):
   ${RUNNER_RESULT}
 
 as JSON: { "testRuns": [{passed,failed,skipped}, {passed,failed,skipped}], "strykerReportPath": "<abs>",
-           "mutants": [<the per-file ${TARGET_CLASS}.cs mutants array from the Stryker JSON; EMPTY if it has none>],
+           "mutants": [<the target-file mutants array from the Stryker JSON; EMPTY if it has none>],
            "mutatedFiles": [{ "file": "<abs path>", "count": <int> }, ...],
            "redOnCurrent": [{ "test": "...", "note": "..." }] }
 
 IMPORTANT: return the same data in your schema'd response AND in the Write() — the orchestrator uses the
-schema return directly and does NOT read files. NEVER report mutants from a file other than ${TARGET_CLASS}.cs.`
+schema return directly and does NOT read files. NEVER report mutants from a file other than the target ${SRC}.`
 
 // --- The bounded Cover loop (orchestrator-driven) -------------------------------------------------
 // Each iteration: Cover agent writes/updates the tests → runner double-runs + Stryker → orchestrator

@@ -92,6 +92,43 @@ is necessary but NOT sufficient.
   (non-analytics), but ZERO test projects → forces the "harness scaffolds a test project" capability. Saved
   as a best-practices reference. Good next .NET target after CycleTime.
 
+## Part 5.5 — dotnet-microservices bringup (cross-repo generalization prep, 2026-06-23)
+
+The third proof target is a **different repo + different code shape** (DDD behavior guards, not analytics
+math) — the real test that the harness generalizes across codebases, not just classes. First target:
+`ReviewInvitation.Accept/Decline` (pure logic, no DbContext/IMemoryCache). Two halves of prep, both **done +
+validated offline** (the ~1M-token live run is the next, owner-gated step):
+
+**1. Scaffold (in dotnet-microservices) — the "scaffold a test project" capability, done manually first.**
+- `src/Services/Review/Review.Domain.Tests/` — net9.0 test project, **opts out of the repo's central package
+  management** (`ManagePackageVersionsCentrally=false`) so the test stack stays self-contained; pins
+  sprint-rituals' proven set (xunit.v3 3.2.2, FsCheck.Xunit.v3 3.3.3, AwesomeAssertions 9.0.0, MTP).
+- `.config/dotnet-tools.json` (Stryker 4.14.2 local tool), `stryker-config.json` (mtp, scoped to the
+  behaviors partial), a smoke test (keeps baseline `dotnet test` green), a tailored
+  `docs/conventions/mutation-testing.md`.
+- **Toolchain validated:** build green, smoke test green, baseline Stryker produced **11 testable (Survived)
+  mutants on `Invitations/Behaviors/ReviewInvitation.cs`** + a parseable schemaVersion-2 JSON report. (Stray
+  `IArticleStateMachine.cs` mutants were all `Ignored` — filtered, harmless.) The stale SR csproj comment
+  "MTP not supported by Stryker 4.14" is **wrong** — mtp works on 4.14.2 + xunit.v3.
+
+**2. Harness parameterization (in nexus) — point the toolchain at any repo + scope a same-basename partial.**
+- New `_args`: `testDir`, `testProjectDir` (runner working dir), `mutateGlob`, `patternTests`;
+  `expectedSurvivorLines` now parameterized in `cover.workflow.js` too (was hardcoded `[17,133,268]` — a
+  latent fake-green for any non-BugRatio class via composition). `EXAMPLE_TESTS`/`PROPERTY_TESTS` defaults
+  now derive from `${TARGET_CLASS}` (were hardcoded `BugRatioAnalyzer`).
+- The controller forwards all of these to the Cover sub-workflow; the monolith-fallback runner prompt fixed
+  to match.
+- **+3 offline contract tests** (now 307): runner prompt honors `testProjectDir`/`mutateGlob`/full-path SRC;
+  `expectedSurvivorLines` defaults `[]` for a non-BugRatio class; controller forwards the params to Cover.
+
+**Key finding — the same-basename partial hazard (this codebase's house style).** Every aggregate in
+`Review.Domain` (and `UserRole` in Auth) is split `Foo.cs` (data) + `Behaviors/Foo.cs` (behavior), so **two
+files share basename `Foo.cs`**. The harness runner extracted "the entry whose key ends with `{Class}.cs`" —
+**basename-ambiguous**, and could have grabbed the 0-mutant data partial → a classic fake-green. Fixed: the
+runner now keys extraction on the **full SRC path**, and the mutate glob is scoped to the behaviors partial
+(`**/Invitations/Behaviors/ReviewInvitation.cs`). This is exactly the class of generalization bug a
+cross-repo proof exists to surface — found offline, before spending a live run.
+
 ---
 
 ## Part 6 — Flutter plan (the next language target)
