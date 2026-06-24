@@ -145,6 +145,12 @@ function targetMutated(mutatedFiles, sourcePath) {
   const entry = list.find((f) => base(f.file) === target);
   const count = entry?.count ?? 0;
   const detail = { target, count, mutatedFiles: list.map((f) => `${base(f.file)}:${f.count}`) };
+  // Surface stray non-target files the mutate glob also caught (e.g. a sibling interface picked up by a
+  // loose `**/Foo.cs` glob). Does NOT fail the gate — the kill-rate scores only the reachable target
+  // mutants, so the gate stays honest — but a visible strayMutatedFiles list flags a glob that's broader
+  // than intended (Article run leaked 4 mutants onto IArticleStateMachine.cs under a Behaviors/ glob).
+  const strays = list.filter((f) => base(f.file) !== target && (f.count ?? 0) > 0).map((f) => `${base(f.file)}:${f.count}`);
+  if (strays.length) detail.strayMutatedFiles = strays;
   if (count <= 0) detail.error = `target ${target} was NOT mutated (0 mutants in the Stryker report) — mutate scope wrong or a different file mutated; kill-rate untrustworthy (fake-green guard)`;
   return { pass: count > 0, detail };
 }

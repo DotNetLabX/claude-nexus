@@ -197,6 +197,12 @@ function targetMutated(mutatedFiles, sourcePath) {
   const entry = list.find((f) => base(f.file) === target);
   const count = entry?.count ?? 0;
   const detail = { target, count, mutatedFiles: list.map((f) => `${base(f.file)}:${f.count}`) };
+  // Surface stray non-target files the mutate glob also caught (e.g. a sibling interface picked up by a
+  // loose `**/Foo.cs` glob). Does NOT fail the gate — the kill-rate scores only the reachable target
+  // mutants, so the gate stays honest — but a visible strayMutatedFiles list flags a glob that's broader
+  // than intended (Article run leaked 4 mutants onto IArticleStateMachine.cs under a Behaviors/ glob).
+  const strays = list.filter((f) => base(f.file) !== target && (f.count ?? 0) > 0).map((f) => `${base(f.file)}:${f.count}`);
+  if (strays.length) detail.strayMutatedFiles = strays;
   if (count <= 0) detail.error = `target ${target} was NOT mutated (0 mutants in the Stryker report) — mutate scope wrong or a different file mutated; kill-rate untrustworthy (fake-green guard)`;
   return { pass: count > 0, detail };
 }
@@ -309,15 +315,18 @@ const RUNNER_RESULT_SCHEMA = {
 // =================================================================================================
 // DATE STAMP — sourced from an agent (new Date() / Date.now() throw in the Workflow runtime)
 // =================================================================================================
-// The orchestrator VM has no Date object (calling it breaks workflow resume). Source today's date
-// from a cheap agent call whose only job is to return the current date. This `today` string is then
-// threaded into buildRulesSection (via supersedingRules) and the report header — zero Date calls
-// in orchestrator code anywhere in this file.
+// The orchestrator VM has no Date object (calling it breaks workflow resume). PREFER the caller-supplied
+// `_args.runDate` (the main session knows the real date) — an agent forced to infer the date guessed
+// WRONG twice (ReviewInvitation + Article both stamped 2026-06-21 on a 2026-06-23/24 run). Only fall
+// back to the date-stamp agent when no runDate arg is passed. This `today` string is threaded into
+// buildRulesSection (via supersedingRules) and the report header — zero Date calls in orchestrator code.
 const DATE_STAMP_SCHEMA = { type: 'object', properties: { date: { type: 'string' } }, required: ['date'] }
-const dateStampResult = await agent(
-  'Output ONLY today\'s date as YYYY-MM-DD (e.g. 2026-06-22). Return nothing else.',
-  { label: 'date-stamp', phase: 'Init', schema: DATE_STAMP_SCHEMA, model: MODEL }
-)
+const dateStampResult = _args.runDate
+  ? { date: _args.runDate }
+  : await agent(
+      'Output ONLY today\'s date as YYYY-MM-DD (e.g. 2026-06-22). Return nothing else.',
+      { label: 'date-stamp', phase: 'Init', schema: DATE_STAMP_SCHEMA, model: MODEL }
+    )
 const today = dateStampResult?.date ?? '(date-unavailable)'
 
 // =================================================================================================
@@ -690,7 +699,7 @@ ${candidateBugSection}
 ## Mine→Verify Summary
 
 - Consensus rules: ${mineVerifyResult.consensusRules.length}
-- Mine→Verify cost (up to this point): ${mineVerifyResult.outputTokensThisTurn?.toLocaleString() ?? 'N/A'} tokens
+- Mine→Verify cost (marginal): ${typeof mineVerifyResult.outputTokensThisTurn === 'number' ? (mineVerifyResult.outputTokensThisTurn - RUN_START_SPENT).toLocaleString() : 'N/A'} output tokens — Mine→Verify phase of THIS run (marginal, not the shared pool)
 
 ## Notes
 

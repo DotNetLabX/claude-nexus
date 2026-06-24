@@ -596,6 +596,85 @@ test('loop controller forwards testProjectDir/mutateGlob/patternTests to the cov
 });
 
 // ==================================================================================================
+// Slice 9c: the controller PREFERS _args.runDate over the date-stamp agent, and the report cost line
+// is MARGINAL. Regression guard: the date-stamp agent guessed wrong twice (stamped 2026-06-21 on a
+// later run), and the Mine→Verify cost line printed the absolute shared pool (~19× the marginal headline).
+// ==================================================================================================
+test('loop controller honors _args.runDate (skips date-stamp agent) and report cost line is marginal', async () => {
+  const src = readWorkflow(LOOP_PATH);
+  // runDate set → date-stamp agent is SKIPPED, so the agent order loses its first entry:
+  //   [kb-read, kb-write-file, kb-flip, report-write]  (no date-stamp)
+  const agentCalls = [];
+  const agentFixtures = [
+    { content: '# KB\n\n## Rules\n\n- BR-old: old.\n\n---\n<!-- mutation-gated: false -->\n' }, // kb-read
+    { written: true },                                                                         // kb-write-file
+    { written: true },                                                                         // kb-flip
+    { written: true },                                                                         // report-write
+  ];
+  const workflowReturns = [
+    { consensusRules: [{ id: 'BR-1', kind: 'interpretive', agreement: 3, lines: '10-20', statement: 'rule A' }], counts: { consensusRules: 1 }, outputTokensThisTurn: 5000 },
+    { stopped: 'all-gates-green', iter: 1, achievedScore: 100, gates: { suite_green: { pass: true, detail: {} }, mutation_floor: { pass: true, detail: { scorePct: 100, reachableSurvivors: [] } } }, redOnCurrent: [] },
+  ];
+  function thr() { throw new ReferenceError('Date unavailable in workflow scripts'); }
+  thr.now = () => { throw new ReferenceError('Date unavailable in workflow scripts'); };
+  let wfIdx = 0, agentIdx = 0;
+  const sandbox = {
+    agent: async (prompt, opts) => { agentCalls.push({ promptFull: typeof prompt === 'string' ? prompt : '', opts }); return agentFixtures[agentIdx++] ?? null; },
+    parallel: async (fns) => { const r = []; for (const fn of fns) r.push(await fn()); return r; },
+    phase: () => {}, log: () => {},
+    budget: { spent: () => 50000 },
+    workflow: async (ref, extraArgs) => workflowReturns[wfIdx++] ?? null,
+    args: JSON.stringify({ targetClass: 'ReviewInvitation', src: 'D:\\repo\\X.cs', runDate: '2026-06-24' }),
+    Date: thr,
+    Math: { random: () => { throw new ReferenceError('Math.random() unavailable'); } },
+  };
+  const patched = src.replace(/^export\s+const\s+meta\s*=/m, 'const meta =');
+  const ctx = createContext(sandbox);
+  await new Script(`(async () => { ${patched} })()`, { filename: 'loop-date.js' }).runInContext(ctx);
+
+  // Fix 1 — the date-stamp agent must NOT have been called (runDate short-circuits it).
+  const dateAgentCalled = agentCalls.some((c) => c.opts?.label === 'date-stamp' || /Output ONLY today/i.test(c.promptFull));
+  assert.equal(dateAgentCalled, false, 'date-stamp agent must be skipped when _args.runDate is supplied');
+
+  // The report-write agent carries the full report content in its prompt.
+  const reportCall = agentCalls.find((c) => /Cover run —/.test(c.promptFull));
+  assert.ok(reportCall, 'report-write agent was invoked with the report content');
+  // Fix 1 — the report header date is the caller-supplied runDate, not a guess.
+  assert.ok(/Cover run — ReviewInvitation \(2026-06-24\)/.test(reportCall.promptFull), 'report header uses _args.runDate');
+  // Fix 2 — the Mine→Verify cost line is labelled marginal (not "up to this point" / absolute pool).
+  assert.ok(/Mine→Verify cost \(marginal\)/.test(reportCall.promptFull), 'Mine→Verify cost line is marginal');
+  assert.ok(!/up to this point/.test(reportCall.promptFull), 'old absolute-pool cost label is gone');
+});
+
+// ==================================================================================================
+// Slice 9d: target_mutated SURFACES stray non-target mutated files (glob-leak visibility).
+// Regression guard: the Article run leaked 4 mutants onto IArticleStateMachine.cs under a Behaviors/
+// glob; the gate stayed honest (scored only the target) but the leak was invisible in the report.
+// ==================================================================================================
+test('cover target_mutated surfaces stray non-target mutated files without failing the gate', async () => {
+  const src = readWorkflow(COVER_PATH);
+  const coverAgentReturn = null;
+  const runnerReturn = {
+    testRuns: [ { passed: 5, failed: 0, skipped: 0 }, { passed: 5, failed: 0, skipped: 0 } ],
+    strykerReportPath: 'D:\\mock\\mutation-report.json',
+    mutants: [
+      { status: 'Killed', location: { start: { line: 5 } }, mutatorName: 'Arithmetic', replacement: '+' },
+      { status: 'Killed', location: { start: { line: 10 } }, mutatorName: 'Equality', replacement: '==' },
+    ],
+    mutatedFiles: [
+      { file: 'D:\\x\\BugRatioAnalyzer.cs', count: 2 },     // target
+      { file: 'D:\\x\\ISomeInterface.cs', count: 3 },       // stray — loose glob also caught it
+    ],
+    redOnCurrent: [],
+  };
+  const { result } = await runInSandbox(src, [coverAgentReturn, runnerReturn]);
+  const tm = result?.gates?.target_mutated;
+  assert.ok(tm, 'cover return carries the target_mutated gate');
+  assert.equal(tm.pass, true, 'gate still PASSES — target was mutated, kill-rate stays honest');
+  assert.deepEqual(tm.detail.strayMutatedFiles, ['ISomeInterface.cs:3'], 'stray non-target file is surfaced in the detail');
+});
+
+// ==================================================================================================
 // Slice 10: `meta` must be a PURE LITERAL (4th Workflow-runtime rule — Inc-3a bringup)
 // ==================================================================================================
 // The Workflow tool rejects any non-literal node in `meta` ("meta must be a pure literal: non-literal
