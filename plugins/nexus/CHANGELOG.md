@@ -1,6 +1,15 @@
 # nexus — Changelog
 
 
+## [1.18.1] — 2026-06-24
+**Wire the Dart/Flutter adapter into the mine-verify-cover method.** The Flutter stack adapter now exists
+(`mine-verify-cover-flutter` in the new `nexus-flutter` plugin), live-proven on 2 Dart classes. Updates the
+stack-neutral method doc to reference it: the adapter list, the adapter-contract table, and the "What this
+skill does NOT do" toolchain note now name `mine-verify-cover-flutter` alongside `-dotnet`. Also corrects the
+mutation-tool guidance — a regex-based tool (Dart's `mutation_test`) emits equivalent mutants the adapter
+excludes by reasoning, distinct from a stack with NO mutation tool (the coverage + assertion-density fallback).
+  - skill change (mine-verify-cover)
+
 ## [1.18.0] — 2026-06-23
 **Mine→Verify→Cover (new skill)** — the stack-neutral method that discovers, verifies, and mutation-gates the
 business rules of ONE class. Clean-room miners extract the rules a class encodes, a skeptic re-checks each
