@@ -24,6 +24,7 @@ import { createContext, Script } from 'node:vm';
 // ---- Paths to the workflow scripts ---------------------------------------------------------------
 const MINE_VERIFY_PATH = new URL('../../harness/mine-verify.workflow.js', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 const COVER_PATH       = new URL('../../harness/cover.workflow.js',       import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
+const COVER_FLUTTER_PATH = new URL('../../harness/cover-flutter.workflow.js', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 const LOOP_PATH        = new URL('../../harness/loop.workflow.js',        import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 
 // ---- Raw source readers --------------------------------------------------------------------------
@@ -675,6 +676,38 @@ test('cover target_mutated surfaces stray non-target mutated files without faili
 });
 
 // ==================================================================================================
+// Slice 9e: the FLUTTER cover adapter (cover-flutter.workflow.js) runs in the sandbox, reuses the gate
+// battery, and its equivalent-mutant filter excludes a log-line survivor via expectedSurvivorLines.
+// ==================================================================================================
+test('cover-flutter runs in sandbox; gate battery + equivalent-mutant filter work', async () => {
+  const src = readWorkflow(COVER_FLUTTER_PATH);
+  const coverAgentReturn = null; // cover agent's Write() is the deliverable
+  const runnerReturn = {
+    testRuns: [ { passed: 9, failed: 0, skipped: 0 }, { passed: 9, failed: 0, skipped: 0 } ],
+    reportPath: 'D:\\runs\\cover-flutter.xml',
+    mutants: [
+      // a real behaviour mutant — killed
+      { status: 'Killed',   location: { start: { line: 33 } }, mutatorName: 'replaceFirst', replacement: 'replaceAll' },
+      // a LOG-LINE mutant that survived — equivalent mutant, must be excluded by expectedSurvivorLines
+      { status: 'Survived', location: { start: { line: 29 } }, mutatorName: 'string', replacement: '""' },
+    ],
+    // basename must match the default SRC (build_zpl_code_usecase.dart) so target_mutated passes
+    mutatedFiles: [{ file: 'D:\\omnishelf\\omnishelf_flutter_app\\lib\\domain\\usecases\\zebra_printer\\build_zpl_code_usecase.dart', count: 2 }],
+    redOnCurrent: [],
+  };
+  // Pass the log line (29) as an equivalent-mutant exclusion — the harness must NOT chase it.
+  const argsValue = JSON.stringify({ expectedSurvivorLines: [29] });
+
+  const { result } = await runInSandbox(src, [coverAgentReturn, runnerReturn], argsValue);
+  assert.equal(result?.variant, 'inc4-cover-flutter', 'returns the flutter cover variant');
+  assert.equal(result?.stopped, 'all-gates-green', 'all gates green once the log-line survivor is excluded');
+  assert.equal(result?.achievedScore, 100, '1/1 reachable killed = 100% (line 29 excluded from denominator)');
+  assert.equal(result.gates.mutation_floor.detail.expectedSurvivorsExcluded, 1, 'the log-line survivor was excluded, not chased');
+  assert.equal(result.gates.mutation_floor.detail.reachableSurvivors.length, 0, 'no reachable survivors remain');
+  assert.equal(result.gates.target_mutated.pass, true, 'target_mutated passes (target file was mutated)');
+});
+
+// ==================================================================================================
 // Slice 10: `meta` must be a PURE LITERAL (4th Workflow-runtime rule — Inc-3a bringup)
 // ==================================================================================================
 // The Workflow tool rejects any non-literal node in `meta` ("meta must be a pure literal: non-literal
@@ -702,7 +735,7 @@ function metaNonLiteralReason(src) {
   return null; // pure literal by these heuristics
 }
 
-for (const [name, path] of [['mine-verify', MINE_VERIFY_PATH], ['cover', COVER_PATH], ['loop', LOOP_PATH]]) {
+for (const [name, path] of [['mine-verify', MINE_VERIFY_PATH], ['cover', COVER_PATH], ['cover-flutter', COVER_FLUTTER_PATH], ['loop', LOOP_PATH]]) {
   test(`${name}.workflow.js meta is a pure literal (no concat / interpolation)`, () => {
     const reason = metaNonLiteralReason(readWorkflow(path));
     assert.equal(reason, null, `meta must be a pure literal — found: ${reason}`);
