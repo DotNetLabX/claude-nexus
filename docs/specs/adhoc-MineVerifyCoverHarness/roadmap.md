@@ -74,6 +74,15 @@ evidence indexer · test runner · mutation tool · test-style contract · prod-
 risk — de-risk BEFORE committing:** Dart mutation tooling is immature (Stryker/.NET solid; C++ has mull/
 dextool; Flutter may need a custom mutator or a coverage+property fallback). Probe it first.
 
+**C++ toolchain de-risked → GO (2026-06-24).** Phase-0 probe `docs/specs/adhoc-MineVerifyCppProbe/`
+proved the C++ adapter toolchain end-to-end on the SDK's Hungarian slice: **clang-15 + mull-15 (0.34.0) +
+libclang + GoogleTest** — mull killed 100/296 mutants with a gate-parseable JSON+SQLite report; slice
+isolated cleanly from OpenCV/NCNN. Toolchain risk retired; the C++ adapter is now a **ready increment**
+(sequencing vs Flutter stays the owner's call — this GO does not reorder). Carry-forward costs:
+domain-rich slices are OpenCV/Eigen-trapped (budget slice-isolation), and `exit()`-in-code-under-test is
+a mutation false-survivor trap (the adapter must neutralize it). Backing research:
+`docs/kb/research/cpp-mutation-and-test-tooling.md`.
+
 ## Workflow runtime contract (learned the hard way — now encoded in the offline guard)
 
 Workflow scripts run in a constrained runtime. Each rule below was found via an expensive live run before
