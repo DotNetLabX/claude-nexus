@@ -19,13 +19,14 @@
 - Added a `cover-cpp` slice to `tests/unit/workflow-contract.test.mjs` (sandbox run + meta-purity + the path const) mirroring the Flutter slice.
 - **`node --test tests/unit/workflow-contract.test.mjs` → 29/29 pass**, including: `cover-cpp runs in sandbox; gate battery + equivalent-mutant filter work` (variant `inc4-cover-cpp`, all-gates-green, exit()-line survivor excluded) and `cover-cpp.workflow.js meta is a pure literal`. No static import, no `Date`/`Math.random`/`read`/`fs`, args parsed in both JSON-string and object shapes.
 
-## Step 1 — Mine→Verify Hungarian → KB ⏸ PAUSED (live LLM run)
-Run `harness/mine-verify.workflow.js` on the copied `hungarian.cpp` → a verified KB the Cover agent writes tests against. Token cost; awaiting go-ahead.
+## Step 1 — Mine→Verify Hungarian → KB ✅ (live, `wf_356fb6ab-024`)
+42 consensus rules (40/42 in all 3 miners; 14 CONFIRMED / 9 IMPRECISE / 18 transcribed); clean-room held (miners read only the source). ~297k tokens, ~6 min → `delivery/kb-hungarian.md`. **Proves Mine→Verify works on C++.**
 
-## Step 5 — one live Cover run on Hungarian ⏸ PAUSED (live LLM run)
-Run `cover-cpp.workflow.js` (Docker runner) → all 6 gates, floor ≥75% reachable, cost numbers. Awaiting go-ahead.
+## Step 5 — one live Cover run on Hungarian ✅ ran end-to-end; gate honestly REFUSED (live, `wf_050b8b0a-d2b`)
+5 iterations (cap). **Adapter mechanically proven:** the Docker/mull-15/GoogleTest runner seam all worked — a clean-room Cover agent wrote a compiling 1196-line / 53-test suite; runner ran `ctest`×2 + `-DMULL=ON` build + `mull-runner-15`; mull's `cover.json` consumed as-is. 5/6 gates green (target_mutated 296 mutants, suite_green 53/0 ×2, no_flaky, no_new_skips, char_pin). **mutation_floor FAILED at 46% reachable** (136/293, floor 75) → `cap-reached`, **no fake-green** (the design working). Root cause: the `exit(0)` doublecheck masks invariant-breaking mutants (bigger than the 3 pre-excluded lines) + unobservable internal-state/print/free mutants. ~787k tokens, ~66 min. Full analysis: `delivery/run-cover-hungarian-2026-06-25.md`.
 
-## Step 6 — run report + domain-slice GO/NO-GO ⏸ pending Step 5
+## Step 6 — run report + GO/NO-GO ✅ → `delivery/run-cover-hungarian-2026-06-25.md`
+**Verdict: C++ adapter GO (mechanically proven).** Hungarian floor not cleared at black-box (46%); the concrete fix is `--wrap=exit` (turn `exit()`-on-invalid into a test failure → masked mutants become killable) — re-run before certifying this class. Sequencing vs Flutter unchanged; code-grounded review owed at shipped-skill authoring.
 
 ## Skills Used
 None (Workflow authoring + offline validation — no pattern skill applies; the harness is authored/run via Workflow, not the Skill tool). Plan is intentionally all-`None`.
