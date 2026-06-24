@@ -288,6 +288,7 @@ here are the part the Workflow cannot self-capture — operator/session appends 
 |------|--------|------|--------|-----------------|-------|
 | 2026-06-23 | ReviewInvitation.Accept/Decline | dotnet-microservices | 91% (10/11), 6 gates green, 39 tests, 7 rules | ~395k, Sonnet | first cross-repo; honest survivor (`<` vs `<=`); full eval in `run-eval-reviewinvitation-2026-06-23.md` |
 | 2026-06-23 | Article behaviors | dotnet-microservices | **100%** (60/60), 6 gates green, 127 tests, 25 rules, **1 Cover iteration** | **~103k**, Sonnet | heaviest target yet (faked `IArticleAction` + `ArticleStateMachineFactory` delegate + domain-event assertions); green on first pass; completed on the 4th attempt after a 3-failure Anthropic API outage (harness halted cleanly each time) |
+| 2026-06-24 | BuildZplCodeUsecase | **omnishelf_flutter_app (FLUTTER)** | **90%** (19/21), 6 gates green, 45 tests, 12 rules, **1 Cover iteration** | **~103k**, Sonnet | **first Flutter run** — proves `cover-flutter.workflow.js`; `mutation_test` (regex) drives `flutter test`; the 2 survivors are equivalent log-call mutants (`removeVoidCall` on `info(...)`, lines 28/36) — floor (75) tolerates them; KB mined by a clean-room miner agent |
 
 ### Improvement Proposal — automate the test-project scaffold
 **Target:** `plugins/nexus-dotnet/skills/mine-verify-cover-dotnet/SKILL.md` + a harness scaffold step
@@ -336,3 +337,28 @@ here are the part the Workflow cannot self-capture — operator/session appends 
 - **Resilience proven end-to-end:** the Article target took 4 attempts. The first 3 hit an Anthropic API 500 outage; each **halted cleanly** (no crash, no KB corruption, no fake-green — the dca4746 verify-failed guard + the existing Mine guard both fired). The 4th completed green. This is the resilience fix doing exactly its job against a live outage, not a synthetic test.
 - **Cost recalibration:** the *heaviest* target (richest rule set, most faked collaborators) cost **~103k marginal** — well under the ReviewInvitation run's ~395k and ~20× under my pre-run 1–2M estimate. Collaborator-faking did **not** blow up cost. Future estimates for rich-but-bounded domain classes should anchor near ~100–400k marginal, not seven figures. (The 1–2M fear came from reading the shared-pool `budget.spent()` as if it were run cost — the same confusion the marginal-accounting fix addresses.)
 - **Harness read-discipline (minor):** the read-tracker flagged the workflow subagents re-reading `Article.cs` ~11× and the ReviewInvitation behaviors ~7× in the round. Most is legitimate fan-out (3 independent miners + Cover each read once), not one agent thrashing — but the Cover/runner loop does re-open the source across iterations. Low priority; revisit only if a future multi-iteration run shows it dominating cost.
+
+> **Status update (2026-06-24):** the three .NET defects above — date-via-args, marginal Mine→Verify cost, and stray-mutant visibility — are **SHIPPED** in commit `9da8d69` (all offline-tested, 310→312 green). Keep them recorded so they aren't regressed.
+
+## Harness Runs — Flutter Bringup (Inc 4, stack #2)
+
+The harness's second stack. Goal restated: the Mine→Verify→Cover harness is the product; .NET proved it across 3 diverse targets, Flutter is the portability test. Full bringup + first green run landed 2026-06-24.
+
+### Finding — Flutter toolchain bringup (hands-on, all green)
+- **Repo unblock was a protocol mismatch, not access.** `omnishelf_flutter_app` declares its private deps as `git@github.com:` (SSH) URLs, but the machine authenticates over HTTPS (Git Credential Manager). Fix: `git config --global url."https://github.com/".insteadOf "git@github.com:"` → the existing HTTPS credential resolves them. One dev-only lint dep (`omnishelf_lint`) is genuinely access-denied; commented out of pubspec (it doesn't affect test/mutation). `flutter pub get` then `dart run build_runner build` (2,739 generated files) are mandatory before any `flutter test`.
+- **Trust anchor confirmed hands-on (supersedes the doc-based research).** `dart_mutant` (AST) is NOT pub-installable (Rust binary) — `dart pub global activate dart_mutant` fails. `mutation_test` (pub.dev, regex) **works**, drives `flutter test` directly (no `dart test` friction), and emits a machine-readable `-f xml` report. It is the practical mechanical gate for Flutter.
+
+### Finding — first Flutter run is green; the adapter is thin and the gate battery is fully reused
+- **`cover-flutter.workflow.js` is a thin fork** of `cover.workflow.js`: the entire 6-gate battery is copied verbatim; only the Cover prompt (flutter_test) and the runner (`flutter test` ×2 + `mutation_test -f xml`, translated into the Stryker-shaped mutant schema) differ. The translation (detected→Killed, undetected→Survived, timeout→Timeout, not-covered→NoCoverage) means **`mutationFloor` and every other gate work unchanged**.
+- **BuildZplCodeUsecase run: 90% (19/21), 45 tests, 6 gates green, iteration 1, ~103k marginal, ~9.4 min.** Matches the manual smoke run independently (same 90%, same 2 survivors). The KB was produced by a **single clean-room miner agent** (12 rules) — not hand-written, not the PO, and the golden set was never shown.
+- **Equivalent-mutant reasoning validated.** The 2 survivors are `removeVoidCall` on the `info(...)` log calls (lines 28/36) — provably unkillable by an output-asserting test, exactly as the mined KB's BR-12 flagged. The floor (75) tolerates them at 90%. The `expectedSurvivorLines` filter (run with `[]` here to let them surface) can pin them to show 100% when desired — same mechanism as the .NET dead-line list.
+
+### Improvement Proposal — Mine→Verify-Dart is the next increment
+**Target:** a `mine-verify-flutter.workflow.js` (or arg-parameterize `mine-verify.workflow.js`) + a Flutter loop controller.
+**Change:** the bringup proved the Cover+Gate half; the rule-extraction (Mine→Verify) half is still stack-agnostic-in-theory but unproven on Dart. Build it, then run the FULL loop on an untested target (#5 GetNextCycleCountTargetUsecase).
+**Priority:** high (the next build step).
+
+### Improvement Proposal — mutation_test speed is the Flutter scaling constraint
+**Target:** `cover-flutter.workflow.js` runner + the Flutter adapter skill (when written).
+**Change:** ~13s per `flutter test` invocation × one-run-per-mutation. 21 mutations on a 43-line class took ~5 min of mutation alone; a 189-LOC class (#3) would be 30–60+ min. Mitigations to evaluate: `mutation_test -c lcov.info` (skip no-coverage mutants), scoping the mutate file tightly, and batching. Flag any silent truncation.
+**Priority:** medium (bites on bigger targets, not the pilot).
