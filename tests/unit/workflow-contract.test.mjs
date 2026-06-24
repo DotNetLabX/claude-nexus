@@ -25,6 +25,7 @@ import { createContext, Script } from 'node:vm';
 const MINE_VERIFY_PATH = new URL('../../harness/mine-verify.workflow.js', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 const COVER_PATH       = new URL('../../harness/cover.workflow.js',       import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 const COVER_FLUTTER_PATH = new URL('../../harness/cover-flutter.workflow.js', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
+const COVER_CPP_PATH   = new URL('../../harness/cover-cpp.workflow.js',    import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 const LOOP_PATH        = new URL('../../harness/loop.workflow.js',        import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 
 // ---- Raw source readers --------------------------------------------------------------------------
@@ -708,6 +709,38 @@ test('cover-flutter runs in sandbox; gate battery + equivalent-mutant filter wor
 });
 
 // ==================================================================================================
+// Slice 9f: the C++ cover adapter (cover-cpp.workflow.js) runs in the sandbox, reuses the gate battery,
+// and its equivalent-mutant filter excludes an exit()-sanity-line survivor via expectedSurvivorLines.
+// ==================================================================================================
+test('cover-cpp runs in sandbox; gate battery + equivalent-mutant filter work', async () => {
+  const src = readWorkflow(COVER_CPP_PATH);
+  const coverAgentReturn = null; // cover agent's Write() is the deliverable
+  const runnerReturn = {
+    testRuns: [ { passed: 9, failed: 0, skipped: 0 }, { passed: 9, failed: 0, skipped: 0 } ],
+    reportPath: '/probe/mull-out/cover.json',
+    mutants: [
+      // a real comparison mutant in hungarian_solve — killed
+      { status: 'Killed',   location: { start: { line: 269 } }, mutatorName: 'cxx_lt_to_le', replacement: '<=' },
+      // an exit()-sanity-line mutant that survived — equivalent mutant, excluded via expectedSurvivorLines
+      { status: 'Survived', location: { start: { line: 371 } }, mutatorName: 'cxx_remove_void_call', replacement: '' },
+    ],
+    // basename must match the default CONTAINER_SRC (hungarian.cpp) so target_mutated passes
+    mutatedFiles: [{ file: '/probe/src/hungarian.cpp', count: 2 }],
+    redOnCurrent: [],
+  };
+  // Pass the exit() sanity line (371) as an equivalent-mutant exclusion — the harness must NOT chase it.
+  const argsValue = JSON.stringify({ expectedSurvivorLines: [371] });
+
+  const { result } = await runInSandbox(src, [coverAgentReturn, runnerReturn], argsValue);
+  assert.equal(result?.variant, 'inc4-cover-cpp', 'returns the C++ cover variant');
+  assert.equal(result?.stopped, 'all-gates-green', 'all gates green once the exit()-line survivor is excluded');
+  assert.equal(result?.achievedScore, 100, '1/1 reachable killed = 100% (line 371 excluded from denominator)');
+  assert.equal(result.gates.mutation_floor.detail.expectedSurvivorsExcluded, 1, 'the exit()-line survivor was excluded, not chased');
+  assert.equal(result.gates.mutation_floor.detail.reachableSurvivors.length, 0, 'no reachable survivors remain');
+  assert.equal(result.gates.target_mutated.pass, true, 'target_mutated passes (target file was mutated)');
+});
+
+// ==================================================================================================
 // Slice 10: `meta` must be a PURE LITERAL (4th Workflow-runtime rule — Inc-3a bringup)
 // ==================================================================================================
 // The Workflow tool rejects any non-literal node in `meta` ("meta must be a pure literal: non-literal
@@ -735,7 +768,7 @@ function metaNonLiteralReason(src) {
   return null; // pure literal by these heuristics
 }
 
-for (const [name, path] of [['mine-verify', MINE_VERIFY_PATH], ['cover', COVER_PATH], ['cover-flutter', COVER_FLUTTER_PATH], ['loop', LOOP_PATH]]) {
+for (const [name, path] of [['mine-verify', MINE_VERIFY_PATH], ['cover', COVER_PATH], ['cover-flutter', COVER_FLUTTER_PATH], ['cover-cpp', COVER_CPP_PATH], ['loop', LOOP_PATH]]) {
   test(`${name}.workflow.js meta is a pure literal (no concat / interpolation)`, () => {
     const reason = metaNonLiteralReason(readWorkflow(path));
     assert.equal(reason, null, `meta must be a pure literal — found: ${reason}`);
