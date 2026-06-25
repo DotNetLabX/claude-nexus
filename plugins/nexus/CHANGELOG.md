@@ -1,6 +1,15 @@
 # nexus — Changelog
 
 
+## [1.18.2] — 2026-06-25
+**Provenance-based "strengthen-don't-duplicate" for the learner.** Lessons now carry a provenance tag
+(`**Evidence:**` = the runs a lesson has appeared in); the tag count *is* the recurrence count, surfacing
+the 2-occurrence promotion threshold in the lesson itself. On a recurring lesson the learner appends the
+new run to the existing entry's provenance (and revises on contradiction) instead of adding a near-duplicate
+twin — keeping `lessons.md` lean and the recurrence signal honest. Updates `learner` (agent + command) and
+the `lessons-format` skill (adhoc-LessonsProvenance).
+  - agent instruction/behavior change · shipped command changed · skill change (lessons-format)
+
 ## [1.18.1] — 2026-06-24
 **Wire the Dart/Flutter adapter into the mine-verify-cover method.** The Flutter stack adapter now exists
 (`mine-verify-cover-flutter` in the new `nexus-flutter` plugin), live-proven on 2 Dart classes. Updates the

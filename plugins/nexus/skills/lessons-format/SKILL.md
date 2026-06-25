@@ -52,6 +52,17 @@ For systemic issues that recur across features, append an improvement proposal i
 **Priority:** {low/medium/high}
 ```
 
+**Provenance & strengthen-don't-duplicate.** A lesson earns promotion by *recurring*, not by a single
+sighting — so treat the improvement proposal's `**Evidence:**` line as a **provenance tag**: the set of
+runs/features the lesson has appeared in (e.g. `**Evidence:** [adhoc-Foo, F5-Bar]`).
+- **Maturity = provenance count.** The number of runs in the tag *is* the recurrence — it surfaces the
+  2-occurrence promotion threshold (learner step 3) **in the lesson itself**, not re-derived from learner
+  bookkeeping each pass.
+- **Strengthen, don't duplicate.** When a lesson matching an existing entry recurs, **append the new run
+  to that entry's provenance** — never add a near-identical twin. Promote only at the threshold; on a
+  *contradicting* recurrence, revise the entry rather than appending a conflicting twin. Keeps
+  `lessons.md` lean and the recurrence signal honest.
+
 Only add items not already in CLAUDE.md, convention files, skills, or agent files. Update before `/compact` or `/clear`.
 
 **Mandatory:** Every agent must write lessons before finishing its work. This is not optional — if you learned something (a gap, a pattern, a mistake, an ambiguity), write it down. If the lessons file doesn't exist yet, create it. If your heading already exists, append to it. No agent exits without writing lessons.
