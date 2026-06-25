@@ -1,6 +1,7 @@
 # Proposal — Recipe-estate consistency & discoverability audit
 
 **Status:** Ratified — by ldumit (owner), 2026-06-17 (this session)
+**Delivered:** adhoc-RecipeEstateAudit (nexus 1.13.2) — 5 skill descriptions tightened, shared `is-code-file.js` predicate, ADR-4 table fix, selection index reconciled (224/224 tests).
 **Decision-maker:** ldumit (owner)
 **Recommendation:** Run a read-only, cross-cutting audit of the recipe/rule/gate estate — drift sweep + a selection/navigation index + gate-coherence check — then stage fixes by priority. Do **not** build new abstractions; the recipe layer already exists (ADR-2).
 **Confidence:** High — the recipe layer is present and dense (ADR-2 names skills as the reusable-recipe/schema carrier); the prior pass used a different lens (mechanism strength, not coherence); and three drift incidents *this session* evidence the need. The audit itself is read-only and reversible, so the cost of running it is low.

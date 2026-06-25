@@ -1,6 +1,7 @@
 # Proposal P1 — Confidence (from assumptions) gates research-vs-ask
 
-**Status:** Draft (overview: `research-system-overview.md`).
+**Status:** Ratified (overview: `research-system-overview.md`).
+**Delivered:** adhoc-ConfidenceGatedResearch (nexus 1.8.2) — 5 agent files + `agents-workflow.md` + the `research-before-asking.md` rule. Bookkept Ratified 2026-06-22.
 **Confidence:** **High** — clear traced pain, builds on three confidence signals already in the
 agents, mostly prose wiring, low blast radius.
 **Priority:** 1 (smallest surface; the only piece with concrete pain behind it).

@@ -1,6 +1,7 @@
 # Proposal — Unattended Autonomy as an Additive Layer
 
 **Status:** Ratified (owner, 2026-06-16)
+**Delivered:** adhoc-UnattendedAutonomy (nexus 1.13.0) — mode switch + `verify-gate.js` + golden regression test + fail-closed review-queue; ADR-30/31/32. Layer-2/Layer-4 deferred by the proposal itself (not an unmet v1 remainder).
 **Decision-maker:** Laurentiu (repo owner)
 **Recommendation:** Add unattended-overnight operation as a strictly additive mode (default OFF), built as a thin vertical slice first — mode switch + always-on verification gate + fail-closed defer-to-review-queue, pinned by a golden test that proves attended mode is byte-unchanged.
 **Confidence:** High — on the additive strategy and the v1 thin slice (mode-flag-default-off is unbreakable-by-construction and golden-test-pinned; the verify gate runs at the *foreground* team-lead Stop boundary, so it needs no background-subagent enforcement). The one unconfirmed mechanism (Layer-2 enforceable advancement on background subagents) is **carved out of v1** and routed to a spike, so it does not lower v1 confidence.

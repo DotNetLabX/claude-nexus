@@ -1,7 +1,7 @@
 # Proposal — The research / persona system (overview)
 
-**Status:** Draft / proposal index (raised 2026-06-13, session `researcher-build-persona`). Owner
-ratifies scope + sequencing before any build.
+**Status:** Ratified — index (raised 2026-06-13, session `researcher-build-persona`).
+**Delivered:** the research engine shipped — ADR-26 + P1 (adhoc-ConfidenceGatedResearch 1.8.2) + P2 (adhoc-ResearchKB 1.10.0, adhoc-NexusResearch 1.14.0). P3/P4/P5 remain Draft (see those files). Bookkept Ratified 2026-06-22.
 
 Five related proposals, one per file, that add a **research capability** to the pipeline and a
 **persona calibration layer** beside it. Written separately so each can be ratified, sequenced, and
