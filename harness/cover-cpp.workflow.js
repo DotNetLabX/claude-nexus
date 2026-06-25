@@ -207,6 +207,10 @@ const BASELINE_SKIPS = _args.baselineSkips ?? 0
 // hungarian_solve, the exit() sanity-check lines (371/376/383). Default [] (no known equivalents); pass per
 // target. Excluded from the REACHABLE denominator, NOT chased.
 const EXPECTED_SURVIVOR_LINES = _args.expectedSurvivorLines ?? []
+// Optional per-target SUT-shape hint. The adapter is no longer Hungarian-shaped: the SUT include +
+// API come from the PATTERN file + KB; this note carries any extra per-target guidance (e.g. the C++
+// namespace-qualified call style for Levenshtein). Empty by default.
+const SUT_NOTES = _args.sutNotes ? `\n  • ${_args.sutNotes}` : ''
 
 // snake_case helper for the default test filename (no Date/Math.random — pure string op, resume-safe).
 function snakeCase(name) {
@@ -283,11 +287,12 @@ NON-NEGOTIABLE RULES:
   • A test that FAILS on the CURRENT production code is KEPT and FLAGGED with a \`// CANDIDATE BUG:\` comment —
     NEVER deleted, and you NEVER change production code to make it pass.
   • Coverage is NOT the goal — KILLING MUTANTS is. Pin exact boundary cases: every comparison
-    (\`<\`, \`<=\`, \`==\`, \`!=\`, \`>=\`, \`>\`), every branch, the exact assignment/cost semantics. Assert on the
-    RETURNED assignment matrix (and the computed total cost), so a mutated comparison flips a test RED.
-  • The SUT is C with an \`extern "C"\` header — include it as:  extern "C" { #include "hungarian.h" }
-  • Build the int** cost matrix with malloc, call hungarian_init / hungarian_solve / hungarian_free, and
-    free what you allocate. Mirror the helper shape in the PATTERN file exactly.
+    (\`<\`, \`<=\`, \`==\`, \`!=\`, \`>=\`, \`>\`), every branch, the exact semantics the KB documents. Assert on the function's RETURN VALUE (and any output
+    parameters the KB documents), so a mutated comparison or constant flips a test RED.
+  • The SUT's include style and public API are SHOWN in the PATTERN file (STEP 3) and the KB (STEP 2) —
+    mirror them EXACTLY: the include form, the (possibly namespace-qualified) calls, how inputs are
+    constructed, and how the return value is read. Do NOT assume a C extern "C" shape — follow the
+    pattern. Build inputs in the test; assert ONLY on the public return value(s).${SUT_NOTES}
   • Deliverable = the file write. Write() the file; do not summarize it in your final message.
 
 STEP 1 — READ THE PRODUCTION SOURCE (the SUT):

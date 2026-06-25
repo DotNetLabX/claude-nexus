@@ -72,3 +72,37 @@
   so writing harness source via the shell is the legitimate route around a cross-session false-positive.
   A per-worktree pipeline-state (or root = the file's worktree, not `CLAUDE_PROJECT_DIR`) would fix the
   root cause.
+
+## Levenshtein cert lessons (2026-06-25)
+
+- **The kill-rate ceiling is the TARGET's, not the harness's — proven by contrast.** Same adapter, same
+  6-gate battery: Hungarian capped at 64% (internal bookkeeping + `exit()`), Levenshtein hit **96%** (pure
+  input→return). The variable was the slice's observable surface, nothing else. **Lesson:** scout targets
+  for "can a test assert behaviour from inputs→return value?" BEFORE running; a dependency-isolated slice
+  (good for proving the toolchain) is not automatically an observable one (good for a kill-rate cert).
+
+- **The cheapest way to find hardcoded assumptions in an adapter is to run a SECOND, different target.**
+  The cover-cpp Cover prompt silently hardcoded Hungarian (`extern "C"`, `int** malloc`,
+  `hungarian_init|solve|free`). Nothing flagged it until Levenshtein (a C++ `namespace` + STL target) forced
+  the generalization: SUT shape moved to the PATTERN file + KB + an optional `_args.sutNotes`. **Lesson:**
+  a pilot adapter is "reusable" only after a 2nd unlike target; de-Hungarianizing was a prerequisite, not a
+  polish.
+
+- **mull mutates header-only templates** — the instantiated code's debug SOURCE path is the header, so
+  `includePaths: src/<hdr>.h` scopes correctly even though the IR physically lives in the test TU (which
+  `excludePaths: tests/.*` keeps un-mutated). No explicit-instantiation TU or separate library needed.
+
+- **Hand-computed expected values are a CROSS-TARGET Cover-agent failure mode — fix it in the prompt, not
+  per-run.** Hungarian: 5 reds from wrong hand-computed optimal costs. Levenshtein: 2 reds from wrong
+  hand-computed edit-op `(i,j)` positions. Both times the production code was correct and the agent invented
+  the expectation. **Lesson:** the Cover prompt should steer to STRUCTURAL invariants — round-trip
+  (`apply(ops, source) == target`), conservation (`editops.size() == distance`), label/count — and assert a
+  hand-computed exact value ONLY for a single trivially-traceable case. A wrong hand-computed expectation is
+  a FALSE red, never a candidate bug. (Now in the Levenshtein KB; should be promoted to the generic
+  cover-cpp Cover prompt.)
+
+- **An all-green dashboard is not always worth the run.** The 96% mutation_floor IS the cert; the 2
+  `suite_green` reds were self-inflicted agent errors, not defects. A polish re-run for an all-6-green box
+  would have cost ~300k tokens and proven nothing new — stopped it. **Lesson:** separate "substantive proof
+  achieved" from "every gate box ticked"; don't spend on the latter when the former is done and the gap is
+  documented agent error.

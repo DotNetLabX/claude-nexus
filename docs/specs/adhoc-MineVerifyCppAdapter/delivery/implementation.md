@@ -31,6 +31,9 @@
 ## Step 7 — `--wrap=exit` implemented + re-run ✅ → run report `## UPDATE` section
 `support/exit_wrap.cpp` (`__wrap_exit` → non-zero exit) + `target_link_options(... -Wl,--wrap=exit)` in the workspace AND the vendored `harness/cpp/` template + contract. **Measured: 46% → 64%** reachable kill on the same suite (zero new tests) — confirms the exit(0) doublecheck was the dominant limiter. A fresh full-loop run (`wf_bd63af3f-389`, 3 iters) **also landed 64%** ⇒ structural ceiling, not a test gap; 68% with the defensible `free()`/`print` void-call exclusion. **`--wrap=exit` is now permanent adapter hardening.** Hungarian stays GO-as-toolchain-proof but is NOT certifiable ≥75 black-box — certify a more observable slice. (The 5 `suite_green` reds were agent hand-math errors, not bugs.)
 
+## Step 8 — de-Hungarianize the adapter + first GREEN C++ cert (Levenshtein) ✅ → `delivery/run-cover-levenshtein-2026-06-25.md`
+De-Hungarianized `cover-cpp.workflow.js` Cover prompt (SUT shape now from PATTERN + KB + `_args.sutNotes`, not hardcoded `extern "C"`/`int**`/`hungarian_*`). New KB `kb-levenshtein.md` + seed `examples/levenshtein_smoke_test.cpp` + header-only workspace. **Run `wf_e5049711-2cc`: mutation_floor GREEN at 96% (99/103, floor 75)** on `src/planogram/levenshtein.h`. Proves: (1) header-only template mutation works (mull maps to the header source path); (2) the adapter is now reusable, not Hungarian-shaped; (3) the kill ceiling is the TARGET's, not the harness's (Hungarian 64% → Levenshtein 96%). `suite_green` red = 2 agent hand-computed-position errors (not bugs); the cosmetic all-6-green re-run was stopped. Offline contract test still 29/29.
+
 ## Skills Used
 None (Workflow authoring + offline validation — no pattern skill applies; the harness is authored/run via Workflow, not the Skill tool). Plan is intentionally all-`None`.
 
