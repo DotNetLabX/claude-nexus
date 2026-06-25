@@ -1,0 +1,12 @@
+# mull 0.x config. The IR pass plugin (set via -fpass-plugin in CMakeLists when -DMULL=ON)
+# embeds mutants at compile time; mull-runner-15 reads them from the test binary.
+mutators:
+  - cxx_all
+
+# Only mutate the slice under test — never the test harness, the exit-wrap support, or gtest.
+includePaths:
+  - src/hungarian.cpp
+excludePaths:
+  - tests/.*
+  - support/.*
+  - .*gtest.*
