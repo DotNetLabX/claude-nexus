@@ -1,0 +1,38 @@
+{
+  "_purpose": "The PINNED L272 known-answer fixture (AC-6 / Step 7). The SQL is constructed so that ONLY Rule 5 (NoStrayLiteralThreshold) can fire — rules 1-4, 6, 7 all pass — so the red reproduces the L272 finding, NOT a fixture artifact (the spike's ARTIFACT-01/02 trap, where a public.analytics_report* table tripped Rule 6 first). Lives nexus-side; the operator hands `sql` + `validateArgs` to GeneratedSqlValidator.Validate in the isolated assembly. Verified against GeneratedSqlValidator.cs (live source, 2026-06-25).",
+  "ruleUnderTest": "NoStrayLiteralThreshold",
+  "ruleIndex": 5,
+  "goldenId": "GOLD-08",
+  "sql": "SELECT ascs.client_category_id, ascs.osa_pct FROM public.analytics_store_category_stats ascs WHERE ascs.osa_pct > 0.86",
+  "validateArgs": {
+    "profile": "God",
+    "requireCategoryId": false,
+    "resolvedThreshold": "0.85"
+  },
+  "rulePinRationale": {
+    "rule1_SingleSelect": "single SELECT, no interior ';', no DML — passes",
+    "rule2_RelationPolicy": "schema-qualified public.analytics_store_category_stats FROM (god profile allows public.*) — passes",
+    "rule3_CategoryIdPresent": "requireCategoryId=false so Rule 3 is skipped (the SQL also contains client_category_id, so it would pass even if triggered) — passes",
+    "rule4_NoRelativeDateUnderAnchoring": "no CURRENT_DATE / now() — passes",
+    "rule5_NoStrayLiteralThreshold": "resolvedThreshold '0.85' + a range-comparison literal 0.86 (`> 0.86`). |0.86 - 0.85| = 0.010000000000000009 — THIS is the rule under test",
+    "rule6_BadReportsFilterPresent": "analytics_store_category_stats is in PreComputedStatsTables (exempt) AND ReportTableRe only matches analytics_report* prefixes (not analytics_store_*) — Rule 6 cannot fire — passes",
+    "rule7_ReportIdsFirst": "analytics_store_category_stats is NOT a large detail table (LargeDetailTablesSet = subcategory/product/items only) — Rule 7 silent — passes"
+  },
+  "knownAnswer": {
+    "literal": 0.86,
+    "threshold": 0.85,
+    "absDiff": 0.010000000000000009,
+    "preFixArm": {
+      "comparison": "Math.Abs(literal - resolvedNumeric.Value) > 0.01",
+      "fires": true,
+      "expectedValidateReturn": "NoStrayLiteralThreshold",
+      "note": "HEAD form (committed, reproducible from a clean checkout). The IEEE-754 artifact 0.010000000000000009 > 0.01 → Rule 5 fires on a spec-VALID input = the L272 over-rejection (case-4)."
+    },
+    "patchedArm": {
+      "comparison": "Math.Abs(literal - resolvedNumeric.Value) > 0.01 + 1e-9",
+      "fires": false,
+      "expectedValidateReturn": null,
+      "note": "HEAD + the one-line operator patch. The 1e-9 margin absorbs the ~1e-17 FP noise → Rule 5 does NOT fire → Validate returns null (the |0.86 - 0.85| test is green)."
+    }
+  }
+}

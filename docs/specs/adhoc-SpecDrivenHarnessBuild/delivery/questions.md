@@ -182,3 +182,180 @@ a *different* still-divergent rule; I'll handle that in the plan's acceptance de
 **Confidence:** high — KG is the only target with both a spec source and an established divergence; a
 fresh sprint-rituals class would have no known-answer to validate the automated direction against. The
 fixed-L272 wrinkle is a plan-acceptance detail, not a target choice.
+
+---
+
+## Q6: Which golden IDs go in `harness/targets/generatedsqlvalidator.json` — all GOLD-01..12, or only the Rule-5/L272 slice the AC-6 known-answer needs?
+**From:** developer
+**To:** architect
+**Status:** Answered (architect, 2026-06-25)
+**Step:** Step 1 — Target config + `loadSpecRules()` seam
+**File:** `harness/targets/generatedsqlvalidator.json` (net-new)
+
+**Context:** Step 1 says the target config carries "the **golden ids only**" (mirrors
+`bugratio.json`, which lists `GOLD-16..18` — a *3-id subset*, not the full set). The live golden set
+(`D:\src\knowledge-gateway\docs\audit\golden-set.md`, verified) defines **GOLD-01..12** for
+`GeneratedSqlValidator`, each with a `Code attestation` column (`file:line`) that maps directly to
+Step 1's `codeAttestation?` schema field. But the plan never states **which** of the 12 go in the
+config. Two readings:
+- **(A) All 12** — the spec-load agent returns all 12 structured rules; the front-end Covers/diffs the
+  full rule set; AC-4's "every rule classifies into exactly one axis" runs over 12. This is the truest
+  "spec-driven direction on this class" and exercises the diff most fully.
+- **(B) The Rule-5 slice only** (GOLD-08 + the interaction rules GOLD-05/06/09 that the AC-6 fixture
+  must keep silent) — minimal config that proves the L272 known-answer (AC-6) and the 5-case labeler
+  (AC-5) without authoring 12 rules' worth of fixtures.
+
+**Question:** Does the target config carry **all GOLD-01..12** (full-class spec-driven run, A), or a
+**curated Rule-5-centric subset** (minimal known-answer proof, B)?
+
+**Recommendation:** **(A) all GOLD-01..12.** The spec's AC-4 ("classifies **every** rule into exactly
+one axis") and AC-1 ("drives the existing Cover engine with the spec-rule input shape") read as the
+*whole* class's golden set, not a slice — and `bugratio.json`'s 3-id list is small only because that
+class's golden set *is* 3 ids (GOLD-16..18), not because it sub-selects. The full set is what makes the
+3-axis diff a real deliverable rather than a single-rule demo; the AC-6 known-answer is then *one
+asserted rule within* the full run (GOLD-08 → case-4), which is exactly how the spike produced it
+(107 tests over GOLD-01..12, 5 red, 1 real). Subsetting to (B) would make AC-4 vacuous and diverge from
+the spike's proven path.
+**Confidence:** high — the spike ran the full GOLD-01..12 set and AC-4's "every rule" language is
+explicit; (B) only makes sense if the appetite is "smallest possible known-answer proof," which
+contradicts the diff-is-the-deliverable framing (ADR-B). Flagging it because the plan's literal "golden
+ids only" sentence is about *text-exclusion*, not *which ids*, leaving the count genuinely unstated.
+
+### Answer (architect, 2026-06-25)
+**(A) — all GOLD-01..12.** Your recommendation is correct and I verified the load-bearing facts against
+source:
+- **Live golden-set confirmed:** `D:\src\knowledge-gateway\docs\audit\golden-set.md:31,36,76` defines
+  exactly **GOLD-01 … GOLD-12** for `GeneratedSqlValidator` (12 rules, denominator stated as
+  "GeneratedSqlValidator = 12 (GOLD-01..12)"), each with a `file:line` Code-attestation column that maps
+  to Step 1's `codeAttestation?` field.
+- **Precedent confirmed:** `harness/targets/bugratio.json` carries `"goldenIds": ["GOLD-16","GOLD-17",
+  "GOLD-18"]` — and that **is** BugRatioAnalyzer's *whole* golden set (the golden-set file shows
+  Slack/BugRatio split GOLD-13..18), so the 3-id list is the full class set, not a sub-selection. (A) is
+  the faithful mirror of that precedent: list the class's whole golden set.
+- **AC alignment:** AC-4 ("classifies **every** rule into exactly one axis") + AC-1 (drives the engine
+  with the spec-rule input shape) read as the whole class. (B) would make AC-4 vacuous and diverge from
+  the spike's proven 12-rule path. The AC-6 known-answer is then **one asserted rule within** the full
+  run, exactly as the spike produced it.
+
+**Two binding refinements (fold into Step 1 — done below):**
+1. **The IDs do NOT positionally map to the validator's 7-rule order — do not assume `GOLD-0n` = `Rule n`.**
+   The L272 / `NoStrayLiteralThreshold` stray-literal rule (Rule **5** of 7 in `Validate`'s fixed order)
+   is **GOLD-08**, not GOLD-05 (GOLD-05 is `RelationPolicy` = Rule 2). The 12 golden IDs are a *rule
+   catalog* for the class; the 7-element `ruleOrder` constant (Step 5) is the validator's *positional
+   firing order*. They are two different lists — key the AC-6 fixture and the labeler off the **rule
+   name / `ruleOrder`**, never off the GOLD-id ordinal. This is exactly why (B)'s "Rule-5 slice" framing
+   was unsafe: there is no clean GOLD-id slice that isolates Rule 5.
+2. **The config `_note` mirrors `bugratio.json`'s sequestration note** — golden **IDs only, never rule
+   text**; the golden text stays sequestered in `…\docs\audit\golden-set.md`, read only by the Step-1
+   `spec-load` agent (ADR-C placement layer). The config is safe to hand to the clean-room run.
+
+This changes plan Step 1 (clarification, not a scope change): folded below. No user decision is touched —
+D2's one-increment scope is unchanged (one class, its full golden set). Step 7's two-arm AC-6 run needs live .NET + Stryker execution against KG — does the developer EXECUTE both arms, or wire the harness and hand the live run to the operator?
+**From:** developer
+**To:** architect
+**Status:** Answered (architect, 2026-06-25)
+**Step:** Step 7 — End-to-end known-answer reproduction + the operator patch
+**File:** `harness/spec-cover.workflow.js` (the runnable front-end) + KG working tree
+
+**Context:** Step 7's acceptance is *behavioral* — "pre-fix run reproduces the L272 finding in the
+candidate-bug queue with `actual === "NoStrayLiteralThreshold"`." Producing that requires the runner
+`agent()` to execute `dotnet test` + `dotnet stryker` against KG's `GeneratedSqlValidator` in an
+isolated assembly, on **two git arms** (HEAD's `> 0.01`, then HEAD+operator-patch's `> 0.01 + 1e-9`).
+I verified the KG state: HEAD line 272 is `> 0.01` (committed), the working tree is **already dirty
+with `+ 1e-9`** (` M` status, no fix commit) — the dirty-tree hazard the plan calls out. The plan
+correctly marks the git stash/restore dance `OPERATOR ACTION REQUIRED`, **and I must not do git writes
+in KG** (boundary rule: no `git stash`/`checkout`/`reset`). So the live two-arm run is operator-gated by
+construction. What the plan does **not** say is whether Step 7's *developer deliverable* is:
+- **(A) Wire-and-handoff** — I build the runnable `spec-cover.workflow.js` + the pinned L272 fixture +
+  the unit-test assertions (AC-5/AC-6 *unit* level, which run offline via `node --test`), and document
+  the two-arm live run as `OPERATOR ACTION REQUIRED` with exact commands. The live behavioral
+  reproduction is the operator's to execute (matches how `cover.workflow.js` defers the live Stryker run
+  + the `readProdSourceDiffPlaceholder` operator seam). "Done" = harness runnable + offline unit proof +
+  operator runbook.
+- **(B) Developer-executes** — I run both arms myself (live .NET + Stryker + the git arm-switching).
+  This needs the operator to neutralize/restore KG's dirty tree for me (I can't), a working .NET 10
+  toolchain, and a Stryker run per arm — none of which I can self-serve under the no-git-writes boundary.
+
+**Question:** Is Step 7's developer deliverable **(A) wire-the-harness + offline unit proof + an
+`OPERATOR ACTION REQUIRED` runbook for the live two-arm run**, or **(B) execute both live arms myself**
+(requiring an operator to stage the KG tree per arm first)?
+
+**Recommendation:** **(A) wire-and-handoff.** Every prior harness increment defers the live .NET/Stryker
+run to an operator seam (`cover.workflow.js`'s `readProdSourceDiffPlaceholder`, the runner agent's live
+`dotnet` calls, runs landing in git-ignored `.runs/`), and the two-arm AC-6 run *inherently* needs a
+KG-tree git write I'm barred from doing. So the developer-side "done" is: the runnable
+`spec-cover.workflow.js`, the pinned-fixture + 5-case labeler + diff unit tests passing offline
+(`node --test tests/unit/spec-diff.test.mjs` — the AC-5/AC-7 gate, fully in my control), and Step 7's
+two-arm live reproduction written as an `OPERATOR ACTION REQUIRED` runbook with the exact stash/restore
+commands the plan already drafts. The behavioral L272 reproduction is then the operator's confirming
+run, recorded in implementation.md when executed.
+**Confidence:** high — the no-git-writes boundary + the dirty-tree hazard make (B) physically impossible
+for me to complete unaided, and the whole harness lineage treats the live toolchain run as operator-owed.
+The only thing the architect owns here is confirming that an offline-unit-proof + operator-runbook
+*satisfies* Step 7's acceptance for the developer phase (so the Step-1 done-check doesn't read the
+absent live run as an incomplete step).
+
+### Answer (architect, 2026-06-25)
+**(A) — wire-and-handoff. Confirmed: an offline-unit-proof + the `OPERATOR ACTION REQUIRED` runbook
+satisfies Step 7's developer-phase deliverable, and the Step-1 done-check will NOT read the absent live
+two-arm run as a Missing step.** Your reasoning is correct and consistent with the plan's own grounding:
+
+- **The plan already sanctions the operator seam.** The Guardrails section and Step 7 both mark the
+  two-arm git stash/restore dance `OPERATOR ACTION REQUIRED`, and the harness lineage defers every live
+  .NET/Stryker run to an operator seam (`cover.workflow.js`'s `readProdSourceDiffPlaceholder`, runs
+  landing in git-ignored `harness/.runs/`). A plan-sanctioned operator fallback that fires is
+  **`Deviated (valid reason)`** at done-check, not Missing (architect operator-owed-fallback rule) — the
+  live behavioral reproduction being operator-executed is pre-authorized, not a gap.
+- **The no-git-writes boundary makes (B) infeasible by construction.** AC-6's two arms *require* a KG
+  working-tree git write (stash the dirty `+1e-9` for the pre-fix arm, restore for the patched arm). You
+  are correctly barred from `git stash`/`checkout`/`reset` in KG. (B) is therefore physically blocked,
+  not a scope choice — (A) is the only deliverable shape the boundary permits.
+
+**Developer-phase "done" for Step 7 is exactly:**
+1. The runnable `harness/spec-cover.workflow.js` (Steps 1–6 wired through it).
+2. The **pinned L272 fixture** (Step 7's "only Rule 5 can fire" SQL — pre-computed stats table, schema-
+   qualified `public.*`, literal exactly at tolerance) committed nexus-side.
+3. The offline unit gate **green and self-served**: `node --test tests/unit/spec-diff.test.mjs` passing —
+   this is the AC-5 (5-case labeler incl. case 4) + AC-4 + AC-7 proof fully in your control, and it is the
+   load-bearing developer evidence the done-check scores.
+4. The **two-arm live reproduction written as an `OPERATOR ACTION REQUIRED` runbook** in
+   implementation.md with the exact stash/restore commands Step 7 already drafts (pre-fix arm:
+   `git -C D:\src\knowledge-gateway stash push -- <validator>`; patched arm: `git ... stash pop`),
+   plus the expected pre-fix assertion (`actual === "NoStrayLiteralThreshold"` in the candidate-bug queue)
+   and the patched-arm assertion (the `|0.86 - 0.85|` test green) so the operator's confirming run has a
+   precise pass/fail target.
+
+**Done-check disposition I will apply (so there's no ambiguity at Step 1):** Step 7's **offline** sub-parts
+(1–3) must be **Implemented**; the **live two-arm run** (4) is **Deviated (valid reason: operator-owed,
+plan-sanctioned, no-git-writes boundary)** — recorded with the runbook present and the open production
+gate surfaced as operator-owed in implementation.md. The live behavioral L272 reproduction is recorded in
+implementation.md **when the operator executes it**, not a blocker for the developer phase closing. A
+*missing* runbook (or a stub fixture that doesn't actually pin Rule 5) **would** be Missing — the seam is
+sanctioned, the deliverable for it is not optional.
+
+No user decision touched — D5 (KG target + known-answer acceptance) and the AC-6 two-arm definition are
+unchanged; this only confirms *who executes which arm*, which the plan left implicit. No plan content change
+needed for Q7 (Step 7 already carries the runbook + `OPERATOR ACTION REQUIRED` markers); I'm only
+confirming the done-check disposition above.
+
+---
+
+## Q8 (non-blocking, FYI): The run report (Step 6) and candidate-bug queue have no named output path.
+**From:** developer
+**To:** architect
+**Status:** Open
+**Step:** Step 6 — Run report
+**File:** `harness/spec-cover.workflow.js`
+
+**Context:** Step 6 says the orchestrator writes "a self-contained run report" (the
+`loop.workflow.js:647-719` pattern) with the 3-axis diff + candidate-bug queue + needs-triage bucket,
+but names no target path. `loop.workflow.js` writes to a `REPORT_PATH` const and runner artifacts land
+in git-ignored `harness/.runs/` (verified git-ignored). Not a blocker — I'll follow the established
+convention (report nexus-side under `harness/.runs/` or a sibling, never in the KG tree, mirroring
+`cover.workflow.js:261-264`). Flagging only so the path choice is visible to the done-check.
+
+**Recommendation:** Write the run report to `harness/.runs/spec-cover-generatedsqlvalidator.md` (or
+`.json` + a rendered `.md`), git-ignored, nexus-side — mirroring `cover.workflow.js`'s `RUNS_DIR`
+discipline so nothing strands in the KG working tree.
+**Confidence:** high — this is the established harness convention; no architectural choice, just making
+the unstated path explicit. Will proceed on this default unless the architect redirects.

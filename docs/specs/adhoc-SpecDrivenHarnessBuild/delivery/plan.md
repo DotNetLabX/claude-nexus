@@ -42,17 +42,37 @@ pure-helper libs + unit tests + a known-answer reproduction of the spike's L272 
 
 ### Step 1 — Target config + `loadSpecRules()` seam (the spec-load actor)
 Create `harness/targets/generatedsqlvalidator.json` — class source path, the isolated-assembly target, and
-the **golden ids only** (mirrors `harness/targets/bugratio.json`'s golden-ids-only discipline). Implement
-`loadSpecRules()` as a **distinct spec-load agent** (a read-only actor, the pattern of the kb-read agent at
-`loop.workflow.js:438-455`) that reads the sequestered golden set (`D:\src\knowledge-gateway\docs\audit\golden-set.md`)
-and returns structured rules via schema: `{ id, statement, expectedOutcome, codeAttestation? }`. This is the
-D4 seam — golden source today, an extracted source later, behind the same return shape. The golden path is
-passed to **this agent only**.
+the **full golden-id set, ids only** (mirrors `harness/targets/bugratio.json`'s golden-ids-only discipline).
+**The config carries all 12 ids `GOLD-01 … GOLD-12`** (Q6 answer — confirmed against
+`D:\src\knowledge-gateway\docs\audit\golden-set.md:31,36,76`, which defines exactly GOLD-01..12 for this
+class, denominator 12). This is the class's *whole* golden set, exactly as `bugratio.json` lists
+BugRatioAnalyzer's whole set (`GOLD-16..18`) — not a sub-selection. The full set is what makes AC-4
+("classifies **every** rule into exactly one axis") and AC-1 real rather than a single-rule demo; the AC-6
+known-answer (Step 7) is then **one asserted rule within** the full run.
+
+The config `_note` **mirrors `bugratio.json`'s sequestration note verbatim in intent**: golden **IDs only,
+never rule text**; the golden text stays sequestered in `…\docs\audit\golden-set.md`, read only by the
+spec-load agent (ADR-C placement layer); the config is safe to feed the clean-room run.
+
+**Binding caveat — GOLD-ids are a rule *catalog*, NOT the validator's positional rule order.** Do not
+assume `GOLD-0n` = `Rule n`. The L272 / `NoStrayLiteralThreshold` stray-literal rule is **GOLD-08** yet is
+**Rule 5 of 7** in `Validate`'s fixed firing order; `GOLD-05` is `RelationPolicy` (= Rule 2). The 7-element
+`ruleOrder` constant (Step 5) is the *positional firing order*; the 12 GOLD-ids are the *catalog*. Key the
+AC-6 fixture (Step 7) and the labeler (Step 5) off the **rule name / `ruleOrder`**, never off a GOLD-id
+ordinal.
+
+Implement `loadSpecRules()` as a **distinct spec-load agent** (a read-only actor, the pattern of the kb-read
+agent at `loop.workflow.js:438-455`) that reads the sequestered golden set
+(`D:\src\knowledge-gateway\docs\audit\golden-set.md`) and returns structured rules via schema:
+`{ id, statement, expectedOutcome, codeAttestation? }` — each golden row carries a `file:line` Code-attestation
+column that populates `codeAttestation?`. This is the D4 seam — golden source today, an extracted source
+later, behind the same return shape. The golden path is passed to **this agent only**.
 - **Skill:** None — **TDD:** no — **Satisfies:** AC-3, ADR-C; D4 — **Confidence:** medium
-- **Accept:** target config created with golden **ids** only (no rule text); the spec-load agent returns
-  structured rules with per-rule `expectedOutcome`; the golden-set path appears in **no** Cover/runner agent
-  prompt (grep over `spec-cover.workflow.js`). A written note that the golden text entered only the
-  spec-load actor (isolation demonstrable, not asserted).
+- **Accept:** target config created with **all 12 golden ids `GOLD-01..12`**, ids only (no rule text), with
+  the `_note` sequestration mirror; the spec-load agent returns 12 structured rules with per-rule
+  `expectedOutcome` and `codeAttestation?` populated from the golden `file:line` column; the golden-set path
+  appears in **no** Cover/runner agent prompt (grep over `spec-cover.workflow.js`). A written note that the
+  golden text entered only the spec-load actor (isolation demonstrable, not asserted).
 
 ### Step 2 — `locateRuleCode()` seam (attestation-first, guided-miner fallback)
 Pure decision helper in `harness/lib/spec-diff.mjs`: `decideLocation(rule)` → if `codeAttestation` present,

@@ -27,6 +27,9 @@ const COVER_PATH       = new URL('../../harness/cover.workflow.js',       import
 const COVER_FLUTTER_PATH = new URL('../../harness/cover-flutter.workflow.js', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 const LOOP_PATH        = new URL('../../harness/loop.workflow.js',        import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 const LOOP_FLUTTER_PATH = new URL('../../harness/loop-flutter.workflow.js', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
+// Spec-driven Cover front-end (adhoc-SpecDrivenHarnessBuild, Inc 1). Its full sandbox-run contract lives in
+// tests/unit/spec-cover-workflow.test.mjs; here it joins the shared no-static-import + meta-purity loop.
+const SPEC_COVER_PATH = new URL('../../harness/spec-cover.workflow.js', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 
 // ---- Raw source readers --------------------------------------------------------------------------
 function readWorkflow(path) {
@@ -792,12 +795,16 @@ function metaNonLiteralReason(src) {
   return null; // pure literal by these heuristics
 }
 
-for (const [name, path] of [['mine-verify', MINE_VERIFY_PATH], ['cover', COVER_PATH], ['cover-flutter', COVER_FLUTTER_PATH], ['loop', LOOP_PATH], ['loop-flutter', LOOP_FLUTTER_PATH]]) {
+for (const [name, path] of [['mine-verify', MINE_VERIFY_PATH], ['cover', COVER_PATH], ['cover-flutter', COVER_FLUTTER_PATH], ['loop', LOOP_PATH], ['loop-flutter', LOOP_FLUTTER_PATH], ['spec-cover', SPEC_COVER_PATH]]) {
   test(`${name}.workflow.js meta is a pure literal (no concat / interpolation)`, () => {
     const reason = metaNonLiteralReason(readWorkflow(path));
     assert.equal(reason, null, `meta must be a pure literal — found: ${reason}`);
   });
 }
+
+test('spec-cover.workflow.js has no static import (joins the shared contract loop)', () => {
+  assert.equal(hasStaticImport(readWorkflow(SPEC_COVER_PATH)), false, 'static `import` would be a syntax error in the Workflow runtime');
+});
 test('meta-purity detector catches a string-concat meta (synthetic negative)', () => {
   const synthetic = `export const meta = { name: 'x', description: 'a ' + 'b', phases: [] };`;
   assert.equal(metaNonLiteralReason(synthetic), 'string concatenation (`+`) — BinaryExpression');
