@@ -37,8 +37,9 @@ The probe's `CMakeLists.txt` builds a fixed seed test; the live workspace instea
 
 ```cmake
 file(GLOB COVER_TESTS tests/*.cpp)
-add_executable(cover_tests ${COVER_TESTS})
+add_executable(cover_tests ${COVER_TESTS} support/exit_wrap.cpp)
 target_link_libraries(cover_tests PRIVATE hungarian GTest::gtest GTest::gtest_main)
+target_link_options(cover_tests PRIVATE -Wl,--wrap=exit)   # exit() neutralization — see below
 gtest_discover_tests(cover_tests)
 ```
 
@@ -52,9 +53,15 @@ The .NET/Flutter covers run host-native — one path namespace. The C++ runner r
 - **`HOST_SRC`** is what the Cover agent reads on the host.
 - `target_mutated` matches on **basename** (`hungarian.cpp`), so it is namespace-agnostic.
 
-## The `exit()` false-survivor blind spot (probe finding)
+## The `exit()` false-survivor blind spot — NOW NEUTRALIZED (`--wrap=exit`)
 
-`hungarian_solve` calls `exit(0)` in its internal sanity check (L371/376/383). A mutant that trips one exits the process with code 0 → the test "passes" → the mutant **survives** undetectably. Until `exit`-neutralization (linker `--wrap=exit`, or a fork-isolated per-mutant runner) lands, pass those line numbers via `_args.expectedSurvivorLines: [371, 376, 383]` so `mutation_floor` excludes them from the **reachable** denominator — the same equivalent-mutant mechanism as the Flutter log lines and the .NET dead-line list. **Hardening TODO:** wrap `exit` so these become real, killable mutants.
+`hungarian_solve` calls `exit(0)` in its internal doublecheck (L371/376/383). A mutant that breaks an algorithm invariant trips that check → the process exits status 0 *before the test asserts* → the runner sees "passed" → the mutant **survives undetectably**. This was the dominant kill-rate limiter: it masks any invariant-breaking mutant anywhere in `solve`, not just the 3 exit lines.
+
+**Fix (implemented):** `support/exit_wrap.cpp` defines `__wrap_exit`, linked via `target_link_options(cover_tests PRIVATE -Wl,--wrap=exit)`. Every `exit()` from the SUT is redirected to a wrapper that exits **non-zero**, so a tripping mutant now **fails the run → mull marks it killed**. Returning from `main()` is unaffected (glibc's main-return exit is resolved inside libc, not via our final link). Measured effect on Hungarian: **46% → 64% reachable kill** on the same suite, with zero new tests.
+
+**The 3 exit LINES stay excluded** (`_args.expectedSurvivorLines: [371, 376, 383]`): a `remove_void_call` mutant *on* the exit call is genuinely equivalent for a valid-input suite (the guard is never true on valid inputs, so removing the exit changes nothing) — same equivalent-mutant mechanism as the Flutter log lines and the .NET dead-line list. The wrap fixes the *masking* (mutants elsewhere that TRIP the exit); it does not make the exit lines themselves killable.
+
+**Residual ceiling (measured):** even with the wrap, Hungarian black-box-certifies at ~64% (~68% if the `free()`/`print` void-call removals are also excluded as side-effect-only). The remaining survivors are structurally unobservable through `init/solve/free` — internal `slack`/`col_inc`/`parent_row` writes (`cxx_assign_const`) and `free`/`printf` removals (`cxx_remove_void_call`). Full anatomy: `docs/specs/adhoc-MineVerifyCppAdapter/delivery/run-cover-hungarian-2026-06-25.md`. **Lesson:** Hungarian is a strong *toolchain* target but a weak *kill-rate* target; certify a more observable slice.
 
 ## mull report → gate schema (no translation)
 

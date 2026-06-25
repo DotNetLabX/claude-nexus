@@ -28,6 +28,9 @@
 ## Step 6 — run report + GO/NO-GO ✅ → `delivery/run-cover-hungarian-2026-06-25.md`
 **Verdict: C++ adapter GO (mechanically proven).** Hungarian floor not cleared at black-box (46%); the concrete fix is `--wrap=exit` (turn `exit()`-on-invalid into a test failure → masked mutants become killable) — re-run before certifying this class. Sequencing vs Flutter unchanged; code-grounded review owed at shipped-skill authoring.
 
+## Step 7 — `--wrap=exit` implemented + re-run ✅ → run report `## UPDATE` section
+`support/exit_wrap.cpp` (`__wrap_exit` → non-zero exit) + `target_link_options(... -Wl,--wrap=exit)` in the workspace AND the vendored `harness/cpp/` template + contract. **Measured: 46% → 64%** reachable kill on the same suite (zero new tests) — confirms the exit(0) doublecheck was the dominant limiter. A fresh full-loop run (`wf_bd63af3f-389`, 3 iters) **also landed 64%** ⇒ structural ceiling, not a test gap; 68% with the defensible `free()`/`print` void-call exclusion. **`--wrap=exit` is now permanent adapter hardening.** Hungarian stays GO-as-toolchain-proof but is NOT certifiable ≥75 black-box — certify a more observable slice. (The 5 `suite_green` reds were agent hand-math errors, not bugs.)
+
 ## Skills Used
 None (Workflow authoring + offline validation — no pattern skill applies; the harness is authored/run via Workflow, not the Skill tool). Plan is intentionally all-`None`.
 

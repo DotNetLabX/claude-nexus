@@ -43,3 +43,36 @@ So: the C++ adapter is sound. The harness ran the full Mine→Verify→Cover→G
 
 ## Cost
 Step 1 ~297k tok / ~6 min; Step 5 ~787k tok / ~66 min (5 iterations × 2 Docker builds + mull each — expensive because it never cleared and ran the full cap). Future runs: `--wrap=exit` should converge in fewer iterations; consider a lower `maxIterations` for exploratory runs.
+
+---
+
+## UPDATE — `--wrap=exit` re-run (2026-06-25, same day)
+
+The probe's predicted fix was implemented and re-run. **The wrap works and is now permanent adapter hardening — but it does not clear the floor, and nothing honest gets Hungarian there.**
+
+### What changed
+`support/exit_wrap.cpp` + `target_link_options(cover_tests PRIVATE -Wl,--wrap=exit)` (workspace + vendored template). `exit(0)` from the SUT now exits **non-zero** → a mutant that trips the doublecheck is **killed**, not masked.
+
+### Results — two independent measurements, both 64%
+| Measurement | Reachable kill | Gate |
+|---|---|---|
+| Pre-wrap (this report, above) | 46% (136/293) | FAIL |
+| Wrap, **existing 53-test suite** rebuilt (no agents) | **64% (188/293)** | FAIL |
+| Wrap, **fresh 78-test suite** (full loop, 3 iters, `wf_bd63af3f-389`) | **64% (188/293)** | FAIL |
+| Wrap + `free()`/`print` void-call exclusion (defensible) | 68% (188/277) | FAIL |
+
+Two independently-written suites plateau at the **same 188 kills** → **64% is a structural ceiling of the slice, not a test-writing gap.** More/better tests do not move it.
+
+### Why 64% is the ceiling
+The ~105 reachable survivors are dominated by mutants no black-box behavior suite can kill:
+- **`cxx_remove_void_call` on `free()` (L131–135, 409–416) and `printf`/print (L51–64)** — removing a free or a print can't fail a behavior assertion. ~16, provably side-effect-only → defensibly excludable (→68%).
+- **`cxx_assign_const = 42` on `[INT]` internal state (L176–225 forest/slack/col_inc)** — not observable through `init/solve/free`; NOT provably equivalent (can propagate to output), so left counted. ~34.
+- The rest are boundary-comparison flips on internal paths a stronger suite *might* pick off, but neither suite did — and there aren't enough to reach 75 without also excluding the unobservable class (which would be moving the goalposts).
+
+### `suite_green` red — agent math errors, not bugs
+The fresh suite ran 78 passed / **5 failed**. All 5 expected a **higher** assignment cost than the solver returned (e.g. expected 7, got 5). For a *minimization* solver the lower cost is correct → the tests' hand-computed expectations are wrong, not the production code. **Lesson:** the Cover agent must derive expected optimal cost from a reference solver or assert structural invariants (valid permutation, complementary slackness), never hand-computed optimal totals.
+
+### Decision
+- **`--wrap=exit`: keep** — mandatory adapter hardening, now in the vendored template + contract.
+- **Hungarian floor: not clearable black-box at 75** — 64/68% is structural. Leave the green ≥75 cert for a more observable slice.
+- Cost: the cheap wrap measurement was ~0 agent tokens (Docker only); the full loop was ~540k tok / 3 iters (capped, vs 787k at 5).

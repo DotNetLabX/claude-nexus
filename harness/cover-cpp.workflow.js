@@ -21,7 +21,8 @@
 //
 // KNOWN BLIND SPOT (probe finding): hungarian_solve calls exit(0) in its internal sanity check
 // (L371/376/383). A mutant tripping it makes the process exit 0 → the test falsely "passes" → mutant
-// SURVIVES. Until exit-neutralization (--wrap) lands, pass those line numbers via
+// SURVIVES. NOW NEUTRALIZED: the workspace/template links support/exit_wrap.cpp with -Wl,--wrap=exit, so a
+// tripping mutant exits non-zero -> killed (46%->64% on Hungarian). The 3 exit LINES themselves stay in
 // _args.expectedSurvivorLines so mutationFloor excludes them from the REACHABLE denominator — identical to
 // the Flutter log-line and .NET dead-line mechanisms. See harness/cpp/cover-cpp-contract.md.
 //
