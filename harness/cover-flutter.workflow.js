@@ -195,7 +195,7 @@ const PATTERN_BLOCK = _args.patternTests ?? `PATTERN TO FOLLOW (in-repo, same pr
 const RUNS_DIR = 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
 const RUNNER_RESULT = _args.runnerResult ?? `${RUNS_DIR}\\cover-flutter-${TARGET_CLASS.toLowerCase()}-run.json`
 
-const MUTATION_FLOOR = 75
+const MUTATION_FLOOR = _args.mutationFloor ?? 75 // per-file REACHABLE kill floor; raise via args to ratchet toward 100
 const MAX_ITERATIONS = _args.maxIterations ?? 5
 const BASELINE_SKIPS = _args.baselineSkips ?? 0
 // Equivalent-mutant filter: line numbers of no-output statements (log calls etc.) whose mutations a

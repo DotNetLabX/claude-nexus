@@ -1,8 +1,8 @@
 # adhoc-SectionAddressableReads — Communication Log
 
-**Branch:** main
-**Step:** reviewer:review
-**Cycle:** 1/3
+**Branch:** main (at launch) — ⚠️ concurrent session switched the shared tree to `adhoc-DistillPromptContractFix`; impl commit 808604c landed there, NOT main. Plan commit b8b7642 is on main. See Runtime Issues.
+**Step:** done — impl committed 808604c (on adhoc-DistillPromptContractFix branch, left as-is per user); omni-twin sync deferred; lessons unprocessed
+**Cycle:** 1/3 (APPROVED first round)
 **Team Mode:** standard+codex
 **Review Mode:** critic (plan already reviewed — Mode-2 REVISE→resolved, pre-run)
 **Architect / Developer / Reviewer ID:** a3ef605b0ef1ea2b3 (donecheck PASS, frontmatter) / P1 a951f61b3a3f8735d → P2 a7479db4ce309497e (opus) / a90655a0f119c79f4 (Step2, frontmatter) + Codex ac1af5fbdfbd2f9d8
@@ -28,10 +28,14 @@
 | 13 | Codex(ac1af5fb) → team-lead | reviewer:review | Dispatched async codex job ID bkq68zdx6; verdict pending in review-codex.md. Holding reviewer LOW to merge with Codex findings before close. | Codex async — awaiting file |
 | 14 | human → team-lead | reviewer:review | "there is no codex running" — Codex job never materialized. | Codex no-show |
 | 15 | team-lead → developer(a7479db4) | dev:polish | Codex dropped (additive, never replaces reviewer); proceed on reviewer APPROVED. Folding reviewer's 3 findings (LOW dangling-flag footgun + 2 test gaps) before ship per ship-complete. Resume via SendMessage. | — |
+| 16 | developer(a7479db4) → team-lead | dev:polish | 3 fixes applied: dangling-flag guard (exit 2), `calls`-count assertion on malformed input, exact-`--since` boundary test. 233/233 green (+1). | — |
+| 17 | team-lead → git | close-commit | Impl commit 808604c (27 files, scoped). Concurrent session committed 00a1725 (their files only) + switched tree to branch adhoc-DistillPromptContractFix mid-run. Re-staged on new HEAD; guards passed (no their-files, no ADR-34, version 1.16.0→1.16.1). | branch moved under TL |
 
 ## Runtime / Plugin Issues Log
 
 - Pre-existing `delivery/lessons.md` (1643 B) present before run — carried, will be appended during the run.
 - **verify-gate false-positive (gen-commands selfcheck):** `scripts/selfcheck.mjs:53–56` regenerates commands then runs `git diff --exit-code` over `commands/` — a git-HEAD comparison. Because the developer never commits (ADR-18), any agent-file edit leaves regenerated commands uncommitted, so this check ALWAYS reports `blocking_failed` at the developer's implementation-phase SubagentStop. It self-resolves on the team-lead commit. → Consider making the selfcheck gen-commands check working-tree-aware (regen-in-memory vs on-disk) rather than git-HEAD-based, OR document it as expected-pre-commit so the verify-gate verdict isn't spuriously red. Logged for the learner.
 - **Team-lead process note:** I bounced the developer (~125K tokens) on the gen-commands fail before reading `selfcheck.mjs`. The phrase "commit the regen" + reading the check (one grep) would have revealed the structural false-positive immediately, and my own `git status` already confirmed the 4-command scope. Lesson: at the verify checkpoint, classify a git-HEAD-based check failure as a likely pre-commit false-positive before bouncing.
+- **Branch moved under the team lead (shared-tree concurrent run):** launched on `main` (Pre-Flight branch check passed). A concurrent `adhoc-DistillPromptContractFix` pipeline then ran in the SAME working tree: it committed 58862f8 + 00a1725 (its own files only) and `git checkout -b adhoc-DistillPromptContractFix`, switching the shared current branch. My impl commit 808604c therefore landed on the feature branch, not main (where my plan b8b7642 sits). Nothing lost — linear history, their work untouched, their ADR-34 left uncommitted. **Lesson:** when the tree shows another session's changes, RE-CHECK `git branch --show-current` immediately before committing — a shared-tree branch switch is silent. Pre-Flight's one-time branch check is insufficient under a concurrent run.
+- **Omni twin sync owed (deferred):** `gen-omni --check` is red — the omni twin needs regen, but the plugin state now mixes my changes + the other session's committed distill-prompt rewrite (00a1725) + their pending bump. Regenerating now would muddle the per-feature mirror (ADR-6 convention). Defer the twin sync until both features land.
 - **Codex no-show (Standard+Codex):** the `codex:codex-rescue` spawn (ac1af5fb) reported dispatching async job `bkq68zdx6` and that it would notify on completion, but no `review-codex.md` was ever written and (user-confirmed) no Codex job was actually running. The codex-rescue agent's "job dispatched / will notify" message was not backed by a live job. Codex is additive and never replaces the reviewer (Standard+Codex protocol), so the Step-2 verdict falls back cleanly to the nexus reviewer's APPROVED. Consistent with the broader codex-integration fragility ([[codex-reviewer-fabricates-schema]]). Did not block the run. → If Standard+Codex is selected, verify a real Codex job exists (poll for the output file / job status) rather than trusting the dispatch ack.

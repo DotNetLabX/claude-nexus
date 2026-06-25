@@ -1,7 +1,8 @@
 # Mine→Verify→Cover — automation design (Pass-4 method layer, substrate-agnostic)
 
-**Status:** Design — not yet bound to a substrate. The standalone-vs-VWH-flavor binding (§7) is
-**deferred to step #1** (the VWH engine probe) + the step #4 comparison.
+**Status:** Ratified — partially delivered (substrate binding §7 resolved: standalone). Bookkept 2026-06-22.
+**Delivered:** §1–2 (orchestrator, Miner, batched-sliced Verifier) + §4 file-write return contract in `harness/mine-verify.workflow.js`; Cover phase in `harness/cover.workflow.js` (Inc 1–2).
+**Remainder (backlog):** §3 `disallowedTools` clean-room seal, §5 KB ledger writer, §6 full 5-gate battery, and the loop controller wrapping all four phases (Inc 3).
 **Date:** 2026-06-14
 **Inputs (proven):** [`mine-verify-pilot-method.md`](mine-verify-pilot-method.md) (the method + 2 failure
 modes + 2-class calibration), [`mine-verify-pass3-evaluation.md`](mine-verify-pass3-evaluation.md)

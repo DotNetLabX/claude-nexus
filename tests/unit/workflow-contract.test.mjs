@@ -27,6 +27,10 @@ const COVER_PATH       = new URL('../../harness/cover.workflow.js',       import
 const COVER_FLUTTER_PATH = new URL('../../harness/cover-flutter.workflow.js', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 const COVER_CPP_PATH   = new URL('../../harness/cover-cpp.workflow.js',    import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 const LOOP_PATH        = new URL('../../harness/loop.workflow.js',        import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
+const LOOP_FLUTTER_PATH = new URL('../../harness/loop-flutter.workflow.js', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
+// Spec-driven Cover front-end (adhoc-SpecDrivenHarnessBuild, Inc 1). Its full sandbox-run contract lives in
+// tests/unit/spec-cover-workflow.test.mjs; here it joins the shared no-static-import + meta-purity loop.
+const SPEC_COVER_PATH = new URL('../../harness/spec-cover.workflow.js', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 
 // ---- Raw source readers --------------------------------------------------------------------------
 function readWorkflow(path) {
@@ -709,7 +713,63 @@ test('cover-flutter runs in sandbox; gate battery + equivalent-mutant filter wor
 });
 
 // ==================================================================================================
-// Slice 9f: the C++ cover adapter (cover-cpp.workflow.js) runs in the sandbox, reuses the gate battery,
+// Slice 9f: the FLUTTER controller (loop-flutter.workflow.js) composes mine-verify + cover-flutter,
+// writes + flips the KB, and writes the report — in one invocation, without ReferenceError.
+// ==================================================================================================
+test('loop-flutter composes mine-verify + cover-flutter, writes KB + flips on green, writes report', async () => {
+  const src = readWorkflow(LOOP_FLUTTER_PATH);
+  // runDate set → date-stamp agent skipped. Agents (all-green path): kb-write-file, kb-flip, report-write.
+  const agentFixtures = [{ written: true }, { written: true }, { written: true }];
+  const workflowReturns = [
+    // mine-verify
+    { consensusRules: [{ id: 'BR-1', kind: 'interpretive', agreement: 3, lines: '10', statement: 'rule A' }],
+      interpretiveVerdicts: [{ id: 'BR-1', verdict: 'CONFIRMED', evidence: 'ok' }], counts: { consensusRules: 1 } },
+    // cover-flutter (all gates green)
+    { variant: 'inc4-cover-flutter', stopped: 'all-gates-green', iter: 1, achievedScore: 94,
+      gates: { suite_green: { pass: true, detail: {} }, mutation_floor: { pass: true, detail: { scorePct: 94, reachableSurvivors: [] } } },
+      redOnCurrent: [] },
+  ];
+  const agentCalls = [];
+  const wfCalls = [];
+  function thr() { throw new ReferenceError('Date unavailable in workflow scripts'); }
+  thr.now = () => { throw new ReferenceError('Date unavailable'); };
+  let aIdx = 0, wIdx = 0;
+  const sandbox = {
+    agent: async (prompt, opts) => { agentCalls.push({ promptFull: typeof prompt === 'string' ? prompt : '', opts }); return agentFixtures[aIdx++] ?? null; },
+    parallel: async (fns) => { const r = []; for (const fn of fns) r.push(await fn()); return r; },
+    phase: () => {}, log: () => {},
+    budget: { spent: () => 50000 },
+    workflow: async (ref, extraArgs) => { wfCalls.push({ ref, extraArgs }); return workflowReturns[wIdx++] ?? null; },
+    args: JSON.stringify({ targetClass: 'GetNextCycleCountTargetUsecase', runDate: '2026-06-24' }),
+    Date: thr,
+    Math: { random: () => { throw new ReferenceError('Math.random() unavailable'); } },
+  };
+  const patched = src.replace(/^export\s+const\s+meta\s*=/m, 'const meta =');
+  const ctx = createContext(sandbox);
+  const result = await new Script(`(async () => { ${patched} })()`, { filename: 'loop-flutter.js' }).runInContext(ctx);
+
+  assert.equal(result?.variant, 'inc4-loop-flutter', 'returns the loop-flutter variant');
+  assert.equal(result?.allGatesGreen, true, 'all gates green propagated from cover-flutter');
+  assert.equal(result?.achievedScore, 94, 'achieved score carried through');
+  // composition: mine-verify then cover-flutter, with the Dart src forwarded to cover-flutter
+  assert.equal(wfCalls.length, 2, 'composed exactly two sub-workflows');
+  assert.equal(wfCalls[1].extraArgs.targetClass, 'GetNextCycleCountTargetUsecase', 'cover-flutter got the target');
+  assert.equal(wfCalls[1].extraArgs.mutationFloor, 75, 'cover-flutter got the default floor');
+  // no date-stamp agent (runDate short-circuits it)
+  assert.equal(agentCalls.some((c) => c.opts?.label === 'date-stamp'), false, 'date-stamp agent skipped with runDate');
+  // KB written as verified, then flipped to mutation-gated on green
+  const kbWrite = agentCalls.find((c) => c.opts?.label === 'kb-write-file');
+  assert.ok(kbWrite && /mutation-gated: false/.test(kbWrite.promptFull), 'KB first written as verified (mutation-gated: false)');
+  const kbFlip = agentCalls.find((c) => c.opts?.label === 'kb-flip');
+  assert.ok(kbFlip && /mutation-gated: true/.test(kbFlip.promptFull), 'KB flipped to mutation-gated on green');
+  // report written with the run header + the marginal cost line
+  const report = agentCalls.find((c) => c.opts?.label === 'report-write');
+  assert.ok(report && /Cover run \(Flutter\) — GetNextCycleCountTargetUsecase \(2026-06-24\)/.test(report.promptFull), 'report header uses target + runDate');
+  assert.ok(report && /Run cost \(marginal\)/.test(report.promptFull), 'report carries a marginal cost line');
+});
+
+// ==================================================================================================
+// Slice 9g: the C++ cover adapter (cover-cpp.workflow.js) runs in the sandbox, reuses the gate battery,
 // and its equivalent-mutant filter excludes an exit()-sanity-line survivor via expectedSurvivorLines.
 // ==================================================================================================
 test('cover-cpp runs in sandbox; gate battery + equivalent-mutant filter work', async () => {
@@ -768,12 +828,16 @@ function metaNonLiteralReason(src) {
   return null; // pure literal by these heuristics
 }
 
-for (const [name, path] of [['mine-verify', MINE_VERIFY_PATH], ['cover', COVER_PATH], ['cover-flutter', COVER_FLUTTER_PATH], ['cover-cpp', COVER_CPP_PATH], ['loop', LOOP_PATH]]) {
+for (const [name, path] of [['mine-verify', MINE_VERIFY_PATH], ['cover', COVER_PATH], ['cover-flutter', COVER_FLUTTER_PATH], ['cover-cpp', COVER_CPP_PATH], ['loop', LOOP_PATH], ['loop-flutter', LOOP_FLUTTER_PATH], ['spec-cover', SPEC_COVER_PATH]]) {
   test(`${name}.workflow.js meta is a pure literal (no concat / interpolation)`, () => {
     const reason = metaNonLiteralReason(readWorkflow(path));
     assert.equal(reason, null, `meta must be a pure literal — found: ${reason}`);
   });
 }
+
+test('spec-cover.workflow.js has no static import (joins the shared contract loop)', () => {
+  assert.equal(hasStaticImport(readWorkflow(SPEC_COVER_PATH)), false, 'static `import` would be a syntax error in the Workflow runtime');
+});
 test('meta-purity detector catches a string-concat meta (synthetic negative)', () => {
   const synthetic = `export const meta = { name: 'x', description: 'a ' + 'b', phases: [] };`;
   assert.equal(metaNonLiteralReason(synthetic), 'string concatenation (`+`) — BinaryExpression');

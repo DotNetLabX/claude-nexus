@@ -1,5 +1,9 @@
 # Pass 3 — Evaluate (checkpoint): tuned gates + automation go/no-go
 
+**Status:** Ratified — partially delivered. Bookkept 2026-06-22.
+**Delivered:** the GO verdict + cost fix (batched-sliced verifier) shipped in MineVerify Inc 1; Inc 2 (Cover) built (adhoc-MineVerifyCoverHarness).
+**Remainder (backlog):** Inc 3 (loop controller, 5-gate battery, mechanical clean-room seal) + Inc 4 (ship as nexus skill); the Inc 2 live Cover run is operator-owed.
+
 **Input:** the 2-class Pass-2 calibration (`mine-verify-pilot-method.md` §Calibration log).
 **Sample:** deliberately stopped at 2 classes — HealthScore (easy, pure math) + BugRatio (hard,
 multi-sprint + alert streak). The temporal `TransitionAttributionChecker` was skipped on purpose:

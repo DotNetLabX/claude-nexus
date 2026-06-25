@@ -1,6 +1,7 @@
 # Proposal P2 — The research-KB: local-first search, entry schema, output format
 
-**Status:** Draft (overview: `research-system-overview.md`).
+**Status:** Ratified (overview: `research-system-overview.md`).
+**Delivered:** adhoc-ResearchKB (nexus 1.10.0) — `search-researches` + `research-entry-schema` skills + `cite-check.mjs`; renamed → `research` skill with depth-routing in adhoc-NexusResearch (1.14.0). Bookkept Ratified 2026-06-22.
 **Confidence:** **High** on the schema (ported from a proven design) and the local-first rule;
 **Medium** on researcher-as-skill vs. agent.
 **Priority:** 2 (after P1's trigger).

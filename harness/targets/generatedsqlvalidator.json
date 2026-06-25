@@ -1,0 +1,22 @@
+{
+  "class": "GeneratedSqlValidator",
+  "source": "D:\\src\\knowledge-gateway\\src\\Services\\KnowledgeGateway\\KnowledgeGateway.API\\Features\\TextToSql\\GeneratedSqlValidator.cs",
+  "goldenSet": "D:\\src\\knowledge-gateway\\docs\\audit\\golden-set.md",
+  "isolatedAssembly": "D:\\src\\knowledge-gateway\\src\\Services\\KnowledgeGateway\\KnowledgeGateway.SpecHarness.Tests",
+  "productProject": "D:\\src\\knowledge-gateway\\src\\Services\\KnowledgeGateway\\KnowledgeGateway.API\\KnowledgeGateway.API.csproj",
+  "goldenIds": [
+    "GOLD-01", "GOLD-02", "GOLD-03", "GOLD-04", "GOLD-05", "GOLD-06",
+    "GOLD-07", "GOLD-08", "GOLD-09", "GOLD-10", "GOLD-11", "GOLD-12"
+  ],
+  "ruleOrder": [
+    "SingleSelect",
+    "RelationPolicy",
+    "CategoryIdPresent",
+    "NoRelativeDateUnderAnchoring",
+    "NoStrayLiteralThreshold",
+    "BadReportsFilterPresent",
+    "ReportIdsFirst"
+  ],
+  "_note": "Golden IDS ONLY — never the golden rule text. This is the WHOLE class golden set (GOLD-01..12, denominator 12 per golden-set.md:76), not a sub-selection — exactly as bugratio.json lists BugRatioAnalyzer's whole set (GOLD-16..18). The golden text is sequestered in knowledge-gateway/docs/audit/golden-set.md and is read by ONE actor only — the spec-load agent (ADR-C placement layer) — never by the Cover or runner agent. This config is safe to feed into the clean-room spec-cover run.",
+  "_ruleOrderNote": "ruleOrder is the validator's POSITIONAL firing order (Validate's first-violation-wins sequence of 7 rules, GeneratedSqlValidator.cs:227-303) — a DIFFERENT list from the 12-id golden CATALOG above. The GOLD-ids do NOT positionally map to ruleOrder: the L272 stray-literal rule (NoStrayLiteralThreshold = Rule 5 of 7) is GOLD-08, and GOLD-05 is RelationPolicy = Rule 2. Key the FP-labeler and the AC-6 fixture off the rule NAME / ruleOrder index, NEVER off a GOLD-id ordinal."
+}

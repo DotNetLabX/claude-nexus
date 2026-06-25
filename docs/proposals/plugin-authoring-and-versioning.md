@@ -1,6 +1,7 @@
 # Plugin Authoring & Versioning — Proposal
 
-Status: **Accepted, with one override.** Owner: ldumit. Date: 2026-06-06.
+**Status:** Ratified (Accepted with one override) — owner ldumit, 2026-06-06.
+**Delivered:** `release-plugin` skill + `scripts/bump-plugin.mjs` + CI `--check` backstop; plugin graduated to 1.0.0 (CHANGELOG). The §3/§6 agent-wiring recommendation was rejected (see below). Bookkept Ratified 2026-06-22.
 
 > **Decision update (post-review).** The skill, `bump-plugin.mjs`, the MAJOR-leaning policy, the
 > 1.0.0 graduation, and the CI `--check` backstop were all adopted. **The §3/§6 recommendation to

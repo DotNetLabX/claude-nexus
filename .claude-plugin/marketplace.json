@@ -15,6 +15,10 @@
     {
       "name": "nexus-dotnet",
       "source": "./plugins/nexus-dotnet"
+    },
+    {
+      "name": "nexus-flutter",
+      "source": "./plugins/nexus-flutter"
     }
   ]
 }

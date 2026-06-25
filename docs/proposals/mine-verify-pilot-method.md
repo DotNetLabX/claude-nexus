@@ -1,5 +1,8 @@
 # Mine→Verify — the method (BR-coverage harness, Pass-2 pilot record)
 
+**Status:** Ratified — method record.
+**Delivered:** MineVerify Inc 1 (adhoc-MineVerifyCoverHarness) — productionized in `harness/mine-verify.workflow.js`; the 2 failure modes are design invariants there. Bookkept Ratified 2026-06-22.
+
 **What this is:** the reusable *method* behind step 2b of the BR-coverage loop — clean-room rule
 extraction (Mine) followed by independent adversarial refutation (Verify). Captured here in the
 **nexus** repo because the method is the plugin's concern; the rules it emits and the tests it

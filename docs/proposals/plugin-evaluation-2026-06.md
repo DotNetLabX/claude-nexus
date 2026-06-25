@@ -1,5 +1,9 @@
 # Nexus plugin evaluation — post-1.3.0 scorecard & improvement roadmap
 
+**Status:** Ratified — partially delivered. Bookkept 2026-06-22.
+**Delivered:** steps 1–4 shipped as nexus 1.4.0 (critic `disallowedTools`, `salvage-transcript.js`, completion footer, recovery order; local-first evals).
+**Remainder (backlog):** step 5 — owner live-validation run on 2 real consumer features.
+
 **Date:** 2026-06-10 · **Scope:** `nexus` plugin + dev-repo machinery, after the adhoc-PluginCleanup
 release (1.3.0) and its Step-10 APPROVED review.
 **Inputs:** the consolidated audit (`docs/specs/adhoc-PluginCleanup/definition/audit.md`), the

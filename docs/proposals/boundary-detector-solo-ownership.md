@@ -1,7 +1,7 @@
 # Proposal — boundary-detector false-positive on the solo lane writing implementation.md
 
-**Status:** Deferred / backlog (raised 2026-06-13 during `adhoc-SalvageFencedCloser`; owner chose to
-backlog rather than fix inline).
+**Status:** Ratified — fixed (was Deferred; raised 2026-06-13 during `adhoc-SalvageFencedCloser`).
+**Delivered:** `plugins/nexus/hooks/scripts/boundary-detector.js` ARTIFACT_OWNERS now maps `implementation.md` → {developer, solo} (plugin-feedback nexus-1.13.0 item 2). Bookkept Ratified 2026-06-22.
 **Severity:** Low — logs only; does not block, and `implementation.md` is not in the team-lead
 void-and-rerun matrix, so it cannot trigger a spurious void.
 
