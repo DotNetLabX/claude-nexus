@@ -93,6 +93,7 @@ function mirrorDir(src, dst) {
 mirrorDir(join(NEXUS, 'plugins', 'nexus'), join(OMNI, 'plugins', 'omni'));
 mirrorDir(join(NEXUS, 'plugins', 'nexus-dotnet'), join(OMNI, 'plugins', 'omni-dotnet'));
 mirrorDir(join(NEXUS, 'plugins', 'nexus-flutter'), join(OMNI, 'plugins', 'omni-flutter'));
+mirrorDir(join(NEXUS, 'plugins', 'nexus-cpp'), join(OMNI, 'plugins', 'omni-cpp'));
 assertAbsent(join(OMNI, 'plugins', 'omni-net'));
 
 // 2) scripts: only the command generator (token-swapped). Drop obsolete/source-only scripts.
@@ -108,6 +109,7 @@ const wantPlugins = [
   { name: 'omni', source: './plugins/omni' },
   { name: 'omni-dotnet', source: './plugins/omni-dotnet' },
   { name: 'omni-flutter', source: './plugins/omni-flutter' },
+  { name: 'omni-cpp', source: './plugins/omni-cpp' },
 ];
 if (CHECK) {
   if (JSON.stringify(mp.plugins) !== JSON.stringify(wantPlugins))
