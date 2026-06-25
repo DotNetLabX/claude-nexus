@@ -10,9 +10,10 @@ are the unresolved *approach/scope* choices inside those conditions.
 ## Q1: Retrieval-at-scale (rule→code location) — embedding search vs guided LLM-miner, and is it even in THIS build's scope?
 **From:** architect
 **To:** user
-**Status:** Open
+**Status:** Answered (user-confirmed 2026-06-25 via AskUserQuestion)
 **Step:** Phase 1 analysis (the spike's full-build condition #1 — the #1 technical risk)
 **File:** net-new `harness/spec-cover.workflow.js` (the rule→code-location phase)
+**Answer:** **(B) guided LLM-miner behind a `locateRuleCode()` seam** (attestation-first; miner fallback → `file:line | NO-CODE-FOUND`); embedding index **deferred** (master-gate one-way door). Folded into spec D1 + plan Steps 1–2.
 
 **Context:** The spike proved rule→code location *manually* (18/18 rules mapped by hand from the
 golden-set's Code-attestation column). The spike result names this "the #1 technical risk for the
@@ -50,8 +51,9 @@ appetite and pushes toward (A) — your call on appetite.
 ## Q2: Build appetite — single increment (spec front-end + diff, one class) or the full bidirectional shipped skill?
 **From:** architect
 **To:** user
-**Status:** Open
+**Status:** Answered (user-confirmed 2026-06-25 via AskUserQuestion)
 **Step:** Phase 1 analysis (scope boundary — drives step count + split)
+**Answer:** **(a) one increment** — spec front-end + 3-axis diff + FP-filter on one class, ~7 steps, `harness/` only, no plugin bump. Folded into spec D2 + plan (7 steps).
 
 **Context:** The existing harness shipped in **increments** (1 Mine→Verify, 2 Cover, 3a loop
 controller), each a runnable workflow + pure-helper libs + unit tests, living in `harness/` (dev-repo
@@ -86,9 +88,10 @@ single bite this round.
 ## Q3: The false-positive filter — which of the three named mechanisms are IN this build, and is rule-isolation automated or operator-assisted?
 **From:** architect
 **To:** user
-**Status:** Open
+**Status:** Answered (user-confirmed 2026-06-25 via AskUserQuestion)
 **Step:** Phase 1 analysis (the spike's full-build condition #2)
 **File:** net-new `lib/spec-diff.mjs` / the FP-filter pass in `spec-cover.workflow.js`
+**Answer:** **#3 automated as a deterministic violation-identity labeler** in `lib/spec-diff.mjs` (against the validator's fixed rule order — sharper than the spike's "re-run with rule disabled", which would need a prod change); **#1 (rule isolation) + #2 (fixture fidelity) = operator-assisted discipline + a `needs-triage` bucket**. Folded into spec D3 + §FP-labeler (5-case) + plan Step 5.
 
 **Context:** The spike confirmed Direction-2 needs three filters (4/5 SQL reds were artifacts):
 1. **Rule isolation** — inputs that trigger ONLY the rule under test. The spike flagged this as **hard
@@ -123,8 +126,9 @@ harder automation attempted now (higher risk, larger scope → pushes toward Q2(
 ## Q4: Spec-source extraction beyond PO golden rules — in this build, or named as the next increment?
 **From:** architect
 **To:** user
-**Status:** Open
+**Status:** Answered (user-confirmed 2026-06-25 via AskUserQuestion)
 **Step:** Phase 1 analysis (the spike's full-build condition #3)
+**Answer:** **(a) keep the PO-golden-rules input contract behind `loadSpecRules()`**; automated extraction (`seed/db/generation-rules/` + the validator's XML doc comments — both confirmed present in KG) is the **named next increment**. Folded into spec D4 + plan Step 1.
 
 **Context:** The spike used the **PO-authored golden rules** as the only spec source and flagged the
 constraint as real: if the PO hasn't authored rules, Direction-2 has no input. For KG, the spike named
@@ -154,8 +158,9 @@ golden set + the three named structured sources before you answer).
 ## Q5: Build target repo — sprint-rituals (the harness's home) or knowledge-gateway (the spike's target)?
 **From:** architect
 **To:** user
-**Status:** Open
+**Status:** Answered (user-confirmed 2026-06-25 via AskUserQuestion)
 **Step:** Phase 1 analysis (which repo the end-to-end proof runs against)
+**Answer:** **knowledge-gateway / `GeneratedSqlValidator`** (Q5a). Acceptance (Q5b): **reproduce the spike's L272 finding against pre-fix source — primary known-answer; live-source run secondary** (Q5b). Note corrected since drafting: the `+1e-9` fix is **uncommitted** in KG (no fix commit; HEAD still buggy), so the two AC-6 arms are HEAD vs HEAD+operator-patch. Folded into spec D5 + AC-6 + plan Step 7.
 
 **Context:** The existing harness workflows default their target consts to **sprint-rituals**
 (`D:\src\sprint-rituals` — BugRatio/CycleTime) and are parameterized via `_args` to retarget. The
