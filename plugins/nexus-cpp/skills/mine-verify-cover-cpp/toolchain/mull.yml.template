@@ -1,0 +1,10 @@
+# mull 0.x config. The IR pass plugin (-fpass-plugin in CMakeLists when -DMULL=ON) embeds mutants at
+# compile time; mull-runner-15 reads them from the test binary. Replace <TARGET> with your slice's path.
+mutators:
+  - cxx_all
+includePaths:
+  - src/<TARGET>      # e.g. src/levenshtein.h (header-only) OR src/hungarian.cpp (compiled slice)
+excludePaths:
+  - tests/.*
+  - support/.*
+  - .*gtest.*

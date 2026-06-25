@@ -13,7 +13,7 @@ Point this at ONE production class. It produces two things, automatically:
 
 It **reverse-engineers** the rules already encoded in the code — it documents what the code *does*, not what it *should* do. It never edits the production class, and it never deletes a failing test to go green.
 
-This is the **stack-neutral method**. The toolchain (test runner, mutation tool, test style) comes from a paired **stack adapter** skill — `mine-verify-cover-dotnet` for .NET, `mine-verify-cover-flutter` for Dart/Flutter. The method here does not change per language; only the adapter does.
+This is the **stack-neutral method**. The toolchain (test runner, mutation tool, test style) comes from a paired **stack adapter** skill — `mine-verify-cover-dotnet` for .NET, `mine-verify-cover-flutter` for Dart/Flutter, `mine-verify-cover-cpp` for C/C++. The method here does not change per language; only the adapter does.
 
 ## The pipeline
 
@@ -78,7 +78,7 @@ The loop runs as a Workflow the orchestrator **instantiates from this spec** —
 
 ## What this skill does NOT do
 
-- Provide the toolchain — that is the stack adapter's job (`mine-verify-cover-dotnet` for .NET, `mine-verify-cover-flutter` for Dart/Flutter).
+- Provide the toolchain — that is the stack adapter's job (`mine-verify-cover-dotnet` for .NET, `mine-verify-cover-flutter` for Dart/Flutter, `mine-verify-cover-cpp` for C/C++).
 - Author NEW rules or judge whether the code is correct — it documents and tests EXISTING behavior (red-on-current tests are flagged as candidate bugs, not fixes).
 - Measure recall/completeness — without a hand-authored golden set, the 3-miner consensus + surviving mutants are the practical completeness signal, not a proof that no rule was missed.
 - Multi-class sweeps, boundary Discover, or graph-scoped targeting — single-class only; those are deferred extensions (graphify is the natural engine for graph-scoped target selection).
@@ -89,5 +89,6 @@ The loop runs as a Workflow the orchestrator **instantiates from this spec** —
 |-------|-------------|
 | `mine-verify-cover-dotnet` | the .NET stack adapter — fills the 5 capabilities (Stryker, dotnet test, xUnit + FsCheck, the test-project scaffold) |
 | `mine-verify-cover-flutter` | the Dart/Flutter stack adapter — fills the 5 capabilities (mutation_test driving flutter test, flutter_test + mocktail, kiri_check, the build_runner + HTTPS-rewrite bringup) |
+| `mine-verify-cover-cpp` | the C/C++ stack adapter — fills the 5 capabilities (mull-15 driving GoogleTest/CTest, libclang, GoogleTest + RapidCheck, the Docker image + exit()-wrap bringup) |
 | `kb-entry-schema` | the KB rule-ledger shape this method reads and writes |
 | `tdd` | the test discipline the Cover agent follows (boundary cases, kill the mutant) |

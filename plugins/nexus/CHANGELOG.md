@@ -1,6 +1,10 @@
 # nexus — Changelog
 
 
+## [1.18.3] — 2026-06-25
+- PATCH bump.
+  - skill change (mine-verify-cover)
+
 ## [1.18.2] — 2026-06-25
 **Provenance-based "strengthen-don't-duplicate" for the learner.** Lessons now carry a provenance tag
 (`**Evidence:**` = the runs a lesson has appeared in); the tag count *is* the recurrence count, surfacing
