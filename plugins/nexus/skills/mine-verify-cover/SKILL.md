@@ -49,6 +49,8 @@ Every gate is computed by the orchestrator from the adapter's raw output — no 
 
 `mutation_floor` measures **reachable** kill: mutants in known-dead lines are excluded only when the KB pre-documents them (default: exclude none). A sub-100% honest kill is a pass when it clears the floor — report the residual survivors, never hide them.
 
+**Anti-fake-green invariant:** before scoring `mutation_floor`, cross-check the agent-reported mutant TOTAL against the tool summary's `Found N`. If they differ, halt and flag — a mismatch indicates the gate is scoring on a partial mutant set (e.g. a survivor-only XML output read as the full set). The stack adapter's summary parse is the authoritative total; the gate must not proceed on an unverified count.
+
 ## Safety rails
 
 - **Budget cap** — halt when the run's **marginal** spend exceeds the ceiling. `budget.spent()` is the shared session pool, NOT the run's cost; capture the start spend and gate on the delta, or a run fired late in a long session trips on the session's prior spend.

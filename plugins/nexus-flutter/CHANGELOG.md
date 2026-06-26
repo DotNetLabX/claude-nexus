@@ -2,6 +2,9 @@
 
 All notable changes to the `nexus-flutter` plugin are documented here.
 
+## [0.1.1] — 2026-06-26
+**Fix mutation gate under-report in the Dart/Flutter adapter.** `mutation_test -f xml` writes an `<undetected-mutations>` report that lists ONLY surviving mutations — the killed/total counts appear only in stdout. Step 3 of "The mutation_test run" now instructs the runner to score from the stdout summary (`Found N mutations`, `Undetected Mutations: M`, `Timeouts`, `Not covered`) rather than from the XML, and reserves the XML only for enumerating survivors. Adds a bold warning so no author treats the XML element count as the full mutant set. A pilot using the old prose reported 0% kill; the corrected scorer on the same run produced 77.14% (54/70 killed, all 16 survivors equivalent/masked) — the 75% floor passes (adhoc-MvcGateScoringFix).
+
 ## [0.1.0] — 2026-06-24
 
 Initial release. The Dart/Flutter stack extension for the `nexus` core pipeline.

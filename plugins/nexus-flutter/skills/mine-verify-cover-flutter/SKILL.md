@@ -62,8 +62,22 @@ The Cover agent writes the test file; a distinct runner agent executes the toolc
    dart pub global run mutation_test -f xml -o mutation_test_out {config}.xml
    ```
    `expected-return=0` means: test passes (exit 0) → mutation **undetected** (survived); test fails → **detected** (killed).
-3. Parse the XML and **translate into the method's mutant schema** so the gate battery is reused unchanged:
-   `detected`→`Killed`, `undetected`→`Survived`, `timeout`→`Timeout`, `not-covered`→`NoCoverage`. One mutant per mutation `{ status, location.start.line, mutatorName, replacement }`.
+3. **Score the gate from the stdout summary, not the XML.**
+
+   > **Warning: the `-f xml` report contains ONLY undetected mutations; never infer the kill count from it.**
+
+   Parse the stdout summary lines:
+   - `Found {total} mutations` → `total`
+   - `Undetected Mutations: {undetected}` → `undetected`
+   - `Timeouts: {timeouts}` → `timeouts`
+   - `Not covered by tests: {notCovered}` → `notCovered`
+
+   Derive:
+   - `reachable = total − notCovered`
+   - `killed = reachable − undetected` (Timeouts count as killed — they interrupted a surviving mutation)
+   - `killRate = killed / reachable`
+
+   Use the XML `<undetected-mutations>` ONLY to enumerate survivors (line + original→modified) for the survivor report — never to count kills.
 4. Clean up the config + `mutation_test_out/` from the app tree.
 
 ## Equivalent-mutant filter (regex's one weakness — reason about it)

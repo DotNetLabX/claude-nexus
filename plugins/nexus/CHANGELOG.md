@@ -1,6 +1,9 @@
 # nexus — Changelog
 
 
+## [1.18.5] — 2026-06-26
+**Fix mutation gate under-report: score from stdout summary, not the survivors-only XML.** The `mine-verify-cover` method now adds an anti-fake-green invariant to the gate battery: before scoring `mutation_floor`, cross-check the agent-reported mutant TOTAL against the tool summary's `Found N` and halt/flag on mismatch. A survivor-only XML report read as the full mutant set (the exact mechanism behind a pilot reporting 0% instead of 77.14%) would be caught by this invariant. Keeps the check stack-neutral — the adapter's summary parse supplies the authoritative total. Paired with the `nexus-flutter` fix that corrects the scorer to use the stdout summary directly (adhoc-MvcGateScoringFix).
+
 ## [1.18.4] — 2026-06-25
 **Pin Sonnet as the mine-verify-cover model policy.** The method now tells the authoring orchestrator to set
 `model: 'sonnet'` on the agent calls rather than inheriting the session model (often Opus). The mutation gate
