@@ -2,16 +2,24 @@
 //
 // Runnable via Workflow({ scriptPath: "<abs>/harness/cover-flutter.workflow.js" }).
 //
-// This is the DART sibling of cover.workflow.js. It is a deliberately THIN fork: the entire §6 gate
-// battery is copied VERBATIM from cover.workflow.js (suiteGreen / noFlaky / mutationFloor / noNewSkips /
-// targetMutated / charPin / mutationRatchet — keep in sync). Only two things differ from the .NET cover:
+// This is the DART sibling of cover.workflow.js. The non-scoring gate helpers (suiteGreen / noFlaky /
+// noNewSkips / targetMutated / charPin / mutationRatchet) are copied VERBATIM from cover.workflow.js —
+// keep them in sync. THREE things differ from the .NET cover:
 //
 //   1. COVER AGENT writes a Dart test (flutter_test, mocktail) instead of xUnit.v3 + FsCheck.
 //   2. RUNNER AGENT runs `flutter test` ×2 + `mutation_test` (regex, pub.dev 1.8.x) instead of
-//      `dotnet test` + `dotnet stryker`, and parses mutation_test's `-f xml` report into the SAME
-//      `mutants` schema the gate battery already consumes (detected→Killed, undetected→Survived,
-//      timeout→Timeout, not-covered→NoCoverage). Because the schema is identical, mutationFloor and
-//      every other gate work UNCHANGED.
+//      `dotnet test` + `dotnet stryker`. The Dart `mutation_test -f xml` report lists ONLY survivors
+//      (its root element is `<undetected-mutations>`); the killed/total counts live ONLY in the stdout
+//      summary. So the runner returns a `mutationSummary { found, undetected, timeouts, notCovered }`
+//      parsed from stdout, and the `mutants` array carries ONLY survivors — it does NOT (and cannot)
+//      enumerate Killed entries, so it never fabricates them.
+//   3. mutationFloor INTENTIONALLY DIVERGES from the .NET battery — do NOT "resync" it away. It scores
+//      `killed = reachable − survivors` from the summary (matching the shipped adapter skill
+//      mine-verify-cover-flutter, "The mutation_test run" step 3), and a survivor-count cross-check
+//      (`summary.undetected === mutants.length`) HALTS the loop with `mutant-count-mismatch` rather than
+//      scoring a survivor-only subset as the whole set (the method's anti-fake-green invariant,
+//      mine-verify-cover SKILL.md). The .NET cover counts a full per-mutant Stryker array, so it cannot
+//      reuse this Dart path. Every OTHER gate works unchanged.
 //
 // TRUST-ANCHOR REALITY (docs/kb/research/dart-flutter-test-trust-anchor.md, hands-on confirmed
 // 2026-06-24): Dart has NO Stryker-grade tool. `dart_mutant` (AST) is a Rust binary, not pub-installable;
@@ -57,44 +65,60 @@ function noFlaky(testRuns) {
   return { pass: identical, detail: { counts: keys } };
 }
 
-const DENOMINATOR_STATUSES = new Set(['Killed', 'Survived', 'Timeout', 'NoCoverage']);
-
 function mutantLine(m) {
   return m?.location?.start?.line ?? null;
 }
 
-function mutationFloor(strykerReport, sourcePath, opts) {
+// Void-call-removal mutator signal — tolerant of naming across tools (removeVoidCall / remove_void_call /
+// cxx_remove_void_call). PURE; used only by the orchestrator pre-tag below.
+const VOID_CALL_REMOVAL_RE = /remove[\W_]*void[\W_]*call/i;
+
+// Orchestrator pre-tag (PURE — no fs/Date): the ONLY survivor tag the orchestrator may assign. A survivor is
+// `equivalent-logging` iff its line is in the adapter-supplied log-line set AND its mutator removed a void
+// call. Everything else is left UNTAGGED for the source-aware classify-survivors agent — the orchestrator
+// NEVER defaults an unprovable survivor to REAL-gap. Returns the tag string or undefined.
+function pretagEquivalentLogging(mutant, equivalentLoggingLines) {
+  const line = mutantLine(mutant);
+  if (equivalentLoggingLines.has(line) && VOID_CALL_REMOVAL_RE.test(mutant?.mutatorName ?? '')) {
+    return 'equivalent-logging';
+  }
+  return undefined;
+}
+
+// mutationFloor (DART DIVERGENCE — see header §3): score from the stdout SUMMARY, not by counting the
+// mutant array. mutation_test's `-f xml` report lists ONLY survivors (undetected), so `killed` is NOT
+// enumerable from the array — it is derived from the summary the runner parsed. `summary` is
+// { found, undetected, timeouts, notCovered }; `survivors` is the survivors-only array. Timeouts fall on
+// the killed side (they sit in `found`, not in `undetected`). Matches mine-verify-cover-flutter step 3:
+//   reachable = found − notCovered;  killed = reachableDenominator − reachableSurvivors.length.
+function mutationFloor(summary, survivors, opts) {
   const floor = opts?.floor ?? 75;
   const deadLines = new Set(opts?.expectedSurvivorLines ?? []);
-  const files = strykerReport?.files ?? {};
-  const entry = files[sourcePath];
-  if (!entry) {
-    return {
-      pass: false,
-      detail: { scorePct: 0, killed: 0, reachableDenominator: 0, error: `no per-file mutation entry for ${sourcePath}`, reachableSurvivors: [] },
-    };
-  }
-  const mutants = entry.mutants ?? [];
-  let killed = 0;
-  let reachableDenominator = 0;
-  let expectedSurvivorsExcluded = 0;
+  const loggingLines = new Set(opts?.equivalentLoggingLines ?? []);
+  const found = summary?.found ?? 0;
+  const notCovered = summary?.notCovered ?? 0;
+  const reachable = found - notCovered;
   const reachableSurvivors = [];
+  let expectedSurvivorsExcluded = 0;
 
-  for (const m of mutants) {
-    if (!DENOMINATOR_STATUSES.has(m.status)) continue; // Ignored / CompileError / Pending — never counted.
+  for (const m of survivors ?? []) {
     const line = mutantLine(m);
-    const isSurvivor = m.status !== 'Killed' && m.status !== 'Timeout';
-    // Equivalent-mutant filter: a survivor on a KB-pre-documented no-output line (e.g. a log call) is
-    // excluded from the reachable denominator, NOT chased — identical to the .NET dead-line mechanism.
-    if (isSurvivor && deadLines.has(line)) {
+    // Equivalent-mutant filter: a survivor on a KB-pre-documented no-output line (e.g. a log call) leaves
+    // the reachable denominator entirely, NOT chased — identical to the .NET dead-line mechanism.
+    if (deadLines.has(line)) {
       expectedSurvivorsExcluded++;
       continue;
     }
-    reachableDenominator++;
-    if (m.status === 'Killed' || m.status === 'Timeout') killed++;
-    else reachableSurvivors.push({ status: m.status, line, mutatorName: m.mutatorName, replacement: m.replacement });
+    const entry = { status: m.status, line, mutatorName: m.mutatorName, replacement: m.replacement };
+    // Orchestrator pre-tag (pure): equivalent-logging stays in reachableSurvivors but carries its tag so
+    // loop-flutter can render it and the source-aware agent can skip it (the tag-seam data-flow).
+    const tag = pretagEquivalentLogging(m, loggingLines);
+    if (tag) entry.tag = tag;
+    reachableSurvivors.push(entry);
   }
 
+  const reachableDenominator = reachable - expectedSurvivorsExcluded;
+  const killed = reachableDenominator - reachableSurvivors.length;
   const scorePct = reachableDenominator > 0 ? Math.round((killed / reachableDenominator) * 100) : 0;
   return {
     pass: reachableDenominator > 0 && scorePct >= floor,
@@ -202,6 +226,12 @@ const BASELINE_SKIPS = _args.baselineSkips ?? 0
 // behaviour-asserting test can never kill. Default [] (no known equivalents); pass the log lines per target
 // (BuildZplCodeUsecase: the two `info(...)` calls). Excluded from the REACHABLE denominator, NOT chased.
 const EXPECTED_SURVIVOR_LINES = _args.expectedSurvivorLines ?? []
+// Pre-tag signal (Q1) — line numbers of log/no-output CALLS the adapter surfaces (from the mined KB or a
+// project `docs/conventions/mutation-testing.md`). A survivor on one of these lines whose mutator removed a
+// void call is pre-tagged `equivalent-logging` but STAYS in reachableSurvivors (so the report can suggest
+// adding it to expectedSurvivorLines). DISTINCT from EXPECTED_SURVIVOR_LINES (which drops lines from the
+// denominator): an excluded line never reaches the tag seam. Default [] (orchestrator pre-tags nothing).
+const EQUIVALENT_LOGGING_LINES = _args.equivalentLoggingLines ?? []
 
 // snake_case helper for the default test filename (no Date/Math.random — pure string op, resume-safe).
 function snakeCase(name) {
@@ -231,8 +261,21 @@ const RUNNER_RESULT_SCHEMA = {
     },
     // Absolute path to the mutation_test XML report (returned for the record; orchestrator does NOT read it).
     reportPath: { type: 'string' },
-    // The per-mutation array for the TARGET file, translated from mutation_test's XML into the Stryker shape:
-    //   detected→"Killed", undetected→"Survived", timeout→"Timeout", not-covered→"NoCoverage".
+    // The stdout SUMMARY counts (authoritative — the XML lists only survivors). The gate scores from these:
+    //   found = total mutations; undetected = survivors; timeouts = killed-by-timeout; notCovered = no-coverage.
+    mutationSummary: {
+      type: 'object',
+      properties: {
+        found: { type: 'integer' },
+        undetected: { type: 'integer' },
+        timeouts: { type: 'integer' },
+        notCovered: { type: 'integer' },
+      },
+      required: ['found', 'undetected', 'timeouts', 'notCovered'],
+    },
+    // The SURVIVORS-ONLY array for the TARGET file, from mutation_test's `<undetected-mutations>` XML
+    //   (undetected→"Survived"). It carries ONLY survivors — never synthesized Killed entries; the gate
+    //   cross-checks `mutationSummary.undetected === mutants.length` and derives killed from the summary.
     mutants: {
       type: 'array',
       items: {
@@ -256,7 +299,7 @@ const RUNNER_RESULT_SCHEMA = {
       items: { type: 'object', properties: { test: { type: 'string' }, note: { type: 'string' } }, required: ['test'] },
     },
   },
-  required: ['testRuns', 'reportPath', 'mutants', 'mutatedFiles'],
+  required: ['testRuns', 'reportPath', 'mutationSummary', 'mutants', 'mutatedFiles'],
 }
 
 // =================================================================================================
@@ -322,25 +365,32 @@ STEPS (run from the app root ${TEST_PROJECT_DIR}):
      b. Run: \`dart pub global run mutation_test -f xml -o mutation_test_out mutation_test_harness.xml\`
         It writes an XML report under mutation_test_out/. The \`expected-return=0\` means: test passes (exit 0)
         → mutation UNDETECTED (survived); test fails → mutation DETECTED (killed).
-  3. Read the XML report under mutation_test_out/. For EACH mutation, extract its source line and detection
-     status, and TRANSLATE into the Stryker-shaped mutant schema:
-          detected/killed → "Killed"   undetected/survived → "Survived"
-          timeout         → "Timeout"   not-covered/no-coverage → "NoCoverage"
-     Build one mutant per mutation: { "status": <translated>, "location": { "start": { "line": N } },
-       "mutatorName": <the rule id / mutation kind, e.g. "logical.and" or "replaceFirst">, "replacement": <mutated text if available, else ""> }.
-     If the XML lacks an explicit status per mutation, use the report's undetected list to mark survivors and
-     treat all others as Killed. Cross-check your counts against mutation_test's terminal summary
-     ("Undetected Mutations: N").
-  4. Build \`mutatedFiles\`: for EVERY file mutation_test mutated, one { "file": "<path>", "count": <int> }.
+  3. Parse the stdout SUMMARY — it is AUTHORITATIVE for the counts (the XML lists ONLY survivors). Read:
+          "Found {found} mutations"     → found
+          "Undetected Mutations: {n}"   → undetected
+          "Timeouts: {n}"               → timeouts
+          "Not covered by tests: {n}"   → notCovered
+     Return these as mutationSummary: { found, undetected, timeouts, notCovered }.
+  4. Read the XML report under mutation_test_out/ to ENUMERATE SURVIVORS ONLY (never to count kills — its
+     root element \`<undetected-mutations>\` contains only the surviving mutations). For each undetected
+     mutation build ONE survivor entry: { "status": "Survived", "location": { "start": { "line": N } },
+       "mutatorName": <the rule id / mutation kind, e.g. "logical.and", "replaceFirst", or "removeVoidCall">,
+       "replacement": <mutated text if available, else ""> }.
+     The \`mutants\` array carries ONLY these survivors. Do NOT synthesize "Killed" entries — the XML cannot
+     supply them, and the orchestrator derives killed = reachable − survivors from the summary. The number of
+     survivor entries MUST equal mutationSummary.undetected (the orchestrator HALTS on mismatch — never pad
+     or drop entries to make it match; report exactly what the report lists).
+  5. Build \`mutatedFiles\`: for EVERY file mutation_test mutated, one { "file": "<path>", "count": <int> }.
      (mutation_test mutates exactly the <file> list — normally just the target.)
-  5. Note any test that FAILS on the current production code (red-on-current) — list it; do NOT delete it.
-  6. Clean up: delete mutation_test_harness.xml and the mutation_test_out/ directory from the app tree when done.
+  6. Note any test that FAILS on the current production code (red-on-current) — list it; do NOT delete it.
+  7. Clean up: delete mutation_test_harness.xml and the mutation_test_out/ directory from the app tree when done.
 
 ALSO WRITE YOUR RESULTS HERE for the record (nexus-side, git-ignored — NEVER into the consuming app tree):
   ${RUNNER_RESULT}
 
 as JSON: { "testRuns": [{passed,failed,skipped},{passed,failed,skipped}], "reportPath": "<abs path to the xml report>",
-           "mutants": [<translated per-mutation array for the target file>],
+           "mutationSummary": { "found": N, "undetected": N, "timeouts": N, "notCovered": N },
+           "mutants": [<SURVIVORS-ONLY array for the target file>],
            "mutatedFiles": [{ "file": "<path>", "count": <int> }],
            "redOnCurrent": [{ "test": "...", "note": "..." }] }
 
@@ -362,15 +412,26 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
   phase('Run')
   const runRaw = await agent(runnerPrompt, { label: `runner:iter-${iter}`, phase: 'Run', schema: RUNNER_RESULT_SCHEMA, model: MODEL })
   if (!runRaw) throw new Error(`Cover iteration ${iter}: runner returned no result`)
-  const mutationReport = { files: { [SRC]: { mutants: runRaw.mutants } } }
 
   phase('Gate')
+  // Anti-fake-green survivor-count cross-check (DART DIVERGENCE — see header §3): the stdout summary's
+  // undetected count MUST equal the survivors-only XML array length. A mismatch means the gate would score
+  // on an inconsistent mutant set (a survivor-only XML read as the whole set, or padded/dropped entries) —
+  // HALT like the ratchet, never score on it. (method invariant: mine-verify-cover SKILL.md.)
+  const summary = runRaw.mutationSummary
+  const survivorCount = (runRaw.mutants ?? []).length
+  if (!summary || summary.undetected !== survivorCount) {
+    log(`HALT (mutant-count-mismatch): summary.undetected=${summary?.undetected ?? 'n/a'} !== survivors=${survivorCount} — the survivor array does not match the summary; scoring on an inconsistent mutant set is forbidden.`)
+    result = { stopped: 'mutant-count-mismatch', iter, mutationSummary: summary ?? null, survivorCount, runRaw }
+    break
+  }
+
   const prodSourceDiff = readProdSourceDiffPlaceholder()
   const gates = {
     target_mutated: targetMutated(runRaw.mutatedFiles, SRC),
     suite_green: suiteGreen(runRaw.testRuns),
     no_flaky: noFlaky(runRaw.testRuns),
-    mutation_floor: mutationFloor(mutationReport, SRC, { floor: MUTATION_FLOOR, expectedSurvivorLines: EXPECTED_SURVIVOR_LINES }),
+    mutation_floor: mutationFloor(summary, runRaw.mutants, { floor: MUTATION_FLOOR, expectedSurvivorLines: EXPECTED_SURVIVOR_LINES, equivalentLoggingLines: EQUIVALENT_LOGGING_LINES }),
     no_new_skips: noNewSkips(runRaw.testRuns, BASELINE_SKIPS),
     char_pin: charPin(prodSourceDiff),
   }
@@ -396,10 +457,17 @@ for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
     break
   }
 
-  survivingMutants = gates.mutation_floor.detail.reachableSurvivors
+  // F1: only UN-PRE-TAGGED survivors drive the next Cover iteration. A pre-tagged `equivalent-logging`
+  // survivor is an orchestrator-recognized equivalent mutant — re-feeding it makes the Cover agent chase a
+  // mutant no behaviour-asserting test can kill. The DENOMINATOR is unchanged (the pre-tagged survivor stays
+  // SCORED in mutationFloor — the two-tier equivalentLoggingLines-suggestion vs expectedSurvivorLines-confirmed
+  // design); only the re-feed is filtered. The full residual list (pre-tags included) is kept for the
+  // cap-reached report below + the loop-flutter Report-stage classifier.
+  const reachableSurvivors = gates.mutation_floor.detail.reachableSurvivors
+  survivingMutants = reachableSurvivors.filter((s) => !s.tag)
 
   if (iter === MAX_ITERATIONS) {
-    result = { stopped: 'cap-reached', iter, gates, achievedScore: score, reachableSurvivors: survivingMutants }
+    result = { stopped: 'cap-reached', iter, gates, achievedScore: score, reachableSurvivors }
   }
 }
 

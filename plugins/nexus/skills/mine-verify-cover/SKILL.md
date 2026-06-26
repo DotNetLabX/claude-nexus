@@ -51,6 +51,34 @@ Every gate is computed by the orchestrator from the adapter's raw output — no 
 
 **Anti-fake-green invariant:** before scoring `mutation_floor`, cross-check the agent-reported mutant TOTAL against the tool summary's `Found N`. If they differ, halt and flag — a mismatch indicates the gate is scoring on a partial mutant set (e.g. a survivor-only XML output read as the full set). The stack adapter's summary parse is the authoritative total; the gate must not proceed on an unverified count.
 
+## The Report stage — survivor classification
+
+The Report stage does more than write a pass/fail number: every run **classifies its residual survivors** so the output drives code cleanup, not just a gate verdict. Each surviving mutant the gate reports carries exactly one tag, and **who can assign the tag depends on what the tag needs to see**:
+
+| Tag | Assigned by | Why |
+|-----|-------------|-----|
+| `equivalent-logging` | the **orchestrator**, as a pre-tag — but ONLY when the stack adapter supplies the no-output (log-call) line set; otherwise the survivor is left `unclassified` for the agent | needs only a line-membership test against an adapter/KB signal, which the orchestrator can do without source |
+| `equivalent-format` | the **classify-survivors agent** | needs both use-sites of the mutated key/format — a source property |
+| `dead-code` | the **classify-survivors agent** | a cross-procedural call-graph property (no caller reaches the branch) |
+| `masked` | the **classify-survivors agent** | a whole-source semantic property (a fallback/`else` reproduces the result) |
+| `REAL-gap` | the **classify-survivors agent** — and only as the verdict *after* it fails to prove the mutant equivalent/dead/masked | the default this stage exists to STOP the orchestrator from reaching for blindly |
+
+**The orchestrator never defaults an unprovable survivor to `REAL-gap`.** The source-dependent tags (`equivalent-format`/`dead-code`/`masked`/`REAL-gap`) are assigned by a **classify-survivors agent with source + KB access**; the orchestrator only *records* the agent's verdict. The orchestrator (no filesystem) can pre-tag only `equivalent-logging`, and only against an adapter-supplied log-line set — a line *number* is not enough on its own, so without that signal the survivor stays *untagged* and is handed to the classify-survivors agent. This split is load-bearing: a pure classifier over mutant metadata cannot derive a source-semantic tag, and defaulting the unprovable ones to `REAL-gap` reproduces the exact defect this stage removes.
+
+**Only `REAL-gap` *should* drive another Cover iteration — but the re-feed filter is two-tier.** *Mid-loop* (inside the Cover→Gate iteration) the orchestrator can withhold only the survivors it can tag without source: its own `equivalent-logging` pre-tags. The source-dependent tags are not known until the **classify-survivors agent runs at the Report stage**, *after* the loop — so mid-loop the un-pre-tagged survivors (dead/masked/format and genuine gaps alike) are *not* filtered out per iteration; the Cover agent keeps trying to kill them until the floor or the iteration cap is reached, which is correct because a mid-loop run cannot yet prove a survivor equivalent. The full "only `REAL-gap` is worth chasing" rule is therefore a **Report-stage / follow-up-run property**, not a single per-iteration filter: the classification tells the operator which residual survivors a *next* run should target (`REAL-gap`) and which to exclude via `expectedSurvivorLines` (the equivalents).
+
+**`unclassified` — the agent-non-response terminal state.** A survivor the orchestrator cannot pre-tag is handed to the classify-survivors agent untagged, and the agent assigns one of the four source-dependent tags. If the agent returns **no verdict** for such a survivor (a non-response), the orchestrator records it as `unclassified` — a loud, **logged** terminal state, never silently defaulted to `REAL-gap` or to an equivalent tag. An `unclassified` survivor in the report means the classify step did not cover it and the operator must look.
+
+**Classification authority — the final iteration.** Run the classification on the **final** iteration's residual survivors (after `expectedSurvivorLines` exclusions are known), so the tagged set does not shrink run-over-run; the report states which run the tags are authoritative for.
+
+The Report stage emits, every run:
+
+1. **Tagged residual survivors** — each survivor with its tag (and the agent's one-line reason for the source-dependent ones).
+2. **Implied source cleanups** — `dead-code` and always-equivalent survivors are signals of removable or buggy production code; surface them as candidate cleanups with `file:line` (e.g. a backward-edge branch no caller reaches).
+3. **An `expectedSurvivorLines` suggestion** — the equivalent (logging/format) lines, so a follow-up run can exclude them and report an honest *reachable* kill rate.
+
+The scoring this stage reports is guarded by the anti-fake-green invariant above — the Report stage consumes the same authoritative tool-summary total, never a survivor-only subset read as the whole set.
+
 ## Safety rails
 
 - **Budget cap** — halt when the run's **marginal** spend exceeds the ceiling. `budget.spent()` is the shared session pool, NOT the run's cost; capture the start spend and gate on the delta, or a run fired late in a long session trips on the session's prior spend.

@@ -1,6 +1,9 @@
 # nexus — Changelog
 
 
+## [1.18.6] — 2026-06-26
+**Report-stage survivor-classification taxonomy.** The `mine-verify-cover` method now specifies a Report stage that classifies every residual survivor into one of five tags (`equivalent-logging`, `equivalent-format`, `dead-code`, `masked`, `REAL-gap`) and — critically — **who may assign each**: the orchestrator pre-tags only `equivalent-logging`, and only against an adapter-supplied log-line set; the source-dependent tags are assigned by a classify-survivors agent with source + KB access, the orchestrator merely records them and never defaults an unprovable survivor to `REAL-gap`. "Only `REAL-gap` is worth chasing" is a Report-stage / follow-up-run property — mid-loop the orchestrator can only filter its own `equivalent-logging` pre-tags, since the source-dependent tags are not known until the Report-stage classify; a survivor the classify agent leaves unanswered is recorded as a loud, logged `unclassified` terminal state, never defaulted to `REAL-gap`. The stage also emits implied source cleanups (`file:line`) and an `expectedSurvivorLines` suggestion. Additive to the 1.18.5 anti-fake-green invariant (referenced, not restated).
+
 ## [1.18.5] — 2026-06-26
 **Fix mutation gate under-report: score from stdout summary, not the survivors-only XML.** The `mine-verify-cover` method now adds an anti-fake-green invariant to the gate battery: before scoring `mutation_floor`, cross-check the agent-reported mutant TOTAL against the tool summary's `Found N` and halt/flag on mismatch. A survivor-only XML report read as the full mutant set (the exact mechanism behind a pilot reporting 0% instead of 77.14%) would be caught by this invariant. Keeps the check stack-neutral — the adapter's summary parse supplies the authoritative total. Paired with the `nexus-flutter` fix that corrects the scorer to use the stdout summary directly (adhoc-MvcGateScoringFix).
 

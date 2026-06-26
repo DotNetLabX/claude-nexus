@@ -31,6 +31,11 @@ Code: `Math.Abs(0.86 - 0.85)` is `0.010000000000000009` in IEEE-754, which **is*
 **rejects a value the PO spec says is valid.** A naive float comparison with no epsilon/rounding makes the
 boundary unreliable. Candidate bug (worth a human ruling on whether the 2-decimal-percent domain makes it benign).
 
+**Status: FIXED + verified (2026-06-25, solo).** Patched `GeneratedSqlValidator.cs:272` to
+`> 0.01 + 1e-9` (epsilon absorbs FP noise, preserves the exclusive boundary). Verified: the spec-driven
+`Gold08.ExactlyAt001_Passes` red flipped green; the existing 51-test SQL suite stays 51/51 (no regression);
+spec-driven reds dropped 5 → 4 (the remaining 4 are test/harness artifacts, not code). Uncommitted on KG `main`.
+
 **Cross-direction corroboration (the headline):** Direction 1 (code-derived mutation) independently left a
 **surviving mutant on this exact line L272** (the `>`→`>=` equality mutant), and Direction 2 (spec-derived)
 independently produced a **red on the same line**. Two methods, derived from opposite sources (code vs spec),

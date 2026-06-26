@@ -45,6 +45,9 @@ const MUTATE_FILE = _args.mutateFile ?? toAppRel(SRC, APP)
 const TEST_STYLE = _args.testStyle ?? `${APP}\\test\\flutter_test_config.dart`
 const PATTERN_TESTS = _args.patternTests ?? null
 const EXPECTED_SURVIVOR_LINES = _args.expectedSurvivorLines ?? []
+// Pre-tag signal (Q1) — log-call line numbers the adapter surfaces; forwarded to cover-flutter so the
+// orchestrator can pre-tag `equivalent-logging`. Distinct from EXPECTED_SURVIVOR_LINES (denominator exclusion).
+const EQUIVALENT_LOGGING_LINES = _args.equivalentLoggingLines ?? []
 const MUTATION_FLOOR = _args.mutationFloor ?? 75
 const MAX_ITERATIONS = _args.maxIterations ?? 5
 
@@ -160,6 +163,7 @@ const coverResult = await workflow(
     targetClass: TARGET_CLASS, src: SRC, kbRules: KB_RULES, appDir: APP, coverTest: COVER_TEST,
     testProjectDir: TEST_PROJECT_DIR, mutateFile: MUTATE_FILE, testStyle: TEST_STYLE,
     patternTests: PATTERN_TESTS, expectedSurvivorLines: EXPECTED_SURVIVOR_LINES,
+    equivalentLoggingLines: EQUIVALENT_LOGGING_LINES,
     mutationFloor: MUTATION_FLOOR, maxIterations: MAX_ITERATIONS, model: MODEL,
   },
 )
@@ -167,6 +171,63 @@ if (!coverResult) {
   return { stopped: 'cover-fail', reason: 'cover-flutter sub-workflow returned no result', after: 'cover', outputTokensThisTurn: budget.spent() }
 }
 log(`Cover done: ${coverResult.stopped} after ${coverResult.iter ?? '?'} iteration(s); achieved ${coverResult.achievedScore ?? '?'}% reachable kill.`)
+
+// --- classify-survivors agent contract (source-aware; the orchestrator only records its verdict) --------
+// Assigns the SOURCE-DEPENDENT tags the orchestrator cannot derive. `equivalent-logging` is NOT in the enum:
+// it is the orchestrator's pre-tag (cover-flutter). REAL-gap is the ONLY tag that should drive more tests.
+// Each verdict echoes back the survivor's `index` (its position in the list sent to the agent) — TWO survivors
+// can share one source line, so the verdict is keyed PER-SURVIVOR by index, never by line (F2 — keying by line
+// let the last verdict clobber the first). `reason` is required: a verdict with no rationale is not actionable (F4).
+const CLASSIFY_SURVIVORS_SCHEMA = {
+  type: 'object',
+  properties: {
+    classifications: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          index: { type: 'integer' },
+          line: { type: 'integer' },
+          tag: { type: 'string', enum: ['equivalent-format', 'dead-code', 'masked', 'REAL-gap'] },
+          reason: { type: 'string' },
+          cleanup: { type: 'string' },
+        },
+        required: ['index', 'line', 'tag', 'reason'],
+      },
+    },
+  },
+  required: ['classifications'],
+}
+function classifySurvivorsPrompt(survivorsToClassify) {
+  const list = survivorsToClassify.map((s, i) => `  - index ${i} | line ${s.line}: ${s.mutatorName} → \`${s.replacement}\` (${s.status})`).join('\n')
+  return `You are the CLASSIFY-SURVIVORS agent. You have SOURCE access; the orchestrator does not — it only
+RECORDS your verdict. Read the target source + the verified-rule KB, then assign EACH residual surviving
+mutant below exactly ONE tag. (equivalent-logging survivors were already pre-tagged by the orchestrator and
+are NOT in this list.)
+
+STEP 1 — READ THE PRODUCTION SOURCE (the SUT):
+  ${SRC}
+STEP 2 — READ THE VERIFIED RULES KB (ground truth, already Mine→Verify'd):
+  ${KB_RULES}
+
+RESIDUAL SURVIVORS TO CLASSIFY — each carries a stable \`index\`. TWO survivors can share one source line, so the
+INDEX (not the line) identifies which survivor your verdict is for; echo the exact index back in every entry:
+${list}
+
+TAGS (assign exactly one per survivor; you MUST prove equivalence before falling back to REAL-gap):
+  • equivalent-format — a consistent internal-format change (the same key-builder mutated on BOTH the
+    construction and the lookup side), so matching is unaffected. Equivalent — not a test gap.
+  • dead-code — the mutated statement sits in a branch NO caller reaches (a guard/edge never taken).
+    Equivalent AND a cleanup signal — return a \`cleanup\` of \`file:line — what to remove\`.
+  • masked — a fallback / \`else\` / \`?? default\` reproduces the same observable result, so no assertion can
+    distinguish the mutant. Equivalent.
+  • REAL-gap — a genuine behaviour the suite missed. The ONLY tag that should drive another Cover iteration.
+    Use it ONLY after you FAIL to prove the mutant equivalent/dead/masked — never as a default.
+
+Give a one-line \`reason\` for EVERY verdict (it is required). Return
+  { "classifications": [ { "index": I, "line": N, "tag": "...", "reason": "...", "cleanup": "file:line — ..." }, ... ] }
+with one entry per survivor listed above — copy each \`index\` EXACTLY as shown so two survivors on one line never collide.`
+}
 
 // =================================================================================================
 // PHASE 4: REPORT + KB FLIP (on all-gates-green)
@@ -195,10 +256,54 @@ if (allGatesGreen) {
 const gateRows = coverResult.gates
   ? Object.entries(coverResult.gates).map(([name, g]) => `| ${name} | ${g.pass ? 'PASS' : 'FAIL'} | ${typeof g.detail === 'string' ? g.detail : (g.detail?.scorePct !== undefined ? `${g.detail.scorePct}%` : JSON.stringify(g.detail).slice(0, 90))} |`).join('\n')
   : '| — | — | Cover did not reach gate evaluation — see stopped reason |'
+// --- Survivor classification (Report-stage enhancement: structured, repeatable run output) -------------
+// Runs on the FINAL iteration's residual survivors (after expectedSurvivorLines exclusions are known) so the
+// tagged set does not shrink run-over-run. The orchestrator pre-tagged equivalent-logging (cover-flutter,
+// pure); a source-aware classify-survivors agent assigns the source-dependent tags
+// (equivalent-format / dead-code / masked / REAL-gap) to the rest — the orchestrator only RECORDS its verdict.
 const survivors = coverResult.gates?.mutation_floor?.detail?.reachableSurvivors ?? []
-const survivorsSection = survivors.length
-  ? survivors.map((m) => `- Line ${m.line}: ${m.mutatorName} \`${m.replacement}\` (${m.status})`).join('\n')
+const toClassify = survivors.filter((s) => !s.tag) // un-pre-tagged → need source to classify
+// Key the agent's verdicts by the survivor's INDEX in `toClassify`, NOT by source line: two survivors can
+// share one line (e.g. two mutators on the same `&&`), and a line key lets the last verdict clobber the first
+// (F2 — last-verdict-wins collision). The agent echoes the index back; the merge below walks survivors in the
+// SAME order `toClassify` was built (filter preserves order), so a running counter recovers each index.
+const classifyByIndex = new Map()
+// Q2: spawn only when there are residual survivors (skipped on the empty-survivor path); additionally skip the
+// agent when every survivor is already pre-tagged (nothing source-dependent left to classify).
+if (survivors.length > 0 && toClassify.length > 0) {
+  const classifyResult = await agent(classifySurvivorsPrompt(toClassify), {
+    label: 'classify-survivors', phase: 'Report', schema: CLASSIFY_SURVIVORS_SCHEMA, model: MODEL,
+  })
+  for (const c of classifyResult?.classifications ?? []) classifyByIndex.set(c.index, c)
+}
+// Merge pre-tags + the agent's verdicts into one tagged list (orchestrator records; never derives source tags).
+let nextClassifyIndex = 0
+const taggedSurvivors = survivors.map((s) => {
+  if (s.tag) return { line: s.line, mutatorName: s.mutatorName, replacement: s.replacement, status: s.status, tag: s.tag }
+  const idx = nextClassifyIndex++
+  const c = classifyByIndex.get(idx)
+  if (!c) {
+    // No verdict for an un-pre-tagged survivor → the classify agent did not respond for it. `unclassified` is
+    // a LOUD, logged terminal state (never a silent default, and NEVER REAL-gap): it flags that the Report
+    // carries a survivor the classify step never covered, so the operator must look.
+    log(`WARNING (classify): no verdict for residual survivor #${idx} (line ${s.line}, ${s.mutatorName}) — recording tag 'unclassified' (classify-agent non-response; terminal state).`)
+    return { line: s.line, mutatorName: s.mutatorName, replacement: s.replacement, status: s.status, tag: 'unclassified' }
+  }
+  return { line: s.line, mutatorName: s.mutatorName, replacement: s.replacement, status: s.status, tag: c.tag, reason: c.reason, cleanup: c.cleanup }
+})
+const survivorsSection = taggedSurvivors.length
+  ? taggedSurvivors.map((m) => `- Line ${m.line}: ${m.mutatorName} \`${m.replacement}\` (${m.status}) — **${m.tag}**${m.reason ? ` — ${m.reason}` : ''}`).join('\n')
   : '_No reachable survivors._'
+// Implied cleanups: dead-code + always-equivalent (logging/format) survivors are removable/buggy-code signals.
+const EQUIVALENT_TAGS = new Set(['equivalent-logging', 'equivalent-format'])
+const impliedCleanups = taggedSurvivors
+  .filter((s) => s.tag === 'dead-code' || EQUIVALENT_TAGS.has(s.tag))
+  .map((s) => (s.cleanup
+    ? `- ${s.cleanup}`
+    : `- \`${relpath}:${s.line}\` — ${s.tag === 'dead-code' ? 'dead branch; candidate removal' : 'equivalent mutant; redundant code / add to expectedSurvivorLines'} (${s.mutatorName})`))
+const impliedCleanupsSection = impliedCleanups.length ? impliedCleanups.join('\n') : '_None — no dead-code or equivalent survivors._'
+// expectedSurvivorLines suggestion: the equivalent (logging/format) lines, so a follow-up run is honest.
+const suggestedLines = [...new Set(taggedSurvivors.filter((s) => EQUIVALENT_TAGS.has(s.tag)).map((s) => s.line))].sort((a, b) => a - b)
 
 const reportContent = `# Cover run (Flutter) — ${TARGET_CLASS} (${today})
 
@@ -226,7 +331,15 @@ ${gateRows}
 
 ## Residual Survivors
 
+_Classified on the FINAL iteration's residual survivors (after \`expectedSurvivorLines\` exclusions are known), so the tags do not shrink run-over-run. Only \`REAL-gap\` should drive another Cover iteration._
+
 ${survivorsSection}
+
+## Implied cleanups
+
+${impliedCleanupsSection}
+
+**\`expectedSurvivorLines\` suggestion:** \`expectedSurvivorLines: [${suggestedLines.join(', ')}]\` — add the equivalent (logging/format) lines so a follow-up run reports an honest reachable kill rate.
 
 ## Candidate Bugs (red-on-current tests kept, never deleted)
 

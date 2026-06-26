@@ -89,6 +89,20 @@ A regex mutator produces **equivalent mutants** a behaviour-asserting test can n
 
 These are NOT test gaps. Identify them by **reasoning** (the regex tool can't), then exclude their line numbers via the method's `expectedSurvivorLines` so they leave the reachable denominator — exactly the .NET dead-line mechanism. The mined KB often flags them already (a rule noting "the log call is a pure side-effect"). The mutation floor (default 75) usually tolerates a couple of them; raise the floor and exclude the equivalents only when a clean 100% is wanted.
 
+### Survivor tags — Dart cues (the method's Report-stage taxonomy, filled for Dart)
+
+The method's Report stage tags every residual survivor (see `mine-verify-cover` → "The Report stage — survivor classification"). This adapter supplies the Dart-specific cue per tag, and the one signal the orchestrator can pre-tag:
+
+| Tag | Who assigns | Dart cue |
+|-----|-------------|----------|
+| `equivalent-logging` | **orchestrator pre-tag** — the one mechanically pre-taggable tag | a void-call removal (`removeVoidCall`) on a `log`/`info`/`warning`/`debug` line. **The adapter must surface the log-call line numbers** so the orchestrator can pre-tag without source: supply them as the `equivalentLoggingLines` set (from the mined KB, which flags log calls as pure side-effects, or a project `docs/conventions/mutation-testing.md`). This is **distinct from `expectedSurvivorLines`** (the denominator-exclusion list): a pre-tagged log survivor STAYS in the reachable survivors so the report can suggest excluding it. |
+| `equivalent-format` | classify-survivors agent | a consistent key-builder change — the same interpolation (e.g. `'$a\|$b\|$c'`) mutated on BOTH the map-construction and the lookup side, so matching is unaffected. |
+| `dead-code` | classify-survivors agent | a mutation inside a branch no caller reaches — e.g. a backward-edge guard whose input is never forwarded (POG's `goPreviousStep` is never passed into `_isNextIndexValid`, so its branch is dead). |
+| `masked` | classify-survivors agent | a fallback/`else` (or a `?? default`) that reproduces the same observable result, so no assertion distinguishes the mutant. |
+| `REAL-gap` | classify-survivors agent | a genuine behaviour the suite missed — the only tag that drives another Cover iteration. |
+
+The orchestrator supplies **only** the `equivalentLoggingLines` signal and pre-tags `equivalent-logging`; the source-dependent tags are the classify-survivors agent's call (it has the `.dart` source + the KB) and the orchestrator records its verdict — it never derives them. Live examples seen in pilots: the BuildZpl `info(...)` log survivors (`equivalent-logging`), the CycleCount key-format survivor (`equivalent-format`), the POG `goPreviousStep` dead branch (`dead-code`).
+
 ## Test style (so generated tests compile and kill mutants)
 
 - **Example tests** — `flutter_test`: `test()` / `group()`, one test per rule boundary. Assert on the **returned value** (and any observable collaborator call) — never on log output (that over-specifies and only chases equivalent mutants).

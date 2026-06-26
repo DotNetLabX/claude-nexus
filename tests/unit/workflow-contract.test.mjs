@@ -681,19 +681,23 @@ test('cover target_mutated surfaces stray non-target mutated files without faili
 });
 
 // ==================================================================================================
-// Slice 9e: the FLUTTER cover adapter (cover-flutter.workflow.js) runs in the sandbox, reuses the gate
-// battery, and its equivalent-mutant filter excludes a log-line survivor via expectedSurvivorLines.
+// Slice 9e: the FLUTTER cover adapter (cover-flutter.workflow.js) runs in the sandbox, scores from the
+// stdout SUMMARY (survivors-only `mutants` array), and its equivalent-mutant filter excludes a log-line
+// survivor via expectedSurvivorLines. Updated for the summary-scoring + survivor-count cross-check contract
+// (adhoc-MvcSurvivorReport): the `mutants` array now carries ONLY survivors and a `mutationSummary` supplies
+// the counts (the killed entries the XML can never enumerate are NOT fabricated).
 // ==================================================================================================
-test('cover-flutter runs in sandbox; gate battery + equivalent-mutant filter work', async () => {
+test('cover-flutter runs in sandbox; summary-scoring + equivalent-mutant filter work', async () => {
   const src = readWorkflow(COVER_FLUTTER_PATH);
   const coverAgentReturn = null; // cover agent's Write() is the deliverable
   const runnerReturn = {
     testRuns: [ { passed: 9, failed: 0, skipped: 0 }, { passed: 9, failed: 0, skipped: 0 } ],
     reportPath: 'D:\\runs\\cover-flutter.xml',
+    // 2 found, 1 killed, 1 survivor (the log line). The `mutants` array carries ONLY the survivor — the XML
+    // lists no killed entries; killed is derived from the summary, never by counting/fabricating the array.
+    mutationSummary: { found: 2, undetected: 1, timeouts: 0, notCovered: 0 },
     mutants: [
-      // a real behaviour mutant — killed
-      { status: 'Killed',   location: { start: { line: 33 } }, mutatorName: 'replaceFirst', replacement: 'replaceAll' },
-      // a LOG-LINE mutant that survived — equivalent mutant, must be excluded by expectedSurvivorLines
+      // a LOG-LINE survivor — equivalent mutant, excluded by expectedSurvivorLines
       { status: 'Survived', location: { start: { line: 29 } }, mutatorName: 'string', replacement: '""' },
     ],
     // basename must match the default SRC (build_zpl_code_usecase.dart) so target_mutated passes
@@ -706,10 +710,118 @@ test('cover-flutter runs in sandbox; gate battery + equivalent-mutant filter wor
   const { result } = await runInSandbox(src, [coverAgentReturn, runnerReturn], argsValue);
   assert.equal(result?.variant, 'inc4-cover-flutter', 'returns the flutter cover variant');
   assert.equal(result?.stopped, 'all-gates-green', 'all gates green once the log-line survivor is excluded');
-  assert.equal(result?.achievedScore, 100, '1/1 reachable killed = 100% (line 29 excluded from denominator)');
+  assert.equal(result?.achievedScore, 100, 'killed 1 / reachable 1 = 100% (line 29 excluded from denominator)');
   assert.equal(result.gates.mutation_floor.detail.expectedSurvivorsExcluded, 1, 'the log-line survivor was excluded, not chased');
   assert.equal(result.gates.mutation_floor.detail.reachableSurvivors.length, 0, 'no reachable survivors remain');
   assert.equal(result.gates.target_mutated.pass, true, 'target_mutated passes (target file was mutated)');
+});
+
+// ==================================================================================================
+// Slices 9e-2..9e-7: the summary-scoring contract, the survivor-count cross-check HALT, and the
+// orchestrator pre-tagger (adhoc-MvcSurvivorReport Steps 3-4). Shared default-target mutatedFiles path.
+// ==================================================================================================
+const FLUTTER_TARGET_FILE = 'D:\\omnishelf\\omnishelf_flutter_app\\lib\\domain\\usecases\\zebra_printer\\build_zpl_code_usecase.dart';
+const flutterRunner = (over) => ({
+  testRuns: [ { passed: 12, failed: 0, skipped: 0 }, { passed: 12, failed: 0, skipped: 0 } ],
+  reportPath: 'D:\\runs\\cover-flutter.xml',
+  mutatedFiles: [{ file: FLUTTER_TARGET_FILE, count: over.mutationSummary.found }],
+  redOnCurrent: [],
+  ...over,
+});
+
+test('cover-flutter scores mutation_floor from the summary (70 found / 16 undetected / 0 not-covered = 77%)', async () => {
+  const src = readWorkflow(COVER_FLUTTER_PATH);
+  const survivors = Array.from({ length: 16 }, (_, i) => ({
+    status: 'Survived', location: { start: { line: 100 + i } }, mutatorName: 'logical.and', replacement: '||',
+  }));
+  const runnerReturn = flutterRunner({ mutationSummary: { found: 70, undetected: 16, timeouts: 0, notCovered: 0 }, mutants: survivors });
+  const { result } = await runInSandbox(src, [null, runnerReturn], JSON.stringify({}));
+  assert.equal(result?.stopped, 'all-gates-green', '77% >= 75 floor → all gates green');
+  assert.equal(result?.achievedScore, 77, 'killed 54 / reachable 70 = 77% from the summary, NOT by counting the array');
+  assert.equal(result.gates.mutation_floor.detail.killed, 54, 'killed derived from the summary (70 − 16)');
+  assert.equal(result.gates.mutation_floor.detail.reachableDenominator, 70, 'reachable = found − notCovered');
+  assert.equal(result.gates.mutation_floor.detail.reachableSurvivors.length, 16, 'all 16 survivors reachable (none excluded)');
+});
+
+test('cover-flutter summary-scoring excludes expectedSurvivorLines from BOTH denominator and survivors', async () => {
+  const src = readWorkflow(COVER_FLUTTER_PATH);
+  // 10 found, 2 undetected → raw reachable 10, killed 8 = 80%. Exclude line 200 → reachable 9, survivors 1, killed 8 = 89%.
+  const runnerReturn = flutterRunner({
+    mutationSummary: { found: 10, undetected: 2, timeouts: 0, notCovered: 0 },
+    mutants: [
+      { status: 'Survived', location: { start: { line: 200 } }, mutatorName: 'removeVoidCall', replacement: '' },
+      { status: 'Survived', location: { start: { line: 201 } }, mutatorName: 'logical.and', replacement: '||' },
+    ],
+  });
+  const { result } = await runInSandbox(src, [null, runnerReturn], JSON.stringify({ expectedSurvivorLines: [200] }));
+  assert.equal(result.gates.mutation_floor.detail.expectedSurvivorsExcluded, 1, 'line 200 excluded from the denominator');
+  assert.equal(result.gates.mutation_floor.detail.reachableDenominator, 9, 'reachable 10 − 1 excluded = 9');
+  assert.equal(result.gates.mutation_floor.detail.killed, 8, 'killed = 9 denominator − 1 remaining survivor');
+  assert.equal(result?.achievedScore, 89, 'round(8/9) = 89%');
+});
+
+for (const { name, summary, survivorLines, expected } of [
+  { name: 'BuildZpl',   summary: { found: 21, undetected: 2, timeouts: 0, notCovered: 0 }, survivorLines: [29, 33], expected: 90 },
+  { name: 'CycleCount', summary: { found: 16, undetected: 1, timeouts: 0, notCovered: 0 }, survivorLines: [88],     expected: 94 },
+]) {
+  test(`cover-flutter summary-scoring reproduces the ${name} fixture (${expected}% reachable)`, async () => {
+    const src = readWorkflow(COVER_FLUTTER_PATH);
+    const mutants = survivorLines.map((line) => ({ status: 'Survived', location: { start: { line } }, mutatorName: 'logical.and', replacement: '||' }));
+    const runnerReturn = flutterRunner({ mutationSummary: summary, mutants });
+    const { result } = await runInSandbox(src, [null, runnerReturn], JSON.stringify({}));
+    assert.equal(result?.achievedScore, expected, `${name}: ${expected}% derived from the stdout summary`);
+    assert.equal(result?.stopped, 'all-gates-green', `${name}: clears the floor → all gates green`);
+  });
+}
+
+test('cover-flutter HALTS on iteration 1 with mutant-count-mismatch when undetected !== survivors', async () => {
+  const src = readWorkflow(COVER_FLUTTER_PATH);
+  // summary says 16 undetected, but the survivor array has only 3 entries → inconsistent set → HALT, never score.
+  const runnerReturn = flutterRunner({
+    mutationSummary: { found: 70, undetected: 16, timeouts: 0, notCovered: 0 },
+    mutants: [
+      { status: 'Survived', location: { start: { line: 10 } }, mutatorName: 'a', replacement: 'b' },
+      { status: 'Survived', location: { start: { line: 11 } }, mutatorName: 'a', replacement: 'b' },
+      { status: 'Survived', location: { start: { line: 12 } }, mutatorName: 'a', replacement: 'b' },
+    ],
+  });
+  const { result } = await runInSandbox(src, [null, runnerReturn], JSON.stringify({}));
+  assert.equal(result?.stopped, 'mutant-count-mismatch', 'survivor array (3) != summary.undetected (16) → HALT, not a score');
+  assert.equal(result?.iter, 1, 'halts on iteration 1, before scoring');
+  assert.equal(result?.survivorCount, 3, 'records the actual survivor count');
+  assert.equal(result?.achievedScore, undefined, 'no score is produced on the integrity halt');
+});
+
+test('cover-flutter pre-tags equivalent-logging and leaves source-dependent survivors UNTAGGED (not REAL-gap)', async () => {
+  const src = readWorkflow(COVER_FLUTTER_PATH);
+  // 10 found, 2 undetected → reachable 10, killed 8 = 80% (≥ floor → green) with 2 reachable survivors:
+  //   line 50: removeVoidCall on a log line → orchestrator pre-tags equivalent-logging
+  //   line 60: a logical mutant NOT on a log line → left untagged for the source-aware classify agent
+  const runnerReturn = flutterRunner({
+    mutationSummary: { found: 10, undetected: 2, timeouts: 0, notCovered: 0 },
+    mutants: [
+      { status: 'Survived', location: { start: { line: 50 } }, mutatorName: 'removeVoidCall', replacement: '' },
+      { status: 'Survived', location: { start: { line: 60 } }, mutatorName: 'logical.and', replacement: '||' },
+    ],
+  });
+  const { result } = await runInSandbox(src, [null, runnerReturn], JSON.stringify({ equivalentLoggingLines: [50] }));
+  const byLine = Object.fromEntries(result.gates.mutation_floor.detail.reachableSurvivors.map((s) => [s.line, s]));
+  assert.equal(byLine[50].tag, 'equivalent-logging', 'log-line void-call survivor pre-tagged by the orchestrator');
+  assert.equal(byLine[60].tag, undefined, 'source-dependent survivor left UNTAGGED (never defaulted to REAL-gap)');
+  assert.equal(result.gates.mutation_floor.detail.reachableSurvivors.length, 2,
+    'equivalent-logging stays a reachable survivor (tagged, NOT excluded from the denominator)');
+});
+
+test('cover-flutter pre-tag needs BOTH the log line AND a void-call-removal mutator (line alone is not enough)', async () => {
+  const src = readWorkflow(COVER_FLUTTER_PATH);
+  const runnerReturn = flutterRunner({
+    mutationSummary: { found: 10, undetected: 1, timeouts: 0, notCovered: 0 },
+    // line 50 IS in equivalentLoggingLines but the mutator is a logical op, not a void-call removal
+    mutants: [{ status: 'Survived', location: { start: { line: 50 } }, mutatorName: 'logical.and', replacement: '||' }],
+  });
+  const { result } = await runInSandbox(src, [null, runnerReturn], JSON.stringify({ equivalentLoggingLines: [50] }));
+  assert.equal(result.gates.mutation_floor.detail.reachableSurvivors[0].tag, undefined,
+    'a non-void-call mutator on a log line is NOT pre-tagged equivalent-logging');
 });
 
 // ==================================================================================================
@@ -766,6 +878,199 @@ test('loop-flutter composes mine-verify + cover-flutter, writes KB + flips on gr
   const report = agentCalls.find((c) => c.opts?.label === 'report-write');
   assert.ok(report && /Cover run \(Flutter\) — GetNextCycleCountTargetUsecase \(2026-06-24\)/.test(report.promptFull), 'report header uses target + runDate');
   assert.ok(report && /Run cost \(marginal\)/.test(report.promptFull), 'report carries a marginal cost line');
+});
+
+// ==================================================================================================
+// Slice 9f-2: the FLUTTER controller classifies POPULATED residual survivors — spawns the
+// classify-survivors agent (Q2-gated on survivors > 0), records its source-dependent tags, and renders
+// tagged survivors + Implied cleanups + the expectedSurvivorLines suggestion in the report
+// (adhoc-MvcSurvivorReport Step 4). The orchestrator pre-tag (equivalent-logging) is NOT sent to the agent.
+// ==================================================================================================
+test('loop-flutter spawns classify-survivors on populated residuals; report renders tags + cleanups + suggestion', async () => {
+  const src = readWorkflow(LOOP_FLUTTER_PATH);
+  // toClassify = [line 60, line 70] (line 50 is pre-tagged → filtered out), so the agent echoes index 0/1.
+  const classifyReturn = { classifications: [
+    { index: 0, line: 60, tag: 'dead-code', reason: 'backward edge never reached', cleanup: 'lib/x.dart:60 — remove the dead branch' },
+    { index: 1, line: 70, tag: 'REAL-gap', reason: 'suite missed the replaceAll path' },
+  ] };
+  // Agents (green + survivors path; runDate skips date-stamp): kb-write-file, kb-flip, classify-survivors, report-write.
+  const agentFixtures = [{ written: true }, { written: true }, classifyReturn, { written: true }];
+  const workflowReturns = [
+    // mine-verify
+    { consensusRules: [{ id: 'BR-1', kind: 'interpretive', agreement: 3, lines: '10', statement: 'rule A' }],
+      interpretiveVerdicts: [{ id: 'BR-1', verdict: 'CONFIRMED', evidence: 'ok' }], counts: { consensusRules: 1 } },
+    // cover-flutter (all gates green) with THREE residual survivors: one orchestrator-pre-tagged, two to classify.
+    { variant: 'inc4-cover-flutter', stopped: 'all-gates-green', iter: 1, achievedScore: 80,
+      gates: { suite_green: { pass: true, detail: {} }, mutation_floor: { pass: true, detail: { scorePct: 80, reachableSurvivors: [
+        { line: 50, mutatorName: 'removeVoidCall', replacement: '', status: 'Survived', tag: 'equivalent-logging' },
+        { line: 60, mutatorName: 'logical.and', replacement: '||', status: 'Survived' },
+        { line: 70, mutatorName: 'replaceFirst', replacement: 'replaceAll', status: 'Survived' },
+      ] } } },
+      redOnCurrent: [] },
+  ];
+  const agentCalls = [];
+  function thr() { throw new ReferenceError('Date unavailable in workflow scripts'); }
+  thr.now = () => { throw new ReferenceError('Date unavailable'); };
+  let aIdx = 0, wIdx = 0;
+  const sandbox = {
+    agent: async (prompt, opts) => { agentCalls.push({ promptFull: typeof prompt === 'string' ? prompt : '', opts }); return agentFixtures[aIdx++] ?? null; },
+    parallel: async (fns) => { const r = []; for (const fn of fns) r.push(await fn()); return r; },
+    phase: () => {}, log: () => {},
+    budget: { spent: () => 50000 },
+    workflow: async (ref, extraArgs) => workflowReturns[wIdx++] ?? null,
+    args: JSON.stringify({ targetClass: 'GetNextPogStepAssistantDetailsUsecase', runDate: '2026-06-24' }),
+    Date: thr,
+    Math: { random: () => { throw new ReferenceError('Math.random() unavailable'); } },
+  };
+  const patched = src.replace(/^export\s+const\s+meta\s*=/m, 'const meta =');
+  const ctx = createContext(sandbox);
+  const result = await new Script(`(async () => { ${patched} })()`, { filename: 'loop-flutter-classify.js' }).runInContext(ctx);
+
+  assert.equal(result?.variant, 'inc4-loop-flutter', 'returns the loop-flutter variant');
+  assert.equal(result?.allGatesGreen, true, 'green path');
+
+  // The classify-survivors agent was spawned (survivors > 0) and got ONLY the un-pre-tagged survivors.
+  const classify = agentCalls.find((c) => c.opts?.label === 'classify-survivors');
+  assert.ok(classify, 'classify-survivors agent spawned on populated residuals');
+  assert.match(classify.promptFull, /line 60:/, 'classify prompt includes the un-pre-tagged survivor on line 60');
+  assert.match(classify.promptFull, /line 70:/, 'classify prompt includes the un-pre-tagged survivor on line 70');
+  assert.ok(!/line 50:/.test(classify.promptFull), 'the orchestrator-pre-tagged equivalent-logging survivor (line 50) is NOT sent to the agent');
+  // Schema-level validation: the agent's tag enum is exactly the four source-dependent tags (cross-realm
+  // safe membership checks — the schema object is built inside the vm context, so deepStrictEqual on its
+  // arrays would trip the prototype check).
+  const tagEnum = classify.opts?.schema?.properties?.classifications?.items?.properties?.tag?.enum;
+  assert.ok(Array.isArray(tagEnum) && tagEnum.length === 4, 'classify agent constrains the tag to a 4-value enum');
+  for (const t of ['equivalent-format', 'dead-code', 'masked', 'REAL-gap']) {
+    assert.ok(tagEnum.includes(t), `tag enum includes the source-dependent tag ${t}`);
+  }
+  assert.ok(!tagEnum.includes('equivalent-logging'), 'equivalent-logging is NOT agent-assignable (it is the orchestrator pre-tag)');
+
+  // The report renders each survivor's tag (orchestrator pre-tag + agent verdicts), implied cleanups, and the suggestion.
+  const report = agentCalls.find((c) => c.opts?.label === 'report-write');
+  assert.ok(report, 'report-write agent invoked');
+  assert.match(report.promptFull, /Line 50:.*\*\*equivalent-logging\*\*/, 'report tags line 50 equivalent-logging (orchestrator pre-tag)');
+  assert.match(report.promptFull, /Line 60:.*\*\*dead-code\*\*/, 'report records the agent dead-code verdict for line 60');
+  assert.match(report.promptFull, /Line 70:.*\*\*REAL-gap\*\*/, 'report records the agent REAL-gap verdict for line 70');
+  assert.match(report.promptFull, /## Implied cleanups/, 'report has an Implied cleanups section');
+  assert.match(report.promptFull, /lib\/x\.dart:60 — remove the dead branch/, 'dead-code cleanup file:line surfaced');
+  assert.match(report.promptFull, /expectedSurvivorLines: \[50\]/, 'suggestion lists only the equivalent (logging/format) line');
+});
+
+// ==================================================================================================
+// Slice 9f-3: F1 — the REAL cover-flutter loop WITHHOLDS a pre-tagged equivalent-logging survivor from the
+// next iteration's re-feed (the Cover agent is never asked to chase it), while the un-pre-tagged REAL survivor
+// IS re-fed. Proven against the real pre-tag seam (equivalentLoggingLines → cover-flutter pre-tag → re-feed
+// filter), NOT an injected pre-tagged coverResult (adhoc-MvcSurvivorReport F1/F3). The pre-tagged survivor stays
+// SCORED in the denominator — only the re-feed is filtered.
+// ==================================================================================================
+test('cover-flutter withholds a pre-tagged equivalent-logging survivor from the next Cover iteration re-feed (F1)', async () => {
+  const src = readWorkflow(COVER_FLUTTER_PATH);
+  // Iter 1: suite_green FAILS (one failing run, both runs identical → no_flaky still ok) → not all-green → a 2nd
+  //   iteration runs. mutation_floor passes (8/10 = 80%). Two reachable survivors: line 50 (removeVoidCall on a
+  //   log line → orchestrator pre-tags equivalent-logging) and line 60 (a logical mutant → un-pre-tagged REAL).
+  const iter1Runner = flutterRunner({
+    testRuns: [ { passed: 12, failed: 1, skipped: 0 }, { passed: 12, failed: 1, skipped: 0 } ],
+    mutationSummary: { found: 10, undetected: 2, timeouts: 0, notCovered: 0 },
+    mutants: [
+      { status: 'Survived', location: { start: { line: 50 } }, mutatorName: 'removeVoidCall', replacement: '' },
+      { status: 'Survived', location: { start: { line: 60 } }, mutatorName: 'logical.and', replacement: '||' },
+    ],
+  });
+  // Iter 2: clean green, no survivors → stops all-gates-green (ratchet 80 → 100 holds).
+  const iter2Runner = flutterRunner({
+    testRuns: [ { passed: 12, failed: 0, skipped: 0 }, { passed: 12, failed: 0, skipped: 0 } ],
+    mutationSummary: { found: 10, undetected: 0, timeouts: 0, notCovered: 0 },
+    mutants: [],
+  });
+  const { result, calls } = await runInSandbox(src, [null, iter1Runner, null, iter2Runner], JSON.stringify({ equivalentLoggingLines: [50] }));
+  assert.equal(result?.stopped, 'all-gates-green', 'a 2nd iteration ran and then cleared all gates');
+  assert.equal(result?.iter, 2, 'stopped on iteration 2 (iter 1 was not all-green)');
+
+  const iter2Cover = calls.find((c) => c.opts?.label === 'cover:iter-2');
+  assert.ok(iter2Cover, 'a 2nd Cover iteration was spawned');
+  assert.match(iter2Cover.promptFull, /at line 60/, 'the un-pre-tagged REAL survivor (line 60) IS re-fed to the next Cover iteration');
+  assert.ok(!/at line 50/.test(iter2Cover.promptFull),
+    'the pre-tagged equivalent-logging survivor (line 50) is WITHHELD from the re-feed (F1) — never chased by the Cover agent');
+});
+
+// ==================================================================================================
+// Slice 9f-4: F1/F2 END-TO-END seam. Run the REAL cover-flutter so the equivalent-logging tag is GENUINELY
+// produced by the pre-tagger (not hand-injected), then feed that genuine coverResult into the REAL loop-flutter
+// and prove: (a) the GENUINE pre-tag (line 50) is withheld from the classify agent, and (b) TWO survivors on
+// the SAME line (line 60, two mutators) receive DISTINCT verdicts — keyed per-survivor by index, no
+// last-verdict-wins collision (adhoc-MvcSurvivorReport F1/F2/F3).
+// ==================================================================================================
+test('loop-flutter withholds the GENUINE cover pre-tag from classify AND keys two survivors on one line per-survivor (F1/F2)', async () => {
+  // STAGE 1 — REAL cover-flutter → genuine pre-tag. Stops all-gates-green on iter 1 with FOUR reachable
+  // survivors: line 50 (pre-tagged equivalent-logging) + TWO on line 60 (different mutators) + line 70.
+  // 16/20 killed = 80% >= 75 floor.
+  const coverSrc = readWorkflow(COVER_FLUTTER_PATH);
+  const coverRunner = flutterRunner({
+    testRuns: [ { passed: 20, failed: 0, skipped: 0 }, { passed: 20, failed: 0, skipped: 0 } ],
+    mutationSummary: { found: 20, undetected: 4, timeouts: 0, notCovered: 0 },
+    mutants: [
+      { status: 'Survived', location: { start: { line: 50 } }, mutatorName: 'removeVoidCall', replacement: '' },
+      { status: 'Survived', location: { start: { line: 60 } }, mutatorName: 'logical.and',  replacement: '||' },
+      { status: 'Survived', location: { start: { line: 60 } }, mutatorName: 'replaceFirst', replacement: 'replaceAll' },
+      { status: 'Survived', location: { start: { line: 70 } }, mutatorName: 'conditional.boundary', replacement: '<=' },
+    ],
+  });
+  const { result: coverResult } = await runInSandbox(coverSrc, [null, coverRunner], JSON.stringify({ equivalentLoggingLines: [50] }));
+  assert.equal(coverResult?.stopped, 'all-gates-green', 'cover-flutter stopped all-gates-green with residual survivors');
+  const genuineSurvivors = coverResult.gates.mutation_floor.detail.reachableSurvivors;
+  assert.equal(genuineSurvivors.length, 4, 'four reachable survivors carried out of cover-flutter');
+  assert.equal(genuineSurvivors.find((s) => s.line === 50).tag, 'equivalent-logging',
+    'cover-flutter GENUINELY pre-tagged line 50 (the tag is produced by the pre-tagger, not injected by the test)');
+  assert.ok(genuineSurvivors.filter((s) => s.line === 60).every((s) => s.tag === undefined),
+    'the two line-60 survivors are un-pre-tagged (source-dependent → for the classify agent)');
+
+  // STAGE 2 — feed the GENUINE coverResult into the REAL loop-flutter.
+  const loopSrc = readWorkflow(LOOP_FLUTTER_PATH);
+  // toClassify order = [line 60 (logical.and), line 60 (replaceFirst), line 70] → the agent echoes indices 0,1,2.
+  // The two line-60 verdicts DIFFER: a line key would let REAL-gap (index 1) clobber masked (index 0).
+  const classifyReturn = { classifications: [
+    { index: 0, line: 60, tag: 'masked',    reason: 'else-branch reproduces the same ZPL' },
+    { index: 1, line: 60, tag: 'REAL-gap',  reason: 'suite missed the replaceAll path' },
+    { index: 2, line: 70, tag: 'dead-code', reason: 'guard never taken', cleanup: 'lib/x.dart:70 — remove the dead guard' },
+  ] };
+  // Green path, runDate skips date-stamp: kb-write-file, kb-flip, classify-survivors, report-write.
+  const agentFixtures = [{ written: true }, { written: true }, classifyReturn, { written: true }];
+  const mineVerifyReturn = { consensusRules: [{ id: 'BR-1', kind: 'interpretive', agreement: 3, lines: '10', statement: 'rule A' }],
+    interpretiveVerdicts: [{ id: 'BR-1', verdict: 'CONFIRMED', evidence: 'ok' }], counts: { consensusRules: 1 } };
+  const workflowReturns = [mineVerifyReturn, coverResult];
+  const agentCalls = [];
+  function thr() { throw new ReferenceError('Date unavailable in workflow scripts'); }
+  thr.now = () => { throw new ReferenceError('Date unavailable'); };
+  let aIdx = 0, wIdx = 0;
+  const sandbox = {
+    agent: async (prompt, opts) => { agentCalls.push({ promptFull: typeof prompt === 'string' ? prompt : '', opts }); return agentFixtures[aIdx++] ?? null; },
+    parallel: async (fns) => { const r = []; for (const fn of fns) r.push(await fn()); return r; },
+    phase: () => {}, log: () => {},
+    budget: { spent: () => 50000 },
+    workflow: async (ref, extraArgs) => workflowReturns[wIdx++] ?? null,
+    args: JSON.stringify({ targetClass: 'GetNextPogStepAssistantDetailsUsecase', runDate: '2026-06-24' }),
+    Date: thr,
+    Math: { random: () => { throw new ReferenceError('Math.random() unavailable'); } },
+  };
+  const patched = loopSrc.replace(/^export\s+const\s+meta\s*=/m, 'const meta =');
+  const ctx = createContext(sandbox);
+  await new Script(`(async () => { ${patched} })()`, { filename: 'loop-flutter-seam.js' }).runInContext(ctx);
+
+  // (a) The classify agent got the un-pre-tagged survivors at DISTINCT indices and NOT the genuine pre-tag.
+  const classify = agentCalls.find((c) => c.opts?.label === 'classify-survivors');
+  assert.ok(classify, 'classify-survivors spawned on the genuine residuals');
+  assert.ok(!/line 50:/.test(classify.promptFull),
+    'the GENUINE equivalent-logging pre-tag (line 50) is withheld from the classify agent — end-to-end seam, not an injected tag');
+  assert.match(classify.promptFull, /index 0 \| line 60:/, 'first line-60 survivor sent at index 0');
+  assert.match(classify.promptFull, /index 1 \| line 60:/, 'second line-60 survivor sent at index 1 (distinct from the first)');
+
+  // (b) F2: the two survivors on ONE line get DISTINCT verdicts in the report (no last-verdict-wins collision).
+  const report = agentCalls.find((c) => c.opts?.label === 'report-write');
+  assert.ok(report, 'report-write invoked');
+  assert.match(report.promptFull, /Line 60: logical\.and.*\*\*masked\*\*/, 'the logical.and survivor on line 60 is tagged masked (index 0)');
+  assert.match(report.promptFull, /Line 60: replaceFirst.*\*\*REAL-gap\*\*/, 'the replaceFirst survivor on line 60 is tagged REAL-gap (index 1) — NOT clobbered by the masked verdict');
+  assert.match(report.promptFull, /Line 50:.*\*\*equivalent-logging\*\*/, 'line 50 carries the orchestrator pre-tag in the report');
+  assert.match(report.promptFull, /Line 70:.*\*\*dead-code\*\*/, 'line 70 tagged dead-code (index 2)');
 });
 
 // ==================================================================================================
