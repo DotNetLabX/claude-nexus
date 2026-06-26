@@ -76,6 +76,10 @@ When a stack's mutation tool is **regex-based** (e.g. Dart's `mutation_test`) it
 
 The loop runs as a Workflow the orchestrator **instantiates from this spec** — skill markdown cannot reference a bundled script path, so the Workflow is authored from this method, not loaded. The dev-repo reference implementation lives in the nexus repo `harness/` (maintainer reference, not shipped). Workflow scripts run in a constrained runtime: no static import, no filesystem in the orchestrator (agents do all I/O), `meta` a pure literal, no `Date()`/`Math.random()` (they break resume), args may arrive JSON-stringified, and `budget.spent()` is the shared pool. Validate a Workflow against an offline mock-globals guard, never via expensive live runs.
 
+## Model
+
+Pin the `agent()` calls to **Sonnet** (`model: 'sonnet'`) — do **not** inherit the session model (often Opus). The gate is a *mechanical* evaluator, so what counts is the tests' quality, and Sonnet clears the floor on every target proven to date (.NET + Flutter, 90–100% reachable kill); Opus adds cost with no demonstrated gain. A stronger model may earn its keep only on the Verify skeptic (equivalent-mutant reasoning) — reserve it there if anywhere, never as the blanket default.
+
 ## What this skill does NOT do
 
 - Provide the toolchain — that is the stack adapter's job (`mine-verify-cover-dotnet` for .NET, `mine-verify-cover-flutter` for Dart/Flutter, `mine-verify-cover-cpp` for C/C++).

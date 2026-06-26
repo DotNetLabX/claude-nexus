@@ -1,6 +1,13 @@
 # nexus — Changelog
 
 
+## [1.18.4] — 2026-06-25
+**Pin Sonnet as the mine-verify-cover model policy.** The method now tells the authoring orchestrator to set
+`model: 'sonnet'` on the agent calls rather than inheriting the session model (often Opus). The mutation gate
+is a mechanical evaluator, so test quality is what matters and Sonnet clears the floor on every target proven
+to date (.NET + Flutter, 90–100%); Opus adds cost without a demonstrated gain (reserve a stronger model for
+the Verify skeptic only). Updates the `mine-verify-cover` skill (adhoc-FlutterSonnetDefault).
+
 ## [1.18.3] — 2026-06-25
 - PATCH bump.
   - skill change (mine-verify-cover)
