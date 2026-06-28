@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "claude-nexus": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/DotNetLabX/claude-nexus.git"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "nexus@claude-nexus": true
+  }
+}
