@@ -1,5 +1,7 @@
 # Branch Pre-Flight Guard + Push Gate — Lessons
 
+> **Learner disposition (2026-06-29 → nexus 1.18.7):** **[APPLIED]** spawn pipeline subagents by `subagent_type` only, never a custom name (BG-C-1, with RecipeEstateAudit) → team-lead spawn discipline. The selfcheck/gen-omni pre-commit false-positives (BG-L-3) shipped via the `selfcheck.mjs` regen-idempotency fix. `guard.js` `git fetch` doc-vs-regex mismatch (BG-C-2) remains an out-of-scope doc-hardening follow-up.
+
 ## Developer Lessons
 - **`bump-plugin.mjs --check` flips to "no bump needed" *after* you apply the bump — that is the green state, not a regression.** The check is git-HEAD-based: post-`bump-plugin.mjs`, the working-tree `plugin.json` already differs from HEAD, so the check reads "the bump is present" → exit 0. Don't re-bump or panic when `--check` says "no bump needed" right after applying one; it means the bump is staged-ready.
 - **`claude plugin validate --strict` currently fails on two *unrelated, pre-existing* skills** (`evaluate-skill`, `improve-skills`) over their long multi-line `description:` frontmatter + `user-invocable` key. Before attributing any validate failure to your change, run `git diff --name-only HEAD | grep <file>` — if the failing file isn't in your diff, it's pre-existing. The authoritative project gate is `scripts/selfcheck.mjs` (lint+unit), not `claude plugin validate`; selfcheck's lint+unit passed clean.

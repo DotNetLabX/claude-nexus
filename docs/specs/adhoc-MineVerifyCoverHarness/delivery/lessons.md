@@ -1,5 +1,7 @@
 # Mine→Verify Harness — Increment 1 — Lessons
 
+> **Learner disposition (2026-06-29 → nexus 1.18.7):** **[APPLIED]** ADR-21 fabricated-closure (CVH-CL-4) → team-lead idempotency-gate closure-provenance validation (no blocking hook — platform-unsound, see memory `adr21-backstop-hook-unsound`); **[APPLIED]** operator-owed-by-construction + build-only "what PASS doesn't prove" (CVH-D-3/A-2/CL-2/D-5) → `create-implementation-plan`. **[TRACKED]** Workflow vm-sandbox test idioms (cross-realm ReferenceError/membership) — project-local, narrow. The marginal-cost/mutate-glob/date-via-args items already shipped (commit 9da8d69).
+
 ## Developer Lessons
 
 - **The proven reference for a clean-room Workflow lives in two session files, not the repo.** The

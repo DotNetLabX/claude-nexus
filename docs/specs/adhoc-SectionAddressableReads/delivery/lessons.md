@@ -1,5 +1,7 @@
 # Lessons — adhoc-SectionAddressableReads
 
+> **Learner disposition (2026-06-29 → nexus 1.18.7):** **[APPLIED]** gen-commands selfcheck false-positive (SA-C-1/C-2, ~125k-token bounce) → `selfcheck.mjs` regen-idempotency check; **[APPLIED]** re-check branch before every commit + defer omni sync (SA-C-3/C-4) → team-lead Commit Protocol; **[APPLIED]** spawn-by-`subagent_type`-only → team-lead spawn discipline. ADR-22 read-discipline size-nudge stays at 1 occurrence (not promoted).
+
 ## Architect Lessons
 
 - **The feature dogfooded itself, and lost.** During the Mode-2 plan review, the critic re-read

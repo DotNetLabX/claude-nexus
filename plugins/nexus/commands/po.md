@@ -49,7 +49,7 @@ Flag any gaps to the user before writing. Fix them in discussion, not in the spe
 
 Invoke the `create-feature-spec` skill. Write in domain/product language — no class names, method signatures, or framework internals; acceptance criteria pass/fail. Output: `docs/specs/{slug}/definition/spec.md` (or `epic.md` / `bug.md`).
 
-**Help content (ask at writing time, once):** "Do you want help content files for this feature?" If yes, write `docs/specs/{slug}/definition/help.tooltips.md` — one section per UI element, tooltip text only (under 150 chars), user-facing language (see the help-tooltips rule for consumers). **After fixing review findings, sync-check the help file** against the revised spec and patch affected sections. If no, skip — the file is optional and downstream agents treat it as absent.
+**Help content (UI features: default deliverable, confirmed upfront).** For any feature with UI elements, help/tooltips is produced **by default** — surface the confirm-or-skip in the **upfront clarifying-questions batch** (the interview, before the spec is written), not as a trailing writing-time line that gets skipped (user-reported regression — kg P4). When producing, write `docs/specs/{slug}/definition/help.tooltips.md` — one section per UI element, tooltip text only (under 150 chars), user-facing language (see the help-tooltips rule for consumers). **After fixing review findings, sync-check the help file** against the revised spec and patch affected sections. A deliberate skip in the interview is fine — the file is optional and downstream agents treat it as absent.
 
 **After the spec goes Ready:** if `docs/backlog.md` exists, update the feature's row — Status `Spec Ready`, and put the spec path in the row's `Spec` column.
 

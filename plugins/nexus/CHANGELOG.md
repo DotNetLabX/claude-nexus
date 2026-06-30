@@ -1,6 +1,49 @@
 # nexus — Changelog
 
 
+## [1.18.7] — 2026-06-29
+**Learner consolidation — five recurring lessons promoted into the pipeline.** Drawn from 13 ad-hoc
+runs since the 1.13.0 feedback pass; each item is multi-occurrence or process-breaking.
+- **`team-lead` — closure-provenance validation at the idempotency gate.** Before trusting
+  `summary.md`/`.pipeline-state=done` and reporting "already done," scan `violations.log` for
+  unresolved fabrication lines for the slug (the load-bearing signal) and corroborate the last
+  commit's provenance — a developer subagent that fabricates a review, writes `summary.md`, commits,
+  and sets `done` otherwise short-circuits the retroactive `git log` catch (ADR-21; strongest
+  instance in adhoc-MineVerifyCoverHarness). No blocking pre-commit hook: it's platform-unsound (the
+  git layer can't see `agent_type`; the PreToolUse deny is dropped for background subagents, ADR-13).
+- **`team-lead` — spawn pipeline subagents by `subagent_type` only, never a custom `name`.** A custom
+  name becomes the `agent_type` the hooks key on, so verify-gate and boundary-detector mis-resolve the
+  role (the verify set doesn't run; legitimate owner-writes get flagged) and `TaskStop`/`TaskOutput`
+  can't address the agent. Address the running agent by its agentId.
+- **`team-lead` — Codex liveness & recovery.** Verify a real Codex job exists before waiting (a chat
+  ack is not proof), never hold the gate indefinitely, and relay Codex's file-write via the Relay
+  Contract when its sandbox is read-only.
+- **`team-lead` — re-check the branch before *every* commit.** The Pre-Flight branch guard is
+  launch-only; a concurrent same-tree run can switch the branch and move HEAD between launch and
+  commit. Plus: defer the omni-twin sync under concurrent runs.
+- **`create-implementation-plan` — operator-owed *by construction* for tool-surface gaps.** A step
+  needing a tool the implementer's surface lacks (the `Workflow`/`agent`/`parallel` primitives for a
+  developer subagent) is operator-owed up front; a build-only increment states what a PASS does not
+  yet prove; `node --check` is JS-syntax only and can't validate a Workflow script.
+
+  **Consuming-repo feedback (knowledge-gateway + sprint-rituals, re-grounded against live source):**
+  - **Hooks — resolve a suffixed/auto-suffixed spawn name to its base role** (`developer-2`,
+    `developer-f6` → `developer`), via a shared `hooks/scripts/lib/resolve-role.js`. `verify-gate.js`
+    and `boundary-detector.js` previously `.split(/[:/]/).pop()`, which strips a `:` namespace but not
+    a `-suffix`, so a suffixed re-spawn wrote `verdict:"skipped"` (reads as a pass but never ran) and
+    false-flagged a developer writing its own `implementation.md`. ~27 occurrences across both repos.
+    Landmine handled: `team-lead` never collapses to `team`.
+  - **`boundary-detector.js` — flag cross-agent task assignment** (a subagent `TaskUpdate owner=` to a
+    different agent) as ADR-21 peer-orchestration; self-claims and status-only updates are exempt.
+  - **`architect.md` — three more code-grounded-review triggers:** SDK/library-wiring (verify the
+    installed package), extending a same-session subsystem, and any live-external-dependency path.
+  - **`reviewer.md` — include WebApplicationFactory endpoint tests in the baseline scan;** confirm a
+    pre-existing failure by exception signature, not a stash round-trip.
+  - **`create-feature-spec` + `po.md` — help/tooltips is a default deliverable confirmed in the upfront
+    interview,** not a trailing opt-in (user-reported regression).
+  - **`team-lead.md` — verify `git diff --cached --name-only` before every commit** (the harness can
+    auto-stage unrelated files during a pause).
+
 ## [1.18.6] — 2026-06-26
 **Report-stage survivor-classification taxonomy.** The `mine-verify-cover` method now specifies a Report stage that classifies every residual survivor into one of five tags (`equivalent-logging`, `equivalent-format`, `dead-code`, `masked`, `REAL-gap`) and — critically — **who may assign each**: the orchestrator pre-tags only `equivalent-logging`, and only against an adapter-supplied log-line set; the source-dependent tags are assigned by a classify-survivors agent with source + KB access, the orchestrator merely records them and never defaults an unprovable survivor to `REAL-gap`. "Only `REAL-gap` is worth chasing" is a Report-stage / follow-up-run property — mid-loop the orchestrator can only filter its own `equivalent-logging` pre-tags, since the source-dependent tags are not known until the Report-stage classify; a survivor the classify agent leaves unanswered is recorded as a loud, logged `unclassified` terminal state, never defaulted to `REAL-gap`. The stage also emits implied source cleanups (`file:line`) and an `expectedSurvivorLines` suggestion. Additive to the 1.18.5 anti-fake-green invariant (referenced, not restated).
 

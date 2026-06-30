@@ -91,6 +91,51 @@ test('solo writing another role\'s artifact is STILL logged (the owner map widen
   assert.ok(all.every((v) => /owner/i.test(v.rule)));
 });
 
+test('a suffixed/auto-suffixed spawn name resolves to its base role for ownership (kg P1 + sr item 1)', () => {
+  const dir = makeSandbox();
+  detect(dir, 'developer-2', 'docs/specs/F1/delivery/implementation.md');   // own deliverable — was a FP
+  detect(dir, 'developer-f6', 'docs/specs/adhoc-X/delivery/implementation.md'); // own deliverable — was a FP
+  assert.ok(!existsSync(LOG(dir)), 'developer-2 / developer-f6 resolve to developer; no false owner-violation');
+});
+
+test('ownership is still enforced on the resolved base role (a suffixed developer writing plan.md logs)', () => {
+  const dir = makeSandbox();
+  detect(dir, 'developer-f6', 'docs/specs/F1/delivery/plan.md'); // architect's file — resolved role still checked
+  const [v] = lines(dir);
+  assert.equal(v.agent, 'developer', 'logged under the resolved base role');
+  assert.match(v.rule, /owner/i);
+});
+
+// --- ADR-21 peer channel: cross-agent task assignment (kg P3) ---
+function task(dir, agentType, tool, toolInput) {
+  return runHook(DETECTOR, {
+    session_id: 'sess-bd', tool_name: tool, agent_type: agentType, tool_input: toolInput, cwd: dir,
+  }, { projectDir: dir });
+}
+
+test('a subagent assigning a task to ANOTHER pipeline role via TaskUpdate is logged (kg P3)', () => {
+  const dir = makeSandbox();
+  task(dir, 'developer-2', 'TaskUpdate', { taskId: '2', owner: 'developer-1' }); // developer-1 resolves to developer
+  const [v] = lines(dir);
+  assert.match(v.rule, /cross-agent task assignment|peer-orchestration|ADR-21/i);
+});
+
+test('self-tracking is NOT logged: claiming your own task, a status-only update, or an owner-less TaskCreate', () => {
+  const dir = makeSandbox();
+  task(dir, 'developer', 'TaskUpdate', { taskId: '1', owner: 'developer' });  // claim own task (owner === role)
+  task(dir, 'developer-2', 'TaskUpdate', { taskId: '1', status: 'completed' }); // status-only, no owner
+  task(dir, 'developer', 'TaskCreate', { subject: 'my todo' });                 // owner-less by schema
+  assert.ok(!existsSync(LOG(dir)), 'self-tracking and own-task claims are sanctioned');
+});
+
+test('a suffixed agent self-claiming under its BASE role name is NOT a false positive (developer-2 -> owner:developer)', () => {
+  const dir = makeSandbox();
+  // A real developer-2 transcript emits TaskUpdate{owner:"developer"} — that is a self-claim, not a
+  // peer hand-off, so it must NOT log (else B re-introduces the suffix noise that A removed).
+  task(dir, 'developer-2', 'TaskUpdate', { taskId: '2', owner: 'developer' });
+  assert.ok(!existsSync(LOG(dir)), 'owner === base role of self is a self-claim, exempt');
+});
+
 test('main-session calls (no agent_type) are ignored — the foreground gate already covers them', () => {
   const dir = makeSandbox();
   const res = runHook(DETECTOR, {

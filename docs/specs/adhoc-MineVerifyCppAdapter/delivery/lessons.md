@@ -1,5 +1,7 @@
 # Lessons — adhoc-MineVerifyCppAdapter
 
+> **Learner disposition (2026-06-29 → nexus 1.18.7):** **[TRACKED]** per-worktree `.pipeline-state` (CPA-11) — a concurrent session's shared main-tree state false-tripped the source-write gate in a worktree; held as a high-blast-radius gate edit on 1 occurrence (see memory `recheck-branch-under-concurrent-run`). The C++ adapter/cover-prompt lessons are skill-internal to nexus-cpp (shipped 1.18.3), not cross-cutting.
+
 ## Architect / Execution Lessons
 
 - **The honest-refusal path is the proof, not the failure.** The live Cover run stopped `cap-reached` at

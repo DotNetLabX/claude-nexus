@@ -105,6 +105,15 @@ test('a namespaced agent_type is reduced to its final segment (nexus:developer �
   assert.equal(lastVerdict(dir).agent, 'developer', 'matches boundary-detector/read-tracker normalization');
 });
 
+test('a suffixed/auto-suffixed re-spawn resolves to its base role and the verify set RUNS (kg P1 + sr item 1)', () => {
+  const dir = makeSandbox();
+  setVerify(dir, [{ run: PASS, blocking: true }]);
+  stop(dir, { agentType: 'developer-2' }); // platform auto-suffix on a re-spawn of the rostered developer
+  const v = lastVerdict(dir);
+  assert.equal(v.agent, 'developer', 'developer-2 resolves to developer, not the unknown branch');
+  assert.equal(v.verdict, 'pass', 'the verify set actually ran — no silent verdict:"skipped" reading as a pass');
+});
+
 test('a recognized NON-implementation role (architect) → verify is NOT run, no verdict written', () => {
   const dir = makeSandbox();
   setVerify(dir, [{ run: FAIL, blocking: true }]); // would fail loudly if it ran

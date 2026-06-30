@@ -46,7 +46,7 @@ Before writing, ensure you have:
 
 2. **Walk through the reading protocol.** Read existing feature specs and the product spec. Identify which sections of the product spec this feature traces to.
 
-3. **Ask clarifying questions in one batch.** For anything ambiguous or unspecified in the business spec for this feature — ask once, all together. Do not write the file yet.
+3. **Ask clarifying questions in one batch.** For anything ambiguous or unspecified in the business spec for this feature — ask once, all together. Do not write the file yet. **For any feature with UI elements, help/tooltip content is a default deliverable — confirm-or-skip it *here*, in this upfront interview**, not as a trailing opt-in after the spec already exists (a help deliverable that arrives as a tail-end line gets skipped; it was user-reported as a plugin regression — kg P4).
 
 4. **Write the spec** — follow `workflows/Template.md`. Output path: `docs/specs/{slug}/definition/spec.md` (or `epic.md` for epics, `bug.md` for bugs).
 
@@ -61,7 +61,7 @@ Before writing, ensure you have:
 
 6. **Offer final choices** (writing-time decisions — see the PO agent's Spec review gate for who answers them in standalone vs spawned mode):
    - **Verification method:** self cross-check (quick, same-context) or critic review (Mode 1 — thorough, independent)?
-   - **Help content:** "Do you want help content files for this feature?" If yes, produce `docs/specs/{slug}/definition/help.tooltips.md` — one section per UI element, tooltip text only (under 150 chars), user-facing language. Sync-check it against the spec after any review fixes.
+   - **Help content:** for a UI feature this was already confirmed in the upfront interview (step 3) and is produced **by default** — produce `docs/specs/{slug}/definition/help.tooltips.md` unless the interview explicitly skipped it: one section per UI element, tooltip text only (under 150 chars), user-facing language. Sync-check it against the spec after any review fixes. (Only re-ask here if step 3 left it genuinely open.)
 
 ## Slug Resolution
 

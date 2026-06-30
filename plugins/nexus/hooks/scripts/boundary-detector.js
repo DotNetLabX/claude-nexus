@@ -38,6 +38,7 @@
 const fs = require('fs');
 const path = require('path');
 const { isCodeFile } = require('./lib/is-code-file');
+const { resolveRole } = require('./lib/resolve-role');
 
 const NONCODE_ROLES = new Set(['architect', 'reviewer', 'po', 'critic', 'team-lead', 'learner']);
 const PIPELINE_ROLES = new Set(['po', 'architect', 'developer', 'reviewer', 'critic', 'learner', 'team-lead', 'solo']);
@@ -72,19 +73,42 @@ process.stdin.on('data', (d) => (input += d));
 process.stdin.on('end', () => {
   try {
     const data = JSON.parse(input || '{}');
-    if (!/^(Write|Edit|MultiEdit|Agent|Task|Bash)$/.test(data.tool_name || '')) return process.exit(0);
+    if (!/^(Write|Edit|MultiEdit|Agent|Task|TaskCreate|TaskUpdate|Bash)$/.test(data.tool_name || '')) return process.exit(0);
     if (!data.agent_type) return process.exit(0); // main session: the foreground gate + team lead cover it
-    const role = String(data.agent_type).toLowerCase().split(/[:/]/).pop();
+    // resolveRole strips a `nexus:` namespace AND a custom/auto-suffixed spawn name (developer-2,
+    // developer-f6) to its base role — without it ARTIFACT_OWNERS false-flags a suffixed developer
+    // writing its OWN implementation.md. kg P1 + sr item 1.
+    const role = resolveRole(data.agent_type);
     const ti = data.tool_input || {};
 
     let rule = null;
     let fp = '';
     if (/^(Agent|Task)$/.test(data.tool_name)) {
       // ADR-21: delegated self-advancement — a subagent commissioning pipeline-role agents.
-      const target = String(ti.subagent_type || '').toLowerCase().split(/[:/]/).pop();
+      const target = resolveRole(ti.subagent_type);
       if (!PIPELINE_ROLES.has(target)) return process.exit(0); // research spawns are sanctioned
       fp = String(ti.subagent_type || '');
       rule = `subagent spawned a pipeline-role agent (${target}) — pipeline advancement belongs to the team lead alone (ADR-21)`;
+    } else if (/^Task(Create|Update)$/.test(data.tool_name)) {
+      // ADR-21 (peer channel): a subagent re-owning a task to ANOTHER agent via the task system.
+      // Assignment = setting `owner` (TaskCreate makes owner-less tasks; TaskUpdate sets owner). A
+      // subagent legitimately claims its OWN task (owner === its own spawn identity) or updates status
+      // (no owner); assigning work to a peer is the team lead's alone. The Agent/Task spawn branch above
+      // can't see this — it's a different tool. (kg P3 — developer-2 assigned "Step 2" to developer-1.)
+      // Compare RAW identities, not base roles: developer-2 and developer-1 both resolve to `developer`,
+      // so a base-role compare would mistake a peer hand-off for a self-claim and miss it. (A base-role
+      // self-claim — owner `developer` while spawned `developer-2` — may log; the detector is
+      // observe-only, so the team lead adjudicates that rare case rather than the breach going unseen.)
+      const ownerRaw = String(ti.owner || '').toLowerCase();
+      const selfRaw = String(data.agent_type || '').toLowerCase();
+      // Exempt a self-claim by EITHER the exact spawn identity (developer-2 -> developer-2) OR the
+      // bare base role of self (developer-2 -> "developer") — an agent naturally claims its own task as
+      // "the developer". A peer hand-off (developer-2 -> developer-1) still differs from both, so it
+      // still flags. Without the base-role exemption the raw compare re-introduces the very suffix
+      // noise resolve-role removed (a real developer-2 emits `TaskUpdate{owner:"developer"}`).
+      if (!ownerRaw || ownerRaw === selfRaw || ownerRaw === resolveRole(data.agent_type)) return process.exit(0);
+      fp = `${data.tool_name} owner=${ti.owner}`;
+      rule = `subagent re-owned a task to another agent (${ti.owner}) — cross-agent task assignment belongs to the team lead alone (ADR-21 peer-orchestration)`;
     } else if (data.tool_name === 'Bash') {
       // ADR-18/20: pipeline agents never commit — the team lead owns commits. A subagent running a
       // state-changing git write is the #1 fabrication vector's commit leg. Best-effort EARLY-WARNING

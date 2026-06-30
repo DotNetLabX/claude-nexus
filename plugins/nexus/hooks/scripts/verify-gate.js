@@ -39,6 +39,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { resolveRole } = require('./lib/resolve-role');
 
 // Roles that write application source — the gate's verify boundary. Everything else that is a
 // recognized pipeline role is a NON-impl stop (skip); anything not in either set is "unknown".
@@ -112,7 +113,10 @@ process.stdin.on('end', () => {
     let token = '';
     try { token = fs.readFileSync(path.join(root, '.claude', '.pipeline-state'), 'utf8').trim(); } catch { /* no token */ }
 
-    const rawAgent = data.agent_type ? String(data.agent_type).toLowerCase().split(/[:/]/).pop() : '';
+    // resolveRole strips a `nexus:` namespace AND resolves a custom/auto-suffixed spawn name
+    // (developer-2, developer-f6) to its base role — without it a suffixed re-spawn lands in
+    // Branch 3 as verdict:"skipped" (reads as a pass but never ran). kg P1 + sr item 1.
+    const role = resolveRole(data.agent_type);
     const session = String(data.session_id || '');
     const agentId = String(data.agent_id || '');
     const base = { ts: new Date().toISOString(), agent_id: agentId, session, token };
@@ -123,12 +127,12 @@ process.stdin.on('end', () => {
     }
 
     // Branch 2: a recognized non-implementation role — not the verify boundary. Skip, no verdict.
-    if (rawAgent && NONIMPL_ROLES.has(rawAgent)) return process.exit(0);
+    if (role && NONIMPL_ROLES.has(role)) return process.exit(0);
 
     // Branch 3: absent or unrecognized agent_type — WRITE an unknown-marked record, never a
     // silent skip (HIGH-2). Verify is not run because we cannot confirm this is the impl boundary.
-    if (!rawAgent || !IMPL_ROLES.has(rawAgent)) {
-      write({ ...base, agent: 'unknown', verdict: 'skipped', reason: rawAgent ? `unrecognized agent_type: ${rawAgent}` : 'absent agent_type', commands: [], blocking_failed: false });
+    if (!role || !IMPL_ROLES.has(role)) {
+      write({ ...base, agent: 'unknown', verdict: 'skipped', reason: role ? `unrecognized agent_type: ${role}` : 'absent agent_type', commands: [], blocking_failed: false });
       return process.exit(0);
     }
 
@@ -139,7 +143,7 @@ process.stdin.on('end', () => {
     // commands_count makes an empty/undetectable set a visible audit signal: a verdict:"pass" with
     // commands_count:0 is "nothing was verified", distinct from a real green run — the team lead can
     // tell the difference at its checkpoint instead of trusting a silent pass.
-    write({ ...base, agent: rawAgent, verdict: blocking_failed ? 'fail' : 'pass', commands: results, commands_count: results.length, blocking_failed });
+    write({ ...base, agent: role, verdict: blocking_failed ? 'fail' : 'pass', commands: results, commands_count: results.length, blocking_failed });
   } catch { /* fail silent — a genuine error is zero-footprint, distinct from the unknown WRITTEN record */ }
   process.exit(0);
 });

@@ -50,10 +50,22 @@ const checks = [
   {
     name: 'gen-commands drift',
     run: () => {
+      // Working-tree-aware: the question is "are commands consistent with the CURRENT agents?",
+      // not "are commands committed?". A `git diff --exit-code` vs the index/HEAD always fires at the
+      // developer's pre-commit stop — agent edits AND their regen'd commands are both uncommitted by
+      // design (ADR-18, the developer never commits) — a documented false-positive that once bounced a
+      // developer for ~125k tokens. So gate on whether REGEN itself introduces drift: snapshot the
+      // commands' working-tree CONTENT, regen, and compare. Equal ⇒ in sync (commands already match
+      // agents, committed or not); changed ⇒ genuine drift (an agent edited whose command wasn't regen'd).
+      // Snapshot CONTENT (`git diff`), not status flags: a `git status --porcelain` snapshot is
+      // byte-identical before/after when an already-dirty command's content changes but its ` M` flag
+      // doesn't — which would false-pass genuine drift. `git diff` is content-sensitive.
+      const snap = () => exec('git', ['diff', '--', 'plugins/nexus/commands']).output;
+      const before = snap();
       const regen = exec(node, ['scripts/gen-commands.mjs', 'nexus']);
       if (regen.status !== 0) return { ok: false, detail: 'gen-commands failed to run' };
-      const diff = exec('git', ['diff', '--exit-code', '--', 'plugins/nexus/commands']);
-      return { ok: diff.status === 0, detail: diff.status === 0 ? 'in sync' : 'commands/ differ from agents/ — commit the regen' };
+      const ok = snap() === before;
+      return { ok, detail: ok ? 'in sync' : 'commands/ differ from agents/ — run gen-commands' };
     },
   },
   {

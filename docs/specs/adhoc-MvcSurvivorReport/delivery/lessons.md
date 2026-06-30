@@ -1,5 +1,7 @@
 # adhoc-MvcSurvivorReport — Lessons
 
+> **Learner disposition (2026-06-29 → nexus 1.18.7):** **[APPLIED]** ADR-21 closure-forgery (RT-4, CVH-CL-4-class) → team-lead idempotency-gate provenance check; **[APPLIED]** bump-once-after-all-edits / dry-run-`current+1`-not-a-mandate (#45/#48) → CLAUDE.md release section. RT-5 (route interacting-computation reviews to Standard+Codex) folds into the already-shipped code-grounded-review mandate (architect.md L191) — confirming, not re-promoted.
+
 ## Architect Lessons
 
 - **A "pure classifier" over mutant metadata is a trap when the tags are source-semantic.** The plan specified a pure fn mapping `{line, mutatorName, replacement}` → one of 5 survivor tags. Three tags (`dead-code`, `masked`, `equivalent-format`) are cross-procedural / whole-source properties the orchestrator (no fs) cannot derive — and `mutatorName` carries the mutation *kind*, not the source *text*, so even `equivalent-logging` isn't safely derivable from a line number. The code-grounded critic caught it as CRITICAL. **Lesson:** before specifying a pure orchestrator fn, check that EVERY output value is derivable from the declared input alone; a property that needs the source must be assigned by an agent with source access, with the orchestrator only recording the verdict. Phantom input fields (`kbFlagged`, which nothing in the pipeline produces) are the tell that the design is reaching for context it doesn't have.

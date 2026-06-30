@@ -13,6 +13,11 @@ the plugin's `version` never reaches users (`/plugin update` is a no-op). So:
   **`release-plugin`** skill — or directly `node scripts/bump-plugin.mjs --dry-run` then
   `node scripts/bump-plugin.mjs` — to bump `plugin.json` + `CHANGELOG.md`, and **commit the bump
   in the same commit as the change.**
+- **Run the bump once, after *all* of a feature's edits land — never per-step.** `bump-plugin.mjs`
+  classifies the whole working tree against HEAD, so a mid-sequence run re-detects the still-dirty
+  earlier steps and double-bumps them. And on an already-bumped (uncommitted) feature, a `--dry-run`
+  proposing `current+1` is a false dirty-vs-HEAD signal, **not** a cue to bump again — a same-feature
+  fix-cycle edit rides within the existing uncommitted bump; only bump when `cur` equals committed HEAD.
 - Semver: **PATCH by default** — the tool proposes a PATCH for any shipped-file change (a
   version-keyed cache means even a patch reaches users, so "must reach users" never forces a higher
   tier). **The owner escalates** to MINOR (`--minor`, new capability) or MAJOR (`--major`, breaking /
