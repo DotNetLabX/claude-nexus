@@ -106,9 +106,9 @@ The orchestrator supplies **only** the `equivalentLoggingLines` signal and pre-t
 ## Test style (so generated tests compile and kill mutants)
 
 - **Example tests** — `flutter_test`: `test()` / `group()`, one test per rule boundary. Assert on the **returned value** (and any observable collaborator call) — never on log output (that over-specifies and only chases equivalent mutants).
-- **Mocks** — `mocktail` (no codegen). REUSE the repo's central `test/mocks.dart` where a mock exists; for a collaborator with no mock there, declare a local one in the test file (`class MockFoo extends Mock implements Foo {}`) — do not edit the shared mocks file. Register `mocktail` fallback values for non-primitive arg types.
+- **Mocks** — `mocktail` (no codegen). REUSE the repo's central `test/mocks.dart` where a mock exists; for a collaborator with no mock there, declare a local one in the test file (`class MockFoo extends Mock implements Foo {}`) — do not edit the shared mocks file. Register `mocktail` fallback values for non-primitive arg types. **Rule (not a suggestion): mock ONLY true I/O boundaries** — repositories, plugin `MethodChannel`s, other use-cases — and **never mock a plain data model** (a `*Model` / entity / value object). *Why: a mocked data getter returns a canned value and blinds the suite to aggregation / derivation bugs* — the pilot POG `SdkRealogramModel` gap the rerun closed by constructing real objects instead of stubbing the getter.
 - **Property tests** — `kiri_check` (`forAll`, shrinking, stateful model testing) is the actively-maintained PBT library; use it for pure functions and state machines. `glados` is effectively unmaintained — avoid.
-- **Fixtures** — build realistic model/entity objects through their real constructors (read the model source for required fields; reuse a repo's `test/dummy_data` or `*_dummy.dart` if present). Pin the exact boundary cases each rule turns on so relational, logical, and arithmetic mutants die — including **traversal-direction** cases (a circular-index mutation only dies when 2+ candidates qualify at different positions).
+- **Fixtures** — construct real domain models via the repo's `*_dummy.dart` factories (or their real constructors when no dummy exists; read the model source for required fields, reuse a repo's `test/dummy_data`) — **never a mocked stand-in for a data model** (see Mocks: mocking a data getter is the aggregation-bug blind spot). Pin the exact boundary cases each rule turns on so relational, logical, and arithmetic mutants die — including **traversal-direction** cases (a circular-index mutation only dies when 2+ candidates qualify at different positions).
 - Collaborators returning `Either<Failure, _>` (dartz): stub `Right(...)` for happy paths and `Left(Failure)` for failure-propagation rules.
 
 Record these facts in a project `docs/conventions/mutation-testing.md` so the Cover agent reads the contract from the consuming repo.
@@ -117,6 +117,12 @@ Record these facts in a project `docs/conventions/mutation-testing.md` so the Co
 
 The method's Minimize stage (see `mine-verify-cover` → "The Minimize stage") reuses signals and toolchain
 this adapter already provides — no new capability.
+
+**Categorical-KEEP — Dart cue.** The method keeps a **degenerate-input** test even when mutation-redundant
+(see `mine-verify-cover` → "The Minimize stage", the categorical-KEEP class). In Dart that keeper constructs
+the edge and asserts the no-op result — an **empty template `''`**, an **absent-placeholder** input, or an
+**empty list `[]`** passed to the use-case, asserting the returned value is unchanged / empty / the
+documented safe no-op — and is marked `categoricalKeep: true` so the orchestrator refuses its removal.
 
 **Generation guard signal.** The guard's "no log-output assertions" is the adapter's existing test-style
 rule (above, "Test style" — assert on the returned value, never on log output) and the

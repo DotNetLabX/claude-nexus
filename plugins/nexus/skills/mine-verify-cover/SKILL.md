@@ -59,6 +59,14 @@ classify-survivors** (the stage below): that stage tags unkilled *mutants*; this
 kill nothing new. Suite target is **rule-traceable, not mutation-minimal** — trim true duplicates and
 categorically-dead tests, keep every test that documents a distinct verified rule.
 
+**Activation gate.** Minimize runs only when the generated test count **materially exceeds** the distinct
+mined-rule count — a **non-zero margin above** it, not merely *more than* it (margin 0 would never skip).
+At or near the rule count there is nothing safe to trim, so the whole stage is **skipped** — logged **and**
+reported, never a silent no-op. Both counts are computed **upstream** and are read, never re-derived: the
+mined **consensus-rule count** and the **green suite size**. Do **not** count them from the removal
+proposal — the proposal lists only the tests being *removed*, which do not exist until the minimize agent
+has already run.
+
 **Who attributes redundancy.** A **minimize agent** (source + suite + the final-iteration survivor list,
 model: sonnet) reconstructs, by **reasoning**, which mutant(s) each test kills and proposes removals. The
 mutation tool reports only aggregate survivors, never which *test* killed which mutant — so the
@@ -78,6 +86,25 @@ against):
    against two different rule IDs.
 4. Boundary test with no distinguishing input — a "boundary" test that never actually constructs the
    input that distinguishes the boundary.
+
+**The categorical-KEEP class (the inverse — never removable).** A test is a **categorical-KEEP** — kept
+even when mutation-redundant and filed under a **shared rule ID** — when it **constructs a
+degenerate/boundary input and asserts the observable safe/no-op result**: empty input, no-match, zero /
+empty-collection, or the documented failure-passthrough. This is the **inverse** of the four
+categorical-dead classes and sits alongside the existing distinct-verified-rule keep. Rationale: the
+fail-closed **confirm** compares exact *kill counts*, and a mutation-redundant behaviour test contributes
+**zero** unique kills — so its removal leaves the count unchanged and is **invisible to the confirm**. The
+confirm is structurally **blind to behaviour-coverage loss**; the guard therefore has to live *before*
+removal, at this categorical layer, not in the post-removal count check. The orchestrator honors the
+categorical-KEEP signal the **same mechanical way** it honors the distinct-verified-rule keep — a filter it
+applies to the agent's proposal, never a removal it derives: the agent proposes, the orchestrator refuses
+removal of any candidate carrying a keep signal.
+
+**The discriminator vs categorical-dead class #4.** Class #4 removes a "boundary" test that **never
+constructs** the distinguishing input; a categorical-KEEP protects a degenerate test that **does** construct
+the edge and asserts the no-op. The single discriminator: *does the test actually construct the degenerate
+input AND assert the observable result?* Yes → KEEP; names a boundary but never builds it → still class #4
+(remove). Stated adjacently so the two rules read as complementary, not contradictory.
 
 **Actor split / I/O ownership.** The orchestrator has no filesystem, so every I/O step here is an agent,
 same as everywhere else in this method: the minimize agent reads and reasons (no writes); a
@@ -100,7 +127,10 @@ where the mutation tool supports line-scoping — the adapter states which appli
 
 **Report line.** Every run reports `minimized: removed N tests, reachable kill X%→X% (confirmed
 unchanged)`; a held-back minimize (the confirm regressed) reports `held-back: confirm-regression` with the
-restored count instead. Never a silent trim.
+restored count instead; an **activation-gate skip** (Minimize never ran because the suite was at the rule
+floor) reports a **third form** — `minimized: skipped (at rule-floor) — generated N ≤ rules M + margin` — so
+a skipped stage is never rendered as "removed 0 tests / no redundant tests found" (which would misreport a
+stage that did not run). Never a silent trim.
 
 ## The Report stage — survivor classification
 

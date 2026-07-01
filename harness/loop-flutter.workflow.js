@@ -50,6 +50,10 @@ const EXPECTED_SURVIVOR_LINES = _args.expectedSurvivorLines ?? []
 const EQUIVALENT_LOGGING_LINES = _args.equivalentLoggingLines ?? []
 const MUTATION_FLOOR = _args.mutationFloor ?? 75
 const MAX_ITERATIONS = _args.maxIterations ?? 5
+// Minimize activation-gate margin (feedback-F1): the stage runs only when the generated test count exceeds
+// the distinct mined-rule count by MORE than this margin. Default 1 — a non-degenerate band (margin 0 would
+// be `> distinctRules`, which never skips); tunable via args.
+const MINIMIZE_ACTIVATION_MARGIN = _args.minimizeActivationMargin ?? 1
 
 // Sub-workflow script paths (nexus dev repo).
 const MINE_VERIFY_SCRIPT = 'D:\\src\\claude-plugins\\nexus\\harness\\mine-verify.workflow.js'
@@ -250,10 +254,14 @@ const MINIMIZE_PROPOSAL_SCHEMA = {
           killsMutants: { type: 'array', items: { type: 'string' } },
           subsumedBy: { type: 'array', items: { type: 'string' } },
           documentsDistinctRule: { type: 'boolean' },
+          categoricalKeep: { type: 'boolean' },
           ruleId: { type: 'string' },
           category: { type: 'string' },
         },
-        required: ['testName', 'killsMutants', 'subsumedBy', 'documentsDistinctRule'],
+        // FAIL-CLOSED (FIX-A): `categoricalKeep` is REQUIRED — a fresh MVC run always emits it, so a proposal
+        // omitting a keep flag is malformed, not a legacy proposal. Making it required (alongside the
+        // orchestrator's fail-closed filter below) means a keeper can never be silently dropped by an absent flag.
+        required: ['testName', 'killsMutants', 'subsumedBy', 'documentsDistinctRule', 'categoricalKeep'],
       },
     },
   },
@@ -303,12 +311,25 @@ of these four categorical-dead classes (always propose these, regardless of (a)/
 A test that uniquely documents a distinct verified rule is KEPT even when mutation-redundant — set
 \`documentsDistinctRule: true\` and the orchestrator will NOT remove it, regardless of \`subsumedBy\`.
 
+CATEGORICAL-KEEP (the INVERSE of the four categorical-dead classes — NEVER remove these, even when
+mutation-redundant and filed under a shared rule ID): a DEGENERATE-INPUT test that CONSTRUCTS a
+boundary/edge input — empty input, no-match, zero / empty-collection, or the documented failure-passthrough
+— AND asserts the observable SAFE / NO-OP result. Its removal kills NO unique mutant, so the confirm re-gate
+is BLIND to its loss — this categorical rule is the only guard. If a test you would otherwise flag for
+removal is a categorical-KEEP, include it in \`candidates\` with \`categoricalKeep: true\` (exactly like
+\`documentsDistinctRule\`); the orchestrator refuses its removal, regardless of \`subsumedBy\`.
+
+DISCRIMINATOR vs categorical-dead class #4: the single test separating a KEEP from a DROP-#4 is *does the
+test actually CONSTRUCT the distinguishing input and ASSERT the result?* Constructs the degenerate edge +
+asserts the no-op → \`categoricalKeep: true\` (KEEP). Names a boundary but never builds it → class #4 (remove).
+
 Do NOT propose removing a test that kills a mutant on the RESIDUAL SURVIVORS list above — nothing else
 kills those yet, so removing its only chance is never safe to propose.
 
 Return { "candidates": [ { "testName": "...", "killsMutants": ["..."], "subsumedBy": ["retainedTestName"],
-  "documentsDistinctRule": false, "ruleId": "BR-...", "category": "..." }, ... ] } — one entry PER TEST you
-propose removing. An empty \`candidates\` array is a valid, complete answer (nothing redundant found).`
+  "documentsDistinctRule": false, "categoricalKeep": false, "ruleId": "BR-...", "category": "..." }, ... ] } —
+one entry PER TEST you propose removing OR flag as a keep. An empty \`candidates\` array is a valid, complete
+answer (nothing redundant found).`
 }
 
 // --- Write-owning agent: applies the proposed removal. Captures the EXACT original file content in its
@@ -436,6 +457,25 @@ IMPORTANT: return the same data in your schema'd response AND in the Write() —
 schema return directly and does NOT read files. NEVER report mutations from a file other than the target ${SRC}.`
 }
 
+// Zero-removal reason (feedback-F1 / FIX-C): when Minimize proposes candidates but removes NONE, say WHY —
+// an empty proposal, kept by distinct-rule, kept by categorical-KEEP (degenerate-input), or held back
+// fail-closed (a candidate missing a keep flag is never removed). PURE — no fs/Date/Math.random. Returns the
+// per-reason counts + a rendered `clause` shared by the log and the report line, so neither can drift into a
+// blanket "documented a distinct rule" (false when survivors were kept by categoricalKeep — MED/FIX-C).
+function zeroRemovalReason(candidates) {
+  const distinct = candidates.filter((c) => c.documentsDistinctRule === true).length
+  const categorical = candidates.filter((c) => c.categoricalKeep === true).length
+  const missingFlag = candidates.filter((c) => c.documentsDistinctRule !== true && c.categoricalKeep !== true).length
+  const parts = []
+  if (distinct) parts.push(`${distinct} kept as distinct-rule`)
+  if (categorical) parts.push(`${categorical} kept as categorical-KEEP (degenerate-input)`)
+  if (missingFlag) parts.push(`${missingFlag} held back fail-closed (missing keep flag)`)
+  const clause = candidates.length === 0
+    ? 'no redundant tests proposed (nothing categorically dead, nothing mutation-redundant found)'
+    : parts.join(', ')
+  return { distinct, categorical, missingFlag, empty: candidates.length === 0, clause }
+}
+
 const allGatesGreen = coverResult.stopped === 'all-gates-green'
 let minimizeResult = null
 
@@ -445,20 +485,52 @@ if (allGatesGreen) {
   const scorePctBefore = coverResult.achievedScore ?? 0
   const residualSurvivors = coverResult.gates?.mutation_floor?.detail?.reachableSurvivors ?? []
 
+  // --- Activation gate (feedback-F1): Minimize runs ONLY when the generated test count MATERIALLY exceeds
+  // the distinct mined-rule count. Both counts come from UPSTREAM results — do NOT re-derive (HIGH-1):
+  //   • distinctRules = mine-verify's consensus rule count (mineVerifyResult.consensusRules.length)
+  //   • generated     = the TRUE green suite size = passed + failed + skipped of a suite_green run
+  //                     (cover-flutter.workflow.js suiteGreen()). Use the TOTAL, NOT `passed` alone (FIX-B):
+  //                     the all-gates-green path tolerates skipped tests when baselineSkips > 0, so `passed`
+  //                     undercounts the real suite size and would let Minimize skip early. failed is 0 on the
+  //                     green path; it is included only for completeness.
+  // Do NOT count the rule total from the proposal `candidates` — those are the REMOVED tests only and do not
+  // exist until AFTER the minimize agent runs. At/near the rule count there is nothing safe to trim, so the
+  // whole stage is skipped — logged AND reported (never a silent no-op). When `generated` is unknown (no runs
+  // data on the cover result) the gate cannot fire and Minimize proceeds as before.
+  const distinctRules = mineVerifyResult.consensusRules.length
+  const suiteRun0 = coverResult.gates?.suite_green?.detail?.runs?.[0]
+  const generated = suiteRun0 && typeof suiteRun0.passed === 'number'
+    ? suiteRun0.passed + (suiteRun0.failed ?? 0) + (suiteRun0.skipped ?? 0)
+    : null
+
   if (killedBefore === null) {
     log('Minimize SKIPPED: no pre-minimize killed-count on the cover result — cannot confirm safely.')
+  } else if (generated !== null && generated <= distinctRules + MINIMIZE_ACTIVATION_MARGIN) {
+    log(`Minimize SKIPPED (at rule-floor): generated ${generated} <= distinctRules ${distinctRules} + margin ${MINIMIZE_ACTIVATION_MARGIN} — nothing safe to trim near the rule count; the minimize agent is NOT spawned.`)
+    minimizeResult = { skipped: 'at-rule-floor', generated, distinctRules }
   } else {
     const proposal = await agent(minimizeAgentPrompt(residualSurvivors), {
       label: 'minimize-propose', phase: 'Minimize', schema: MINIMIZE_PROPOSAL_SCHEMA, model: MODEL,
     })
     const candidates = proposal?.candidates ?? []
-    // Pure decision: honor the agent's distinct-rule flag, NEVER override it (rule-traceable boundary —
-    // the suite target is rule-traceable, not mutation-minimal).
-    const toRemove = candidates.filter((c) => !c.documentsDistinctRule)
+    // Pure decision: honor BOTH agent keep-flags, NEVER override them (rule-traceable boundary — the suite
+    // target is rule-traceable, not mutation-minimal). `documentsDistinctRule` keeps a test that documents a
+    // distinct verified rule; `categoricalKeep` keeps a degenerate-input test that constructs the edge and
+    // asserts the no-op (feedback-F1) — its removal kills no UNIQUE mutant, so it is invisible to the confirm
+    // re-gate below; the guard MUST live here, pre-removal. The orchestrator derives nothing — it only reads
+    // the two agent booleans. FAIL-CLOSED (FIX-A): remove a candidate ONLY when BOTH flags are explicitly
+    // `false`; one MISSING either flag (undefined) is HELD BACK, never removed — a keeper whose flag the agent
+    // omitted must not be silently dropped (its loss is invisible to the confirm). `categoricalKeep` is also in
+    // the proposal schema's `required` list, so a well-formed proposal always carries it; this is the backstop.
+    const toRemove = candidates.filter((c) => c.documentsDistinctRule === false && c.categoricalKeep === false)
 
     if (toRemove.length === 0) {
-      log('Minimize: no removal candidates (nothing redundant, or every candidate documents a distinct rule).')
-      minimizeResult = { removed: 0, killedBefore, killedAfter: killedBefore, scorePctBefore, scorePctAfter: scorePctBefore }
+      // FIX-C: report the ACTUAL zero-removal reason — empty proposal, kept-by-distinct-rule, kept-by-
+      // categorical-KEEP (degenerate-input), or held-back fail-closed (a candidate missing a keep flag) — NOT
+      // a blanket "every candidate documented a distinct rule" (false when survivors were kept by categoricalKeep).
+      const zeroRemoval = zeroRemovalReason(candidates)
+      log(`Minimize: no removals — ${zeroRemoval.clause}.`)
+      minimizeResult = { removed: 0, killedBefore, killedAfter: killedBefore, scorePctBefore, scorePctAfter: scorePctBefore, zeroRemoval }
     } else {
       const testNames = toRemove.map((c) => c.testName)
       const applyResult = await agent(minimizeApplyPrompt(testNames), {
@@ -641,11 +713,13 @@ const suggestedLines = [...new Set(taggedSurvivors.filter((s) => EQUIVALENT_TAGS
 // Minimize-stage report line (mine-verify-cover SKILL.md "The Minimize stage" — never a silent trim).
 const minimizeSection = !minimizeResult
   ? '_Not run — Cover did not reach all-gates-green._'
-  : minimizeResult.heldBack
+  : minimizeResult.skipped
+    ? `**minimized: skipped (at rule-floor)** — generated ${minimizeResult.generated} ≤ rules ${minimizeResult.distinctRules} + margin ${MINIMIZE_ACTIVATION_MARGIN} (the suite is at the rule floor; nothing safe to trim, so Minimize did not run).`
+    : minimizeResult.heldBack
     ? `**held-back: confirm-regression** — restored ${minimizeResult.restored} test(s); killed ${minimizeResult.killedBefore} → ${minimizeResult.killedAfter ?? 'n/a'} (the confirm re-gate detected a drop, so the suite was restored to its pre-minimize state).`
     : minimizeResult.removed > 0
       ? `**minimized: removed ${minimizeResult.removed} tests, reachable kill ${minimizeResult.scorePctBefore}%→${minimizeResult.scorePctAfter}% (confirmed unchanged)**`
-      : 'minimized: removed 0 tests — no redundant tests proposed (nothing categorically dead, and every mutation-redundant candidate documented a distinct rule).'
+      : `minimized: removed 0 tests — ${minimizeResult.zeroRemoval?.clause ?? 'no redundant tests proposed'}.`
 
 const reportContent = `# Cover run (Flutter) — ${TARGET_CLASS} (${today})
 

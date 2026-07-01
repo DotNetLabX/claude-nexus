@@ -54,7 +54,11 @@ export const meta = {
 function suiteGreen(testRuns) {
   const runs = testRuns ?? [];
   const everyGreen = runs.length >= 2 && runs.every((r) => r.failed === 0 && r.passed > 0);
-  return { pass: everyGreen, detail: { runs: runs.map((r) => ({ passed: r.passed, failed: r.failed })) } };
+  // Carry `skipped` through (FIX-B): the all-gates-green path tolerates skipped tests when baselineSkips > 0
+  // (see noNewSkips), so a downstream consumer computing the TRUE suite size (e.g. loop-flutter's Minimize
+  // activation gate) needs passed + failed + skipped — `passed` alone undercounts. Additive; nothing that
+  // reads passed/failed breaks.
+  return { pass: everyGreen, detail: { runs: runs.map((r) => ({ passed: r.passed, failed: r.failed, skipped: r.skipped ?? 0 })) } };
 }
 
 function noFlaky(testRuns) {

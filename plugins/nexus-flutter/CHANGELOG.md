@@ -1,6 +1,15 @@
 # Changelog — nexus-flutter
 
 
+## [0.2.1] — 2026-07-01
+- **`mine-verify-cover-flutter` — fixture rule (F3) + categorical-KEEP Dart cue (F1).** Hardened the
+  Fixtures/Mocks guidance from a suggestion into a **rule**: mock ONLY true I/O boundaries (repositories,
+  plugin `MethodChannel`s, other use-cases) and **never mock a plain data model** — a mocked data getter
+  blinds the suite to aggregation/derivation bugs (the pilot POG `SdkRealogramModel` gap the rerun closed by
+  constructing real objects). Added a Dart cue for the method's new categorical-KEEP class: a degenerate-input
+  keeper (empty template `''`, absent-placeholder, empty list `[]`) that asserts the unchanged/no-op result,
+  marked `categoricalKeep: true`. (adhoc-MvcSuiteFidelity)
+
 ## [0.2.0] — 2026-06-30
 **Add the `figma-to-flutter` design-fidelity skill.** Ports the skill from omnishelf_flutter_app into the plugin so the nexus pipeline can produce pixel-accurate Flutter widgets from Figma nodes. It reads exact specs via the Figma MCP (`get_design_context`/`get_metadata`/`get_screenshot`) and maps them mechanically to this design system's primitives — `AppColors` tokens (no inline `Color(0x…)`), `AppText.*` styles (no raw `Text()`), `pxToW`/`pxToH` scaling (no raw px), and lucide-first `AppIcons` — then verifies with a golden test against the Figma screenshot. Marked `user-invocable: true` (`/figma-to-flutter`). Grounded in the PD-5444 cycle-count card rebuild, where eyeballed (not spec-checked) layouts produced a crashing card and wrong icons. Passed both ADR-1 dev-repo gates — `skill-lint` (exit 0) and the `evaluate-skill` Judgment Gate (findings in `docs/skill-evals/2026-06-30-figma-to-flutter.md`, verdict ACCEPT); the gate added a scope fence, a prefix-agnostic Figma-MCP tool-load step (the server prefix varies — `mcp__figma__*` vs `mcp__claude_ai_Figma__*`), and a lessons-capture pointer. (adhoc-FigmaToFlutterSkill)
 

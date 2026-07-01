@@ -1,6 +1,19 @@
 # nexus — Changelog
 
 
+## [1.18.10] — 2026-07-01
+- **`mine-verify-cover` — categorical-KEEP + activation gate in the Minimize stage (F1).** Refines the
+  post-floor Minimize stage (ADR-37) after the Flutter rerun surfaced its one over-reach: Minimize could
+  prune a behaviour-distinct-but-mutation-redundant test (an empty-template / placeholder-absent no-op),
+  because the post-floor confirm compares kill *counts* and such a test contributes zero unique kills — its
+  loss is invisible to the confirm. Added a **categorical-KEEP** class (the inverse of the four
+  categorical-dead classes): a degenerate-input test that *constructs* the edge (empty / no-match / zero /
+  empty-collection / documented failure-passthrough) AND asserts the observable safe/no-op result is kept
+  even when mutation-redundant and same-ruleId, honored mechanically by the orchestrator; the discriminator
+  vs categorical-dead class #4 (*constructs + asserts?* → KEEP; names but never builds → #4); an
+  **activation gate** (skip Minimize when the generated suite is within a non-zero margin of the distinct
+  mined-rule count); and a third `minimized: skipped (at rule-floor)` report-line form. (adhoc-MvcSuiteFidelity)
+
 ## [1.18.9] — 2026-07-01
 - **`mine-verify-cover` — post-floor Minimize stage (ADR-37).** Added a `Minimize` stage (the dual of
   classify-survivors): after the suite hits the mutation floor, a minimize agent proposes redundant-test
