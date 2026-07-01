@@ -35,6 +35,13 @@ Tracks every skill created or fixed by the learner/developer pipeline. One entry
 - **Description:** User-invocable nexus-core utility (`/nexus:distill-prompt`, `disable-model-invocation: true`). Rewrites a verbose/underspecified prompt into a tight one without dropping load-bearing requirements — 7-stage method (extract core ask → inventory keep-list → hold lossless rule → cut padding → surface/never-invent gaps → restructure + Cut/Still-ambiguous note), grounded in canonical Anthropic prompt-engineering structure (claude-api). Step-2 evaluate-skill verdict ACCEPT (`docs/skill-evals/2026-06-20-distill-prompt.md`); improve-skills consolidating pass ran and applied **no change** — sole finding was a keep-as-is LOW (lossless rule has one normative owner in stage 4; already AP3-compliant, no net-complexity reduction available). skill-lint exit 0.
 - **Date:** 2026-06-20
 
+### figma-to-flutter
+- **Status:** Created
+- **Type:** Gap (design-fidelity)
+- **Source:** adhoc-FigmaToFlutterSkill
+- **Description:** nexus-flutter design-fidelity skill (`/figma-to-flutter`, user-invocable). Maps a Figma node (via the Figma MCP — `get_design_context`/`get_metadata`/`get_screenshot`) to a pixel-accurate Flutter widget using this project's design-system primitives — `AppColors` tokens (no inline `Color(0x…)`), `AppText.*` (no raw `Text()`), `pxToW`/`pxToH` scaling (no raw px), lucide-first `AppIcons` — then verifies with a golden test against the Figma screenshot. Ported verbatim from omnishelf_flutter_app; omnishelf-family-specific by design. Grounded in the PD-5444 cycle-count card rebuild (eyeballed layouts → crashing card + wrong icons). Authored on the omni twin, relocated to nexus-flutter as source-of-truth (flows to the omni twin via gen-omni). skill-lint exit 0; evaluate-skill verdict ACCEPT (`docs/skill-evals/2026-06-30-figma-to-flutter.md`) — the gate added a scope fence, a prefix-agnostic Figma-MCP tool-load step, and a lessons-capture pointer. Plugin bump 0.1.3 → 0.2.0 (MINOR, owner-decided; new capability).
+- **Date:** 2026-06-30
+
 ---
 
 ## Skills Fixed
