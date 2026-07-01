@@ -58,6 +58,10 @@ const COVER_FLUTTER_SCRIPT = 'D:\\src\\claude-plugins\\nexus\\harness\\cover-flu
 // Report (nexus-side delivery doc) + runner result (nexus-side, git-ignored — set by cover-flutter).
 const REPORT_PATH = _args.reportPath ?? `D:\\src\\claude-plugins\\nexus\\docs\\specs\\adhoc-MineVerifyCoverHarness\\delivery\\cover-flutter-${TARGET_CLASS.toLowerCase()}.md`
 
+// Minimize-stage confirm re-gate result (nexus-side, git-ignored — set by the minimize-confirm-run agent).
+const RUNS_DIR = 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
+const MINIMIZE_RUNNER_RESULT = _args.minimizeRunnerResult ?? `${RUNS_DIR}\\loop-flutter-${TARGET_CLASS.toLowerCase()}-minimize-run.json`
+
 // Budget ceiling (run-marginal — budget.spent() is the SHARED session pool; gate on the run's own spend).
 const BUDGET_CEILING_TOKENS = _args.budgetCeiling ?? 4_000_000
 const RUN_START_SPENT = budget.spent()
@@ -172,6 +176,337 @@ if (!coverResult) {
 }
 log(`Cover done: ${coverResult.stopped} after ${coverResult.iter ?? '?'} iteration(s); achieved ${coverResult.achievedScore ?? '?'}% reachable kill.`)
 
+// =================================================================================================
+// PHASE 3.5: MINIMIZE (post-floor trim + fail-closed confirm — mine-verify-cover SKILL.md "The Minimize
+// stage", the dual of classify-survivors below). Runs ONLY when Cover reached all-gates-green (nothing to
+// trim from a halted/capped run). Every I/O step is an AGENT — the orchestrator has no filesystem
+// (mine-verify-cover SKILL.md): the minimize agent reads + reasons (a HYPOTHESIS — no per-test kill-map
+// exists to verify it), a write-owning agent applies the removal (and restores on regression), a runner
+// agent re-runs the FULL gate on the reduced suite. The orchestrator only routes the proposal and makes
+// the PURE accept/restore decision on the EXACT reachable killed-count (never the rounded scorePct — a
+// one-mutant drop on a large denominator can round away).
+// =================================================================================================
+
+// --- Minimize-stage pure helpers — mutationFloor + its deps are copied VERBATIM from
+// cover-flutter.workflow.js (KEEP IN SYNC) so the confirm scores the post-removal summary with the
+// IDENTICAL exact-count formula the original gate used to produce killedBefore. No cross-file import is
+// possible in the Workflow runtime, so this is an intentional, documented duplication — the same pattern
+// cover-flutter.workflow.js itself uses for the gate battery it copies from cover.workflow.js.
+function mutantLine(m) {
+  return m?.location?.start?.line ?? null;
+}
+const VOID_CALL_REMOVAL_RE = /remove[\W_]*void[\W_]*call/i;
+function pretagEquivalentLogging(mutant, equivalentLoggingLines) {
+  const line = mutantLine(mutant);
+  if (equivalentLoggingLines.has(line) && VOID_CALL_REMOVAL_RE.test(mutant?.mutatorName ?? '')) {
+    return 'equivalent-logging';
+  }
+  return undefined;
+}
+function mutationFloor(summary, survivors, opts) {
+  const floor = opts?.floor ?? 75;
+  const deadLines = new Set(opts?.expectedSurvivorLines ?? []);
+  const loggingLines = new Set(opts?.equivalentLoggingLines ?? []);
+  const found = summary?.found ?? 0;
+  const notCovered = summary?.notCovered ?? 0;
+  const reachable = found - notCovered;
+  const reachableSurvivors = [];
+  let expectedSurvivorsExcluded = 0;
+
+  for (const m of survivors ?? []) {
+    const line = mutantLine(m);
+    if (deadLines.has(line)) {
+      expectedSurvivorsExcluded++;
+      continue;
+    }
+    const entry = { status: m.status, line, mutatorName: m.mutatorName, replacement: m.replacement };
+    const tag = pretagEquivalentLogging(m, loggingLines);
+    if (tag) entry.tag = tag;
+    reachableSurvivors.push(entry);
+  }
+
+  const reachableDenominator = reachable - expectedSurvivorsExcluded;
+  const killed = reachableDenominator - reachableSurvivors.length;
+  const scorePct = reachableDenominator > 0 ? Math.round((killed / reachableDenominator) * 100) : 0;
+  return {
+    pass: reachableDenominator > 0 && scorePct >= floor,
+    detail: { scorePct, killed, reachableDenominator, expectedSurvivorsExcluded, floor, reachableSurvivors },
+  };
+}
+
+// --- Minimize agent (source-aware, sonnet) — proposes removals BY REASONING. This is a HYPOTHESIS, never
+// a verified fact: the mutation tool reports only aggregate survivors, never which TEST killed which
+// mutant. Mirrors the classify-survivors actor split exactly: the agent proposes, the orchestrator only
+// records/routes and NEVER derives a removal itself.
+const MINIMIZE_PROPOSAL_SCHEMA = {
+  type: 'object',
+  properties: {
+    candidates: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          testName: { type: 'string' },
+          killsMutants: { type: 'array', items: { type: 'string' } },
+          subsumedBy: { type: 'array', items: { type: 'string' } },
+          documentsDistinctRule: { type: 'boolean' },
+          ruleId: { type: 'string' },
+          category: { type: 'string' },
+        },
+        required: ['testName', 'killsMutants', 'subsumedBy', 'documentsDistinctRule'],
+      },
+    },
+  },
+  required: ['candidates'],
+}
+function minimizeAgentPrompt(residualSurvivors) {
+  const survivorBlock = residualSurvivors.length
+    ? `RESIDUAL SURVIVORS (NOT killed by ANY current test — no test can accurately claim to kill these):\n${residualSurvivors
+        .map((s) => `  - line ${s.line}: ${s.mutatorName} → \`${s.replacement}\` (${s.status})`)
+        .join('\n')}`
+    : 'RESIDUAL SURVIVORS: none — every reachable mutant is currently killed by at least one test.'
+
+  return `You are the MINIMIZE agent. This suite just reached the mutation floor. Find REDUNDANT tests —
+by REASONING about the source + the suite, NOT by re-running mutation testing — and PROPOSE removals. Your
+proposal is a HYPOTHESIS: no tool can verify per-test mutant attribution (the mutation tool reports only
+AGGREGATE survivors), so the orchestrator will re-run the FULL gate on the reduced suite you propose and
+RESTORE everything if the kill count drops by even one. A wrong proposal costs a wasted re-gate, never a
+silent coverage hole — so reason carefully, but do not be afraid to propose nothing.
+
+YOU HAVE NO WRITE ACCESS — you only READ and PROPOSE. A separate write-owning agent applies your proposal.
+
+STEP 1 — READ THE PRODUCTION SOURCE (the SUT):
+  ${SRC}
+
+STEP 2 — READ THE CURRENT TEST SUITE (every test that reached the floor):
+  ${COVER_TEST}
+
+STEP 3 — READ THE VERIFIED RULES (ground truth — which distinct rule each test should map to):
+  ${KB_RULES}
+
+${survivorBlock}
+
+FOR EACH TEST YOU CONSIDER removing, reason about which mutant(s) in the production source it kills (read
+the assertion + the line's operator), then check:
+  (a) is every one of those mutants ALSO killed by a test you are NOT proposing to remove — name it in
+      \`subsumedBy\`?
+  (b) does this test document a DISTINCT verified rule that no retained test documents — \`documentsDistinctRule\`?
+
+Propose removing a test ONLY if (a) holds for every mutant it kills AND (b) is false — OR the test is one
+of these four categorical-dead classes (always propose these, regardless of (a)/(b)):
+  1. Log-only — asserts on log/no-output side effects only.
+  2. Occurrence-count escalation — a near-duplicate that only escalates a call-count assertion.
+  3. Same-call-same-assertion under two rule labels — identical call + assertion filed under two rule IDs.
+  4. Boundary test with no distinguishing input — a "boundary" test that never actually constructs the
+     input that distinguishes the boundary.
+
+A test that uniquely documents a distinct verified rule is KEPT even when mutation-redundant — set
+\`documentsDistinctRule: true\` and the orchestrator will NOT remove it, regardless of \`subsumedBy\`.
+
+Do NOT propose removing a test that kills a mutant on the RESIDUAL SURVIVORS list above — nothing else
+kills those yet, so removing its only chance is never safe to propose.
+
+Return { "candidates": [ { "testName": "...", "killsMutants": ["..."], "subsumedBy": ["retainedTestName"],
+  "documentsDistinctRule": false, "ruleId": "BR-...", "category": "..." }, ... ] } — one entry PER TEST you
+propose removing. An empty \`candidates\` array is a valid, complete answer (nothing redundant found).`
+}
+
+// --- Write-owning agent: applies the proposed removal. Captures the EXACT original file content in its
+// structured return (the orchestrator has no filesystem, so this is the ONLY way it can later instruct a
+// verbatim restore) — mirrors the "write EXACTLY this content, no changes" idiom this controller already
+// uses for kb-write-file/kb-flip/report-write.
+const MINIMIZE_APPLY_SCHEMA = {
+  type: 'object',
+  properties: {
+    removed: { type: 'array', items: { type: 'string' } },
+    originalContent: { type: 'string' },
+  },
+  required: ['removed', 'originalContent'],
+}
+function minimizeApplyPrompt(testNames) {
+  return `You are the MINIMIZE-APPLY agent — the write-owning agent for the Minimize stage.
+
+YOUR ONLY WRITE TARGET (touching anything else is a hard violation):
+  • ${COVER_TEST}
+
+STEP 1 — Read ${COVER_TEST} and capture its EXACT current full content verbatim. You will return it
+UNCHANGED as "originalContent" — this is the ONLY way the orchestrator (it has no filesystem) can restore
+the file later if this removal regresses the mutation gate.
+
+STEP 2 — Remove EXACTLY these named tests from the file, and touch NOTHING else (no reformatting, no
+other test touched, no production source touched):
+${testNames.map((n) => `  - ${n}`).join('\n')}
+
+STEP 3 — Write the reduced file back to ${COVER_TEST}.
+
+Return { "removed": [${testNames.map((n) => `"${n}"`).join(', ')}], "originalContent": "<the EXACT full
+file content you read in Step 1, before any edit — verbatim>" }.`
+}
+
+// --- Write-owning agent: restores the suite verbatim on a confirm regression (the fail-closed branch).
+const MINIMIZE_RESTORE_SCHEMA = { type: 'object', properties: { restored: { type: 'boolean' } }, required: ['restored'] }
+function minimizeRestorePrompt(originalContent) {
+  return `You are the MINIMIZE-RESTORE agent — the write-owning agent for the Minimize stage's fail-closed
+confirm. The confirm re-gate detected a kill-count DROP (or an inconsistent result) after the last
+removal, so it must be undone NOW.
+
+Write EXACTLY this content to ${COVER_TEST} — no changes, no reformatting. This is the suite BEFORE the
+proposed removal:
+
+${originalContent}
+
+Return { "restored": true }.`
+}
+
+// --- Runner agent: the confirm re-gate. Re-runs the FULL toolchain on the (now-reduced) test file — a
+// REAL re-mutation producing a FRESH mutationSummary, never a recompute over the pre-minimize numbers.
+// Mirrors cover-flutter.workflow.js's runner path (`runnerPrompt` / RUNNER_RESULT_SCHEMA) verbatim in
+// shape — reused here because no cross-file import exists in the Workflow runtime; keep in sync.
+const MINIMIZE_CONFIRM_SCHEMA = {
+  type: 'object',
+  properties: {
+    testRuns: {
+      type: 'array', minItems: 2,
+      items: { type: 'object', properties: { passed: { type: 'integer' }, failed: { type: 'integer' }, skipped: { type: 'integer' } }, required: ['passed', 'failed', 'skipped'] },
+    },
+    reportPath: { type: 'string' },
+    mutationSummary: {
+      type: 'object',
+      properties: { found: { type: 'integer' }, undetected: { type: 'integer' }, timeouts: { type: 'integer' }, notCovered: { type: 'integer' } },
+      required: ['found', 'undetected', 'timeouts', 'notCovered'],
+    },
+    mutants: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          status: { type: 'string' },
+          location: { type: 'object', properties: { start: { type: 'object', properties: { line: { type: 'integer' } }, required: ['line'] } }, required: ['start'] },
+          mutatorName: { type: 'string' },
+          replacement: { type: 'string' },
+        },
+        required: ['status', 'location', 'mutatorName'],
+      },
+    },
+    mutatedFiles: {
+      type: 'array',
+      items: { type: 'object', properties: { file: { type: 'string' }, count: { type: 'integer' } }, required: ['file', 'count'] },
+    },
+  },
+  required: ['testRuns', 'reportPath', 'mutationSummary', 'mutants', 'mutatedFiles'],
+}
+function minimizeConfirmRunnerPrompt() {
+  return `You are the RUNNER agent — the Minimize stage's CONFIRM re-gate. Execute the Flutter/Dart
+toolchain on the REDUCED test file exactly as the Cover/Gate loop's runner does. You do NOT write tests
+and you do NOT edit production code.
+
+STEPS (run from the app root ${TEST_PROJECT_DIR}):
+  1. Run \`flutter test ${COVER_TEST}\` TWICE (two independent invocations). Record { passed, failed,
+     skipped } for EACH run.
+  2. Run mutation testing on ONLY the target file with a machine-readable report:
+     a. Write a mutation_test config XML (mutation_test_minimize_confirm.xml in the app root) with:
+          <mutations version="1.0">
+            <files><file>${MUTATE_FILE}</file></files>
+            <commands><command group="test" expected-return="0" working-directory="." timeout="180">flutter test ${COVER_TEST}</command></commands>
+          </mutations>
+        (builtin rules are used by default — do NOT pass --rules.)
+     b. Run: \`dart pub global run mutation_test -f xml -o mutation_test_confirm_out mutation_test_minimize_confirm.xml\`
+  3. Parse the stdout SUMMARY — it is AUTHORITATIVE (the XML lists only survivors). Read:
+          "Found {found} mutations"     → found
+          "Undetected Mutations: {n}"   → undetected
+          "Timeouts: {n}"               → timeouts
+          "Not covered by tests: {n}"   → notCovered
+     Return these as mutationSummary: { found, undetected, timeouts, notCovered }.
+  4. Read the XML report under mutation_test_confirm_out/ to ENUMERATE SURVIVORS ONLY (never to count
+     kills). For each undetected mutation build ONE entry: { "status": "Survived", "location": { "start":
+     { "line": N } }, "mutatorName": "...", "replacement": "..." }. The number of survivor entries MUST
+     equal mutationSummary.undetected — report exactly what the tool lists, never padded or dropped.
+  5. Build \`mutatedFiles\`: one { "file": "<path>", "count": <int> } per file mutation_test mutated.
+  6. Clean up: delete mutation_test_minimize_confirm.xml and mutation_test_confirm_out/ from the app tree
+     when done.
+
+ALSO WRITE YOUR RESULTS HERE for the record (nexus-side, git-ignored — NEVER into the consuming app tree):
+  ${MINIMIZE_RUNNER_RESULT}
+
+as JSON: { "testRuns": [{passed,failed,skipped},{passed,failed,skipped}], "reportPath": "<abs path to the
+xml report>", "mutationSummary": { "found": N, "undetected": N, "timeouts": N, "notCovered": N },
+"mutants": [<SURVIVORS-ONLY array for the target file>], "mutatedFiles": [{ "file": "<path>", "count": <int> }] }
+
+IMPORTANT: return the same data in your schema'd response AND in the Write() — the orchestrator uses the
+schema return directly and does NOT read files. NEVER report mutations from a file other than the target ${SRC}.`
+}
+
+const allGatesGreen = coverResult.stopped === 'all-gates-green'
+let minimizeResult = null
+
+if (allGatesGreen) {
+  phase('Minimize')
+  const killedBefore = coverResult.gates?.mutation_floor?.detail?.killed ?? null
+  const scorePctBefore = coverResult.achievedScore ?? 0
+  const residualSurvivors = coverResult.gates?.mutation_floor?.detail?.reachableSurvivors ?? []
+
+  if (killedBefore === null) {
+    log('Minimize SKIPPED: no pre-minimize killed-count on the cover result — cannot confirm safely.')
+  } else {
+    const proposal = await agent(minimizeAgentPrompt(residualSurvivors), {
+      label: 'minimize-propose', phase: 'Minimize', schema: MINIMIZE_PROPOSAL_SCHEMA, model: MODEL,
+    })
+    const candidates = proposal?.candidates ?? []
+    // Pure decision: honor the agent's distinct-rule flag, NEVER override it (rule-traceable boundary —
+    // the suite target is rule-traceable, not mutation-minimal).
+    const toRemove = candidates.filter((c) => !c.documentsDistinctRule)
+
+    if (toRemove.length === 0) {
+      log('Minimize: no removal candidates (nothing redundant, or every candidate documents a distinct rule).')
+      minimizeResult = { removed: 0, killedBefore, killedAfter: killedBefore, scorePctBefore, scorePctAfter: scorePctBefore }
+    } else {
+      const testNames = toRemove.map((c) => c.testName)
+      const applyResult = await agent(minimizeApplyPrompt(testNames), {
+        label: 'minimize-apply', phase: 'Minimize', schema: MINIMIZE_APPLY_SCHEMA, model: MODEL,
+      })
+      const originalContent = applyResult?.originalContent ?? null
+      if ((applyResult?.removed ?? []).length !== testNames.length) {
+        log(`WARNING (minimize): write-agent reported removing ${(applyResult?.removed ?? []).length} test(s) but ${testNames.length} were proposed — the confirm re-gate below is still the authority on kill-count safety, but the reported removed/restored count may not match reality.`)
+      }
+
+      // The CONFIRM: a REAL re-gate producing a FRESH mutationSummary — distinct from the pre-minimize
+      // map. This is what makes the confirm a real verifier, never a vacuous recompute.
+      const confirmRaw = await agent(minimizeConfirmRunnerPrompt(), {
+        label: 'minimize-confirm-run', phase: 'Minimize', schema: MINIMIZE_CONFIRM_SCHEMA, model: MODEL,
+      })
+      const confirmSummary = confirmRaw?.mutationSummary
+      const confirmSurvivors = confirmRaw?.mutants ?? []
+      // Anti-fake-green cross-check (mine-verify-cover SKILL.md invariant), applied to the confirm too:
+      // an inconsistent survivor set is untrustworthy — never score on it.
+      const countsConsistent = !!(confirmSummary && confirmSummary.undetected === confirmSurvivors.length)
+      const confirmGate = countsConsistent
+        ? mutationFloor(confirmSummary, confirmSurvivors, {
+            floor: MUTATION_FLOOR, expectedSurvivorLines: EXPECTED_SURVIVOR_LINES, equivalentLoggingLines: EQUIVALENT_LOGGING_LINES,
+          })
+        : null
+      const killedAfter = confirmGate ? confirmGate.detail.killed : null
+      const scorePctAfter = confirmGate ? confirmGate.detail.scorePct : null
+
+      // Restore-on-regression is a HARD branch (modeled on the real ratchet HALT) — not advisory. Any
+      // drop in the EXACT reachable killed-count, or an untrustworthy confirm result, restores everything.
+      if (!countsConsistent || killedAfter < killedBefore) {
+        if (originalContent) {
+          await agent(minimizeRestorePrompt(originalContent), {
+            label: 'minimize-restore', phase: 'Minimize', schema: MINIMIZE_RESTORE_SCHEMA, model: MODEL,
+          })
+        } else {
+          log('WARNING (minimize): confirm needs a restore but no originalContent was captured — suite may be left reduced; investigate manually.')
+        }
+        log(`Minimize HELD BACK (confirm-regression): killed ${killedBefore} -> ${killedAfter ?? 'n/a'} (${countsConsistent ? 'exact-count drop' : 'confirm mutant-count-mismatch'}) — restored ${testNames.length} test(s).`)
+        minimizeResult = { removed: 0, heldBack: 'confirm-regression', restored: testNames.length, killedBefore, killedAfter, scorePctBefore, scorePctAfter }
+      } else {
+        log(`Minimize ACCEPTED: removed ${testNames.length} test(s), killed ${killedBefore} -> ${killedAfter} (confirmed unchanged).`)
+        minimizeResult = { removed: testNames.length, killedBefore, killedAfter, scorePctBefore, scorePctAfter }
+      }
+    }
+  }
+}
+
 // --- classify-survivors agent contract (source-aware; the orchestrator only records its verdict) --------
 // Assigns the SOURCE-DEPENDENT tags the orchestrator cannot derive. `equivalent-logging` is NOT in the enum:
 // it is the orchestrator's pre-tag (cover-flutter). REAL-gap is the ONLY tag that should drive more tests.
@@ -233,7 +568,6 @@ with one entry per survivor listed above — copy each \`index\` EXACTLY as show
 // PHASE 4: REPORT + KB FLIP (on all-gates-green)
 // =================================================================================================
 phase('Report')
-const allGatesGreen = coverResult.stopped === 'all-gates-green'
 const achievedScore = coverResult.achievedScore ?? 0
 const candidateBugs = coverResult.redOnCurrent ?? []
 
@@ -304,6 +638,14 @@ const impliedCleanups = taggedSurvivors
 const impliedCleanupsSection = impliedCleanups.length ? impliedCleanups.join('\n') : '_None — no dead-code or equivalent survivors._'
 // expectedSurvivorLines suggestion: the equivalent (logging/format) lines, so a follow-up run is honest.
 const suggestedLines = [...new Set(taggedSurvivors.filter((s) => EQUIVALENT_TAGS.has(s.tag)).map((s) => s.line))].sort((a, b) => a - b)
+// Minimize-stage report line (mine-verify-cover SKILL.md "The Minimize stage" — never a silent trim).
+const minimizeSection = !minimizeResult
+  ? '_Not run — Cover did not reach all-gates-green._'
+  : minimizeResult.heldBack
+    ? `**held-back: confirm-regression** — restored ${minimizeResult.restored} test(s); killed ${minimizeResult.killedBefore} → ${minimizeResult.killedAfter ?? 'n/a'} (the confirm re-gate detected a drop, so the suite was restored to its pre-minimize state).`
+    : minimizeResult.removed > 0
+      ? `**minimized: removed ${minimizeResult.removed} tests, reachable kill ${minimizeResult.scorePctBefore}%→${minimizeResult.scorePctAfter}% (confirmed unchanged)**`
+      : 'minimized: removed 0 tests — no redundant tests proposed (nothing categorically dead, and every mutation-redundant candidate documented a distinct rule).'
 
 const reportContent = `# Cover run (Flutter) — ${TARGET_CLASS} (${today})
 
@@ -328,6 +670,10 @@ const reportContent = `# Cover run (Flutter) — ${TARGET_CLASS} (${today})
 | Gate | Result | Detail |
 |------|--------|--------|
 ${gateRows}
+
+## Minimize
+
+${minimizeSection}
 
 ## Residual Survivors
 
@@ -369,6 +715,7 @@ return {
   cover: coverResult,
   allGatesGreen,
   achievedScore,
+  minimize: minimizeResult,
   kbPath: KB_RULES,
   reportPath: REPORT_PATH,
   runCostMarginal: runSpent(),

@@ -22,8 +22,9 @@ Mine        3 clean-room miners read ONLY the one source class and extract every
 Consolidate merge the 3 into consensus rules with agreement counts + transcribed/interpretive triage
 Verify      a fresh skeptic re-checks each rule against the code: CONFIRMED / WRONG / IMPRECISE
 KB write    serialize the verified rules into the project KB (status: verified) — the Verify→Cover seam
-Cover       a Cover agent writes example + property tests; the adapter runs the suite + mutation tool
+Cover       a Cover agent writes example + property tests (never categorically-dead ones — see Safety rails); the adapter runs the suite + mutation tool
 Gate        the orchestrator scores the §gate-battery; surviving mutants feed back to Cover; loop to floor
+Minimize    a minimize agent attributes each test to the mutant(s) it kills (by reasoning, no re-runs) and proposes removals; the orchestrator applies them and confirms
 Report      auto-write the run report; flip the KB entry verified → mutation-gated on all-gates-green
 ```
 
@@ -50,6 +51,56 @@ Every gate is computed by the orchestrator from the adapter's raw output — no 
 `mutation_floor` measures **reachable** kill: mutants in known-dead lines are excluded only when the KB pre-documents them (default: exclude none). A sub-100% honest kill is a pass when it clears the floor — report the residual survivors, never hide them.
 
 **Anti-fake-green invariant:** before scoring `mutation_floor`, cross-check the agent-reported mutant TOTAL against the tool summary's `Found N`. If they differ, halt and flag — a mismatch indicates the gate is scoring on a partial mutant set (e.g. a survivor-only XML output read as the full set). The stack adapter's summary parse is the authoritative total; the gate must not proceed on an unverified count.
+
+## The Minimize stage
+
+Runs **after** Gate reaches the mutation floor and **before** Report — the architectural **dual of
+classify-survivors** (the stage below): that stage tags unkilled *mutants*; this one tags *tests* that
+kill nothing new. Suite target is **rule-traceable, not mutation-minimal** — trim true duplicates and
+categorically-dead tests, keep every test that documents a distinct verified rule.
+
+**Who attributes redundancy.** A **minimize agent** (source + suite + the final-iteration survivor list,
+model: sonnet) reconstructs, by **reasoning**, which mutant(s) each test kills and proposes removals. The
+mutation tool reports only aggregate survivors, never which *test* killed which mutant — so the
+attribution is an explicit **hypothesis**, not a verified fact, and nothing re-runs per-test to check it
+up front. Same actor split as classify-survivors: the agent proposes, the orchestrator only
+records/routes, and **never derives** a removal itself.
+
+**The rule-traceable removal rule.** Propose removing test T only if (a) every mutant T is reasoned to
+kill is ALSO killed by a retained test, AND (b) T documents no distinct verified rule. A test that
+uniquely documents a distinct verified rule is kept even when it is mutation-redundant.
+
+**The four categorical-dead classes** (always removable, regardless of the rule they were generated
+against):
+1. Log-only — asserts on log/no-output side effects only.
+2. Occurrence-count escalation — a near-duplicate that only escalates a call-count assertion.
+3. Same-call-same-assertion under two rule labels — two tests with identical call + assertion, filed
+   against two different rule IDs.
+4. Boundary test with no distinguishing input — a "boundary" test that never actually constructs the
+   input that distinguishes the boundary.
+
+**Actor split / I/O ownership.** The orchestrator has no filesystem, so every I/O step here is an agent,
+same as everywhere else in this method: the minimize agent reads and reasons (no writes); a
+**write-owning agent** applies the proposed removal to the test file (and restores it on regression); the
+**runner agent** re-runs the gate. The orchestrator only routes the proposal between agents and makes the
+pure accept/restore decision — it never edits a file and never re-runs a mutation tool itself.
+
+**The fail-closed confirm.** Because attribution is fallible reasoning no tool can verify, the confirm is
+the ONLY safety net — a removal is verified, never trusted. After the write-owning agent removes the
+proposed tests, the runner agent re-runs the FULL gate on the reduced suite, producing a fresh result; the
+orchestrator compares the EXACT reachable killed-count (never the rounded score — a one-mutant drop on a
+large denominator can round away) against the pre-minimize count:
+- unchanged → accept the trim;
+- any drop → instruct the write-owning agent to restore every removed test.
+
+This is the anti-fake-green invariant, applied to test removal — equivalently, the mutation ratchet
+applied post-floor instead of mid-loop. Full re-gate is the sound default: it inherits every guard the
+gate battery above already has. A targeted at-risk-line re-mutation is an optional cost optimization only
+where the mutation tool supports line-scoping — the adapter states which applies.
+
+**Report line.** Every run reports `minimized: removed N tests, reachable kill X%→X% (confirmed
+unchanged)`; a held-back minimize (the confirm regressed) reports `held-back: confirm-regression` with the
+restored count instead. Never a silent trim.
 
 ## The Report stage — survivor classification
 
@@ -85,6 +136,7 @@ The scoring this stage reports is guarded by the anti-fake-green invariant above
 - **Mutation ratchet** — a kill-rate regression between iterations means the harness is broken: halt.
 - **Report on halt** — every stop writes a report naming the stop reason. Never silently exit green.
 - **Forbidden to the Cover agent** — editing the production class, the mutation config, the gate infra, or the KB. A test that is RED on current code is KEPT and flagged as a candidate bug, never deleted.
+- **Generation guard (Cover)** — the Cover agent must not emit categorically-dead tests: no log-output assertions (the adapter's existing test-style policy) and one representative per mutation-equivalence class. This is volume reduction, not enforcement — a prompt instruction is a request, not a guarantee that it is followed. The Minimize stage's confirm re-gate is the actual enforcement.
 
 ## The KB rule-ledger
 

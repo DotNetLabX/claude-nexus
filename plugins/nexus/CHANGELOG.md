@@ -1,6 +1,16 @@
 # nexus — Changelog
 
 
+## [1.18.9] — 2026-07-01
+- **`mine-verify-cover` — post-floor Minimize stage (ADR-37).** Added a `Minimize` stage (the dual of
+  classify-survivors): after the suite hits the mutation floor, a minimize agent proposes redundant-test
+  removals by reasoning, a write-agent applies them, and a runner agent re-runs the **full** gate on the
+  reduced suite — the orchestrator restores everything on any exact reachable killed-count drop (fail-closed
+  confirm, named as the anti-fake-green invariant applied to test removal). Plus a Cover generation guard
+  (no categorically-dead tests, labeled non-enforcing) and a `minimized: …` report line. Optimizes for
+  rule-traceability, not mutation-minimality — a test that uniquely documents a distinct verified rule is
+  kept even when mutation-redundant.
+
 ## [1.18.8] — 2026-07-01
 - **Uniform reasoning effort — `xhigh` for all agents.** Raised the three sonnet agents
   (`developer`, `reviewer`, `solo`) from `effort: max` to `effort: xhigh`, matching the opus

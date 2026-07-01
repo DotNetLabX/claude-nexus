@@ -1033,8 +1033,11 @@ test('loop-flutter withholds the GENUINE cover pre-tag from classify AND keys tw
     { index: 1, line: 60, tag: 'REAL-gap',  reason: 'suite missed the replaceAll path' },
     { index: 2, line: 70, tag: 'dead-code', reason: 'guard never taken', cleanup: 'lib/x.dart:70 — remove the dead guard' },
   ] };
-  // Green path, runDate skips date-stamp: kb-write-file, kb-flip, classify-survivors, report-write.
-  const agentFixtures = [{ written: true }, { written: true }, classifyReturn, { written: true }];
+  // Green path, runDate skips date-stamp. The GENUINE coverResult carries a real gates.mutation_floor.detail.killed
+  // (computed by cover-flutter in STAGE 1), so loop-flutter's Minimize phase now ALSO runs before Report — feed it
+  // an empty-candidates proposal (a clean no-op) so this test still isolates the F1/F2 classify-survivors seam it
+  // was written to prove. Call order: kb-write-file, minimize-propose, kb-flip, classify-survivors, report-write.
+  const agentFixtures = [{ written: true }, { candidates: [] }, { written: true }, classifyReturn, { written: true }];
   const mineVerifyReturn = { consensusRules: [{ id: 'BR-1', kind: 'interpretive', agreement: 3, lines: '10', statement: 'rule A' }],
     interpretiveVerdicts: [{ id: 'BR-1', verdict: 'CONFIRMED', evidence: 'ok' }], counts: { consensusRules: 1 } };
   const workflowReturns = [mineVerifyReturn, coverResult];
@@ -1071,6 +1074,215 @@ test('loop-flutter withholds the GENUINE cover pre-tag from classify AND keys tw
   assert.match(report.promptFull, /Line 60: replaceFirst.*\*\*REAL-gap\*\*/, 'the replaceFirst survivor on line 60 is tagged REAL-gap (index 1) — NOT clobbered by the masked verdict');
   assert.match(report.promptFull, /Line 50:.*\*\*equivalent-logging\*\*/, 'line 50 carries the orchestrator pre-tag in the report');
   assert.match(report.promptFull, /Line 70:.*\*\*dead-code\*\*/, 'line 70 tagged dead-code (index 2)');
+});
+
+// ==================================================================================================
+// Slices 9h-1..9h-5: the MINIMIZE stage (adhoc-MvcCoverMinimize) — loop-flutter's post-floor trim + the
+// fail-closed confirm (mine-verify-cover SKILL.md "The Minimize stage"). Fixtures mock the runner
+// agent()'s return as a mutationSummary { found, undetected, timeouts, notCovered } (the REAL output
+// shape, cover-flutter.workflow.js:265) — NEVER an invented per-test kill-map (no tool produces one; this
+// is what closed Codex's CRITICAL finding on the rev-1 plan). Each slice drives loop-flutter.workflow.js
+// directly with a HAND-BUILT coverResult carrying a real gates.mutation_floor.detail.killed, so loop-
+// flutter's Minimize phase (gated on killedBefore !== null) genuinely engages — a coverResult with no
+// `.killed` field (the pre-existing 9f/9f-2 fixtures) leaves Minimize a no-op by design (see 9f-4's fix).
+// ==================================================================================================
+function minimizeCoverResult(overrides) {
+  const base = {
+    variant: 'inc4-cover-flutter', stopped: 'all-gates-green', iter: 1, achievedScore: 90,
+    gates: {
+      suite_green: { pass: true, detail: {} },
+      mutation_floor: { pass: true, detail: { scorePct: 90, killed: 18, reachableDenominator: 20, expectedSurvivorsExcluded: 0, floor: 75, reachableSurvivors: [] } },
+    },
+    redOnCurrent: [],
+  };
+  return { ...base, ...overrides };
+}
+const MINIMIZE_MINE_VERIFY_RETURN = {
+  consensusRules: [{ id: 'BR-1', kind: 'interpretive', agreement: 3, lines: '10', statement: 'rule A' }],
+  interpretiveVerdicts: [{ id: 'BR-1', verdict: 'CONFIRMED', evidence: 'ok' }], counts: { consensusRules: 1 },
+};
+// Drives the REAL loop-flutter.workflow.js: mine-verify + the given coverResult are the two workflow()
+// composition results; agentFixtures are consumed in call order by the mocked agent().
+async function runMinimizeLoop(coverResult, agentFixtures) {
+  const src = readWorkflow(LOOP_FLUTTER_PATH);
+  const workflowReturns = [MINIMIZE_MINE_VERIFY_RETURN, coverResult];
+  const agentCalls = [];
+  function thr() { throw new ReferenceError('Date unavailable in workflow scripts'); }
+  thr.now = () => { throw new ReferenceError('Date unavailable'); };
+  // Full Math shim (every method proxied except random, which throws like the real Workflow runtime) —
+  // the new Minimize-stage mutationFloor() calls Math.round, unlike the pre-Minimize loop-flutter code
+  // the OTHER inline sandboxes in this file were built against (a random()-only stub was enough for them).
+  const throwingMath = Object.create(null);
+  for (const k of Object.getOwnPropertyNames(Math)) {
+    throwingMath[k] = typeof Math[k] === 'function'
+      ? (k === 'random' ? function () { throw new ReferenceError('Math.random() is unavailable in workflow scripts (breaks resume).'); } : Math[k].bind(Math))
+      : Math[k];
+  }
+  let aIdx = 0, wIdx = 0;
+  const sandbox = {
+    agent: async (prompt, opts) => { agentCalls.push({ promptFull: typeof prompt === 'string' ? prompt : '', opts }); return agentFixtures[aIdx++] ?? null; },
+    parallel: async (fns) => { const r = []; for (const fn of fns) r.push(await fn()); return r; },
+    phase: () => {}, log: () => {},
+    budget: { spent: () => 50000 },
+    workflow: async () => workflowReturns[wIdx++] ?? null,
+    args: JSON.stringify({ targetClass: 'MinimizeTargetUsecase', runDate: '2026-06-30' }),
+    Date: thr,
+    Math: throwingMath,
+  };
+  const patched = src.replace(/^export\s+const\s+meta\s*=/m, 'const meta =');
+  const ctx = createContext(sandbox);
+  const result = await new Script(`(async () => { ${patched} })()`, { filename: 'loop-flutter-minimize.js' }).runInContext(ctx);
+  return { result, agentCalls };
+}
+
+// --- (a) accept on no regression --------------------------------------------------------------------
+test('loop-flutter Minimize: accepts a no-regression removal — result.minimize carries removed/killedBefore/killedAfter, report says confirmed unchanged', async () => {
+  const coverResult = minimizeCoverResult({});
+  const proposal = { candidates: [
+    { testName: 'redundant boundary test', killsMutants: ['m-arith-12'], subsumedBy: ['primary boundary test'], documentsDistinctRule: false, ruleId: 'BR-2' },
+  ] };
+  const applyResult = { removed: ['redundant boundary test'], originalContent: 'ORIGINAL FILE CONTENT (verbatim)' };
+  // Confirm re-gate: SAME killed count (18) as before — found 20, undetected 2 => killed = 20 - 2 = 18.
+  const confirmRunnerResult = {
+    testRuns: [{ passed: 19, failed: 0, skipped: 0 }, { passed: 19, failed: 0, skipped: 0 }],
+    reportPath: 'D:\\runs\\minimize-confirm.xml',
+    mutationSummary: { found: 20, undetected: 2, timeouts: 0, notCovered: 0 },
+    mutants: [
+      { status: 'Survived', location: { start: { line: 12 } }, mutatorName: 'arithmetic', replacement: '-' },
+      { status: 'Survived', location: { start: { line: 30 } }, mutatorName: 'logical.or', replacement: '&&' },
+    ],
+    mutatedFiles: [{ file: 'lib/x.dart', count: 20 }],
+  };
+  // Call order: kb-write-file, minimize-propose, minimize-apply, minimize-confirm-run, kb-flip, report-write
+  // (no classify-survivors — this coverResult's reachableSurvivors is empty).
+  const agentFixtures = [{ written: true }, proposal, applyResult, confirmRunnerResult, { written: true }, { written: true }];
+  const { result, agentCalls } = await runMinimizeLoop(coverResult, agentFixtures);
+
+  assert.equal(result?.minimize?.removed, 1, 'one test removed');
+  assert.equal(result?.minimize?.killedBefore, 18, 'pre-minimize killed count carried');
+  assert.equal(result?.minimize?.killedAfter, 18, 'post-confirm killed count unchanged');
+  assert.equal(result?.minimize?.heldBack, undefined, 'no held-back on accept');
+
+  const report = agentCalls.find((c) => c.opts?.label === 'report-write');
+  assert.ok(report, 'report-write invoked');
+  assert.match(report.promptFull, /minimized: removed 1 tests, reachable kill \d+%→\d+% \(confirmed unchanged\)/,
+    'report carries the minimized accept line with (confirmed unchanged)');
+});
+
+// --- (b) rule-traceable keep --------------------------------------------------------------------------
+test('loop-flutter Minimize: honors documentsDistinctRule — never removes a test that documents a distinct rule even when subsumedBy is non-empty', async () => {
+  const coverResult = minimizeCoverResult({});
+  const proposal = { candidates: [
+    { testName: 'distinct-rule test', killsMutants: ['m-1'], subsumedBy: ['other test'], documentsDistinctRule: true, ruleId: 'BR-9' },
+  ] };
+  // Call order: kb-write-file, minimize-propose, kb-flip, report-write — NO apply/confirm/restore (nothing removed).
+  const agentFixtures = [{ written: true }, proposal, { written: true }, { written: true }];
+  const { result, agentCalls } = await runMinimizeLoop(coverResult, agentFixtures);
+
+  assert.equal(result?.minimize?.removed, 0, 'the distinct-rule-documenting test is NOT removed');
+  assert.equal(result?.minimize?.heldBack, undefined, 'no confirm regression — nothing was removed to confirm');
+  assert.ok(!agentCalls.some((c) => c.opts?.label === 'minimize-apply'), 'no write-agent spawned — nothing to apply');
+  assert.ok(!agentCalls.some((c) => c.opts?.label === 'minimize-confirm-run'), 'no confirm re-gate — nothing was removed');
+});
+
+// --- (c) confirm regression -> restore (load-bearing) -------------------------------------------------
+test('loop-flutter Minimize: confirm regression (one fewer kill) triggers restore — held-back:confirm-regression, driven by a REAL second runner call', async () => {
+  const coverResult = minimizeCoverResult({});
+  const proposal = { candidates: [
+    { testName: 'redundant test', killsMutants: ['m-1'], subsumedBy: ['other test'], documentsDistinctRule: false, ruleId: 'BR-3' },
+  ] };
+  const applyResult = { removed: ['redundant test'], originalContent: 'ORIGINAL SUITE CONTENT' };
+  // Regression: undetected goes 2 -> 3 (one previously-killed mutant now survives) => killed 18 -> 17.
+  const confirmRunnerResult = {
+    testRuns: [{ passed: 18, failed: 0, skipped: 0 }, { passed: 18, failed: 0, skipped: 0 }],
+    reportPath: 'D:\\runs\\minimize-confirm-regressed.xml',
+    mutationSummary: { found: 20, undetected: 3, timeouts: 0, notCovered: 0 },
+    mutants: [
+      { status: 'Survived', location: { start: { line: 12 } }, mutatorName: 'arithmetic', replacement: '-' },
+      { status: 'Survived', location: { start: { line: 30 } }, mutatorName: 'logical.or', replacement: '&&' },
+      { status: 'Survived', location: { start: { line: 45 } }, mutatorName: 'relational', replacement: '<=' },
+    ],
+    mutatedFiles: [{ file: 'lib/x.dart', count: 20 }],
+  };
+  const agentFixtures = [{ written: true }, proposal, applyResult, confirmRunnerResult, { restored: true }, { written: true }, { written: true }];
+  const { result, agentCalls } = await runMinimizeLoop(coverResult, agentFixtures);
+
+  assert.equal(result?.minimize?.heldBack, 'confirm-regression', 'a kill-count drop triggers held-back:confirm-regression');
+  assert.equal(result?.minimize?.restored, 1, 'the one removed test is restored');
+  assert.equal(result?.minimize?.killedBefore, 18, 'pre-minimize count preserved');
+  assert.equal(result?.minimize?.killedAfter, 17, 'post-confirm count reflects the FRESH re-gate, not the stale pre-minimize map');
+
+  // Proves the confirm is a REAL re-gate, not a vacuous recompute: a second, distinct runner call occurred,
+  // and its (regressed) result — not the pre-minimize map — is what drove the restore decision.
+  const confirmCall = agentCalls.find((c) => c.opts?.label === 'minimize-confirm-run');
+  assert.ok(confirmCall, 'a second runner invocation (the confirm re-gate) occurred');
+  const restoreCall = agentCalls.find((c) => c.opts?.label === 'minimize-restore');
+  assert.ok(restoreCall, 'the write-owning agent was instructed to restore');
+  assert.match(restoreCall.promptFull, /ORIGINAL SUITE CONTENT/, 'restore writes back the EXACT original content captured before removal');
+});
+
+// --- (d) rounding guard --------------------------------------------------------------------------------
+test('loop-flutter Minimize: rounding guard — a 1-mutant drop that ROUNDS to the same scorePct still triggers restore (exact-count, never scorePct)', async () => {
+  const coverResult = minimizeCoverResult({
+    achievedScore: 91,
+    gates: {
+      suite_green: { pass: true, detail: {} },
+      mutation_floor: { pass: true, detail: { scorePct: 91, killed: 911, reachableDenominator: 1000, expectedSurvivorsExcluded: 0, floor: 75, reachableSurvivors: [] } },
+    },
+  });
+  const proposal = { candidates: [
+    { testName: 'redundant test', killsMutants: ['m-1'], subsumedBy: ['other test'], documentsDistinctRule: false, ruleId: 'BR-4' },
+  ] };
+  const applyResult = { removed: ['redundant test'], originalContent: 'ORIGINAL LARGE SUITE' };
+  // 90 survivors (one MORE than the 89 implied before) — killed drops 911 -> 910. round(911/1000*100)=91,
+  // round(910/1000*100)=91: the ROUNDED score is IDENTICAL (91% -> 91%) — only the EXACT count reveals it.
+  const confirmMutants = Array.from({ length: 90 }, (_, i) => ({
+    status: 'Survived', location: { start: { line: 100 + i } }, mutatorName: 'logical.and', replacement: '||',
+  }));
+  const confirmRunnerResult = {
+    testRuns: [{ passed: 900, failed: 0, skipped: 0 }, { passed: 900, failed: 0, skipped: 0 }],
+    reportPath: 'D:\\runs\\minimize-confirm-rounding.xml',
+    mutationSummary: { found: 1000, undetected: 90, timeouts: 0, notCovered: 0 },
+    mutants: confirmMutants,
+    mutatedFiles: [{ file: 'lib/x.dart', count: 1000 }],
+  };
+  const agentFixtures = [{ written: true }, proposal, applyResult, confirmRunnerResult, { restored: true }, { written: true }, { written: true }];
+  const { result } = await runMinimizeLoop(coverResult, agentFixtures);
+
+  assert.equal(result?.minimize?.scorePctBefore, 91, 'displayed before-percentage is 91%');
+  assert.equal(result?.minimize?.scorePctAfter, 91, 'displayed after-percentage ALSO rounds to 91% — same as before');
+  assert.equal(result?.minimize?.killedBefore, 911, 'exact killed count before');
+  assert.equal(result?.minimize?.killedAfter, 910, 'exact killed count after — ONE LOWER, despite the identical rounded percentage');
+  assert.equal(result?.minimize?.heldBack, 'confirm-regression', 'the EXACT-count compare catches the drop the rounded percentage would hide');
+});
+
+// --- (e) report line (happy path) ----------------------------------------------------------------------
+test('loop-flutter Minimize: happy-path report line — "minimized: removed N tests, reachable kill X%->Y% (confirmed unchanged)"', async () => {
+  const coverResult = minimizeCoverResult({});
+  const proposal = { candidates: [
+    { testName: 'redundant test A', killsMutants: ['m-1'], subsumedBy: ['primary test'], documentsDistinctRule: false, ruleId: 'BR-5' },
+    { testName: 'redundant test B', killsMutants: ['m-2'], subsumedBy: ['primary test'], documentsDistinctRule: false, ruleId: 'BR-5' },
+  ] };
+  const applyResult = { removed: ['redundant test A', 'redundant test B'], originalContent: 'ORIGINAL SUITE (2 extra tests)' };
+  const confirmRunnerResult = {
+    testRuns: [{ passed: 18, failed: 0, skipped: 0 }, { passed: 18, failed: 0, skipped: 0 }],
+    reportPath: 'D:\\runs\\minimize-confirm-happy.xml',
+    mutationSummary: { found: 20, undetected: 2, timeouts: 0, notCovered: 0 },
+    mutants: [
+      { status: 'Survived', location: { start: { line: 12 } }, mutatorName: 'arithmetic', replacement: '-' },
+      { status: 'Survived', location: { start: { line: 30 } }, mutatorName: 'logical.or', replacement: '&&' },
+    ],
+    mutatedFiles: [{ file: 'lib/x.dart', count: 20 }],
+  };
+  const agentFixtures = [{ written: true }, proposal, applyResult, confirmRunnerResult, { written: true }, { written: true }];
+  const { result, agentCalls } = await runMinimizeLoop(coverResult, agentFixtures);
+
+  assert.equal(result?.minimize?.removed, 2, 'two redundant tests removed');
+  const report = agentCalls.find((c) => c.opts?.label === 'report-write');
+  assert.ok(report, 'report-write invoked');
+  assert.match(report.promptFull, /## Minimize/, 'report has a dedicated Minimize section');
+  assert.match(report.promptFull, /minimized: removed 2 tests, reachable kill 90%→90% \(confirmed unchanged\)/,
+    'exact happy-path report line, per ADR-37/plan template');
 });
 
 // ==================================================================================================

@@ -1,5 +1,12 @@
 # Changelog — nexus-flutter
 
+
+## [0.1.3] — 2026-07-01
+- **`mine-verify-cover-flutter` — Minimize stage Dart fill (ADR-37).** Documented the Dart-specific signals
+  for the new method-level Minimize stage: guard-signal reuse and the confirm re-gate reusing the existing
+  `mutation_test` run. Line-range scoping for a future targeted re-gate was researched (supported via
+  `<lines begin/end>`) and noted as an optional future optimization — the harness runs the full-file
+  re-gate (the sound default).
 All notable changes to the `nexus-flutter` plugin are documented here.
 
 ## [0.1.2] — 2026-06-26

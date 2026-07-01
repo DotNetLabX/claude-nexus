@@ -1,6 +1,6 @@
 {
   "name": "nexus-flutter",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Nexus Flutter (thin) — a stack extension for the `nexus` core pipeline. Ships the Dart/Flutter adapter for the mine-verify-cover method (mutation_test driving flutter test, the build_runner + HTTPS-rewrite bringup, the equivalent-mutant filter, and flutter_test + mocktail test style). Reuses nexus's agents, rules, commands, and security guard — install ALONGSIDE nexus, not instead of it.",
   "author": {
     "name": "ldumit"

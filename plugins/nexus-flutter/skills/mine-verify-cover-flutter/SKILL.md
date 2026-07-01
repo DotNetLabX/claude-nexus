@@ -113,6 +113,35 @@ The orchestrator supplies **only** the `equivalentLoggingLines` signal and pre-t
 
 Record these facts in a project `docs/conventions/mutation-testing.md` so the Cover agent reads the contract from the consuming repo.
 
+## Minimize stage — Dart fill
+
+The method's Minimize stage (see `mine-verify-cover` → "The Minimize stage") reuses signals and toolchain
+this adapter already provides — no new capability.
+
+**Generation guard signal.** The guard's "no log-output assertions" is the adapter's existing test-style
+rule (above, "Test style" — assert on the returned value, never on log output) and the
+`equivalentLoggingLines` set this adapter already surfaces (above, "Survivor tags — Dart cues") for a
+SECOND use: suppressing emission up front, not only pre-tagging survivors after the fact. The Cover agent
+already carries both signals; nothing new is wired.
+
+**Confirm re-gate.** The minimize confirm re-runs the adapter's existing mutation_test pass (above, "The
+mutation_test run") on the REDUCED test file — no new capability, same config shape, same stdout-summary
+parse. State the cost honestly: `mutation_test` re-runs the whole test command once per mutation, so the
+confirm is one more full pass — made cheaper only by the smaller post-minimize suite (fewer assertions to
+re-execute per mutation run, not fewer mutations).
+
+**Line-scoping — resolved: supported.** `mutation_test`'s XML config supports true line-range scoping: a
+`<lines begin="N" end="M"/>` child element nested inside `<file>` whitelists mutations to that 1-indexed,
+inclusive line range (multiple `<lines>` blocks stack for disjoint ranges); with no `<lines>` child the
+whole file is mutated, as today. Confirmed against the package's own README and its shipped
+`example/config.xml` (`docs/kb/research/mutation-test-dart-line-range-scoping.md`). So the **targeted
+at-risk-line confirm is available as a future optimization** for this adapter — nest a `<lines>` block
+scoped to the removed tests' at-risk lines instead of mutating the whole file. **Not implemented in this
+pass**: the reference harness (Step 3) always runs the full-file re-gate, per the method's "full re-gate is
+the sound default" — it inherits every existing anti-fake-green guard and catches attribution errors beyond
+the at-risk lines, which a line-scoped re-mutation would not. Revisit the targeted form only if confirm
+cost becomes a measured problem.
+
 ## Cost / scaling note
 
 `mutation_test` runs the full test command **once per mutation** (~13s per `flutter test`). ~20 mutations on a small class ≈ 5 min; a ~190-line class can be 30–60+ min. Mitigations: `mutation_test -c lcov.info` to skip no-coverage mutants, scope the mutate file tightly, and `log()` any truncation — never silently cap coverage.
