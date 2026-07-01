@@ -1,8 +1,8 @@
 # adhoc-MvcSuiteFidelity — Communication Log
 
 **Branch:** main
-**Step:** reviewer:review (cycle 2/3)
-**Cycle:** 2/3
+**Step:** done
+**Cycle:** 2/3 (APPROVED)
 **Architect (done-check) ID:** a798991dcc67fe09e — PASS 5/5 Implemented, 0 Missing, skill-conformance PASS
 **Team Mode:** standard+codex
 **Review Mode:** critic (plan reviewed pre-launch — Mode 2 code-grounded critic, REVISE 1 HIGH + 2 MEDIUM all folded)
@@ -38,6 +38,8 @@
 | 16 | team-lead → reviewer | reviewer:review (2/3) | Re-review after fixes (agentId a6e6f78492c0911b6). Codex first-round-only → reviewer-only cycle. | — |
 | 17 | team-lead → architect | (parallel) | Apply plan.md:42 factual correction only (generated total = passed+failed+skipped), agentId a7ad7199133fa3fc6. No re-plan/re-review. | — |
 | 18 | architect → team-lead | (parallel) | plan.md:42 corrected (generated total = passed+failed+skipped, not passed alone). Carry-over For:architect closed. No other action. | — |
+| 19 | reviewer → team-lead | reviewer:review (2/3) | APPROVED. All 4 fixes verified vs live source (fail-closed :525 + schema :264; skip-count :502-504; zeroRemovalReason; slices e/f/g). 55/55, node --check clean. No open CRITICAL/HIGH/MEDIUM. | — |
+| 20 | team-lead → self | close | Valid APPROVED. Wrote summary.md; commit 2 (260a52b) scoped to 16 feature+delivery files (.gitignore + adhoc-SddCoverageLoop excluded). state=done. | — |
 
 ### Step 2 merged verdict (cycle 1) — REQUEST CHANGES
 
@@ -50,3 +52,6 @@
 - Launch: `.claude/.pipeline-state` was stale at `reviewer:review` (no review.md/impl/log exist for this slug) — reset to `developer:analyze`. Not a completed run; benign stale token from a prior session.
 - Verify checkpoint (dev:implement, verdict `fail` / `blocking_failed:true`): triaged to 4 pre-existing failures, NONE from this feature. (1) `nexus-cpp` CHANGELOG lint — nexus-cpp untouched. (2–4) `gen-omni.test.mjs` ×3 — stale synthetic fixture: sandbox lacks `plugins/nexus-flutter` which `gen-omni.mjs` now scans → `ENOENT`; feature touched neither `gen-omni.mjs` nor its test. Present at baseline. Feature's own gates green (contract 52/52, node --check clean, bump --check green, gen-commands in sync). **Pre-existing tech-debt to surface at close; not this feature's defect.**
 - selfcheck `gen-omni --check` drift: expected — the version bump drifted the live omni twin; regen deferred to merge (per plan + CLAUDE.md ADR-6). Not a blocker for this pipeline.
+- **Close decisions (user):** don't push (commits local), skip lessons (recorded, unprocessed), **fix the pre-existing debt now** → follow-up solo run under separate slug `adhoc-GateDebtFix` (nexus-cpp CHANGELOG `[0.1.0]` entry + gen-omni.test.mjs sandbox seeded with `plugins/nexus-flutter`). Both fixes verified green by team-lead: lint 46/46, gen-omni 3/3, unit tier 344/344, no new failures. Committed separately (not folded into this feature).
+- **Solo watchdog stall (RUNTIME):** the `adhoc-GateDebtFix` solo agent stalled at 600s ("stream watchdog did not recover") *after* completing both edits, right as it began verification. Edits were complete on disk; team-lead ran the verification the solo didn't reach and committed — no resume needed (least-intervention).
+- **bump-plugin --check false signal (RUNTIME):** post-commit-2, `--check` (base = un-pushed stale `origin/main`) re-proposes nexus 1.18.10→1.18.11 / nexus-flutter 0.2.1→0.2.2 for the already-committed+bumped mine-verify-cover skill changes. NOT a cue to re-bump (phantom double-bump) — the correct 1.18.10 / 0.2.1 bumps rode in 260a52b. Resolves once pushed.
