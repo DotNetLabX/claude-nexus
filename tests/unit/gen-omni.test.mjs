@@ -26,6 +26,9 @@ before(() => {
   cpSync(join(REPO, 'scripts', 'gen-commands.mjs'), join(nexus, 'scripts', 'gen-commands.mjs'));
   writeAt(nexus, 'plugins/nexus/agents/a.md', 'Nexus pipeline doc. The nexus twin test. DotNetLabX marketplace.\n');
   writeAt(nexus, 'plugins/nexus-dotnet/skills/s/SKILL.md', '---\nname: s\ndescription: a nexus-dotnet skill\n---\nbody\n');
+  // gen-omni.mjs mirrors every stack plugin (nexus-flutter, nexus-cpp too) — seed them so collect() doesn't ENOENT.
+  writeAt(nexus, 'plugins/nexus-flutter/skills/f/SKILL.md', '---\nname: f\ndescription: a nexus-flutter skill\n---\nbody\n');
+  writeAt(nexus, 'plugins/nexus-cpp/skills/c/SKILL.md', '---\nname: c\ndescription: a nexus-cpp skill\n---\nbody\n');
   // README needs the override anchors; the MIT link must be the ONLY MIT mention (the swap removes it).
   writeAt(nexus, 'README.md', [
     '# Nexus',
@@ -49,7 +52,7 @@ test('apply: mirrors plugins with token swap, rewrites marketplace, preserves LI
 
   const mp = JSON.parse(readFileSync(join(omni, '.claude-plugin/marketplace.json'), 'utf8'));
   assert.equal(mp.name, 'claude-omni', 'marketplace identity preserved');
-  assert.deepEqual(mp.plugins.map((p) => p.name), ['omni', 'omni-dotnet']);
+  assert.deepEqual(mp.plugins.map((p) => p.name), ['omni', 'omni-dotnet', 'omni-flutter', 'omni-cpp']);
 
   assert.equal(readFileSync(join(omni, 'LICENSE'), 'utf8'), 'Proprietary. All rights reserved.\n', 'LICENSE never touched');
   const readme = readFileSync(join(omni, 'README.md'), 'utf8');
