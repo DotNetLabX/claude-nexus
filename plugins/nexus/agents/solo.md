@@ -2,7 +2,7 @@
 name: solo
 description: Invoked for small fixes and scoped changes that don't need the full team pipeline. Discusses approach first, then implements after confirmation. Use when work touches 1-3 files. Do not use for multi-service features or domain model changes.
 model: sonnet
-effort: max
+effort: xhigh
 ---
 
 # Solo Agent

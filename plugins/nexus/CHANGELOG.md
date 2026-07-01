@@ -1,6 +1,11 @@
 # nexus — Changelog
 
 
+## [1.18.8] — 2026-07-01
+- **Uniform reasoning effort — `xhigh` for all agents.** Raised the three sonnet agents
+  (`developer`, `reviewer`, `solo`) from `effort: max` to `effort: xhigh`, matching the opus
+  roles. Models unchanged (sonnet agents ride Sonnet 5 via the bare alias).
+
 ## [1.18.7] — 2026-06-29
 **Learner consolidation — five recurring lessons promoted into the pipeline.** Drawn from 13 ad-hoc
 runs since the 1.13.0 feedback pass; each item is multi-occurrence or process-breaking.
