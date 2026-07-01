@@ -1,5 +1,6 @@
 {
-  "_purpose": "The PINNED L272 known-answer fixture (AC-6 / Step 7). The SQL is constructed so that ONLY Rule 5 (NoStrayLiteralThreshold) can fire — rules 1-4, 6, 7 all pass — so the red reproduces the L272 finding, NOT a fixture artifact (the spike's ARTIFACT-01/02 trap, where a public.analytics_report* table tripped Rule 6 first). Lives nexus-side; the operator hands `sql` + `validateArgs` to GeneratedSqlValidator.Validate in the isolated assembly. Verified against GeneratedSqlValidator.cs (live source, 2026-06-25).",
+  "_note": "Inc-2 re-ground (2026-06-30): the +1e-9 tolerance fix is COMMITTED at SHA 0811132 (2026-06-28). The Inc-1 plan Step 7 dirty-tree runbook (git stash) is SUPERSEDED — the KG working tree is clean, the validator file is byte-identical at 0811132 and HEAD (337c0537). The finding is referenced by SYMBOL (NoStrayLiteralThreshold), line qualified '(L272 at 9e40d1f; L276 at 0811132)' — no bare line numbers. Two committed SHAs for the live AC-6 two-arm run: preFixArm=9e40d1f (parent of the fix, > 0.01), patchedArm=0811132 (the fix, > 0.01 + 1e-9). HEAD=337c0537 is 5 chore/docs commits past the fix; pin the SHA, never 'HEAD' (memory: recheck-branch-under-concurrent-run).",
+  "_purpose": "The PINNED L272 known-answer fixture (AC-6 / Step 7 → Step 4 in Inc-2). The SQL is constructed so that ONLY Rule 5 (NoStrayLiteralThreshold) can fire — rules 1-4, 6, 7 all pass — so the red reproduces the L272 finding, NOT a fixture artifact (the spike's ARTIFACT-01/02 trap, where a public.analytics_report* table tripped Rule 6 first). Lives nexus-side; the operator hands `sql` + `validateArgs` to GeneratedSqlValidator.Validate in the isolated assembly. Verified against GeneratedSqlValidator.cs (live source, 2026-06-25).",
   "ruleUnderTest": "NoStrayLiteralThreshold",
   "ruleIndex": 5,
   "goldenId": "GOLD-08",
@@ -23,16 +24,20 @@
     "threshold": 0.85,
     "absDiff": 0.010000000000000009,
     "preFixArm": {
+      "sha": "9e40d1f",
       "comparison": "Math.Abs(literal - resolvedNumeric.Value) > 0.01",
+      "location": "L272 at 9e40d1f",
       "fires": true,
       "expectedValidateReturn": "NoStrayLiteralThreshold",
-      "note": "HEAD form (committed, reproducible from a clean checkout). The IEEE-754 artifact 0.010000000000000009 > 0.01 → Rule 5 fires on a spec-VALID input = the L272 over-rejection (case-4)."
+      "note": "COMMITTED pre-fix arm (9e40d1f — parent of the tolerance fix). Run: `git -C D:\\src\\knowledge-gateway checkout 9e40d1f -- <validator path>`. Arm-sanity: SUT file must contain '> 0.01' and NOT '> 0.01 + 1e-9' before the result is trusted. The IEEE-754 artifact 0.010000000000000009 > 0.01 → Rule 5 fires on a spec-VALID input = the NoStrayLiteralThreshold over-rejection (case-4)."
     },
     "patchedArm": {
+      "sha": "0811132",
       "comparison": "Math.Abs(literal - resolvedNumeric.Value) > 0.01 + 1e-9",
+      "location": "L276 at 0811132",
       "fires": false,
       "expectedValidateReturn": null,
-      "note": "HEAD + the one-line operator patch. The 1e-9 margin absorbs the ~1e-17 FP noise → Rule 5 does NOT fire → Validate returns null (the |0.86 - 0.85| test is green)."
+      "note": "COMMITTED patched arm (0811132 — the tolerance fix, 2026-06-28 'SQL grounding FP-safe boundary'). Restore: `git -C D:\\src\\knowledge-gateway checkout 0811132 -- <validator path>`. Arm-sanity: SUT file must contain '> 0.01 + 1e-9'. The 1e-9 margin absorbs the ~1e-17 FP noise → Rule 5 does NOT fire → Validate returns null (the |0.86 - 0.85| test is green)."
     }
   }
 }

@@ -15,6 +15,7 @@
 //   4. bump-plugin --check                   — a shipped-surface change carries a version bump
 //   5. salience report                       — INFORMATIONAL: printed, never fails the run (Q1)
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -80,6 +81,65 @@ const checks = [
     run: () => {
       const r = exec(node, ['scripts/bump-plugin.mjs', '--check', '--base', BASE]);
       return { ok: r.status === 0, detail: r.status === 0 ? 'bump present (or no shipped change)' : 'shipped surface changed without a version bump' };
+    },
+  },
+  {
+    name: 'spec-diff inline-copy sync',
+    run: () => {
+      // The Workflow runtime cannot `import`, so spec-diff.mjs is inlined verbatim in spec-cover.workflow.js.
+      // This guard enforces that the two copies share identical code logic (modulo comment-only lines
+      // and blank-line differences). A code-level change to one that isn't mirrored in the other is caught.
+      const libSrc = readFileSync(join(ROOT, 'harness/lib/spec-diff.mjs'), 'utf8');
+      const wfSrc = readFileSync(join(ROOT, 'harness/spec-cover.workflow.js'), 'utf8');
+
+      // Normalize: strip comment-only lines and blank lines, then compare.
+      function normalize(text) {
+        return text.split('\n').filter((l) => {
+          const t = l.trim();
+          return t !== '' && !t.startsWith('//');
+        }).join('\n');
+      }
+
+      // Extract a named function from source. Handles optional 'export ' prefix and parameter destructuring.
+      // Returns the normalized function body (declaration + body, 'export ' stripped), or null if not found.
+      function extractFn(src, name) {
+        const re = new RegExp(`(?:export\\s+)?function\\s+${name}\\s*\\(`);
+        const m = re.exec(src);
+        if (!m) return null;
+        // Skip past parameter list using paren depth counting
+        let i = m.index + m[0].length - 1; // position of '('
+        let pd = 0;
+        while (i < src.length) {
+          if (src[i] === '(') pd++;
+          else if (src[i] === ')' && --pd === 0) break;
+          i++;
+        }
+        // Scan forward to the body opening '{'
+        while (i < src.length && src[i] !== '{') i++;
+        if (i >= src.length) return null;
+        // Count braces to find the matching closing '}'
+        let bd = 0;
+        const start = m.index;
+        while (i < src.length) {
+          if (src[i] === '{') bd++;
+          else if (src[i] === '}' && --bd === 0) break;
+          i++;
+        }
+        const raw = src.slice(start, i + 1).replace(/^export\s+/, '').trim();
+        return normalize(raw);
+      }
+
+      const SHARED_FNS = ['decideLocation', 'evaluateMinerResult', 'ruleKey', 'classifyRule', 'diffRules', 'serializeDiff', 'labelRed'];
+      const mismatches = [];
+      for (const name of SHARED_FNS) {
+        const lib = extractFn(libSrc, name);
+        const wf = extractFn(wfSrc, name);
+        if (!lib) { mismatches.push(`${name}: not found in spec-diff.mjs`); continue; }
+        if (!wf) { mismatches.push(`${name}: not found in spec-cover.workflow.js`); continue; }
+        if (lib !== wf) mismatches.push(`${name}: code diverges between lib and inline copy`);
+      }
+
+      return { ok: mismatches.length === 0, detail: mismatches.length === 0 ? 'lib and inline copy in sync' : mismatches.join('; ') };
     },
   },
   {

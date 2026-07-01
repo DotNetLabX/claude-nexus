@@ -178,20 +178,27 @@ export const RULE_ORDER = [
  * rule against the fixed rule order. PURE — no production change, no "re-run with the earlier rule disabled"
  * (which would need a prod edit and fail char_pin). Implements the spec's 5-case table (§FP-labeler):
  *
- *   1 expected R, actual EARLIER than R   → interaction-artifact  → needs-triage (auto-resolved)
- *   2 expected R, actual LATER than R     → under-enforce         → candidate-bug
- *   3 expected R, actual null             → sin-of-omission       → candidate-bug
- *   4 expected null, actual a rule fired  → over-rejection        → candidate-bug, TAGGED needs-triage
- *   5 errored / fixture un-constructable  → errored               → needs-triage
+ *   1 expected R, actual EARLIER than R        → interaction-artifact  → needs-triage (auto-resolved)
+ *   2 expected R, actual LATER than R          → under-enforce         → candidate-bug
+ *   3 expected R, actual okValue (pass)        → sin-of-omission       → candidate-bug
+ *   4 expected okValue (pass), actual a rule   → over-rejection        → candidate-bug, TAGGED needs-triage
+ *   5 errored / fixture un-constructable       → errored               → needs-triage
  *
  * Only case 1 is mechanically auto-resolved. Case 4 is the L272 shape AND the fixture-artifact shape —
  * routed to the candidate-bug queue *tagged* needs-triage, never auto-confirmed real-vs-artifact (ADR-D).
  *
- * @param {{expected:(string|null), actual:(string|null), ruleOrder?:string[], errored?:boolean}} r
+ * `okValue` (ADR-E) is the per-target pass sentinel: null for SQL (Validate returns string?), "Valid" for
+ * Slack (SignatureVerificationResult enum). Cases 3 and 4 compare against `okValue`, not a literal null, so
+ * a non-null pass sentinel (Slack's "Valid") is handled correctly.
+ *
+ * @param {{expected:(string|null), actual:(string|null), ruleOrder?:string[], okValue?:(string|null), errored?:boolean}} r
  * @returns {{label:string, route:string, autoResolved?:boolean, needsTriage?:boolean, detail:string}}
  */
 export function labelRed(r) {
   const order = r?.ruleOrder ?? RULE_ORDER;
+  // okValue: the per-target pass sentinel (ADR-E). Defaults to null (SQL: Validate returns null on pass).
+  // For Slack: "Valid" (SignatureVerificationResult.Valid). Compare cases 3+4 against okValue, not literal null.
+  const okValue = r?.okValue !== undefined ? r.okValue : null;
   const expected = r?.expected ?? null;
   const actual = r?.actual ?? null;
 
@@ -200,9 +207,9 @@ export function labelRed(r) {
     return { label: 'errored', route: 'needs-triage', detail: 'test errored / fixture un-constructable — not classifiable' };
   }
 
-  // Case 4 — expected a PASS (null), but a rule fired: over-rejection. The L272 shape. Candidate-bug
+  // Case 4 — expected a PASS (okValue), but a rule fired: over-rejection. The L272 shape. Candidate-bug
   // queue, tagged needs-triage (real boundary bug OR a #2 fixture-fidelity artifact — not auto-decided).
-  if (expected === null && actual !== null) {
+  if (expected === okValue && actual !== okValue) {
     return {
       label: 'over-rejection',
       route: 'candidate-bug',
@@ -211,8 +218,8 @@ export function labelRed(r) {
     };
   }
 
-  // Case 3 — expected a rejection by R, but the validator passed (null): sin of omission (spec ∧ ¬code).
-  if (expected !== null && actual === null) {
+  // Case 3 — expected a rejection by R, but the validator passed (okValue): sin of omission (spec ∧ ¬code).
+  if (expected !== okValue && actual === okValue) {
     return { label: 'sin-of-omission', route: 'candidate-bug', detail: `code passed an input the spec says "${expected}" should reject (spec ∧ ¬code)` };
   }
 

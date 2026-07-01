@@ -176,3 +176,76 @@ test('meta is a pure literal (no string concat / template interpolation)', () =>
   assert.equal(/['"]\s*\+\s*['"]/.test(block), false, 'no string concatenation in meta (BinaryExpression)');
   assert.equal(/`[^`]*\$\{/.test(block), false, 'no template interpolation in meta');
 });
+
+// =================================================================================================
+// AC-1/AC-2 run-path proof — Slack-args sandbox case (Step 2 / MED-4)
+// =================================================================================================
+// Proves that when the workflow is driven with Slack args (ruleOrder = Slack 5-value precedence,
+// okValue = "Valid"), a Slack enum over-rejection (expected "Valid", actual "TimestampOutOfRange")
+// is labeled over-rejection and reaches the candidate-bug queue — NOT unrecognized-rule/needs-triage
+// (which is what the current hardcoded RULE_ORDER + null comparison produces).
+//
+// This is the WORKFLOW-LEVEL (run-path) proof for AC-1(b) + AC-2. The spec-diff unit tests prove the
+// LABELER; this test proves the WORKFLOW routes the right values through to the labeler.
+
+// Slack spec-load: 2 rules (both with attestations → no guided-miner call).
+function slackSpecLoadFixture() {
+  return {
+    rules: [
+      { id: 'GOLD-13', ruleName: 'TimestampOutOfRange', statement: 'replay/skew window — reject when abs(now - timestamp) exceeds tolerance', expectedOutcome: 'TimestampOutOfRange', codeAttestation: 'SlackSignatureVerifier.cs:66-68' },
+      { id: 'GOLD-17', ruleName: 'MissingSecret', statement: 'fail-closed on secret — MissingSecret immediately if signing secret is null/empty', expectedOutcome: 'MissingSecret', codeAttestation: 'SlackSignatureVerifier.cs:55-57' },
+    ],
+  };
+}
+
+// Slack runner: one case-4 over-rejection (expected "Valid" = pass sentinel, actual "TimestampOutOfRange").
+function slackRunnerFixture() {
+  return {
+    testRuns: [
+      { passed: 1, failed: 0, skipped: 0 },
+      { passed: 1, failed: 0, skipped: 0 },
+    ],
+    strykerReportPath: 'D:\\mock\\slack-mutation-report.json',
+    mutants: [
+      { status: 'Killed', location: { start: { line: 55 } }, mutatorName: 'Equality', replacement: '!=' },
+    ],
+    mutatedFiles: [{ file: 'D:\\x\\SlackSignatureVerifier.cs', count: 1 }],
+    testOutcomes: [
+      // case-4: expected "Valid" (the okValue / pass sentinel), actual "TimestampOutOfRange" (over-rejection).
+      { id: 'GOLD-13', ruleName: 'TimestampOutOfRange', expected: 'Valid', actual: 'TimestampOutOfRange', errored: false },
+      // green test: expected and actual both "MissingSecret".
+      { id: 'GOLD-17', ruleName: 'MissingSecret', expected: 'MissingSecret', actual: 'MissingSecret', errored: false },
+    ],
+  };
+}
+
+// Slack fixture order: spec-load (all with attestations → NO miner), spec-cover, runner, report-write.
+function slackFixtures() {
+  return [
+    slackSpecLoadFixture(),  // spec-load (all attestation-located → miner step skipped)
+    null,                    // spec-cover (Write() is the deliverable, return ignored)
+    slackRunnerFixture(),    // runner
+    { written: true },       // report-write
+  ];
+}
+
+const SLACK_ARGS = JSON.stringify({
+  runDate: '2026-06-30',
+  targetClass: 'SlackSignatureVerifier',
+  ruleOrder: ['MissingSecret', 'MissingSignature', 'MissingOrInvalidTimestamp', 'TimestampOutOfRange', 'InvalidSignature'],
+  okValue: 'Valid',
+  goldenIds: ['GOLD-13', 'GOLD-14', 'GOLD-15', 'GOLD-16', 'GOLD-17', 'GOLD-18'],
+});
+
+test('AC-1/AC-2 run-path: Slack enum over-rejection (expected "Valid", actual "TimestampOutOfRange", okValue "Valid") reaches candidate-bug queue as over-rejection', async () => {
+  // RED until workflow threads _args.ruleOrder + _args.okValue through to labelRed at the call site (~:571).
+  // With hardcoded RULE_ORDER + null comparison: "Valid" not in RULE_ORDER → unrecognized-rule (wrong).
+  // After fix: okValue="Valid" and ruleOrder from args → case-4 fires → over-rejection in candidate-bug queue.
+  const { result } = await runInSandbox(readWorkflow(SPEC_COVER_PATH), slackFixtures(), SLACK_ARGS);
+  assert.ok(Array.isArray(result?.candidateBugQueue), 'Slack run returns a candidate-bug queue');
+  const slackBug = result.candidateBugQueue.find((e) => e.actual === 'TimestampOutOfRange');
+  assert.ok(slackBug, 'Slack over-rejection (expected: "Valid", actual: "TimestampOutOfRange") is in the candidate-bug queue');
+  assert.equal(slackBug.label, 'over-rejection', 'labeled over-rejection — not unrecognized-rule (okValue: "Valid" and Slack ruleOrder applied)');
+  assert.equal(slackBug.route, 'candidate-bug', 'over-rejection routes to candidate-bug, not needs-triage-only');
+  assert.equal(slackBug.needsTriage, true, 'case 4 is tagged needs-triage — real-or-fixture, not auto-decided');
+});

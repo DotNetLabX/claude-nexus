@@ -170,12 +170,20 @@ const RULE_ORDER = [
 
 function labelRed(r) {
   const order = r?.ruleOrder ?? RULE_ORDER;
+  // okValue: the per-target pass sentinel (ADR-E). Defaults to null (SQL: Validate returns null on pass).
+  // For Slack: "Valid" (SignatureVerificationResult.Valid). Compare cases 3+4 against okValue, not literal null.
+  const okValue = r?.okValue !== undefined ? r.okValue : null;
   const expected = r?.expected ?? null;
   const actual = r?.actual ?? null;
+
+  // Case 5 — the test errored or the fixture couldn't be constructed (the spike ARTIFACT-04 shape).
   if (r?.errored === true) {
     return { label: 'errored', route: 'needs-triage', detail: 'test errored / fixture un-constructable — not classifiable' };
   }
-  if (expected === null && actual !== null) {
+
+  // Case 4 — expected a PASS (okValue), but a rule fired: over-rejection. The L272 shape. Candidate-bug
+  // queue, tagged needs-triage (real boundary bug OR a #2 fixture-fidelity artifact — not auto-decided).
+  if (expected === okValue && actual !== okValue) {
     return {
       label: 'over-rejection',
       route: 'candidate-bug',
@@ -183,17 +191,25 @@ function labelRed(r) {
       detail: `code rejected a spec-valid input with "${actual}" (over-reject — real-or-fixture, not auto-decided)`,
     };
   }
-  if (expected !== null && actual === null) {
+
+  // Case 3 — expected a rejection by R, but the validator passed (okValue): sin of omission (spec ∧ ¬code).
+  if (expected !== okValue && actual === okValue) {
     return { label: 'sin-of-omission', route: 'candidate-bug', detail: `code passed an input the spec says "${expected}" should reject (spec ∧ ¬code)` };
   }
+
+  // expected R and actual a (different) rule — compare positions in the fixed order.
   const ei = order.indexOf(expected);
   const ai = order.indexOf(actual);
+  // Case 1 — an EARLIER rule fired before R could (an interaction artifact: the earlier rule masked R).
   if (ai !== -1 && ei !== -1 && ai < ei) {
     return { label: 'interaction-artifact', route: 'needs-triage', autoResolved: true, detail: `"${actual}" (rule ${ai + 1}) fired before "${expected}" (rule ${ei + 1}) could — earlier rule masked R` };
   }
+  // Case 2 — a LATER rule fired: R should have fired but a later one did (R under-enforces).
   if (ai !== -1 && ei !== -1 && ai > ei) {
     return { label: 'under-enforce', route: 'candidate-bug', detail: `"${expected}" (rule ${ei + 1}) should have fired but "${actual}" (rule ${ai + 1}) did — R under-enforces` };
   }
+  // Defensive: an unknown rule name on either side (not in the order) — route to needs-triage rather than
+  // silently mislabel. (Not one of the 5 canonical cases — a name typo or an off-catalog rule.)
   return { label: 'unrecognized-rule', route: 'needs-triage', detail: `expected="${expected}" actual="${actual}" — a rule name is not in the known order` };
 }
 
@@ -298,6 +314,15 @@ const MUTATE_GLOB = _args.mutateGlob ?? `**/${TARGET_CLASS}.cs`
 
 // The 12-id golden CATALOG (ids only — the rule TEXT stays sequestered; the spec-load agent reads it).
 const GOLDEN_IDS = _args.goldenIds ?? ['GOLD-01', 'GOLD-02', 'GOLD-03', 'GOLD-04', 'GOLD-05', 'GOLD-06', 'GOLD-07', 'GOLD-08', 'GOLD-09', 'GOLD-10', 'GOLD-11', 'GOLD-12']
+
+// Per-target rule order (ADR-E). Source of truth lives in harness/targets/{target}.json's `ruleOrder` field.
+// Pass via _args.ruleOrder. Null when not provided; labelRed falls back to its internal RULE_ORDER constant.
+// AC-1(b): the workflow sources ruleOrder from _args, NOT from the hardcoded RULE_ORDER constant at the call site.
+const RULE_ORDER_CFG = _args.ruleOrder ?? null
+
+// Per-target pass sentinel (ADR-E). null = SQL (Validate returns string? — null on pass).
+// "Valid" = Slack (SignatureVerificationResult.Valid). Threaded into labelRed alongside ruleOrder.
+const OK_VALUE = _args.okValue !== undefined ? _args.okValue : null
 
 // Runner results + the run report land HERE — nexus-side + git-ignored (.gitignore: harness/.runs/). NEVER
 // in the KG tree (a result file in KG's working tree would strand in a KG commit — cover.workflow.js:261-264).
@@ -411,11 +436,10 @@ For EXACTLY these golden ids (this class's whole golden set), return one structu
 
 For each id return:
   - id              — the golden id (e.g. "GOLD-08").
-  - ruleName        — the Validate() rule name this golden rule maps to, if it maps to one of:
-                      SingleSelect, RelationPolicy, CategoryIdPresent, NoRelativeDateUnderAnchoring,
-                      NoStrayLiteralThreshold, BadReportsFilterPresent, ReportIdsFirst. (Several golden
-                      rules can map to the same Validate rule name — that is fine. A golden rule with no
-                      Validate-rule mapping returns an empty ruleName.)
+  - ruleName        — the decision method's rule name this golden rule maps to, if it maps to one of:
+                      ${(RULE_ORDER_CFG ?? RULE_ORDER).join(', ')}. (Several golden rules can map to the
+                      same decision-method rule name — that is fine. A golden rule with no mapping returns
+                      an empty ruleName.)
   - statement       — the rule's DURABLE prose (the golden Rule column), describing the rule by symbol +
                       condition. This is what is handed inline to the Cover/miner agents.
   - expectedOutcome — the Validate(...) return a CONFORMING input should produce for this rule: the rule
@@ -568,7 +592,7 @@ const sameOutcome = (a, b) => (a ?? null) === (b ?? null)
 for (const o of outcomes) {
   const isRed = o.errored === true || !sameOutcome(o.actual, o.expected)
   if (!isRed) continue
-  const lab = labelRed({ expected: o.expected ?? null, actual: o.actual ?? null, ruleOrder: RULE_ORDER, errored: o.errored === true })
+  const lab = labelRed({ expected: o.expected ?? null, actual: o.actual ?? null, ruleOrder: RULE_ORDER_CFG, okValue: OK_VALUE, errored: o.errored === true })
   const entry = { id: o.id, ruleName: o.ruleName, expected: o.expected ?? null, actual: o.actual ?? null, ...lab }
   // ADR-D: EVERY red lands in the candidate-bug queue (never deleted). A case-4/under-enforce/sin red is a
   // candidate; case-1/case-5/mislocation reds are also recorded but additionally flagged needs-triage.

@@ -25,11 +25,26 @@ import {
   RULE_ORDER,
 } from '../../harness/lib/spec-diff.mjs';
 
-// The pinned L272 known-answer fixture (Step 7 / AC-6). Loaded from the committed nexus-side file so the
-// known-answer is a single source of truth shared with the operator's live two-arm run.
+// The pinned L272 known-answer fixture (Step 7 / AC-6 → Step 4 in Inc-2). Loaded from the committed
+// nexus-side file so the known-answer is a single source of truth shared with the operator's live two-arm run.
 const L272_FIXTURE = JSON.parse(
   readFileSync(new URL('../../harness/targets/generatedsqlvalidator-l272-fixture.json', import.meta.url), 'utf8'),
 );
+
+// The SQL target config — the source of truth for the SQL ruleOrder (AC-1(a): asserted below against RULE_ORDER).
+const SQL_TARGET = JSON.parse(
+  readFileSync(new URL('../../harness/targets/generatedsqlvalidator.json', import.meta.url), 'utf8'),
+);
+
+// Slack ruleOrder (GOLD-18 precedence: first-violation-wins, 5 values; pass sentinel = "Valid").
+// Used by the okValue tests below (AC-2) — asserts that labelRed handles a non-null pass sentinel.
+const SLACK_RULE_ORDER = [
+  'MissingSecret',
+  'MissingSignature',
+  'MissingOrInvalidTimestamp',
+  'TimestampOutOfRange',
+  'InvalidSignature',
+];
 
 // =================================================================================================
 // Step 2 — decideLocation: rule→code location seam (D1 / AC-2)
@@ -159,9 +174,10 @@ test('diffRules serializes the spec ∧ ¬code set FIRST (the headline ordering,
 // auto-resolved. Case 4 is the L272 shape AND the fixture-artifact shape — routed to the candidate-bug
 // queue *tagged* needs-triage, never auto-confirmed. Keyed off the rule NAME / RULE_ORDER, never a GOLD-id.
 
-test('RULE_ORDER matches the validator source order EXACTLY (the 7 rule names in firing order)', () => {
+test('generatedsqlvalidator.json ruleOrder is the source of truth; RULE_ORDER lib export matches it (AC-1(a))', () => {
+  // The JSON config is the CANONICAL SOURCE for the SQL 7-rule firing order (Step 2(b) / AC-1(a)).
   // GeneratedSqlValidator.cs:227-303 — Validate's first-violation-wins sequence.
-  assert.deepEqual(RULE_ORDER, [
+  assert.deepEqual(SQL_TARGET.ruleOrder, [
     'SingleSelect',
     'RelationPolicy',
     'CategoryIdPresent',
@@ -169,7 +185,9 @@ test('RULE_ORDER matches the validator source order EXACTLY (the 7 rule names in
     'NoStrayLiteralThreshold',
     'BadReportsFilterPresent',
     'ReportIdsFirst',
-  ]);
+  ], 'JSON ruleOrder must match the validator firing sequence — edit generatedsqlvalidator.json, not the lib constant');
+  // Roundtrip: the lib export must also equal the JSON (sync guard + this test enforce both directions).
+  assert.deepEqual(RULE_ORDER, SQL_TARGET.ruleOrder, 'spec-diff.mjs RULE_ORDER must equal the JSON ruleOrder (JSON is the authority)');
 });
 
 test('labelRed CASE 1 — expected R, actual an EARLIER rule → interaction-artifact, route needs-triage (auto-resolved)', () => {
@@ -216,6 +234,61 @@ test('labelRed case 4 is keyed off the rule NAME, not a GOLD-id ordinal (the Q6 
   const byRule2 = labelRed({ expected: null, actual: 'RelationPolicy', ruleOrder: RULE_ORDER });
   assert.equal(byRule5.label, 'over-rejection');
   assert.equal(byRule2.label, 'over-rejection');
+});
+
+// =================================================================================================
+// Step 2(a) / AC-2 — okValue: per-target pass-sentinel (ADR-E)
+// =================================================================================================
+// The SQL validator returns string? (null = pass); Slack's SignatureVerificationResult enum returns
+// "Valid" as the pass outcome (never null). labelRed's case-3 and case-4 must compare against the
+// per-target okValue, not a literal null — otherwise a Slack over-rejection (expected "Valid", actual
+// "TimestampOutOfRange") falls through to unrecognized-rule instead of reaching the candidate-bug queue.
+//
+// These tests use the Slack 5-value ruleOrder (GOLD-18 precedence) and okValue: "Valid". The pre-existing
+// SQL cases (expected: null) MUST NOT stand in for this (they pass unchanged code) — AC-2 explicitly
+// requires the "Valid" sentinel to be exercised.
+
+test('labelRed CASE 4 (Slack enum) — expected "Valid" (okValue), actual "TimestampOutOfRange" → over-rejection, candidate-bug (AC-2)', () => {
+  // A conforming Slack input (expected: Valid = the pass sentinel) that the code incorrectly rejects
+  // with TimestampOutOfRange. With okValue: "Valid", case 4 must fire: expected === okValue && actual !== okValue.
+  // Without okValue support: "Valid" !== null → case 4 doesn't fire → falls to unrecognized-rule (wrong).
+  const res = labelRed({ expected: 'Valid', actual: 'TimestampOutOfRange', ruleOrder: SLACK_RULE_ORDER, okValue: 'Valid' });
+  assert.equal(res.label, 'over-rejection', 'Slack case 4: expected the pass sentinel (Valid), got a violation — over-rejection');
+  assert.equal(res.route, 'candidate-bug', 'over-rejection routes to candidate-bug queue (AC-2)');
+  assert.equal(res.needsTriage, true, 'case 4 is tagged needs-triage — real-or-fixture, not auto-decided');
+});
+
+test('labelRed CASE 3 (Slack enum) — expected "InvalidSignature", actual "Valid" (okValue) → sin-of-omission, candidate-bug (AC-2)', () => {
+  // A Slack input that should be rejected by InvalidSignature (expected !== okValue) but the code passed
+  // it (actual === okValue "Valid"). With okValue: "Valid", case 3 must fire: expected !== okValue && actual === okValue.
+  // Without okValue support: "Valid" !== null → case 3 condition actual === null is false → unrecognized-rule (wrong).
+  const res = labelRed({ expected: 'InvalidSignature', actual: 'Valid', ruleOrder: SLACK_RULE_ORDER, okValue: 'Valid' });
+  assert.equal(res.label, 'sin-of-omission', 'Slack case 3: code passed an input that InvalidSignature should reject (spec ∧ ¬code)');
+  assert.equal(res.route, 'candidate-bug', 'sin-of-omission routes to candidate-bug queue (AC-2)');
+});
+
+test('labelRed okValue defaults to null — existing SQL cases (expected: null) still pass unchanged (backward compat)', () => {
+  // Confirm okValue: null (the SQL default) is preserved when no okValue is passed.
+  // These are the pre-existing cases — they must pass with or without an explicit okValue.
+  const case4 = labelRed({ expected: null, actual: 'NoStrayLiteralThreshold', ruleOrder: RULE_ORDER });
+  assert.equal(case4.label, 'over-rejection', 'SQL case 4: okValue defaults to null, expected null, actual a rule → over-rejection');
+  const case3 = labelRed({ expected: 'NoStrayLiteralThreshold', actual: null, ruleOrder: RULE_ORDER });
+  assert.equal(case3.label, 'sin-of-omission', 'SQL case 3: okValue defaults to null, expected a rule, actual null → sin-of-omission');
+});
+
+test('labelRed Slack CASE 1 — expected later rule, actual earlier rule → interaction-artifact (Slack order)', () => {
+  // expected InvalidSignature (rule 5 of 5), actual TimestampOutOfRange (rule 4) — earlier masked it.
+  const res = labelRed({ expected: 'InvalidSignature', actual: 'TimestampOutOfRange', ruleOrder: SLACK_RULE_ORDER, okValue: 'Valid' });
+  assert.equal(res.label, 'interaction-artifact');
+  assert.equal(res.route, 'needs-triage');
+  assert.equal(res.autoResolved, true);
+});
+
+test('labelRed Slack CASE 2 — expected earlier rule, actual later rule → under-enforce (Slack order)', () => {
+  // expected MissingSecret (rule 1), actual MissingSignature (rule 2) — R should have fired first.
+  const res = labelRed({ expected: 'MissingSecret', actual: 'MissingSignature', ruleOrder: SLACK_RULE_ORDER, okValue: 'Valid' });
+  assert.equal(res.label, 'under-enforce');
+  assert.equal(res.route, 'candidate-bug');
 });
 
 // =================================================================================================

@@ -1,0 +1,21 @@
+{
+  "class": "SlackSignatureVerifier",
+  "source": "D:\\src\\knowledge-gateway\\src\\Services\\KnowledgeGateway\\KnowledgeGateway.API\\Features\\Slack\\SlackSignatureVerifier.cs",
+  "goldenSet": "D:\\src\\knowledge-gateway\\docs\\audit\\golden-set.md",
+  "isolatedAssembly": "D:\\src\\knowledge-gateway\\src\\Services\\KnowledgeGateway\\KnowledgeGateway.SpecHarness.Slack.Tests",
+  "productProject": "D:\\src\\knowledge-gateway\\src\\Services\\KnowledgeGateway\\KnowledgeGateway.API\\KnowledgeGateway.API.csproj",
+  "goldenIds": [
+    "GOLD-13", "GOLD-14", "GOLD-15", "GOLD-16", "GOLD-17", "GOLD-18"
+  ],
+  "ruleOrder": [
+    "MissingSecret",
+    "MissingSignature",
+    "MissingOrInvalidTimestamp",
+    "TimestampOutOfRange",
+    "InvalidSignature"
+  ],
+  "okValue": "Valid",
+  "_note": "Golden IDS ONLY — never the golden rule text. This is the WHOLE class golden set (GOLD-13..18, denominator 6 per golden-set.md). The golden text is sequestered in knowledge-gateway/docs/audit/golden-set.md and is read by ONE actor only — the spec-load agent (ADR-C placement layer) — never by the Cover or runner agent. Tests run in KnowledgeGateway.SpecHarness.Slack.Tests (own isolated assembly per ADR-C), NEVER in KnowledgeGateway.Tests. This config is safe to feed into the clean-room spec-cover run.",
+  "_ruleOrderNote": "ruleOrder is the verifier's POSITIONAL precedence order (VerifySignature's first-failure-wins sequence, GOLD-18): MissingSecret → MissingSignature → MissingOrInvalidTimestamp → TimestampOutOfRange → InvalidSignature → Valid. The ruleOrder lists only the 5 REJECTION outcomes; the pass sentinel 'Valid' (SignatureVerificationResult.Valid) lives in okValue — labelRed cases 3+4 compare against okValue, not against literal null (ADR-E). The 5 ruleOrder entries are DIFFERENT from the 6 GOLD-ids: a golden rule maps to the method branch it exercises, not to a ruleOrder position. Key the FP-labeler and any fixture off the rule NAME / ruleOrder index, NEVER off a GOLD-id ordinal.",
+  "_okValueNote": "okValue = 'Valid' (SignatureVerificationResult.Valid enum member). The verifier returns this enum on success; contrast with GeneratedSqlValidator which returns string? null on pass. Pass via _args.okValue when invoking the spec-cover workflow against this target."
+}
