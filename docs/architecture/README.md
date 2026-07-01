@@ -886,6 +886,28 @@ The altitude rule (research §2a, "same thinking at two altitudes, one authorita
 
 ---
 
+## ADR-37 — MVC trims redundant tests: a post-floor Minimize stage + a Cover generation guard, optimizing for rule-traceability — Accepted
+
+> **Status: Accepted — adhoc-MvcCoverMinimize, owner-ratified 2026-06-30.** Additive, two-way-door change to the `mine-verify-cover` method; per ADR-25 it collapses to this one ADR rather than a tech-spec. Grounded in a 3-suite pilot on a production Flutter app (`omnishelf_flutter_app`).
+
+**Context.** The Cover→Gate loop ratchets only *up* — each iteration adds tests to kill surviving mutants, and nothing ever trims. On three live Dart suites, 8–33% of generated tests killed **no new mutant** — worst on the *simplest* class (BuildZplCodeUsecase: 15 of 45 dead), because a small mutant set meets the rule→test 1:1 framing. The redundancy is detectable purely by **reasoning** — tracing each test to the mutant(s) it kills by reading test + source — the same reasoning the classify-survivors agent already performs on the mutant side; no extra mutation runs are needed to *detect* it. (`mutation_test` re-runs the whole suite once per mutant, so a bloated suite also inflates every gate run, not just the test count.)
+
+**Decision.**
+- **A new Minimize stage** in the stack-neutral method (`mine-verify-cover`), running **after** the loop reaches the mutation floor and **before** Report — the **dual of classify-survivors**: that stage tags unkilled mutants, this one tags tests that kill nothing new. Attribution is reasoning-only (no per-test mutation re-runs).
+- **Suite target = rule-traceable, not mutation-minimal.** Remove true duplicates and categorically-dead tests (log-only, occurrence-count escalation, same-call-under-two-rule-labels, "boundary" tests that never construct the distinguishing input); **keep** a test that documents a *distinct verified rule* even when another test already kills its mutant. The suite stays the executable spec of the rule KB — the skill's paired deliverable.
+- **A Cover generation guard** (volume reduction, *not* the enforcement). The Cover prompt enforces the adapter's existing "never assert on log output" policy plus "one representative per mutation-equivalence class," so the categorical dead tests are not emitted in the first place.
+- **A fail-closed confirm.** Removal is verified, never trusted — per-test attribution is fallible reasoning no tool can verify (the mutation tool reports only aggregate survivors, never which *test* killed which mutant), so the confirm is the only safety net. After a **write-owning agent** applies the trim, the **runner agent re-runs the full gate on the reduced suite** and the orchestrator (which has no filesystem — it only routes and decides) compares the **exact reachable killed-count** to the pre-minimize count; any drop → **restore**. The full re-gate is the **sound default** — it inherits the gate's existing anti-fake-green guards and catches attribution errors beyond any "at-risk lines"; targeted at-risk-line re-mutation is an optional cost optimization only where the mutation tool supports line-scoping. This is the anti-fake-green invariant — equivalently the mutation ratchet (a kill-rate regression → halt) — applied to test removal.
+- **Home = the base method**; the .NET and C++ adapters inherit unchanged (the pass is pure reasoning over the kill-map plus the mutation tool each adapter already provides).
+- The Minimize stage **reports** `removed N redundant tests, reachable kill X%→X% (confirmed unchanged)` — never a silent trim (ADR-8 no-silent-caps discipline).
+
+**Why.** The loop's objective is to climb to the floor; de-duplication is the opposite objective (fewest tests at constant kill), and folding both into one loop muddies each — so a separate post-floor stage is the clean home, exactly as Gate (climb) and classify-survivors (analyze) are already separate stages. Generation-time de-dup *alone* is unsafe: mid-loop the Cover agent lacks the whole-suite kill-map, so its redundancy judgment is unreliable and its failure mode is **under-generation** — a silent coverage hole, strictly worse than bloat. So generation stays conservative (categorical only) and the load-bearing de-dup is the whole-suite Minimize pass where the judgment is sound. Rule-traceable beats mutation-minimal because the skill ships verified-rules-as-tests; on the three pilot suites both targets removed the *same* tests (the divergent gray zone was empty), so rule-traceable costs nothing observed while preserving the skill's identity.
+
+**Tradeoffs.** A new stage plus a confirm run — targeted and bounded, but non-zero given `mutation_test` re-runs the suite per mutant. Accepted: the confirm is the only thing that makes "leaner with zero coverage loss" a *proven* fact rather than a hope, and scoping it to the at-risk lines keeps it cheap. The generation guard is prompt-level (a request, not an enforcement) — accepted because the Minimize pass + confirm IS the enforcement, so the guard need only reduce volume.
+
+**Rejected.** *Generation-time de-dup as the primary mechanism* — unsafe without the whole-suite view; risks under-generation. *Reasoning-only removal with no confirm run* — detection by reasoning is sound but removal is a stronger claim, and an attribution error becomes a silent coverage hole. *A mutation-minimal suite target* — discards the rule↔test traceability that is the skill's paired deliverable, for a gain that did not appear in the pilot data. *A Flutter-adapter-only home* — the over-generation is method-level (the rule→test framing), so .NET and C++ would keep bloating.
+
+---
+
 ## Inherited pipeline decisions
 Pre-existing tradeoffs, retained:
 
