@@ -86,11 +86,14 @@ const checks = [
   {
     name: 'spec-diff inline-copy sync',
     run: () => {
-      // The Workflow runtime cannot `import`, so spec-diff.mjs is inlined verbatim in spec-cover.workflow.js.
-      // This guard enforces that the two copies share identical code logic (modulo comment-only lines
-      // and blank-line differences). A code-level change to one that isn't mirrored in the other is caught.
-      const libSrc = readFileSync(join(ROOT, 'harness/lib/spec-diff.mjs'), 'utf8');
-      const wfSrc = readFileSync(join(ROOT, 'harness/spec-cover.workflow.js'), 'utf8');
+      // The Workflow runtime cannot `import`, so the spec-diff libs are inlined verbatim in the Workflow
+      // scripts that use them. This guard enforces that each (lib, workflow) pair shares identical code
+      // logic for its shared functions (modulo comment-only lines and blank-line differences). A code-level
+      // change to one copy that isn't mirrored in the other is caught. Generalized (adhoc-SddCoverageLoop,
+      // Step 3) from a single (spec-diff.mjs, spec-cover.workflow.js) pair to a LIST of pairs — each workflow
+      // inlines its own subset of a lib's exports (e.g. spec-cover-calc.workflow.js inlines spec-diff.mjs's
+      // rule-diff functions but NOT its validator-only labelRed/RULE_ORDER, plus spec-diff-calc.mjs's
+      // calculator outcome-labeler).
 
       // Normalize: strip comment-only lines and blank lines, then compare.
       function normalize(text) {
@@ -129,17 +132,40 @@ const checks = [
         return normalize(raw);
       }
 
-      const SHARED_FNS = ['decideLocation', 'evaluateMinerResult', 'ruleKey', 'classifyRule', 'diffRules', 'serializeDiff', 'labelRed'];
+      // Each entry: a (lib, workflow) pair + the functions THAT workflow inlines from THAT lib. A workflow
+      // may inline only a subset of a lib's exports (e.g. spec-cover-calc skips the validator-only labelRed).
+      const PAIRS = [
+        {
+          lib: 'harness/lib/spec-diff.mjs',
+          workflow: 'harness/spec-cover.workflow.js',
+          fns: ['decideLocation', 'evaluateMinerResult', 'ruleKey', 'classifyRule', 'diffRules', 'serializeDiff', 'labelRed'],
+        },
+        {
+          lib: 'harness/lib/spec-diff.mjs',
+          workflow: 'harness/spec-cover-calc.workflow.js',
+          fns: ['decideLocation', 'evaluateMinerResult', 'ruleKey', 'classifyRule', 'diffRules', 'serializeDiff'],
+        },
+        {
+          lib: 'harness/lib/spec-diff-calc.mjs',
+          workflow: 'harness/spec-cover-calc.workflow.js',
+          fns: ['outcomeMatches', 'labelOutcome'],
+        },
+      ];
+
       const mismatches = [];
-      for (const name of SHARED_FNS) {
-        const lib = extractFn(libSrc, name);
-        const wf = extractFn(wfSrc, name);
-        if (!lib) { mismatches.push(`${name}: not found in spec-diff.mjs`); continue; }
-        if (!wf) { mismatches.push(`${name}: not found in spec-cover.workflow.js`); continue; }
-        if (lib !== wf) mismatches.push(`${name}: code diverges between lib and inline copy`);
+      for (const { lib, workflow, fns } of PAIRS) {
+        const libSrc = readFileSync(join(ROOT, lib), 'utf8');
+        const wfSrc = readFileSync(join(ROOT, workflow), 'utf8');
+        for (const name of fns) {
+          const libFn = extractFn(libSrc, name);
+          const wfFn = extractFn(wfSrc, name);
+          if (!libFn) { mismatches.push(`${name}: not found in ${lib}`); continue; }
+          if (!wfFn) { mismatches.push(`${name}: not found in ${workflow}`); continue; }
+          if (libFn !== wfFn) mismatches.push(`${name}: code diverges between ${lib} and its inline copy in ${workflow}`);
+        }
       }
 
-      return { ok: mismatches.length === 0, detail: mismatches.length === 0 ? 'lib and inline copy in sync' : mismatches.join('; ') };
+      return { ok: mismatches.length === 0, detail: mismatches.length === 0 ? `${PAIRS.length} lib/workflow pair(s) in sync` : mismatches.join('; ') };
     },
   },
   {

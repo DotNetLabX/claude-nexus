@@ -31,6 +31,11 @@ const LOOP_FLUTTER_PATH = new URL('../../harness/loop-flutter.workflow.js', impo
 // Spec-driven Cover front-end (adhoc-SpecDrivenHarnessBuild, Inc 1). Its full sandbox-run contract lives in
 // tests/unit/spec-cover-workflow.test.mjs; here it joins the shared no-static-import + meta-purity loop.
 const SPEC_COVER_PATH = new URL('../../harness/spec-cover.workflow.js', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
+// Calculator-shaped spec front-end (adhoc-SddCoverageLoop, Step 3) — the SDD coverage loop's spec arm for a
+// numeric analytics calculator (BugRatioAnalyzer), not a first-violation-wins validator. Its full sandbox-run
+// contract lives in tests/unit/spec-cover-calc-workflow.test.mjs; here it joins the shared no-static-import +
+// meta-purity loop, same as spec-cover above.
+const SPEC_COVER_CALC_PATH = new URL('../../harness/spec-cover-calc.workflow.js', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 
 // ---- Raw source readers --------------------------------------------------------------------------
 function readWorkflow(path) {
@@ -1541,7 +1546,7 @@ function metaNonLiteralReason(src) {
   return null; // pure literal by these heuristics
 }
 
-for (const [name, path] of [['mine-verify', MINE_VERIFY_PATH], ['cover', COVER_PATH], ['cover-flutter', COVER_FLUTTER_PATH], ['cover-cpp', COVER_CPP_PATH], ['loop', LOOP_PATH], ['loop-flutter', LOOP_FLUTTER_PATH], ['spec-cover', SPEC_COVER_PATH]]) {
+for (const [name, path] of [['mine-verify', MINE_VERIFY_PATH], ['cover', COVER_PATH], ['cover-flutter', COVER_FLUTTER_PATH], ['cover-cpp', COVER_CPP_PATH], ['loop', LOOP_PATH], ['loop-flutter', LOOP_FLUTTER_PATH], ['spec-cover', SPEC_COVER_PATH], ['spec-cover-calc', SPEC_COVER_CALC_PATH]]) {
   test(`${name}.workflow.js meta is a pure literal (no concat / interpolation)`, () => {
     const reason = metaNonLiteralReason(readWorkflow(path));
     assert.equal(reason, null, `meta must be a pure literal — found: ${reason}`);
@@ -1550,6 +1555,9 @@ for (const [name, path] of [['mine-verify', MINE_VERIFY_PATH], ['cover', COVER_P
 
 test('spec-cover.workflow.js has no static import (joins the shared contract loop)', () => {
   assert.equal(hasStaticImport(readWorkflow(SPEC_COVER_PATH)), false, 'static `import` would be a syntax error in the Workflow runtime');
+});
+test('spec-cover-calc.workflow.js has no static import (joins the shared contract loop)', () => {
+  assert.equal(hasStaticImport(readWorkflow(SPEC_COVER_CALC_PATH)), false, 'static `import` would be a syntax error in the Workflow runtime');
 });
 test('meta-purity detector catches a string-concat meta (synthetic negative)', () => {
   const synthetic = `export const meta = { name: 'x', description: 'a ' + 'b', phases: [] };`;

@@ -1,0 +1,9 @@
+{
+  "class": "BugRatioAnalyzer",
+  "source": "D:\\src\\sprint-rituals\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\BugRatioAnalyzer.cs",
+  "specOracle": "D:\\src\\claude-plugins\\nexus\\docs\\specs\\adhoc-SddCoverageLoop\\delivery\\spec-rules-bugratio.md",
+  "isolatedAssembly": "D:\\src\\sprint-rituals\\src\\Services\\Fokus\\Fokus.Domain.SpecHarness.Tests",
+  "productProject": "D:\\src\\sprint-rituals\\src\\Services\\Fokus\\Fokus.Domain\\Fokus.Domain.csproj",
+  "specRuleIds": ["SR-1", "SR-2", "SR-3", "SR-4"],
+  "_note": "This is the SPEC arm's target config (code-mine target for the SAME class is targets/bugratio.json — the trace-join, plan Step 4, aims the code arm at this class). specOracle points at the CLEAN-ROOM golden-shaped intermediate (delivery/spec-rules-bugratio.md), authored ONLY from the Fokus prose lineage — NEVER sprint-rituals/docs/audit/golden-set.md (the sequestered benchmark, read post-hoc only, never by this arm) and NEVER BugRatioAnalyzer.cs (Q1 clean-room binding). isolatedAssembly is a NEW SR project (Fokus.Domain.SpecHarness.Tests) that does not exist yet on disk — it is created at live-run time (plan Step 8), referencing Fokus.Domain's product project but NOT Fokus.Domain.Tests (the isolated-assembly rule, mirrors KnowledgeGateway.SpecHarness.Tests / KnowledgeGateway.Tests). Modeled on targets/generatedsqlvalidator.json (9 fields) MINUS the validator-only ruleOrder + _ruleOrderNote fields (no positional first-violation-wins firing order exists for a value-assertion calculator)."
+}

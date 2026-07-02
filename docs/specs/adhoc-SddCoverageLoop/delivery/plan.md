@@ -63,9 +63,13 @@ docs — never from the SR golden set, the code-mined KB, or `BugRatioAnalyzer.c
 - **Inputs:** `D:\src\fokus\docs\kb\analytics\bug-ratio.md` (ratio-of-totals `:23`; alert streak `:26-33`) +
   `D:\src\fokus\docs\kb\domain\ticket.md` (Bug classification `:17`). Cover the intent analogs of GOLD-16..18.
 - **Accept:** one structured entry per rule; `expectedOutcome` shape supports **numeric (value ± ε), boolean,
-  and streak-integer** outcomes **and names the target field** of `BugRatioMultiSprintData`/`…SingleSprintData`
-  each rule asserts (GOLD-16 boolean classification; GOLD-17 numeric ratio; GOLD-18 boolean alert + integer
-  streak). No `golden-set.md` / `docs/kb/` / `*.cs` path cited as a source. `Satisfies:` AC-2, AC-6.
+  and streak-integer** outcomes **and names the intent/conceptual target field** the rule asserts about —
+  authored from the prose (e.g. `bugRatioPercent`, `bugClassification`, `alertActive` + `consecutiveStreak`),
+  **NOT an exact C# member read from `BugRatioMultiSprintData`/`…SingleSprintData`**; the binding to the real
+  return-type member is the spec-cover-calc test-writer's job at live-run (Step 3 workflow / Step 8), which
+  legitimately reads production source. Cover the intent analogs of GOLD-16 (boolean classification), GOLD-17
+  (numeric ratio), GOLD-18 (boolean alert + integer streak). No `golden-set.md` / `docs/kb/` / `*.cs` path
+  cited as a source (Q1). `Satisfies:` AC-2, AC-6.
 
 ### Step 2 — Build the outcome labeler (deterministic, TDD)
 The calculator analog of `spec-diff.mjs`'s validator `labelRed`: classify a spec-test result by comparing the
