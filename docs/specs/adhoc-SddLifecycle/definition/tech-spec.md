@@ -4,17 +4,23 @@
 **Type:** Technical feature — architect owns the definition (ADR-27). Successor framing to
 `adhoc-SddCoverageLoop` (the pilot machinery): that spec defines **one run** of the loop; this spec defines
 the **lifecycle** — how the loop's outputs are merged, attested, protected, and evolved across sessions.
-**Status:** **Ready** (2026-07-02) — code-grounded critic pass folded (REVISE → fixed; see `## Critic
-Review`). Implementation remains gated on the parent pilot's AC-6 verdict (below).
-**Depends on:** the `adhoc-SddCoverageLoop` pilot verdict (its AC-6). The lifecycle contracts below assume
-the two-arm loop works; a pilot NO-GO invalidates M1/M3 as designed (M2's *arm* stands regardless — the
-code arm is shipped `mine-verify-cover`; M2's cross-refactor protocol is net-new, see below).
+**Status:** **Ready — AC-6 DISCHARGED, M1/C1 + Merge/Generate IMPLEMENTED** (amended 2026-07-03; see
+`## Amendment` below). Originally Ready 2026-07-02 — code-grounded critic pass folded (REVISE → fixed;
+see `## Critic Review`).
+**Depends on:** the `adhoc-SddCoverageLoop` pilot verdict (its AC-6) — **adjudicated GO** by
+`docs/proposals/sdd-generate-merge-2026-07.md` (Ratified 2026-07-03), grounded in three sprint-rituals
+spec-arm runs plus the omnishelf_flutter_app two-arm comparison (citations in `## Amendment` below). The
+two-arm loop is confirmed to work; M1/C1 and the merge/generate machinery are now implemented
+(`adhoc-SddMergeGen`). M2's *arm* was already shipped `mine-verify-cover`, unaffected either way.
 **Implementation vehicle:** the skill fold-in (`adhoc-SddCoverageLoop` roadmap step 4). Nothing here ships
 independently; this spec exists so the fold-in implements contracts, not improvisation.
 
 ---
 
 ## Context
+
+*(Historical — as of the original 2026-07-02 draft; AC-6 is discharged as of 2026-07-03, see
+`## Amendment` below.)*
 
 The pilot machinery (built, offline-proven) is **built to produce** two blind rule sets + test sets and a
 reconciled diff — the live two-arm run is operator-owed and the parent's AC-6 is pending; the reconciled
@@ -246,7 +252,51 @@ reuse claim re-grounded; net-new work named net-new (C1 registry, M2 protocol, M
 
 ---
 
+## Amendment (adhoc-SddMergeGen, 2026-07-03)
+
+**AC-6 discharged.** `docs/proposals/sdd-generate-merge-2026-07.md` (Ratified 2026-07-03) adjudicates the
+parent pilot's AC-6 **GO**, superseding the formal blind BugRatio worktree pilot this spec's `Depends on`
+originally awaited (demoted to optional confirmatory evidence — proposal Alternatives). Grounding: three
+sprint-rituals spec-arm runs (`docs/plugin-feedback/nexus-1.20.0-2026-07-03.md` — 168/178 rules verified,
+GO with three conditions) and the omnishelf_flutter_app two-arm comparison
+(`docs/specs/PD-5263-mvc-tests/delivery/mine-spec-pilot-evaluation.md` — 17 match/11 partial/6 spec-only/1
+contradiction, comparison-is-the-multiplier verdict). Both runs also satisfy `adhoc-SpecArmTrigger`'s
+operator-owed AC-T6.
+
+**The fold-in gate is lifted for M1/C1 + generate.** `adhoc-SddMergeGen` implements: the M1 triage-merge
+(the five delta buckets, `divergence-pending-triage` + evidence pair, `suspect-stale-spec`), **C1** (the
+canonical rule registry — no-delete, provenance-mandatory, changelog-appending, idempotent), and the
+diff-driven **Generate** (Cover-from-spec) stage, all shipped in `mine-verify-cover`'s `## SDD lifecycle`
+section plus the fact-tagging vocabulary in the `-dotnet`/`-flutter` adapters. M0's greenfield case and
+M3's `add`/`carried`/`supersede`/`retire` quarter ride the same C1-only machinery (no separate build —
+see the skill's rewritten mode table). This spec's own **M1/C1 contracts above are now implemented** —
+this amendment points at the shipped skill rather than restating its content (`## Cross-references`
+already names the shipped baseline).
+
+**C2/C3/C4 remain explicitly deferred**, with this forward reference standing until the next arc:
+- **C2 — Attestation record** (the verdict/`carried` grammar, AC-L2/AC-L5) is NOT implemented. M3's
+  `re-open` disposition — new evidence contradicting a *recorded verdict* — needs C2's verdict line and is
+  therefore also not implemented; the registry (C1 alone) only supports `add`/`carried`/`supersede`/
+  `retire`.
+- **C3 — The merged test set** (ONE durable set, AC-L3/AC-L4) is NOT implemented — Generate parks
+  divergence tests as skipped records (the adapters' parked-red idiom); it does not yet merge/prune a
+  code-arm + spec-arm suite into one.
+- **C4 — Triage protocol** (human-attested quadrant semantics) is NOT implemented beyond what C1's
+  disposition table decides mechanically; the human-attestation step itself is future work.
+- The `## v1 Acceptance Criteria` AC-L3/AC-L4/AC-L5 above remain **unmet** by this amendment — they are
+  C2/C3-dependent. AC-L1 (registry stability) and AC-L6 (drift rules shipped) were already satisfied
+  (ADR-38/ADR-39). AC-L2 needs C2; not yet met.
+
+**ADRs extracted this amendment** (`docs/architecture/README.md`, per ADR-27/28): ADR-40 (AC-6 GO +
+merge-first build order), ADR-41 (diff-driven Cover-from-spec), ADR-42 (fact-based test tagging, no
+scalar score), ADR-43 (docs-render direction — implemented in the omnishelf-docs estate, not here),
+ADR-44 (spec write-back routing). The tech-spec's own `## ADRs to extract` list above (ADR-E/F/G/H/I) is
+a **separate, earlier numbering** from this spec's original draft — ADR-G/ADR-H are already extracted
+(ADR-38/ADR-39); ADR-E and ADR-F (the full C1/C2/C3 attestation architecture) remain **not** extracted —
+they depend on C2/C3, still deferred above. This amendment's five ADRs are additive, not a renumbering.
+
 ## Review gate
 
-Code-grounded critic (Mode 1) — **done** (above). Re-review recommended only if the owner reverses OD-L2
-or OD-L7 (they shape C3/C4), or if the parent pilot's AC-6 verdict invalidates the two-arm premise.
+Code-grounded critic (Mode 1) — **done** (above, original pass). Re-review recommended only if the owner
+reverses OD-L2 or OD-L7 (they shape C3/C4), or a future C2/C3/C4 arc changes the registry/attestation
+architecture this amendment left in place.

@@ -36,6 +36,11 @@ const SPEC_COVER_PATH = new URL('../../harness/spec-cover.workflow.js', import.m
 // contract lives in tests/unit/spec-cover-calc-workflow.test.mjs; here it joins the shared no-static-import +
 // meta-purity loop, same as spec-cover above.
 const SPEC_COVER_CALC_PATH = new URL('../../harness/spec-cover-calc.workflow.js', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
+// Merge/triage front-end (adhoc-SddMergeGen, Step 4) — the SddLifecycle M1/M3 merge actor. Steps 1-3's lib
+// TDD (merge-rules/rules-registry/kb-distill) covers the logic this workflow inlines; here it joins the
+// shared no-static-import + meta-purity loop, same as the spec-cover front-ends. Build-only PASS does not
+// prove the live merge (Step 9, operator-owed) — see the plan's Step 4 Accept.
+const MERGE_PATH = new URL('../../harness/merge.workflow.js', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 
 // ---- Raw source readers --------------------------------------------------------------------------
 function readWorkflow(path) {
@@ -1546,7 +1551,7 @@ function metaNonLiteralReason(src) {
   return null; // pure literal by these heuristics
 }
 
-for (const [name, path] of [['mine-verify', MINE_VERIFY_PATH], ['cover', COVER_PATH], ['cover-flutter', COVER_FLUTTER_PATH], ['cover-cpp', COVER_CPP_PATH], ['loop', LOOP_PATH], ['loop-flutter', LOOP_FLUTTER_PATH], ['spec-cover', SPEC_COVER_PATH], ['spec-cover-calc', SPEC_COVER_CALC_PATH]]) {
+for (const [name, path] of [['mine-verify', MINE_VERIFY_PATH], ['cover', COVER_PATH], ['cover-flutter', COVER_FLUTTER_PATH], ['cover-cpp', COVER_CPP_PATH], ['loop', LOOP_PATH], ['loop-flutter', LOOP_FLUTTER_PATH], ['spec-cover', SPEC_COVER_PATH], ['spec-cover-calc', SPEC_COVER_CALC_PATH], ['merge', MERGE_PATH]]) {
   test(`${name}.workflow.js meta is a pure literal (no concat / interpolation)`, () => {
     const reason = metaNonLiteralReason(readWorkflow(path));
     assert.equal(reason, null, `meta must be a pure literal — found: ${reason}`);
@@ -1558,6 +1563,84 @@ test('spec-cover.workflow.js has no static import (joins the shared contract loo
 });
 test('spec-cover-calc.workflow.js has no static import (joins the shared contract loop)', () => {
   assert.equal(hasStaticImport(readWorkflow(SPEC_COVER_CALC_PATH)), false, 'static `import` would be a syntax error in the Workflow runtime');
+});
+test('merge.workflow.js has no static import (joins the shared contract loop)', () => {
+  assert.equal(hasStaticImport(readWorkflow(MERGE_PATH)), false, 'static `import` would be a syntax error in the Workflow runtime');
+});
+
+// ==================================================================================================
+// merge.workflow.js runs in the mock-globals sandbox without ReferenceError, and its return carries the
+// five bucket counts + a passing token-budget lint on a small fixture pair. Steps 1-3's lib TDD covers
+// the triage/registry/distill LOGIC in isolation; this proves the workflow's actor wiring (agent call
+// order, inlined-function scope resolution) runs clean — the dedicated sandbox-run test file the
+// spec-cover-calc precedent uses is optional per the plan (no logic here the libs don't already own).
+// ==================================================================================================
+test('merge.workflow.js runs in mock-globals sandbox without ReferenceError; return carries bucket counts + lint', async () => {
+  const src = readWorkflow(MERGE_PATH);
+  const specReadReturn = { rules: [
+    { id: 'SR-1', ruleName: 'Agree', boundary: '>0', layer: 'domain-calc' },
+    { id: 'SR-2', ruleName: 'Gap', layer: 'domain-calc' },
+  ] };
+  const codeReadReturn = { rules: [
+    { id: 'BR-1', ruleName: 'Agree', boundary: '>0', symbol: 'BugRatioAnalyzer.Compute' },
+  ] };
+  // The registry-read agent's schema is {exists, content} (review HIGH fix, cycle 1) — the orchestrator
+  // parses `content` itself via parseRegistry; a first-ever run reports exists:false, content:''.
+  const registryReadReturn = { exists: false, content: '' };
+  const registryWriteReturn = { written: true };
+  const distillateWriteReturn = { written: true };
+  const reportWriteReturn = { written: true };
+  // Agent call order: spec-rules-read, code-arm-kb-read, registry-read, registry-write, distillate-write,
+  // report-write (date-stamp is skipped — _args.runDate short-circuits it below).
+  const fixtures = [specReadReturn, codeReadReturn, registryReadReturn, registryWriteReturn, distillateWriteReturn, reportWriteReturn];
+
+  const { result } = await runInSandbox(src, fixtures, JSON.stringify({ runDate: '2026-07-03', targetClass: 'BugRatioAnalyzer' }));
+  assert.equal(result?.variant, 'sdd-merge-triage');
+  assert.equal(result?.bucketCounts?.['overlap-confirmed'], 1, 'the matched Agree rule lands in overlap-confirmed');
+  assert.equal(result?.bucketCounts?.['spec-only-unimplemented'], 1, 'the unmatched Gap rule lands in spec-only-unimplemented (no targetLayer filter supplied)');
+  assert.equal(result?.lint?.pass, true, 'a tiny fixture pair stays under the default token ceiling');
+  assert.ok(result?.registryPath, 'return carries the registry path');
+  assert.ok(result?.distillatePath, 'return carries the distillate path');
+});
+
+// ==================================================================================================
+// review HIGH fix (cycle 1) regression: an EXISTING registry file (exists:true, real rendered content
+// including a divergent row) round-trips through the sandbox's parseRegistry call and produces `carried`
+// dispositions on unchanged input — the exact bug the review found (every row falsely "superseding"
+// itself) proven end-to-end through the actual workflow wiring, not just the isolated lib unit tests.
+// ==================================================================================================
+test('merge.workflow.js: an EXISTING registry (exists:true, real content) parses via parseRegistry and stays carried on unchanged input', async () => {
+  const src = readWorkflow(MERGE_PATH);
+  const specReadReturn = { rules: [
+    { id: 'SR-1', ruleName: 'Agree', boundary: '>0', layer: 'domain-calc' },
+  ] };
+  const codeReadReturn = { rules: [
+    { id: 'BR-1', ruleName: 'Agree', boundary: '>0', symbol: 'BugRatioAnalyzer.Compute' },
+  ] };
+  // A real prior-run registry, rendered exactly as renderRegistry would produce it — including the
+  // Bucket column the review found missing. No divergence-detail section needed for this ordinary row.
+  const existingContent = [
+    '# Canonical Rule Registry — BugRatioAnalyzer',
+    '',
+    'One row per canonical rule (SddLifecycle C1). Deprecate-never-delete: a retired/superseded row is kept, never removed. `source:` and `last_verified` are mandatory on every row.',
+    '',
+    '| Rule | Layer | Criticality | Arms | Bucket | Disposition | Source | Last Verified |',
+    '|------|-------|-------------|------|--------|-------------|--------|---------------|',
+    '| Agree | domain-calc |  | both | overlap-confirmed | add | prior run | 2026-07-01 |',
+    '',
+    '## Changelog',
+    '',
+    '- 2026-07-01: added Agree (add) — source: prior run',
+  ].join('\n');
+  const registryReadReturn = { exists: true, content: existingContent };
+  const registryWriteReturn = { written: true };
+  const distillateWriteReturn = { written: true };
+  const reportWriteReturn = { written: true };
+  const fixtures = [specReadReturn, codeReadReturn, registryReadReturn, registryWriteReturn, distillateWriteReturn, reportWriteReturn];
+
+  const { result } = await runInSandbox(src, fixtures, JSON.stringify({ runDate: '2026-07-03', targetClass: 'BugRatioAnalyzer' }));
+  assert.equal(result?.dispositionCounts?.carried, 1, 'the unchanged rule stays carried across the parsed round trip — not supersede (the review HIGH bug)');
+  assert.equal(result?.dispositionCounts?.supersede, undefined, 'no spurious supersede on unchanged input');
 });
 test('meta-purity detector catches a string-concat meta (synthetic negative)', () => {
   const synthetic = `export const meta = { name: 'x', description: 'a ' + 'b', phases: [] };`;

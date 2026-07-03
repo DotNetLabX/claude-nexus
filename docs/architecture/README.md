@@ -55,6 +55,11 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-37 — MVC trims redundant tests: a post-floor Minimize stage + a Cover generation guard, optimizing for rule-traceability *(Accepted — adhoc-MvcCoverMinimize, 2026-06-30)*
 - ADR-38 — M2 refactor safety = suite-green + floor re-clear across the refactor, never a kill-rate delta *(Accepted — adhoc-SddLifecycle, 2026-07-03)*
 - ADR-39 — Drift v1 = encoded agent awareness (solo/architect/developer) + CI/suite backstop; additive drift deferred to the per-PR loop *(Accepted — adhoc-SddLifecycle, 2026-07-03)*
+- ADR-40 — AC-6 GO + merge-first build order: the triage-merge machinery ships before the Cover-from-spec generator *(Accepted — adhoc-SddMergeGen, 2026-07-03)*
+- ADR-41 — Diff-driven Cover-from-spec: generate from the triaged merge output, never the raw spec-rule list *(Accepted — adhoc-SddMergeGen, 2026-07-03)*
+- ADR-42 — Fact-based test tagging: discrete facts + derived named tiers, no scalar score *(Accepted — adhoc-SddMergeGen, 2026-07-03)*
+- ADR-43 — Docs render FROM the verified KB, never the reverse; registry machinery borrowed from kb-sync *(Accepted — adhoc-SddMergeGen, 2026-07-03)*
+- ADR-44 — Spec write-back is a routed obligation: solo trivial-factual only, developer never *(Accepted — adhoc-SddMergeGen, 2026-07-03)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -940,6 +945,86 @@ The altitude rule (research §2a, "same thinking at two altitudes, one authorita
 **Tradeoffs.** Encoded awareness is prompt-level, not a hard gate — an agent can still miss it (same class of risk as every other agent-prose rule, per "Agent boundary rules repeated per agent" in Inherited pipeline decisions below). Accepted: the CI backstop catches the harmful case (broken attested rule); the awareness rule targets the softer case (stale-but-still-green tests) where only prompted discipline helps.
 
 **Rejected.** *A mechanical pre-commit or CI check for attestation staleness* — needs the C1/C2 machinery (registry, versioned attestation) that is deferred pending AC-6; premature to build the enforcement before the record format exists. *Solving additive drift now* — requires the per-PR loop, out of scope for this ungated slice; named and accepted as a v1 gap instead of silently ignored.
+
+---
+
+## ADR-40 — AC-6 GO + merge-first build order: the triage-merge machinery ships before the Cover-from-spec generator — Accepted
+
+> **Status: Accepted — adhoc-SddMergeGen, owner-ratified 2026-07-03.** Extracts `docs/proposals/sdd-generate-merge-2026-07.md` §A.1. Discharges `adhoc-SddCoverageLoop`'s AC-6 gate (superseding ADR-38/ADR-39's "deferred pending AC-6" framing for the M1/C1 slice).
+
+**Context.** The formally-planned blind two-arm BugRatio pilot never ran; instead the operator ran the shipped `mine-from-spec` arm in two consuming repos — sprint-rituals (3 standalone spec-arm runs, 168/178 rules verified, GO with three conditions) and omnishelf_flutter_app (a deliberate two-arm comparison against 4 mutation-gated code-arm KBs: 17 match/11 partial/6 spec-only/1 contradiction). Both independently ranked the merge/comparison machinery as the highest-value next build, ahead of the generator.
+
+**Decision.** AC-6 is adjudicated **GO**. The next build is the **M1 triage-merge machinery**, with the seven SR-pilot-surfaced conditions designed in from the start: layer-tag rules at consolidate time; `ambiguous` blocks generation; content-keyed, granularity-tolerant matching (many-to-one both ways); a distinct `divergence-pending-triage` disposition carrying an evidence pair; the five delta buckets (`overlap-confirmed`/`spec-only-other-layer`/`spec-only-divergent`/`spec-only-unimplemented`/`code-only-precision`); a `suspect-stale-spec` staleness signal; and an implemented-upstream check before authoring any red for a wrong-layer rule. The Cover-from-spec generator ships second, consuming the merge's triaged output (ADR-41).
+
+**Why.** Both independent pilots converged on the same ordering without coordination — the comparison step is what surfaced productization interest in both repos, while a generator built against the raw spec-rule list (the original AC-6 framing) would aim untargeted, ambiguous, wrong-layer reds at the codebase. Building the merge machinery first, with the pilot conditions designed in rather than retrofitted, avoids re-discovering the same seven conditions the hard way on a second stack.
+
+**Tradeoffs.** The formal blind BugRatio worktree pilot (which would have proven blind-arm independence formally) is demoted to optional confirmatory evidence rather than a gate — accepted because three live runs plus one deliberate comparison already answered the questions AC-6 was asking, with richer evidence than a synthetic pilot would have produced.
+
+**Rejected.** *Wait for the formal blind pilot before building anything* — the live evidence already exceeds what the formal pilot would show; waiting adds delay without adding confidence. *Build the generator first, merge machinery second* — inverts the value ordering both pilots independently confirmed.
+
+---
+
+## ADR-41 — Diff-driven Cover-from-spec: generate from the triaged merge output, never the raw spec-rule list — Accepted
+
+> **Status: Accepted — adhoc-SddMergeGen, owner-ratified 2026-07-03.** Extracts `docs/proposals/sdd-generate-merge-2026-07.md` §A.2.
+
+**Context.** The original AC-6 framing assumed Cover-from-spec would generate tests directly off the full mined spec-rule list. Both pilots showed this is unsafe: spec rules span multiple layers in one flat list (F12: 78 rules, ~30 targeting the analyzer class; F13: only 4 of 24 spec-only rules target the domain class) and include `ambiguous`-verdicted rules the spec does not actually commit to — generating from the raw list aims layer-mismatched, guess-encoding reds at the codebase.
+
+**Decision.** Cover-from-spec ships as a **diff-driven** generator. Input = the merge's triaged output: `spec-only-unimplemented` rules whose `layer` matches the plan's target surface, plus owner-confirmed `spec-only-divergent` rows; `ambiguous` rules are blocked (routed to spec repair). Two preconditions gate red authoring: an implemented-upstream check for layer-mismatched rules, and routing `suspect-stale-spec` divergences to spec repair rather than test generation. **Output convention:** generated reds are kept, parked as skipped divergence records (the adapter's parked-red idiom) with observed values — the suite stays green while the divergence stays on the record. In a mature-code run with an empty eligible set, the correct output is **zero tests** — not a failure signal.
+
+**Why.** Both pilots independently re-validated this same-day by hand — flutter's executed probe (11 tests from 6 uncovered/contradicted rules: 5 red confirmed drifts, 1 green keeper, zero false alarms) and SR's mini-pilot (4 tests: 2 real divergences, 1 agreement, the ambiguous rule correctly withheld). The diff-driven scope is safe-by-construction in mature repos (nothing red to generate) and valuable exactly when a redesign/greenfield needs it, without waiting for a genuine M0 moment — the diff decides, per run.
+
+**Tradeoffs.** Cover-from-spec cannot run standalone against a spec with no code arm to diff against for M1/M3 targets — it needs the merge's triage first. Accepted: for M0 (no code exists yet), the triage degenerates correctly (every eligible rule lands in `spec-only-unimplemented`/`spec-only-other-layer` with an empty code arm), so the same mechanism produces the greenfield red suite without new machinery (OD-L6).
+
+**Rejected.** *Generate directly off the raw spec-rule list* (the original framing) — both pilots show this aims layer-mismatched and ambiguous-encoding reds at the codebase. *Wait for a genuine greenfield M0 before building at all* (flutter pilot's literal verdict) — rejected by the owner; M0s are rare in practice, and the diff-driven scoping achieves the same safety without waiting.
+
+---
+
+## ADR-42 — Fact-based test tagging: discrete facts + derived named tiers, no scalar score — Accepted
+
+> **Status: Accepted — adhoc-SddMergeGen, owner-ratified 2026-07-03.** Extracts `docs/proposals/sdd-generate-merge-2026-07.md` §B.
+
+**Context.** Generated (and existing) tests need a way to run in named subsets — a fast pre-commit smoke pass, a full nightly run, a mutation-relevant gate pass on target-class change — without hand-maintaining per-run test lists. The owner considered a 1–100 priority/confidence scalar on tests as one option.
+
+**Decision.** Tag each rule and its generated test with discrete **facts**: `layer` (`domain-calc|api|ui|settings`), `criticality` (`golden|core|edge`), `mutation-gated` (bool), `runtime-cost` (`fast|slow`). Named **tiers** are filter expressions over facts, not a separate taxonomy — the initial set: `smoke` = `golden ∧ fast`; `full` = all; `gate` = `mutation-gated`, run on target-class change — mapped per stack adapter to its native filter syntax (`.NET`: `[Trait]` + `dotnet test --filter`; Flutter: `tags:` + `--tags`; C++: deferred). A 1–100 scalar is explicitly **rejected**.
+
+**Why.** Miners and skeptics cannot reliably calibrate a 67-vs-72 distinction, and any numeric threshold drifts session to session with no stable meaning; CI filters need stable named categories, not a moving number. This mirrors `kb-sync`'s own design note that it does not assign confidence scores — the same lesson recurring independently. Facts also double as the layer-tag input the merge machinery already needs (ADR-40) — one metadata pass serves two consumers.
+
+**Tradeoffs.** A fixed fact vocabulary is less flexible in one dimension (no single ordering axis) but more flexible in the dimension that matters (unlimited tier definitions as new filter expressions, with no recalibration of an existing scale when a new tier is added).
+
+**Rejected.** *A 1–100 scalar priority/confidence score* — calibration and threshold-drift problems, no stable CI-filter semantics; explicitly rejected so a later session does not re-propose it (recorded per the skill's own rejection line).
+
+---
+
+## ADR-43 — Docs render FROM the verified KB, never the reverse; registry machinery borrowed from kb-sync — Accepted
+
+> **Status: Accepted — adhoc-SddMergeGen, owner-ratified 2026-07-03.** Extracts `docs/proposals/sdd-generate-merge-2026-07.md` §C. The render-step half is **implemented in the omnishelf-docs estate**, not this repo — this ADR records the direction decision; the render code itself is out of scope here.
+
+**Context.** The omnishelf-docs pipeline runs code→docs→KB (`docs-bootstrap`→`kb-sync`); nexus mine-verify runs code→verified-rules→KB. An operator idea considered making docs a mandatory intermediate between mining and the KB. Separately, the KB's consumption model is not uniform: agents load a hot layer into context on every run, but full rule ledgers are read-on-demand only — an undistilled hot layer risks context bloat (the same failure `kb-sync`'s `MAX_GLOSSARY_ENTRIES: 500` guards against).
+
+**Decision.** Route by fact-kind, not a single direction for everything. Domain vocabulary/context facts (glossary, bounded contexts) are correctly docs→KB (`kb-sync`) — code cannot define a "workstream." Behavioral rules are correctly mining→KB direct — inserting a docs layer between mining and the KB would distill a verified ledger from unverified prose (provenance inversion), so this is **rejected** for rules. The missing piece is a **render step**, not an intermediate: BR ledgers feed `docs-bootstrap`/`docs-update` as a high-trust source, generating docs FROM the KB, never the reverse. The M1 merge registry (C1) borrows `kb-sync`'s registry machinery: mandatory `source` provenance, `last_verified` staleness ceilings, deprecate-never-delete, append-only changelog. The KB itself splits into a token-budgeted **hot layer** (one line per rule cluster + a pointer) and a **cold layer** (the full ledgers, read on demand) — a distillation stage compresses cold to hot, with a fail-closed token-budget lint.
+
+**Why.** Two ground-truth sources (code+spec for behavior, prose for vocabulary) both need to stay canonical for their own fact-kind; conflating them either way loses information (docs cannot originate a mutation-gated rule; a mined rule cannot originate a bounded-context name). The registry invariants are proven, reusable machinery from a live sibling system — reinventing them would just re-derive the same properties with new bugs. The hot/cold split is the valid core of the original "distill before KB" instinct, relocated to where it actually belongs: between the KB's own layers, not between mining and the verified ledger.
+
+**Tradeoffs.** Two ground-truth sources are more complex than one uniform rule — accepted because forcing docs→KB for behavioral rules would be actively wrong (provenance inversion), not merely inconsistent.
+
+**Rejected.** *Docs as a mandatory intermediate between mining and the KB* — provenance inversion: distilling a verified ledger from unverified prose. *A single uniform code→docs→KB direction for everything* — wrong for behavioral rules, where code+spec are the ground truth and prose is a lossy rendering.
+
+---
+
+## ADR-44 — Spec write-back is a routed obligation: solo trivial-factual only, developer never — Accepted
+
+> **Status: Accepted — adhoc-SddMergeGen, owner-ratified 2026-07-03.** Extracts `docs/proposals/sdd-generate-merge-2026-07.md` §D.
+
+**Context.** The SDD method's reliability rests on spec freshness — the flutter pilot's stale-constant finding and a rollback-narrative finding are what spec rot looks like in practice. Before this decision, no agent file encoded any rule about which role may correct a spec, or under what conditions.
+
+**Decision.** Spec write-back is a **routed obligation**, not a discretionary edit. Solo may apply *trivial factual* spec fixes only (a stale constant, a dangling cross-reference) and re-stamp `spec-rules.md` when present; anything **behavioral** (a bug-or-AC-change) is surfaced to the PO/owner — solo never settles it. The **developer never** updates `spec.md` or `plan.md` under any circumstance; in team mode, drift surfaces via developer/reviewer messages, and the architect amends the plan while the PO/owner amends the spec. `developer.md`'s existing read-only file enumeration is extended to name `docs/specs/{slug}/definition/` explicitly (previously only implied).
+
+**Why.** Granting broad spec-write authority to an implementing agent would let behavior-vs-spec disagreements get silently resolved by whichever side happened to run last, instead of by a human decision — exactly the failure mode the SDD method's divergence-triage machinery (ADR-41) exists to surface, not paper over. Scoping solo's license to *trivial factual* fixes only keeps the low-friction path open for genuinely mechanical corrections (the delta re-check, already shipped, makes the post-edit re-check cheap) without reopening behavioral authority.
+
+**Tradeoffs.** Every behavioral spec-vs-code disagreement now requires a human touchpoint even when the "obviously correct" answer seems clear to the agent — accepted because an agent's obviousness judgment is exactly the thing this rule exists not to trust blindly.
+
+**Rejected.** *Let solo resolve behavioral drift when confident* — reintroduces the silent-resolution risk this decision exists to close. *Let the developer also apply trivial fixes* — owner-stated: the developer never touches a spec, full stop, no trivial-fix carve-out (unlike solo, which operates outside the team pipeline's plan/review ceremony and can act with lower ceremony).
 
 ---
 

@@ -47,8 +47,11 @@ after Verify). **Input source is a separate, orthogonal axis** — what the mine
 
 - **Code source** (default, the code arm): ONE production class. Eligible for either depth mode.
 - **Spec source** (the spec arm): a slug's definition docs, via the **`mine-from-spec` mode** below.
-  Spec source always runs at **Mine→Verify depth only** — there is no Full/Cover variant for a spec source
-  in this slice; Cover-from-spec is deferred (see `## SDD lifecycle` below).
+  Spec source always runs at **Mine→Verify depth only** when run STANDALONE — there is no Full/Cover
+  variant driven directly off the raw spec-rule list. **Cover-from-spec ships as a separate, shipped
+  mode** — a diff-driven generator that consumes the Merge stage's TRIAGED output, never the raw
+  `spec-rules.md` this mode alone produces; see `## SDD lifecycle` below
+  (`docs/proposals/sdd-generate-merge-2026-07.md`, Ratified).
 
 `mine-from-spec` is a **source choice, not a third depth mode** — it composes with the existing
 Mine→Verify-only depth, it does not add a new one.
@@ -70,8 +73,11 @@ the boundary stated or invented, is it testable? Each rule gets a `verified | am
 `ambiguous` verdict carries the skeptic's one-line reason. Unverifiable rules are **spec findings** — the
 mode's second product, not a defect in the mode.
 
-**No Cover, no mutation gate** in this mode — there may be no code to run against yet; test authoring
-waits for the plan's target surface.
+**No Cover, no mutation gate in this `mine-from-spec` mode itself** — run standalone, this mode's output
+is `spec-rules.md` only. Test authoring against a spec is the separate, shipped **generate** mode
+(`## SDD lifecycle` below), which is driven off the Merge stage's TRIAGED output (never the raw
+`spec-rules.md` this mode produces directly) and which itself waits for the plan's target surface — a
+plan decision, not a property of this mode.
 
 **Output artifact.** `docs/specs/{slug}/definition/spec-rules.md` — one row per rule: authored `ruleName`,
 statement, boundary, verbatim citation, verdict (`verified | ambiguous`), and the skeptic's one-line reason
@@ -239,6 +245,42 @@ The scoring this stage reports is guarded by the anti-fake-green invariant above
 
 Mine→Verify writes a per-class entry (one file) with a `## Rules` list (`- BR-1: {statement}`) and a status footer. Rule statements are durable prose — describe rules by SYMBOL and CONDITION (names, predicates), never by source line number (line numbers rot when the source shifts; keep them in a separate field). Status is `verified` after Verify, flipped to `mutation-gated` after the Cover gate passes. See `kb-entry-schema`.
 
+## Fact tagging & test tiers
+
+`adhoc-SddMergeGen` (proposal §B; SR pilot condition 1). Every rule and its generated test carries
+discrete **facts** — never a scalar score. Named **tiers** are filter expressions over the facts, mapped
+per stack adapter to that stack's native filter syntax.
+
+**The facts (consolidate-stage output, both arms).** The Consolidate stage's output schema gains, per
+rule:
+- `layer` — `domain-calc | api | ui | settings` (SR proposal 1). Spec rules span layers in one flat list
+  (F12: 78 rules, ~30 targeting the analyzer class; F13: only 4 of 24 spec-only rules target the domain
+  class) — target selection needs the tag.
+- `criticality` — `golden | core | edge`.
+
+Cover's test-writer emits the facts on the generated test, plus two test-only facts:
+- `mutation-gated` — boolean; set once the test has cleared the gate battery.
+- `runtime-cost` — `fast | slow`.
+
+**Named tiers — filter expressions over facts, not a new taxonomy.** The initial set (extensible — a
+tier is just a predicate over the facts above, adding one never touches this list):
+- `smoke` = `golden ∧ fast`
+- `full` = all tests
+- `gate` = `mutation-gated`, run on target-class change
+
+**Rejected: a 1–100 scalar confidence/priority score** on tests or rules. Miners/skeptics cannot
+calibrate 67-vs-72, thresholds drift session to session, and CI filters need stable named categories —
+this mirrors `kb-sync`'s own design note ("this skill does not assign confidence scores"). Facts give
+unlimited tier flexibility without a fake number; do not re-propose the scalar in a later session.
+
+**Stack adapter table (fact→native-filter mapping).**
+
+| Adapter | Mapping |
+|---------|---------|
+| `mine-verify-cover-dotnet` | `[Trait("layer",…)]` etc. + `dotnet test --filter` tier expressions; the parked-red idiom (`[Fact(Skip = "SPEC-CODE DIVERGENCE … pending triage")]`) |
+| `mine-verify-cover-flutter` | flutter test `tags:` + `--tags` tier expressions; the parked-red idiom via `skip:` |
+| `mine-verify-cover-cpp` | **deferred** — the fact/tier vocabulary is not yet mapped for the C++ adapter (proposal §B names dotnet+flutter only); a follow-up gives it the same tag mapping |
+
 ## The adapter contract (what a stack skill provides)
 
 The method names FIVE capabilities; the stack adapter fills them. Do not extract this seam from a single language — abstract it only once a second stack is live (premature extraction bakes in a one-language-shaped contract).
@@ -269,25 +311,26 @@ Pin the `agent()` calls to **Sonnet** (`model: 'sonnet'`) — do **not** inherit
 ## SDD lifecycle (M0–M3)
 
 This skill is the **code arm** of a larger SDD (spec-driven development) lifecycle spanning spec and code
-together; the **spec arm** is the `mine-from-spec` mode above. The lifecycle has four modes, keyed on what
+together; the **spec arm** is the `mine-from-spec` mode above. Two more stages compose with the arms —
+**Merge** (triage) and **Generate** (Cover-from-spec) — both **shipped**, per
+`docs/proposals/sdd-generate-merge-2026-07.md` (Ratified). The lifecycle has four modes, keyed on what
 already exists for a class — a spec, code, and/or a golden set:
 
 | Mode | Trigger | What runs |
 |------|---------|-----------|
-| **M0 — Greenfield** | Spec exists, code doesn't | Spec arm only — Mine+Verify shipped (`mine-from-spec`); Cover/red-suite deferred |
-| **M1 — Create** | Code + spec both exist, no golden set | Both arms — spec-arm Mine+Verify shipped now; two-arm triage merge deferred |
-| **M2 — Protect** | Refactor of a class already covered by this skill's gated suite | Code arm only — this skill's gate battery |
-| **M3 — Evolve** | Feature update on a class with an existing attested golden set | Both arms — spec-arm Mine+Verify shipped now; three-way reconciliation deferred |
+| **M0 — Greenfield** | Spec exists, code doesn't | Spec arm (Mine+Verify) + **Generate**, shipped — with no code arm to compare against, Merge's triage degenerates so every eligible spec rule lands in `spec-only-unimplemented`/`spec-only-other-layer`, so Generate produces the red suite up front (OD-L6: no new machinery beyond `mine-from-spec` + Merge/Generate over an empty code arm) |
+| **M1 — Create** | Code + spec both exist, no golden set | Both arms — **Merge** (triage) + **Generate**, shipped |
+| **M2 — Protect** | Refactor of a class already covered by this skill's gated suite | Code arm only — this skill's gate battery (unchanged; no spec arm involvement) |
+| **M3 — Evolve** | Feature update on a class with an existing attested golden set | Both arms — **Merge** (registry-driven triage) + **Generate**, shipped for the `add`/`carried`/`supersede`/`retire` quarter of the reconciliation table; `re-open`, the C2 attestation record, and the merged ONE test set (C3/C4) are **deferred** to the next arc |
 
 **M0 — Greenfield.** A spec exists but the code doesn't. **Mine+Verify-from-spec is shipped and
-ungated** — run `mine-from-spec` above to produce the verified `spec-rules.md` rule set. Producing the
-**red suite** itself — the SDD starting point the code is then written to turn green — needs
-**Cover-from-spec** (test authoring against the plan's target surface); that stage remains **AC-6-gated**,
-the same deferral as the M1/M3 merge machinery below. No new machinery beyond `mine-from-spec` (OD-L6). M0
-is described here to place greenfield in the lifecycle map; only its Mine+Verify half is an executable
-mode this slice ships.
+ungated** — run `mine-from-spec` above to produce the verified `spec-rules.md` rule set. **Merge and
+Generate are shipped too** — with no code arm to compare against, Merge's triage (below) puts every
+eligible spec rule in `spec-only-unimplemented` (layer-matching the target surface) or
+`spec-only-other-layer`, so Generate authors the red suite the code is then written to turn green. No new
+machinery beyond `mine-from-spec` + Merge/Generate (OD-L6).
 
-**M2 — Protect** (the substantive content this slice ships). When refactoring a class already covered by a
+**M2 — Protect** (unchanged by this ship). When refactoring a class already covered by a
 `mine-verify-cover` gated suite, re-run the two safety-net gates the protect case actually uses, from
 §The gate battery above:
 
@@ -300,13 +343,44 @@ gate does not apply here. A kill-rate before/after **delta is advisory only** �
 denominator) changes with the source, so a rate comparison is not apples-to-apples and is **never** the
 pass/fail criterion; `suite_green` + `mutation_floor` re-clearing is. Code arm only; M2 needs no spec arm.
 
-**M1 — Create / M3 — Evolve.** Both modes run **both arms blind** and merge via triage. The **spec arm's
-Mine+Verify half is shipped and ungated today** — `mine-from-spec` can run standalone against an M1/M3
-target's spec to produce `spec-rules.md`. What remains **deferred pending the parent pilot's AC-6
-verdict** is the merge machinery itself: the canonical rule registry, the attestation record, merged-set
-triage, and three-way reconciliation — see `docs/specs/adhoc-SddLifecycle/definition/tech-spec.md`.
-Running the spec arm alone does not require the merge to be shipped; only combining it with the code arm's
-rule set does.
+**M1 — Create / M3 — Evolve.** Both modes run **both arms blind**, then **Merge** and **Generate**
+(agent-executed per the method below — the dev-repo reference implementation is a Workflow the
+orchestrator instantiates from this spec, per `## Substrate` above; skill text never references harness
+files).
+
+**Merge.** Content-keyed, granularity-tolerant matching (symbol + condition content — never names or
+counts; many-to-one both ways) of the spec arm's rule set against the code arm's rule set, producing the
+**five delta buckets**: `overlap-confirmed`, `spec-only-other-layer`, `spec-only-divergent` (→ the
+distinct **`divergence-pending-triage`** state, carrying the **evidence pair** — spec citation + code
+attestation — plus an optional `suspect-stale-spec` tag when the code-arm KB attributes the behavior to a
+source the mined spec predates), `spec-only-unimplemented`, `code-only-precision` — every rule lands in
+exactly one bucket, nothing silently dropped. `ambiguous`-verdicted spec rules are **excluded from
+generation-eligible buckets** and routed to a spec-repair list. Merge writes/updates the canonical rule
+registry (SddLifecycle C1; default path `docs/kb/golden/{Class}.md`) — `source:`/`last_verified`
+mandatory on every row, existing rows **never deleted** (disposition flips to `retire`/`supersede`,
+the record is kept), every write appends a changelog entry, a re-run against unchanged input is
+idempotent. For M3, the registry's prior rows drive the `add`/`carried`/`supersede`/`retire`
+dispositions; the `re-open` disposition (new evidence contradicts a *recorded verdict*) needs the C2
+attestation record's verdict-line grammar, which is **deferred** to the next arc alongside the merged ONE
+test set (C3/C4) — see `docs/specs/adhoc-SddLifecycle/definition/tech-spec.md`.
+
+**Generate (Cover-from-spec)** — a **diff-driven** generator, never driven off the raw spec-rule list.
+Input = the triaged registry — **only** `spec-only-unimplemented` rules whose `layer` matches the plan's
+target surface, plus owner-confirmed `spec-only-divergent` rows; `ambiguous` is blocked (routes to spec
+repair). **Two preconditions before authoring any red:** run the implemented-upstream check for rules
+whose layer ≠ target surface (one inspection beats a misleading wrong-layer red), and route
+`suspect-stale-spec`-tagged divergences to spec repair, not test generation. **Output convention:**
+generated reds are KEPT, parked as skipped divergence records via the adapter's parked-red idiom
+(`## Fact tagging & test tiers` above) with observed values, so the suite stays green while the
+divergence stays on the record. **Cover waits for the plan** — the target surface is a plan decision
+(SddLifecycle amendment 2026-07-03 stands); worktree isolation returns for generate/merge (Mine+Verify
+stays manifest-only). Generated tests carry the fact tags above (`## Fact tagging & test tiers`).
+**In a mature-code run with an empty eligible set the correct output is zero tests** — a clean suite with
+nothing left to generate is the CORRECT outcome, not a failure (the flutter pilot's executed probe
+validated the mechanism: 5 red confirmed drifts, 1 green keeper, zero false alarms).
+
+Running the spec arm alone does not require Merge/Generate to be shipped; only combining it with the code
+arm's rule set does — and that combination is shipped now, for the scope above.
 
 ## Relationship to other skills
 

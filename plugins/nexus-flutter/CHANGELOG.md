@@ -1,6 +1,14 @@
 # Changelog — nexus-flutter
 
 
+## [0.3.0] — 2026-07-03
+- **`mine-verify-cover-flutter` — fact tags & test tiers mapping (`adhoc-SddMergeGen`).** New capability:
+  maps the core method's fact-tagging vocabulary (`mine-verify-cover` → "Fact tagging & test tiers") to
+  the Dart/Flutter toolchain — facts as flutter `test()` `tags:`, the `smoke`/`full`/`gate` tiers as
+  `flutter test --tags` filter expressions, and the parked-red idiom (`skip: 'SPEC-CODE DIVERGENCE …
+  pending triage'`) for a generated test that documents a divergence without failing the suite. A
+  distinct taxonomy from the existing survivor-tag table — extends it, does not collide.
+
 ## [0.2.1] — 2026-07-01
 - **`mine-verify-cover-flutter` — fixture rule (F3) + categorical-KEEP Dart cue (F1).** Hardened the
   Fixtures/Mocks guidance from a suggestion into a **rule**: mock ONLY true I/O boundaries (repositories,

@@ -1,6 +1,29 @@
 # nexus — Changelog
 
 
+## [1.21.0] — 2026-07-03
+- **SDD merge/generate — `mine-verify-cover` gains shipped Merge + Generate stages (`adhoc-SddMergeGen`,
+  AC-6 GO).** New capability: adjudicates the `adhoc-SddCoverageLoop` pilot AC-6 gate GO
+  (`docs/proposals/sdd-generate-merge-2026-07.md`, Ratified) and ships the M1/C1 triage-merge + the
+  diff-driven Cover-from-spec generator, ungating the `## SDD lifecycle` mode table's M0/M1/M3 rows.
+  - `mine-verify-cover/SKILL.md` — new `## Fact tagging & test tiers` section (facts:
+    `layer`/`criticality`/`mutation-gated`/`runtime-cost`; named tiers `smoke`/`full`/`gate`; the
+    "no scalar score" rejection). Rewrote the `## SDD lifecycle (M0–M3)` section: the Merge stage (five
+    delta buckets, `divergence-pending-triage` + evidence pair, `suspect-stale-spec`, the canonical rule
+    registry's no-delete/provenance/changelog/idempotency invariants) and the Generate stage
+    (spec-only-unimplemented ∧ layer-match eligibility, `ambiguous` blocked, the two pre-red
+    preconditions, the parked-red output convention, zero-tests-is-correct). C2 (attestation record),
+    C3/C4 (the merged ONE test set) remain explicitly deferred to the next arc.
+  - `solo.md` — new `## Spec write-back` section: trivial-factual spec fixes + re-stamp only; behavioral
+    drift is surfaced to the PO/owner, never settled.
+  - `developer.md` — the read-only file enumeration now explicitly names
+    `docs/specs/{slug}/definition/` (previously only implied).
+  - 5 new ADRs extracted to `docs/architecture/README.md` (ADR-40..44): AC-6 GO + merge-first order,
+    diff-driven Cover-from-spec, fact-based tagging (no scalar), docs-render direction, spec write-back
+    routing.
+  - `commands/{solo,developer}.md` regenerated.
+  - owner-escalated to minor
+
 ## [1.20.0] — 2026-07-03
 - **Spec-arm trigger — `mine-from-spec` at spec-Ready (`adhoc-SpecArmTrigger`).** New capability: pulls
   the Mine+Verify half of the SDD spec arm forward out of the AC-6 gate and wires it to fire the moment a

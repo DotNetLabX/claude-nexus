@@ -1,6 +1,14 @@
 # nexus-dotnet — Changelog
 
 
+## [1.3.0] — 2026-07-03
+- **`mine-verify-cover-dotnet` — fact tags & test tiers mapping (`adhoc-SddMergeGen`).** New capability:
+  maps the core method's fact-tagging vocabulary (`mine-verify-cover` → "Fact tagging & test tiers") to
+  the .NET toolchain — `layer`/`criticality`/`mutation-gated`/`runtime-cost` facts as `[Trait]`
+  attributes, the `smoke`/`full`/`gate` tiers as `dotnet test --filter` expressions, and the parked-red
+  idiom (`[Fact(Skip = "SPEC-CODE DIVERGENCE … pending triage")]`) for a generated test that documents a
+  divergence without failing the suite.
+
 ## [1.2.0] — 2026-06-23
 **mine-verify-cover .NET adapter (new skill)** — fills the 5 toolchain capabilities of the `mine-verify-cover`
 method for .NET: Stryker.NET (MTP runner, JSON report), `dotnet test` (xUnit v3), the xUnit v3 +

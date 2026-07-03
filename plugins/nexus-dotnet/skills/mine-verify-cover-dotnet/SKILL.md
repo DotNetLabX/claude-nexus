@@ -93,6 +93,25 @@ Many DDD codebases split each aggregate into `{Class}.cs` (data) + `Behaviors/{C
 
 Record these facts in a project `docs/conventions/mutation-testing.md` so the Cover agent reads the API contract from the consuming repo (the method passes it the path).
 
+## Fact tags & test tiers — .NET mapping
+
+The method's fact-tagging + tier vocabulary (`mine-verify-cover` → "Fact tagging & test tiers") maps to
+xUnit v3 traits and `dotnet test --filter` expressions:
+
+- **Facts → `[Trait]` attributes** — `[Trait("layer", "domain-calc")]`, `[Trait("criticality", "golden")]`,
+  `[Trait("mutation-gated", "true")]`, `[Trait("runtime-cost", "fast")]` on every generated `[Fact]`/
+  `[Property]`.
+- **Tiers → `--filter` expressions** — `smoke` = `dotnet test --filter "criticality=golden&runtime-cost=fast"`;
+  `full` = `dotnet test` (no filter); `gate` = `dotnet test --filter "mutation-gated=true"`, run on target-class
+  change.
+- **The parked-red idiom** — a generated red that documents a genuine spec-code divergence (Cover-from-spec's
+  output convention, `mine-verify-cover` → SDD lifecycle) is KEPT, never deleted, and marked:
+  ```csharp
+  [Fact(Skip = "SPEC-CODE DIVERGENCE — pending triage: {one-line divergence summary, observed value}")]
+  ```
+  so the suite stays green (`dotnet test` reports it skipped, not failed) while the divergence stays on
+  the record — the SR mini-pilot convention.
+
 ## What this skill does NOT do
 
 - Own the loop, the gate battery, or the KB ledger — those are `mine-verify-cover` (the core method). This skill is only the .NET toolchain fill.

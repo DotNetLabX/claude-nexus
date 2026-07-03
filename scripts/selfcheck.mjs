@@ -150,6 +150,30 @@ const checks = [
           workflow: 'harness/spec-cover-calc.workflow.js',
           fns: ['outcomeMatches', 'labelOutcome'],
         },
+        // adhoc-SddMergeGen Step 4: harness/merge.workflow.js inlines FOUR libs (its own two-lib-plus
+        // composition — merge-rules.mjs composes rule-crosswalk.mjs internally, so the workflow's inline
+        // copy needs the crosswalk functions too, transitively, exactly like spec-cover-calc's dual-lib
+        // inline above).
+        {
+          lib: 'harness/lib/rule-crosswalk.mjs',
+          workflow: 'harness/merge.workflow.js',
+          fns: ['applyCrosswalk', 'reconcileRuleSets'],
+        },
+        {
+          lib: 'harness/lib/merge-rules.mjs',
+          workflow: 'harness/merge.workflow.js',
+          fns: ['ruleKey', 'boundaryDiverges', 'isStaleSpec', 'triageRuleSets'],
+        },
+        {
+          lib: 'harness/lib/rules-registry.mjs',
+          workflow: 'harness/merge.workflow.js',
+          fns: ['bucketOf', 'evidenceKey', 'flattenTriage', 'updateRegistry', 'renderRegistry', 'parseRegistry'],
+        },
+        {
+          lib: 'harness/lib/kb-distill.mjs',
+          workflow: 'harness/merge.workflow.js',
+          fns: ['clusterKey', 'estimateTokens', 'distillRegistry', 'lintTokenBudget'],
+        },
       ];
 
       const mismatches = [];

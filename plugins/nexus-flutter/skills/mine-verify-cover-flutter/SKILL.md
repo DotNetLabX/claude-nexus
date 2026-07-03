@@ -113,6 +113,26 @@ The orchestrator supplies **only** the `equivalentLoggingLines` signal and pre-t
 
 Record these facts in a project `docs/conventions/mutation-testing.md` so the Cover agent reads the contract from the consuming repo.
 
+## Fact tags & test tiers — Dart/Flutter mapping
+
+The method's fact-tagging + tier vocabulary (`mine-verify-cover` → "Fact tagging & test tiers") is a
+**different taxonomy from the survivor tags above** (those classify residual *mutants*; these classify
+generated *tests* — extend the vocabulary here, don't collide with `equivalent-logging`/`dead-code`/etc.):
+
+- **Facts → flutter `test()` tags** — `tags: ['layer:domain-calc', 'criticality:golden', 'mutation-gated',
+  'runtime-cost:fast']` on the `test(...)` call (flutter_test's native `tags` parameter).
+- **Tiers → `--tags` filter expressions** — `smoke` = `flutter test --tags "criticality:golden&&runtime-cost:fast"`;
+  `full` = `flutter test` (no filter); `gate` = `flutter test --tags "mutation-gated"`, run on target-class
+  change.
+- **The parked-red idiom** — a generated red documenting a genuine spec-code divergence (Cover-from-spec's
+  output convention, `mine-verify-cover` → SDD lifecycle) is KEPT, never deleted, and marked:
+  ```dart
+  test('rule name', () { ... },
+    skip: 'SPEC-CODE DIVERGENCE — pending triage: {one-line divergence summary, observed value}');
+  ```
+  so the suite stays green (`flutter test` reports it skipped, not failed) while the divergence stays on
+  the record — the same divergence-marker message shape as the .NET adapter's `[Fact(Skip = "...")]`.
+
 ## Minimize stage — Dart fill
 
 The method's Minimize stage (see `mine-verify-cover` → "The Minimize stage") reuses signals and toolchain
