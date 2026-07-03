@@ -70,12 +70,16 @@ Before writing, ensure you have:
    **`Satisfies:` traceability (optional-but-recommended, per step).** Each plan step *may* carry a
    one-line `Satisfies:` annotation citing the acceptance criterion it delivers (`Satisfies: AC-3`), or
    — for an ad-hoc pass with no spec ACs — the **ADR unit** it satisfies (`Satisfies: ADR-26
-   RESEARCH-stage`). This is the lightweight SDD requirement→task link (the research's chosen weight, a
-   one-line annotation, not a full requirement-ID chain), and it is the defense against intent drift
-   (code that runs but does the wrong thing). It is **additive and optional** — a step may omit it, and
-   existing plans predate it; **never** write it as a blanket "every step must carry `Satisfies:`"
-   mandate. Where a step carries it, the architect done-check confirms the cited AC/ADR-unit is real and
-   the reviewer verifies the code traces to it (both "where present", not a new hard gate).
+   RESEARCH-stage`), or — when the slug ran the spec arm — a **`{ruleName}`** referent that resolves to a
+   row in `docs/specs/{slug}/definition/spec-rules.md` (`Satisfies: BR-CreditLimit-Boundary`). This is the
+   lightweight SDD requirement→task link (the research's chosen weight, a one-line annotation, not a full
+   requirement-ID chain), and it is the defense against intent drift (code that runs but does the wrong
+   thing). Rule-bearing steps **should** carry the `{ruleName}` referent when `spec-rules.md` exists for
+   the slug — strengthening the trace-join's plan-ref anchor. It is **additive and optional** — a step may
+   omit it, and existing plans predate it; **never** write it as a blanket "every step must carry
+   `Satisfies:`" mandate. Where a step carries it, the architect done-check confirms the cited
+   AC/ADR-unit/`ruleName` is real and the reviewer verifies the code traces to it (both "where present",
+   not a new hard gate).
 
 7. **Apply the auto-approve gate** from `agents-workflow.md` (always auto-approve; if >10 steps, consider splitting into sub-plans where each has >= 2 steps). Message team lead, never developer directly.
 

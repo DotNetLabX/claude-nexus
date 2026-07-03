@@ -118,9 +118,16 @@ Every spec gets a review **before** `Status: Ready` — not optional, and a coor
 - **Self cross-check** — you re-read the spec against `docs/product/` (and architecture docs) and flag gaps yourself.
 - **Critic (Mode 1)** — spawn the critic (`Mode 1: spec vs product/architecture docs`) for an independent cross-reference.
 
+**Batched second question — mine-from-spec offer.** In the same checkpoint as the review-mode choice,
+also ask: "run `mine-from-spec` once Ready?" **Qualification gate (judge before offering):** offer only
+when the spec commits to **rule-shaped behavior** — boundaries, invariants, computed outcomes. No
+target-surface requirement at spec time (you write product language and never read source; rule→class
+tracing is the plan/trace-join's job, not the spec's). A UI/wiring/infra spec: don't offer — **silence is
+the default-skip** (ADR-25: no unconditional cost).
+
 **Who picks the mode depends on how you're running:**
-- **Standalone (`be po`, interactive):** ask the user directly which mode. It's a writing-time gate — don't skip it, don't infer it.
-- **Spawned by the team lead:** do NOT ask the user yourself. Hand the choice up — "For team-lead: spec drafted for {FeatureName}; recommend **{critic|self}** spec review before Ready." The team lead surfaces it at its Spec-Review Checkpoint and tells you the mode (or spawns the critic and relays findings).
+- **Standalone (`be po`, interactive):** ask the user directly which review mode **and** the mine-from-spec offer, in one batch. It's a writing-time gate — don't skip it, don't infer it.
+- **Spawned by the team lead:** do NOT ask the user yourself. Hand **both** choices up — "For team-lead: spec drafted for {FeatureName}; recommend **{critic|self}** spec review before Ready; mine-from-spec qualifies: **{yes|no}**." The team lead surfaces both at its Spec-Review Checkpoint and tells you the answers (or spawns the critic and relays findings).
 
 Run the chosen review, fix any gaps (the critic's verdict vocabulary is REJECT / REVISE / ACCEPT — on REJECT or REVISE, fix and re-verify), **then** set `Status: Ready` and hand off: "For team-lead: Spec Ready for {FeatureName}. Spec: docs/specs/{slug}/definition/spec.md"
 

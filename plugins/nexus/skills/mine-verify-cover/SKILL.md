@@ -13,6 +13,11 @@ Point this at ONE production class. It produces two things, automatically:
 
 It **reverse-engineers** the rules already encoded in the code — it documents what the code *does*, not what it *should* do. It never edits the production class, and it never deletes a failing test to go green.
 
+**Both premises above — ONE production class, reverse-engineering code — describe the method's code arm.**
+The spec arm (`## mine-from-spec mode` below) runs the same Mine→Verify stages against a spec manifest
+instead of a class, and documents what the spec *commits to*, not what code does. See `## Input-source
+axis` for how the two relate.
+
 This is the **stack-neutral method**. The toolchain (test runner, mutation tool, test style) comes from a paired **stack adapter** skill — `mine-verify-cover-dotnet` for .NET, `mine-verify-cover-flutter` for Dart/Flutter, `mine-verify-cover-cpp` for C/C++. The method here does not change per language; only the adapter does.
 
 ## The pipeline
@@ -34,6 +39,68 @@ One class per run. The orchestrator is deterministic and trusted; the agents do 
 
 - **Full** (needs a stack adapter): Mine→Verify→Cover→Gate→Report. Yields the verified KB *and* the gated tests.
 - **Mine→Verify only** (no adapter, no toolchain): stops after KB write. Yields a **verified rule KB** for any language — even code you cannot build. Use this as a standalone code-grounded KB generator (a clean input for documentation, drift-checking, or a broader KB to ingest).
+
+## Input-source axis
+
+The two modes above are a **depth** axis — how far the pipeline runs (through Cover/Gate, or stopping
+after Verify). **Input source is a separate, orthogonal axis** — what the miners read:
+
+- **Code source** (default, the code arm): ONE production class. Eligible for either depth mode.
+- **Spec source** (the spec arm): a slug's definition docs, via the **`mine-from-spec` mode** below.
+  Spec source always runs at **Mine→Verify depth only** — there is no Full/Cover variant for a spec source
+  in this slice; Cover-from-spec is deferred (see `## SDD lifecycle` below).
+
+`mine-from-spec` is a **source choice, not a third depth mode** — it composes with the existing
+Mine→Verify-only depth, it does not add a new one.
+
+## mine-from-spec mode
+
+Runs the Mine and Verify stages against a spec manifest instead of a production class.
+
+**Source manifest.** The miners read ONLY the mined definition docs: default `spec.md`/`tech-spec.md` for
+the slug; additional definition docs only if explicitly listed in the manifest. **Forbidden** — stated in
+**every stage prompt**, miner and skeptic alike: all production source, any existing tests, any code-arm
+rule KB, any golden set.
+
+**Mine.** Clean-room miners extract every testable rule the spec commits to (boundaries, invariants,
+outcome rules), each with a **verbatim spec citation** (quoted line(s)).
+
+**Verify.** A fresh skeptic verifies each rule against the spec text only — is it really committed to, is
+the boundary stated or invented, is it testable? Each rule gets a `verified | ambiguous` verdict; every
+`ambiguous` verdict carries the skeptic's one-line reason. Unverifiable rules are **spec findings** — the
+mode's second product, not a defect in the mode.
+
+**No Cover, no mutation gate** in this mode — there may be no code to run against yet; test authoring
+waits for the plan's target surface.
+
+**Output artifact.** `docs/specs/{slug}/definition/spec-rules.md` — one row per rule: authored `ruleName`,
+statement, boundary, verbatim citation, verdict (`verified | ambiguous`), and the skeptic's one-line reason
+for each `ambiguous`.
+
+**Stamp header (pinned grammar).** One line **per mined source doc**, in manifest order:
+```
+Spec-stamp: {repo-relative path} @ sha256:{first 12 hex} ({date})
+```
+Hash input = exactly the docs the miners were given (the manifest) — never `spec-rules.md` itself (it
+lives in the same folder; including it would be circular), never unmined siblings (e.g.
+`help.tooltips.md`). **Content is LF-normalized before hashing** (CRLF repo; writer and reader must
+agree). A later join recomputes per-file with the same normalization and compares line-by-line; a mismatch
+triggers a **delta re-check** — re-verify each citation against the current spec and scan changed sections
+for uncovered commitments — never a full re-run.
+
+**Execution topology (who runs what).** This method is **multi-agent by design** (parallel clean-room
+miners, then a fresh skeptic) and **a subagent cannot orchestrate it** — subagents have no
+Workflow/agent/parallel primitives, and a subagent spawning further agents is the ADR-21 breach vector. So:
+
+- The **orchestrator is the session that owns spawning** — the team lead in team mode; the main session
+  (PO or architect persona) in standalone mode.
+- The orchestrator runs the mode as **staged background agents**, exactly like pipeline stages: the
+  clean-room miners in parallel (background), then on their completion a consolidate+skeptic agent
+  (background). Stages interleave with plan-authoring — planning never blocks on the run.
+- Miner and skeptic stages spawn as **`general-purpose` agents** carrying the mode's stage prompts — they
+  are method stages, not pipeline roles (no pipeline `subagent_type`, no custom names).
+- "Launch the run" always means "orchestrate its stages" — never "delegate the whole run to one background
+  agent": a single agent cannot preserve miner/skeptic independence.
 
 ## The gate battery (never fake green)
 
@@ -202,21 +269,23 @@ Pin the `agent()` calls to **Sonnet** (`model: 'sonnet'`) — do **not** inherit
 ## SDD lifecycle (M0–M3)
 
 This skill is the **code arm** of a larger SDD (spec-driven development) lifecycle spanning spec and code
-together. The lifecycle has four modes, keyed on what already exists for a class — a spec, code, and/or a
-golden set:
+together; the **spec arm** is the `mine-from-spec` mode above. The lifecycle has four modes, keyed on what
+already exists for a class — a spec, code, and/or a golden set:
 
 | Mode | Trigger | What runs |
 |------|---------|-----------|
-| **M0 — Greenfield** | Spec exists, code doesn't | Spec arm only |
-| **M1 — Create** | Code + spec both exist, no golden set | Both arms, blind → triage merge (deferred) |
+| **M0 — Greenfield** | Spec exists, code doesn't | Spec arm only — Mine+Verify shipped (`mine-from-spec`); Cover/red-suite deferred |
+| **M1 — Create** | Code + spec both exist, no golden set | Both arms — spec-arm Mine+Verify shipped now; two-arm triage merge deferred |
 | **M2 — Protect** | Refactor of a class already covered by this skill's gated suite | Code arm only — this skill's gate battery |
-| **M3 — Evolve** | Feature update on a class with an existing attested golden set | Both arms, blind → three-way reconciliation (deferred) |
+| **M3 — Evolve** | Feature update on a class with an existing attested golden set | Both arms — spec-arm Mine+Verify shipped now; three-way reconciliation deferred |
 
-**M0 — Greenfield** is a named position in the lifecycle, not a shipped recipe here. Greenfield is where a
-spec exists but the code doesn't: the lifecycle's spec arm, run alone, produces the **red suite** — the SDD
-starting point the code is then written to turn green. No new machinery (OD-L6). The spec arm itself is
-**dev-repo harness, not yet shipped** — its live run is **AC-6-gated**, the same deferral as M1/M3 below. M0
-is described here only to place greenfield in the lifecycle map, not as an executable mode this slice ships.
+**M0 — Greenfield.** A spec exists but the code doesn't. **Mine+Verify-from-spec is shipped and
+ungated** — run `mine-from-spec` above to produce the verified `spec-rules.md` rule set. Producing the
+**red suite** itself — the SDD starting point the code is then written to turn green — needs
+**Cover-from-spec** (test authoring against the plan's target surface); that stage remains **AC-6-gated**,
+the same deferral as the M1/M3 merge machinery below. No new machinery beyond `mine-from-spec` (OD-L6). M0
+is described here to place greenfield in the lifecycle map; only its Mine+Verify half is an executable
+mode this slice ships.
 
 **M2 — Protect** (the substantive content this slice ships). When refactoring a class already covered by a
 `mine-verify-cover` gated suite, re-run the two safety-net gates the protect case actually uses, from
@@ -231,9 +300,13 @@ gate does not apply here. A kill-rate before/after **delta is advisory only** �
 denominator) changes with the source, so a rate comparison is not apples-to-apples and is **never** the
 pass/fail criterion; `suite_green` + `mutation_floor` re-clearing is. Code arm only; M2 needs no spec arm.
 
-**M1 — Create / M3 — Evolve.** The full Create/Evolve lifecycle (canonical rule registry, attestation
-record, merged-set triage, three-way reconciliation) is **deferred pending the parent pilot's AC-6
-verdict** — see `docs/specs/adhoc-SddLifecycle/definition/tech-spec.md`.
+**M1 — Create / M3 — Evolve.** Both modes run **both arms blind** and merge via triage. The **spec arm's
+Mine+Verify half is shipped and ungated today** — `mine-from-spec` can run standalone against an M1/M3
+target's spec to produce `spec-rules.md`. What remains **deferred pending the parent pilot's AC-6
+verdict** is the merge machinery itself: the canonical rule registry, the attestation record, merged-set
+triage, and three-way reconciliation — see `docs/specs/adhoc-SddLifecycle/definition/tech-spec.md`.
+Running the spec arm alone does not require the merge to be shipped; only combining it with the code arm's
+rule set does.
 
 ## Relationship to other skills
 

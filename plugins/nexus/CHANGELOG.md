@@ -1,6 +1,31 @@
 # nexus — Changelog
 
 
+## [1.20.0] — 2026-07-03
+- **Spec-arm trigger — `mine-from-spec` at spec-Ready (`adhoc-SpecArmTrigger`).** New capability: pulls
+  the Mine+Verify half of the SDD spec arm forward out of the AC-6 gate and wires it to fire the moment a
+  spec flips `Status: Ready`.
+  - `mine-verify-cover/SKILL.md` — new `mine-from-spec` mode (input-source axis, orthogonal to the
+    existing depth modes): clean-room miners + a fresh skeptic mine a spec manifest instead of a
+    production class, citation-per-rule, `verified | ambiguous` verdicts, writing
+    `docs/specs/{slug}/definition/spec-rules.md` with a reproducible per-file LF-normalized sha256 stamp.
+    Multi-agent Execution-topology rule (staged background `general-purpose` agents; orchestrator = the
+    spawning session). SDD-lifecycle section reconciled: Mine+Verify-from-spec is shipped/ungated; only
+    Cover-from-spec + the two-arm merge stay AC-6-gated.
+  - `create-implementation-plan/SKILL.md` — `Satisfies:` gains a third referent, `{ruleName}` (resolves to
+    a `spec-rules.md` row); advisory only, stays optional/never-blanket.
+  - `architect.md` — Phase-1 opportunistic spec-rules join (stamp check + LF-normalized delta re-check),
+    Phase-2 advisory `Satisfies: {ruleName}` guidance, done-check third-referent existence check, and a
+    net-new Technical-branch definition checkpoint (batches review-mode choice + the mine-from-spec offer,
+    codifying existing ADR-27 practice).
+  - `po.md` — batches the mine-from-spec offer into the existing `### Spec review (mandatory gate)`
+    checkpoint, gated to rule-shaped commitments only.
+  - `team-lead.md` — PO Spec-Review Checkpoint surfaces + records the confirmation; new staged
+    background dispatch (miners in parallel, then consolidate+skeptic) alongside the architect dispatch.
+  - Proven end-to-end on the architect-gate path against `adhoc-SddLifecycle/definition/tech-spec.md`:
+    54 consolidated rules (52 verified, 2 ambiguous spec findings), stamp reproducible, citations
+    grep-back verified.
+
 ## [1.19.0] — 2026-07-03
 - **SDD Golden-Set Lifecycle — ungated slice (`adhoc-SddLifecycle`).** New capability: a
   `## SDD lifecycle (M0–M3)` section in `mine-verify-cover/SKILL.md` framing the skill as the

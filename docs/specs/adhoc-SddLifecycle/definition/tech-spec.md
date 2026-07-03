@@ -178,6 +178,20 @@ Settled in discussion with the owner (2026-07-02):
 - **OD-L7 — The merged set's home is the consuming repo's real test project** (the code arm's home); the
   spec arm's harness project is transient and dissolves at merge. Confidence: medium (architect-resolved
   from the critic's topology gap; owner may relocate per repo convention).
+- **OD-L8 — Pipeline wiring for the spec-arm trigger (M0 / M1's spec half)** (settled 2026-07-03): the
+  run-confirmation is **batched into the PO's existing spec-review checkpoint** — one question batch
+  carries both "self cross-check or critic?" and "run mine-from-spec once Ready?" (no new stop). On
+  `Status: Ready`, the spec arm (**Mine+Verify only**) launches as a **background agent in its own
+  transient worktree** (the OD-L1 topology already provides it) while the architect proceeds to
+  Phase-1/plan in parallel. The run **stamps the spec-doc version it mined**; at plan-time join, a stamp
+  mismatch (Phase-1 answers amended the spec) triggers a **delta re-check of changed sections only**, not
+  a re-run. **Cover waits for the plan** — test authoring needs the target surface (class/API), which is
+  a plan decision; pre-plan tests would bind to a guessed shape. Wired by the fold-in, gated with it on
+  the pilot AC-6. Confidence: medium-high (owner-proposed wiring; stamp/delta join architect-added).
+  **Amended 2026-07-03 (owner-confirmed, `adhoc-SpecArmTrigger` OD-T2):** the Mine+Verify slice runs
+  manifest-only, no worktree — the enforced invariant is the disjoint input manifest (per Topology);
+  worktrees return with Cover/merge. The Mine+Verify wiring itself is pulled forward out of the AC-6
+  gate into `adhoc-SpecArmTrigger`; only the Cover half + merge machinery remain fold-in-gated.
 
 ---
 
@@ -190,6 +204,9 @@ Settled in discussion with the owner (2026-07-02):
   kill-rate delta.** (AC-L3.)
 - **ADR-H — Drift v1 = encoded agent awareness (solo/architect/developer) + CI backstop; additive drift
   deferred to the per-PR loop.**
+- **ADR-I — Spec-arm trigger wiring: confirmation batched at the spec-review checkpoint; Mine+Verify
+  runs in background in its own worktree while planning proceeds; version-stamped join at plan time
+  (delta re-check on mismatch); Cover deferred to post-plan.** (OD-L8.)
 
 ---
 

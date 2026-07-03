@@ -110,12 +110,36 @@ Keep prompts minimal — agents know their job from their own files. Over-specif
 
 ### PO Spec-Review Checkpoint
 
-Only when **you spawned the PO** (skip entirely when a spec already existed — see Launch Path Selection). When the PO returns a spec-review recommendation, surface the choice to the user **before** the spec flips to Ready: **self cross-check** or **critic (Mode 1: spec vs product/architecture docs)?** Relay the PO's recommendation, then:
+Only when **you spawned the PO** (skip entirely when a spec already existed — see Launch Path Selection). When the PO returns a spec-review recommendation, surface **both** choices to the user **before** the spec flips to Ready, in one batch: **self cross-check** or **critic (Mode 1: spec vs product/architecture docs)?** — and the PO's mine-from-spec recommendation (**run `mine-from-spec` once Ready?**, qualified per `po.md`'s rule-shaped-behavior gate). Relay the PO's recommendation for both, then:
 - **Critic:** spawn it (`Agent(subagent_type="critic", prompt="Mode 1: Spec Review. Spec: docs/specs/{slug}/definition/spec.md. Cross-reference against product/architecture docs + ADRs. Return structured findings.")`, `run_in_background: true`); relay findings to the PO; resume the PO to fix gaps and set Ready.
 - **Self:** resume the PO to self-cross-check and set Ready.
-- **Unattended:** self cross-check; don't ask.
+- **Unattended:** self cross-check; mine-from-spec defaults to the PO's recommendation (silence = default-skip per the qualification gate) — don't ask.
+- **Record the mine-from-spec confirmation** with the same answer-attribution discipline as the Architect Questions Checkpoint (below): only the user's verbatim reply counts as a user answer; an unattended/proceed-default run is recorded `presumed (proceed-default), not user-confirmed`, never as "the user decided."
 
 Spec-side mirror of the Architect Questions Checkpoint — never let the spec flip to Ready until the chosen review has run (don't pre-empt it by handling only the PO's product questions).
+
+### Mine-from-spec Dispatch (spec arm)
+
+On `Status: Ready` with a recorded **yes** (PO Spec-Review Checkpoint above): orchestrate the mode's
+stages as background agents **alongside** dispatching the architect for Phase 1 — the same
+parallel-dispatch shape as Standard+Codex ("Dispatch both, in parallel", below) — **never** delegate the
+whole run to one background agent (a single agent cannot preserve miner/skeptic independence;
+`mine-verify-cover`'s Execution topology).
+
+1. **Stage 1 — miners, in parallel:** spawn the clean-room miners as background `general-purpose` agents
+   carrying the `mine-from-spec` mode's miner prompt (manifest = the slug's `spec.md`/`tech-spec.md`,
+   forbidden set stated in the prompt), `run_in_background: true`.
+2. **Stage 2 — consolidate+skeptic:** on the miners' completion, spawn a background `general-purpose`
+   agent carrying the consolidate+skeptic prompt; it writes `docs/specs/{slug}/definition/spec-rules.md`
+   with the stamp header.
+3. Both stages run **while the architect proceeds through Phase 1/Phase 2** — the run never blocks the
+   pipeline; if it hasn't landed by architect Phase 2, the architect plans without it (opportunistic join,
+   per `architect.md` Phase 1).
+
+**Skip entirely** when the confirmation was no/default-skip, or the run is unattended with no PO
+recommendation to proceed on. (Team-mode surfacing for the **technical**-branch checkpoint in
+`architect.md` is explicitly out of scope for this slice — this dispatch fires only off the PO
+Spec-Review Checkpoint above.)
 
 ### Architect Questions Checkpoint
 
