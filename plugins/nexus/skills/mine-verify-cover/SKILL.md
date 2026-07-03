@@ -199,6 +199,42 @@ Pin the `agent()` calls to **Sonnet** (`model: 'sonnet'`) — do **not** inherit
 - Measure recall/completeness — without a hand-authored golden set, the 3-miner consensus + surviving mutants are the practical completeness signal, not a proof that no rule was missed.
 - Multi-class sweeps, boundary Discover, or graph-scoped targeting — single-class only; those are deferred extensions (graphify is the natural engine for graph-scoped target selection).
 
+## SDD lifecycle (M0–M3)
+
+This skill is the **code arm** of a larger SDD (spec-driven development) lifecycle spanning spec and code
+together. The lifecycle has four modes, keyed on what already exists for a class — a spec, code, and/or a
+golden set:
+
+| Mode | Trigger | What runs |
+|------|---------|-----------|
+| **M0 — Greenfield** | Spec exists, code doesn't | Spec arm only |
+| **M1 — Create** | Code + spec both exist, no golden set | Both arms, blind → triage merge (deferred) |
+| **M2 — Protect** | Refactor of a class already covered by this skill's gated suite | Code arm only — this skill's gate battery |
+| **M3 — Evolve** | Feature update on a class with an existing attested golden set | Both arms, blind → three-way reconciliation (deferred) |
+
+**M0 — Greenfield** is a named position in the lifecycle, not a shipped recipe here. Greenfield is where a
+spec exists but the code doesn't: the lifecycle's spec arm, run alone, produces the **red suite** — the SDD
+starting point the code is then written to turn green. No new machinery (OD-L6). The spec arm itself is
+**dev-repo harness, not yet shipped** — its live run is **AC-6-gated**, the same deferral as M1/M3 below. M0
+is described here only to place greenfield in the lifecycle map, not as an executable mode this slice ships.
+
+**M2 — Protect** (the substantive content this slice ships). When refactoring a class already covered by a
+`mine-verify-cover` gated suite, re-run the two safety-net gates the protect case actually uses, from
+§The gate battery above:
+
+- `suite_green` — every pre-refactor gated test stays green post-refactor.
+- `mutation_floor` — the re-gated whole-class reachable kill clears the adapter's floor.
+
+Run both before and after the refactor. `char_pin` **is inapplicable to M2** — M2 deliberately changes
+production source (the inverse of this skill's normal no-edit-prod stance), so the "prod source unchanged"
+gate does not apply here. A kill-rate before/after **delta is advisory only** — the mutant population (the
+denominator) changes with the source, so a rate comparison is not apples-to-apples and is **never** the
+pass/fail criterion; `suite_green` + `mutation_floor` re-clearing is. Code arm only; M2 needs no spec arm.
+
+**M1 — Create / M3 — Evolve.** The full Create/Evolve lifecycle (canonical rule registry, attestation
+record, merged-set triage, three-way reconciliation) is **deferred pending the parent pilot's AC-6
+verdict** — see `docs/specs/adhoc-SddLifecycle/definition/tech-spec.md`.
+
 ## Relationship to other skills
 
 | Skill | Relationship |

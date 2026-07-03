@@ -1,6 +1,6 @@
 ---
 name: improve-skills
-description: Creates project-local skills for skill gaps, fixes project-local skills as a consolidating pass, and routes fixes to shipped (plugin) skills into the portable plugin-feedback file. Every scaffold and fix ends with the shipped skill-lint gate. Invoked by the learner agent after classification and user approval, or directly when the user asks to create or fix a skill. This is the APPLY half (it changes skill files); evaluate-skill is the DIAGNOSE half that produces the findings to act on. Order: evaluate-skill first, then improve-skills — not interchangeable.
+description: "Creates project-local skills for skill gaps, fixes project-local skills as a consolidating pass, and routes fixes to shipped (plugin) skills into the portable plugin-feedback file. Every scaffold and fix ends with the shipped skill-lint gate. Invoked by the learner agent after classification and user approval, or directly when the user asks to create or fix a skill. This is the APPLY half (it changes skill files); evaluate-skill is the DIAGNOSE half that produces the findings to act on. Order: evaluate-skill first, then improve-skills — not interchangeable."
 ---
 
 # Improve Skills

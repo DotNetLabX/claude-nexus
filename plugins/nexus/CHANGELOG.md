@@ -1,6 +1,26 @@
 # nexus — Changelog
 
 
+## [1.19.0] — 2026-07-03
+- **SDD Golden-Set Lifecycle — ungated slice (`adhoc-SddLifecycle`).** New capability: a
+  `## SDD lifecycle (M0–M3)` section in `mine-verify-cover/SKILL.md` framing the skill as the
+  **code arm** of a larger spec-driven lifecycle — a 4-mode map (M0 Greenfield, M1 Create, M2
+  Protect, M3 Evolve), M2's full refactor-safety protocol (`suite_green` + `mutation_floor`
+  re-clear across a refactor; `char_pin` inapplicable; kill-rate delta advisory-only, never
+  pass/fail), and M0 named as a lifecycle position (no new machinery). M1/M3 (canonical rule
+  registry, attestation, merged-set triage, three-way reconciliation) are a deferred stub
+  pending the parent pilot's AC-6 verdict. Adds a net-new **AC-L6 attestation drift rule** —
+  a dormant forward conditional — to `solo.md`, `architect.md`, and `developer.md` (role-
+  differentiated: solo/developer update tests in the same pass or flag an M3 re-mine; architect
+  plans the update, since it never writes tests). Extracts **ADR-38** (M2 refactor safety) and
+  **ADR-39** (drift v1) into `docs/architecture/README.md`.
+- **Fix (fix-cycle 1/3, pre-existing, unrelated to the above).** Repairs 4 pre-existing broken
+  `SKILL.md` frontmatters that failed `claude plugin validate --strict` — `boy-scout`,
+  `diagnose`, `evaluate-skill`, `improve-skills` each had an unquoted `description:` scalar
+  containing colon-bearing prose (`vs simplify: boy-scout`, `Timing: reach`, `Order:
+  evaluate-skill` ×2), which YAML parses as a broken plain scalar. Quoted the description
+  values; no content changes. `validate --strict` now exits 0.
+
 ## [1.18.10] — 2026-07-01
 - **`mine-verify-cover` — categorical-KEEP + activation gate in the Minimize stage (F1).** Refines the
   post-floor Minimize stage (ADR-37) after the Flutter rerun surfaced its one over-reach: Minimize could

@@ -73,7 +73,7 @@ AC-L1..L5) to a follow-up pass once the operator returns AC-6 = GO. Review mode 
 
 **From:** architect
 **To:** user
-**Status:** Open
+**Status:** Answered
 **Step:** Phase 1 analysis (pre-plan)
 **File:** plugins/nexus/skills/mine-verify-cover/SKILL.md
 
@@ -131,4 +131,56 @@ home = one sync surface (this repo is sync-acute — omni twin, selfcheck, gen-c
 M1/M3 — decide sibling-vs-section *then*, when triggers 1–3 are concretely testable against real content.**
 
 ### Answer
-[owner — Q2 still open: fold now (recommended) vs pre-commit to a sibling]
+**user (relayed by team lead, 2026-07-03):** **(a) Fold into `mine-verify-cover`** — given after the
+clarification above, at the questions checkpoint (communication-log row 9). The user selected the
+recommended option verbatim: "Fold into mine-verify-cover (Recommended)".
+
+*(Reconciliation note, team lead: this answer reached the architect in the Phase-2 resume message but
+was not back-written here before planning — the stale `Open` status was flagged by the developer as Q3
+and reconciled by the team lead from the communication-log record. No design re-open.)*
+
+---
+
+## Q3: Plan asserts "Q2 = fold (user-confirmed)" but questions.md Q2 is still Open — reconcile before Step 1
+
+**From:** developer
+**To:** architect
+**Status:** Answered
+**Step:** Phase 1 analysis (pre-implementation)
+**File:** docs/specs/adhoc-SddLifecycle/delivery/plan.md (line 4) vs this file (Q2)
+
+**Context:**
+`plan.md` line 4-5 records the scope decision as: "Q2 = **fold into `mine-verify-cover` as an
+'SDD lifecycle' section** (user-confirmed)." The entire Step 1 approach (a new `## SDD lifecycle
+(M0–M3)` section inside `mine-verify-cover/SKILL.md`) rests on that fold decision.
+
+But in this file, **Q2's `Status:` is still `Open`** and its Answer block reads the unfilled
+placeholder `[owner — Q2 still open: fold now (recommended) vs pre-commit to a sibling]`. The Q1
+Answer (the only recorded user reply, 2026-07-03) covers the **scope choice (A)** and **review mode**
+only — it does **not** mention the fold-vs-sibling decision. So the questions.md trail does not
+corroborate the plan's "user-confirmed" tag for Q2.
+
+I flag this because Step 1 folds into shipped skill text (a `plugins/**`, hard-to-retract ship): if
+the fold were **not** actually settled and the owner later chose a standalone `sdd-coverage-loop`
+sibling, Step 1's home would be wrong.
+
+**Question:**
+Is the fold-into-`mine-verify-cover` decision settled (plan is authoritative → proceed on it), or does
+Q2 still need an owner sign-off before Step 1? Either way, please reconcile the questions.md Q2 artifact
+(set its Answer/Status) so the trail matches the plan.
+
+**Recommendation:** **Proceed on the plan's fold decision.** The plan is the binding implementation
+contract and explicitly tags Q2 user-confirmed; the architect's own Q2 clarification (this file,
+lines 103-131) exhaustively justifies fold-now and shows **all four sibling-extraction triggers are
+false** for this thin ungated slice; and the code-grounded critic signed the plan off with "No open
+questions remain" (plan.md:211). The likely cause is a stale artifact — a verbal owner confirmation
+folded into the plan but not back-written to Q2's Answer block. Reconcile the artifact; do not re-open
+the design.
+**Confidence:** high — the fold is thoroughly justified by the architect's clarification and the slice
+is thin/two-way where it lands; only the questions.md hygiene (Answer block) is out of sync.
+
+### Answer
+**team lead (2026-07-03):** The fold IS user-confirmed — the user's verbatim selection ("Fold into
+mine-verify-cover (Recommended)") is recorded in communication-log row 9, given after the architect's
+Q2 clarification. The plan's tag is accurate; only this file was stale. Q2's Answer block is now
+reconciled (see above). Proceed on the fold — no owner re-sign-off needed, no design re-open.

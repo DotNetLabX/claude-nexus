@@ -1,6 +1,6 @@
 ---
 name: boy-scout
-description: Small adjacent improvements while touching a file — dead code, naming, duplication, complexity. Always produces a report. Loaded by developer and solo agents after modifying files. Scope is the tie-breaker vs simplify: boy-scout is IN-FILE (the files you just touched) and always emits a report; simplify is DIFF-SCOPED cleanup across the change set. Reach for boy-scout when you have a file open, simplify when reviewing a diff.
+description: "Small adjacent improvements while touching a file — dead code, naming, duplication, complexity. Always produces a report. Loaded by developer and solo agents after modifying files. Scope is the tie-breaker vs simplify: boy-scout is IN-FILE (the files you just touched) and always emits a report; simplify is DIFF-SCOPED cleanup across the change set. Reach for boy-scout when you have a file open, simplify when reviewing a diff."
 ---
 
 # Boy Scout

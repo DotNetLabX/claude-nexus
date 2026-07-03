@@ -52,6 +52,9 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-34 — Distillation is a portable nexus skill: the pure compaction mechanism only *(Accepted — adhoc-DistillPromptContractFix, 2026-06-20)*
 - ADR-35 — The PR + AI-review tail: project the pipeline's review onto an opt-in PR; the human curates and merges *(Accepted — adhoc-PRReviewTail, 2026-06-21)*
 - ADR-36 — PR-tail host operations route through a thin host adapter; gh (GitHub) is the only adapter, and the tail is host-gated *(Accepted — adhoc-PRReviewTail, 2026-06-21)*
+- ADR-37 — MVC trims redundant tests: a post-floor Minimize stage + a Cover generation guard, optimizing for rule-traceability *(Accepted — adhoc-MvcCoverMinimize, 2026-06-30)*
+- ADR-38 — M2 refactor safety = suite-green + floor re-clear across the refactor, never a kill-rate delta *(Accepted — adhoc-SddLifecycle, 2026-07-03)*
+- ADR-39 — Drift v1 = encoded agent awareness (solo/architect/developer) + CI/suite backstop; additive drift deferred to the per-PR loop *(Accepted — adhoc-SddLifecycle, 2026-07-03)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -905,6 +908,38 @@ The altitude rule (research §2a, "same thinking at two altitudes, one authorita
 **Tradeoffs.** A new stage plus a confirm run — targeted and bounded, but non-zero given `mutation_test` re-runs the suite per mutant. Accepted: the confirm is the only thing that makes "leaner with zero coverage loss" a *proven* fact rather than a hope, and scoping it to the at-risk lines keeps it cheap. The generation guard is prompt-level (a request, not an enforcement) — accepted because the Minimize pass + confirm IS the enforcement, so the guard need only reduce volume.
 
 **Rejected.** *Generation-time de-dup as the primary mechanism* — unsafe without the whole-suite view; risks under-generation. *Reasoning-only removal with no confirm run* — detection by reasoning is sound but removal is a stronger claim, and an attribution error becomes a silent coverage hole. *A mutation-minimal suite target* — discards the rule↔test traceability that is the skill's paired deliverable, for a gain that did not appear in the pilot data. *A Flutter-adapter-only home* — the over-generation is method-level (the rule→test framing), so .NET and C++ would keep bloating.
+
+---
+
+## ADR-38 — M2 refactor safety = suite-green + floor re-clear across the refactor, never a kill-rate delta — Accepted
+
+> **Status: Accepted — adhoc-SddLifecycle, owner-ratified 2026-07-03.** The shipped, ungated half of `docs/specs/adhoc-SddLifecycle/definition/tech-spec.md`'s ADR-G (Q1=(A), user-confirmed); extracted per ADR-27/28. The *merged-set-is-the-gated-unit* half of ADR-G (C3/AC-L3) and the full M1/M3 lifecycle (C1/C2/C4) are **deferred pending the parent pilot's AC-6 verdict** (`docs/specs/adhoc-SddCoverageLoop`).
+
+**Context.** `mine-verify-cover` already gates a class at creation (its shipped gate battery: `target_mutated`, `suite_green`, `no_flaky`, `mutation_floor`, `no_new_skips`, `char_pin`). Refactoring a class already gated by that suite has no defined safety protocol — a naive read of the gate battery would pull in `char_pin` ("production source was not changed"), which a refactor structurally violates, and would tempt a kill-rate-delta comparison across a source change whose mutant population (denominator) is not stable.
+
+**Decision.** M2 (Protect) re-runs exactly two of the six existing gates, before and after the refactor: `suite_green` (every pre-refactor gated test stays green post-refactor) and `mutation_floor` (the re-gated whole-class reachable kill clears the adapter's floor). `char_pin` is explicitly **inapplicable** to M2 — the refactor's whole point is a production-source change, the inverse of the skill's normal no-edit-prod stance. A kill-rate before/after **delta is advisory only, never the pass/fail criterion** — the mutant population changes with the source, so a rate comparison is not apples-to-apples.
+
+**Why.** Reuse over invention — M2 needs no new gate machinery, only a scoped re-run of two gates the method already computes from the adapter's raw output (no agent self-reports a gate, per the existing anti-fake-green invariant). Excluding `char_pin` keeps the protocol internally consistent instead of gating on an assertion the refactor is designed to break. Demoting the rate delta to advisory (never pass/fail) avoids a false-fail/false-pass on a shifting denominator — a strictly weaker, honest signal beats a misleading strict one.
+
+**Tradeoffs.** M2 gives up a "did the refactor make testing harder" *quantitative* signal — the advisory delta is reported but never blocks. Accepted: the alternative (treating the delta as gating) produces false verdicts on every refactor that changes mutant count, which is nearly all of them.
+
+**Rejected.** *Full gate battery re-run including `char_pin`* — structurally contradicts a refactor. *Kill-rate delta as the pass/fail criterion* — not apples-to-apples across a source change (HIGH-B, code-grounded critic pass on the tech-spec). *Deferring M2 alongside M1/M3 until AC-6* — M2's arm is the already-shipped code arm; nothing about it depends on the two-arm pilot's verdict (Q1=(A)).
+
+---
+
+## ADR-39 — Drift v1 = encoded agent awareness (solo/architect/developer) + CI/suite backstop; additive drift deferred to the per-PR loop — Accepted
+
+> **Status: Accepted — adhoc-SddLifecycle, owner-ratified 2026-07-03.** Extracts `docs/specs/adhoc-SddLifecycle/definition/tech-spec.md`'s ADR-H in full (not gated on AC-6 — the drift rule is a dormant conditional, safe regardless of the parent pilot's verdict). Extracted per ADR-27/28.
+
+**Context.** Before this pass, attestation-awareness was discretionary — the architect's general KB-reading, not an encoded rule; no shipped agent file (solo, architect, developer) carried any check for an attested golden set (verified net-new: zero matches for "attested golden set" across the shipped agents). A class with a future C2 attestation record could silently drift out of sync with its tests, with nothing prompting an update.
+
+**Decision.** Encode a forward conditional in all three agents — solo and developer (symmetric, pre-implementation): when the class about to be touched has an attested golden set (`docs/kb/golden/{Class}.md`), update the affected tests in the same pass, or flag an M3 re-mine. architect (symmetric, at plan/done-check time): when a class in scope has an attested golden set, plan the test update or flag an M3 re-mine — role-differentiated, since the architect never writes tests itself. The rule is framed as dormant/forward — it references a record type (C2) that does not exist yet in this codebase; it activates the day the first attestation record ships. The mechanical backstop is free: the merged golden-set test set lives in the consuming repo's normal suite, so drift that *breaks* an attested rule fails CI regardless of process discipline. **Named, accepted v1 gap:** additive drift — new behavior in a covered class that keeps all tests green while the golden set silently under-covers — is not solved here; only the future per-PR loop (out of scope, roadmap) closes it.
+
+**Why.** Converting discretion into an encoded rule is the cheapest correct locus for this control — three short, forward-conditional bullets versus a new enforcement mechanism, and it composes with the existing CI backstop instead of duplicating it. Role-differentiating the architect's phrasing (plan/flag, not "update tests") keeps the rule honest about who actually writes tests in this pipeline.
+
+**Tradeoffs.** Encoded awareness is prompt-level, not a hard gate — an agent can still miss it (same class of risk as every other agent-prose rule, per "Agent boundary rules repeated per agent" in Inherited pipeline decisions below). Accepted: the CI backstop catches the harmful case (broken attested rule); the awareness rule targets the softer case (stale-but-still-green tests) where only prompted discipline helps.
+
+**Rejected.** *A mechanical pre-commit or CI check for attestation staleness* — needs the C1/C2 machinery (registry, versioned attestation) that is deferred pending AC-6; premature to build the enforcement before the record format exists. *Solving additive drift now* — requires the per-PR loop, out of scope for this ungated slice; named and accepted as a v1 gap instead of silently ignored.
 
 ---
 

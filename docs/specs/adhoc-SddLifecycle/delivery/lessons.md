@@ -26,9 +26,98 @@
   **expected-RED known-deferred** state owned by the team-lead — never a developer-green gate. (First hit here;
   the parent `SddCoverageLoop` never saw it because it changed no `plugins/**` files.)
   **Evidence:** [adhoc-SddLifecycle]. **Priority:** medium — recurs on every future plugin-editing plan.
+- **A plugin-release plan's `validate --strict` acceptance can be blocked by a pre-existing, unrelated skill
+  failure — the done-check must *confirm* the attribution, not trust it, and surface it as a release-blocking
+  gate even on a PASS.** Here `validate --strict` exited 1 on 4 skills (`boy-scout`/`diagnose`/
+  `evaluate-skill`/`improve-skills`) this feature never touched. The developer's "pre-existing, unrelated"
+  claim was validatable cheaply and deterministically: (a) `git diff --name-only HEAD` — none of the 4 are in
+  the changeset; (b) `git log -1 --date=short -- {file}` — all last touched 2026-06-18/06-20, before the
+  feature. Confirmed → valid `Deviated`. **Rule:** on a done-check, verify a "pre-existing failure" deviation
+  by changeset-membership + git-blame date before accepting it; and even when it's genuinely not the feature's
+  fault, disclose it as an **operator/team-lead-owned release-blocker** (`claude plugin tag` + CI both require
+  a clean `validate`), because the binary PASS must not bury a gate that stops the ship.
+  **Evidence:** [adhoc-SddLifecycle]. **Priority:** medium.
 - **In this repo the shipped harness is dev-repo-only — confirm what actually ships before scoping a "fold-in".**
   `harness/**` lives at the repo root (not under `plugins/`), so the SDD-loop `.mjs` modules never reach users;
   the fold-in's shippable surface is **skill text + agent files** only. This flips the plan from "build modules"
   to "author skill/agent prose + release" and makes this the first `plugins/**` touch (bump + omni twin) in a
   lineage whose parent shipped nothing. Check the ship boundary (repo-root vs `plugins/`) before assuming a
   harness feature ships code.
+
+## Reviewer Lessons
+
+- **A doc/skill-text/agent-prose-only feature is still fully grep-and-run verifiable — don't downgrade
+  review rigor because "no code shipped."** This pass shipped zero product code (skill section + agent
+  rules + ADR record + release bump), but every plan binding surface (heading text, anchor phrases,
+  role-fit exclusions, gate names, ADR numbers) was independently re-confirmed via grep/read rather than
+  trusted from implementation.md's narrative — and two gates (`validate --strict`, `selfcheck`) were
+  re-run from scratch to reproduce the developer's carry-over claim rather than accepting it on the
+  architect's done-check alone. **Evidence:** [adhoc-SddLifecycle]. **Priority:** low — reinforces existing
+  "fresh evidence" rule, no new mechanism needed.
+- **A `bump-plugin --dry-run` proposing `current+1` mid-review is not a re-bump signal — confirm against
+  committed HEAD, not the dirty working tree, before treating it as a finding.** Re-ran `bump-plugin.mjs
+  --dry-run` during this review and got `1.19.0 -> 1.19.1 (PATCH)`; the correct read (per the existing
+  "Uncommitted bump rides within" memory) is that the working tree already carries an uncommitted MINOR
+  bump from `1.18.10` (committed HEAD) to `1.19.0`, so the dry-run's `current+1` is comparing against the
+  dirty tree, not HEAD, and is not evidence of a missed bump. Logged here so a future reviewer doesn't
+  misread this as a Step-4 gap. **Evidence:** [adhoc-SddLifecycle]. **Priority:** low.
+- **A "pre-existing, correctly-attributed" deviation is not automatically non-blocking when the plan's
+  acceptance line is a literal, unqualified gate.** In cycle 0, this reviewer and the architect's done-check
+  both confirmed the `validate --strict` failure (4 unrelated `SKILL.md` frontmatters) was genuinely
+  pre-existing (zero diff from HEAD, last-touched 13-15 days pre-feature) and accepted it as a valid,
+  well-evidenced deviation — consistent with the "don't misattribute pre-existing failures as HIGH" rule.
+  But the plan's Step 4 acceptance names `claude plugin validate plugins/nexus --strict` passing as a literal
+  line item with no attribution carve-out, and a parallel Codex cross-check read it that way and issued
+  NO-GO on exactly this gate. The owner then authorized an in-pass scope-addition fix rather than accepting
+  the deviation — confirming the stricter reading was operationally correct. **Rule:** when a plan's
+  acceptance criterion is a literal command/gate (not a narrative goal), a correctly-attributed pre-existing
+  failure on that *exact* gate still deserves a HIGH (or an explicit "REQUEST CHANGES pending owner
+  scope-decision") rather than being waved through as a non-blocking Carry-Over Finding — the causal
+  attribution (origin: external/pre-existing) changes who fixes it, not whether the literal gate is
+  currently green. Two independent reviewers (this one, Codex) reading the same evidence reached different
+  verdicts on exactly this distinction; the safer default is to flag it as blocking and let the owner decide
+  the scope, not to pre-resolve it as accepted debt. **Evidence:** [adhoc-SddLifecycle]. **Priority:**
+  medium — recurs on any plan whose acceptance line names an exact command/gate.
+
+## Developer Lessons
+
+- **At Phase-1 analyze, cross-check every "(user-confirmed)" claim in plan.md against the actual answer
+  block in questions.md — a plan can tag a decision confirmed while its questions.md Answer is still an
+  unfilled placeholder.** Here plan.md:4 recorded "Q2 = fold (user-confirmed)" but questions.md Q2 was
+  still `Status: Open` with the owner-answer placeholder unfilled (the one recorded user reply, Q1,
+  covered scope + review mode only — never the fold-vs-sibling call). Likely a verbal confirmation
+  folded into the plan but not back-written. Surfaced as Q3 (reconcile, recommend proceed-on-fold,
+  high confidence) rather than silently proceeding on an uncorroborated "confirmed" tag or blocking on
+  an artifact-hygiene nit. **Evidence:** [adhoc-SddLifecycle]. **Priority:** low.
+- **`claude plugin validate --strict` can fail on pre-existing, unrelated skill files — scope the failure to
+  your own diff before treating it as a Step-4 blocker.** At Step 4, `validate --strict` exited 1 on 4
+  frontmatter YAML errors in `boy-scout`, `diagnose`, `evaluate-skill`, `improve-skills` — none touched by
+  this plan. Confirmed pre-existing via the sanctioned read-only pattern: `git status --porcelain` / `git
+  diff --stat` on those 4 paths was empty (zero delta from HEAD), and `git log -1` on them showed last touch
+  13 days before this feature started. The file this plan *did* edit (`mine-verify-cover/SKILL.md`) produced
+  no error block. Documented as a Carry-Over Finding + Deviation rather than fixed (out of scope) or silently
+  passed over. **Evidence:** [adhoc-SddLifecycle]. **Priority:** medium — likely recurs on the next
+  `plugins/**`-touching plan; worth a `create-implementation-plan`/`release-plugin` note that `validate
+  --strict` failures should be scoped to the plan's own changed files before treating as blocking.
+- **`bump-plugin.mjs`'s auto-generated CHANGELOG stub can carry a stale date across a day-rollover.** The
+  stub read `2026-07-02` when the session's actual date was `2026-07-03` (likely computed once at an earlier
+  point in a long-running session). Caught only because I was already rewriting the stub's body to describe
+  the real change — a bump applied without a body rewrite would ship the wrong date silently. **Evidence:**
+  [adhoc-SddLifecycle]. **Priority:** low.
+- **A "pre-existing, unrelated, out-of-scope" Carry-Over Finding is still a legitimate scope addition once
+  the owner authorizes fixing it in-pass — the original scope boundary isn't immovable, but it only moves on
+  an explicit owner instruction.** Step 4 correctly documented the 4 broken `SKILL.md` frontmatters as
+  pre-existing/out-of-scope rather than fixing them. The reviewer + a parallel Codex cross-check both flagged
+  the still-red `validate --strict` gate as release-blocking; the owner then explicitly authorized fixing
+  them in the same pass (fix-cycle 1/3). Documentation-first was right both times — the fix only happened
+  once instructed, never on my own initiative. **Evidence:** [adhoc-SddLifecycle]. **Priority:** low —
+  confirms existing document-don't-silently-fix guidance rather than adding a new rule.
+- **A YAML plain scalar breaks on a mid-line `word:` + space, even deep inside otherwise-innocuous prose —
+  worth a cheap pre-flight grep before shipping a new/edited `description:` frontmatter value.** All 4 broken
+  files shared the identical defect: an unquoted `description:` value with a colon-space later in the
+  sentence (`vs simplify: boy-scout`, `Timing: reach`, `Order: evaluate-skill` ×2) — nothing visually
+  "special"; only `validate --strict` catches it, not a normal read. Fix is always the same: wrap the value
+  in double quotes (none of the 4 had an embedded double-quote, so no escaping was needed). **Evidence:**
+  [adhoc-SddLifecycle]. **Priority:** medium — a one-line pre-flight grep for a bare colon-space inside an
+  unquoted `description:` line could catch this class before `--strict` does; worth proposing to
+  `release-plugin` or a skill-authoring lint step.
