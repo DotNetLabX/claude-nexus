@@ -1,8 +1,8 @@
 # virtual-worker-harness findings — adoption proposals for Nexus
 
 **Date:** 2026-06-12 (Architect) · **Status:** Ratified — partially delivered (was v2 post-deep-dive). Bookkept 2026-06-22.
-**Delivered:** A1 (allocation / "cheapest correct locus" principle in `docs/architecture/README.md`) + A3 (`scripts/selfcheck.mjs`, adhoc-VwhSelfcheckAndPrinciple).
-**Remainder (backlog):** A2 declutter skill, A4 advisory nudges, A5 decision log, A6 lessons voice + provenance tags.
+**Delivered:** A1 (allocation / "cheapest correct locus" principle in `docs/architecture/README.md`) + A3 (`scripts/selfcheck.mjs`, adhoc-VwhSelfcheckAndPrinciple) + A6 provenance-tag half (adhoc-LessonsProvenance, nexus 1.18.2; first-person-voice half dropped by design).
+**Remainder (backlog):** A2 declutter skill, A4 advisory nudges, A5 decision log.
 **Subject:** `github.com/omniaz/virtual-worker-harness` ("VWH"), local clone `D:\omnishelf\virtual-worker-harness`
 **Method:** v1 was based on remote spot-reads (README, contract, firewall, coverage flavor). v2 adds a
 full deep dive: three parallel Explore surveys (all ~35 kernel modules; the soft harness — CLAUDE.md,
