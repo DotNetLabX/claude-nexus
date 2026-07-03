@@ -1,7 +1,7 @@
 # adhoc-DistillPromptContractFix — Communication Log
 
 **Branch:** adhoc-DistillPromptContractFix
-**Step:** consolidated to main — Option A (distill-prompt documented under 1.16.1; no phantom 1.17.0, code already shipped in 1.16.1). Gates owed: architect done-check, reviewer Step-2, owner Step-6 smoke test.
+**Step:** awaiting owner Step-6 smoke test — all agent gates done: done-check PASS, Step-2 APPROVED, MEDIUM fixes applied + team-lead-verified (grep + verify-gate PASS). Then team-lead closure (summary + commit).
 **Cycle:** 0/3
 **Team Mode:** standard
 **Review Mode:** critic (plan reviewed code-grounded; Step-2 reviewer mandated code-grounded)
@@ -29,8 +29,23 @@
 | 12 | team-lead (validate) | — | bump-plugin --minor → "no bump needed" (distill code already committed under 1.16.1). README now holds ONLY ADR-34 (SectionAddressableReads's README hunk committed in 808604c) | planned 1.17.0 now collides with reality |
 | 13 | user → team-lead | version fork | User chose **Option A** — document distill-prompt under 1.16.1, no phantom 1.17.0 | deviates from plan's 1.17.0 (reality moved) |
 | 14 | team-lead → repo | commit + ff main | Commit ADR-34 + CHANGELOG note under 1.16.1; fast-forward main to branch tip (linear history) | gates still owed: done-check, reviewer, Step-6 |
+| 15 | user → team-lead | resume | Resume approved on `main` (branch mismatch flagged; main == old branch tip, safe). Repo has moved to 1.20.0 since | — |
+| 16 | team-lead → architect | architect:donecheck | Fresh spawn (prior session's agents not addressable): Step 1 done check; told to verify against live HEAD, Step 3 resolved via Option A, Step 6 owner-run out of scope | — |
+| 17 | architect → team-lead | architect:donecheck | **PASS** — 5 steps Implemented/Superseded (Step 3 = Option A, valid supersession), Step 6 N/A owner-owed OPEN; skill-conformance PASS; verdict + lessons written to review.md | Step-6 smoke test remains the only behavioral proof |
+| 18 | team-lead → reviewer | reviewer:review | Fresh spawn: Step 2 code review, cycle 1/3, code-grounded vs HEAD (1.20.0); Step 3 supersession + Step 6 owner-run flagged as out of scope | — |
+| 19 | reviewer → team-lead | reviewer:review | **APPROVED** — no CRITICAL/HIGH; 2 MEDIUM (stale "1.17.0" claims in skill-backlog.md:53 + README.md:854/ADR-34); selfcheck 5/5 PASS at HEAD; carry-overs resolved | Option-A fact not propagated beyond CHANGELOG |
+| 20 | team-lead → developer | developer:implement | Fresh spawn (opus): fix the 2 MEDIUMs + grep-sweep docs/ for other stale phantom-1.17.0 refs (legit PR-review-tail 1.17.0 refs untouched); docs-only, no bump, no commit | — |
+| 21 | developer → team-lead | developer:implement | Both MEDIUMs fixed (3 files exactly: skill-backlog.md, architecture/README.md, implementation.md addendum); sweep found no other stale refs; lesson strengthened not twinned | — |
+| 22 | team-lead (validate) | — | Grep-verified both stale claims gone; verify-gate verdict **pass** (lint + selfcheck blocking, both ok). No re-review — MEDIUMs after APPROVED are follow-ups, not a fix cycle. Pipeline now blocked on owner Step-6 | benign audit noise noted below |
 
 ## Runtime / Plugin Issues Log
+
+- **2026-07-03 resume session, benign audit noise (triaged, no action):** (a) a `verify-verdict.json`
+  record with `agent:"unknown", verdict:"skipped", reason:"absent agent_type"` under the
+  `developer:implement` token — a non-pipeline helper fork stopping mid-run; boundary detector logged
+  no ownership/spawn breach and the developer's 3-file scope claim verified clean. (b) Two
+  read-discipline lines in `violations.log` from an earlier same-day session (general-purpose agent
+  re-reading adhoc-SddLifecycle's tech-spec) — different slug, not this run.
 
 - **Tree intentionally dirty (user-approved).** An unrelated 19-file plugin sweep (incl. an unreleased
   1.16.0→1.16.1 bump on `plugin.json`/`CHANGELOG.md`) + `adhoc-SectionAddressableReads` delivery files are

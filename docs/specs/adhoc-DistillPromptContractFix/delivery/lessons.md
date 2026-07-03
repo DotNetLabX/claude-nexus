@@ -40,3 +40,48 @@
   same gate, and it's where the no-overlap-vs-neighbors check actually fires. The plan split it into two
   steps, which is the right shape — the rewrite and the independent fitness review stay separate passes,
   exactly as `evaluate-skill` requires (author ≠ reviewer pass).
+
+## Architect Lessons
+- **Step-1 done-check (2026-07-03, resumed run): a classifier-denied plan step can resolve *upward* to
+  a superseding owner decision, not just Missing.** Plan Step 3 mandated `--minor` → 1.17.0; the
+  developer hit a permission denial and left it BLOCKED. The team-lead/owner didn't unblock the *same*
+  action — they made an **Option A** decision (document distill-prompt under the existing 1.16.1, no
+  separate bump; commit `49a864f`, CHANGELOG lines 250–256). At done-check this is **Superseded** (owner
+  changed the plan), not Missing (step skipped). The disambiguator was a git+CHANGELOG+communication-log
+  record of the decision, exactly the provenance a Superseded disposition needs. Lesson: when
+  implementation.md says a step is BLOCKED but the team-lead's resume note names a resolution, verify the
+  *resolution* landed in source — don't disposition off the stale mid-run snapshot.
+- **Verify a resumed done-check against HEAD, not the commit diff.** implementation.md was a 2026-06-20
+  snapshot (Step 3 blocked, selfcheck 2/4); the repo had since moved to 1.20.0 and those transient FAILs
+  had resolved. Re-running `skill-lint` on the folder at HEAD (exit 0) and reading the *live* SKILL.md
+  gave the true state; the mid-run selfcheck FAILs were correctly not held against the feature.
+- **Skill conformance is only decidable from the log + token scoping.** The distill entries span two
+  `developer:implement` sessions on 2026-06-20; the *committed* run is the one whose invocation pattern
+  matches implementation.md's narrative (session `902d923b`: improve-skills→claude-api→evaluate-skill→
+  release-plugin, one each). All four non-`None` mappings fired there. A self-report deviation
+  ("improve-skills not re-invoked in Step 2") is fine because the log shows it ran in Step 1 and the
+  plan's acceptance was conditional ("fold **any** … or waive with reason").
+- **An owner-owed behavioral gate stays OPEN through a Step-1 PASS — surface it, don't let PASS imply
+  closure.** Step 6 (the smoke test) is the only check that the skill's one job *fires*, not merely that
+  it's *stated* — and it's exactly the form-clean/job-wrong class the original drift belonged to. It's
+  N/A/operator-owed at done-check (interactive, owner-run, de-scoped by the team lead), but the verdict
+  is binary while the risk disclosure is not: PASS the conformance check, and loudly flag the open
+  behavioral gate so the pipeline doesn't treat Step-1 PASS as full feature closure.
+
+## Reviewer Lessons
+- **A version-tier supersession (Option A) needs a propagation checklist, not just a CHANGELOG edit.**
+  When the plan's original version target (1.17.0) was abandoned in favor of folding the change into
+  the existing 1.16.1 release, the resolution commit (`49a864f`) correctly updated
+  `plugins/nexus/CHANGELOG.md` and wrote ADR-34, but two other live mentions of the abandoned "1.17.0"
+  were never caught: `docs/skill-backlog.md`'s Skills Fixed entry (written earlier, at Step 4, while
+  the 1.17.0 mandate still held) and — more surprising — a sentence inside ADR-34 **itself**, in the
+  very same commit that resolved the supersession. A durable design record self-contradicted within
+  its own authoring commit. Grep for the abandoned version string across the whole repo (not just the
+  CHANGELOG) whenever a plan's version target changes after the fact — `git grep {old-version}` after
+  any Option-A-style version resolution would have caught both in one pass.
+- **Fresh-evidence gates should be re-run by the reviewer even when the architect's done-check already
+  ran them.** The done-check's skill-lint/selfcheck numbers were from an earlier, dirtier-tree moment;
+  re-running `node scripts/selfcheck.mjs` this session (clean tree, HEAD) produced 5/5 PASS vs. the
+  done-check's own re-run — consistent, but the point stands: don't cite the architect's numbers as if
+  they were this session's evidence. Re-run and cite fresh output every time, even on a re-review of
+  someone else's clean bill of health.

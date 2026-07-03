@@ -164,3 +164,54 @@ _(none — plugin source, not project `docs/kb/`)_
 BLOCKED on a permission denial (team-lead must run the `--minor` bump → 1.17.0, then `gen-omni` +
 `--check`)**; Step 6 pending owner-run. Developer, 2026-06-20. (Completion footer intentionally withheld
 until Step 3 lands — the artifact self-certifies state, ADR-17.)*
+
+---
+
+## Review-Cycle Addendum — Step-2 MEDIUM fixes (Cycle 1/3, 2026-07-03)
+
+Step-2 verdict was **APPROVED** with two non-blocking MEDIUM findings, both one root cause: the
+Option-A resolution commit `49a864f` (fold distill-prompt into the existing **1.16.1** tree, no
+separate bump) propagated the "no 1.17.0" fact to `CHANGELOG.md` and ADR-34's Context/Decision but
+left two locations still asserting the abandoned 1.17.0 bump. Repo-doc fixes only — no plugin files
+touched, so no version bump (per task).
+
+### Files Modified (this cycle)
+- `docs/skill-backlog.md` — **Finding 1 (MEDIUM).** `## Skills Fixed → distill-prompt` last sentence
+  no longer claims "Plugin bump 1.16.1 → 1.17.0 (MINOR…)". Replaced with: shipped inside the existing
+  **1.16.1** release tree (Option A, no separate bump — documented under the existing `[1.16.1]`
+  CHANGELOG entry rather than a phantom 1.17.0).
+- `docs/architecture/README.md` — **Finding 2 (MEDIUM).** ADR-34 **Tradeoffs** paragraph no longer
+  reads "The 1.15.0 → 1.17.0 behavior change … shipped as **MINOR not MAJOR**" (self-contradicted the
+  CHANGELOG `[1.16.1]` entry written in the *same* commit `49a864f`). Reworded to: the behavior change
+  from the 1.15.0 build shipped inside the existing **1.16.1** release tree (Option A — no separate
+  bump) rather than as a MAJOR. The legitimate `1.15.0` original-build reference is preserved; only the
+  phantom `→ 1.17.0` / "shipped as MINOR" claim was dropped.
+
+### Finding 3 — defensive sweep (`git grep -n "1.17.0" docs/`)
+No other durable stale references to a phantom distill-prompt 1.17.0 bump exist. Remaining `1.17.0`
+hits are all correct and left untouched:
+- **Legitimate (real 1.17.0):** all `adhoc-PRReviewTail/*` (that feature really shipped 1.17.0,
+  commit `5945c20`); `adhoc-PipelineHardening/summary.md:23` and `adhoc-PluginCleanup/summary.md:32`
+  (both reference the *current plugin version*, which genuinely reached 1.17.0).
+- **Accurate historical records (this feature's own delivery artifacts + one sibling):**
+  `plan.md` (mandated 1.17.0 — a superseded plan), this `implementation.md`'s original body,
+  `lessons.md`, and `communication-log.md` (row 13 correctly logs Option A / "no phantom 1.17.0")
+  document the decision *evolution*, not a false present-tense claim — rewriting them would be
+  revisionism, and `plan.md`/`communication-log.md` are read-only to the developer role.
+  `adhoc-SectionAddressableReads/summary.md:35` ("the other feature intends version 1.17.0") is an
+  accurate write-time snapshot in a team-lead-owned summary (read-only to me); the reviewer's own
+  grep sweep found exactly 2 stale refs and did not flag it. Left untouched.
+
+### Skills Used (this cycle)
+| Step | Skill(s) invoked | Notes |
+|------|------------------|-------|
+| Cycle-1 doc fix | None | Repo-doc text correction; no plan skill mapped, no runtime surface (TDD: n/a). |
+
+Grounding: git identities confirmed this session — `5945c20` = PR-review-tail (release 1.17.0),
+`808604c` = SectionAddressableReads (release 1.16.1, the tree distill-prompt landed under),
+`00a1725` = distill-prompt rewrite, `49a864f` = "extract ADR-34 + document distill-prompt under
+1.16.1"; CHANGELOG `[1.16.1]` line 250 ("Also in 1.16.1 — `distill-prompt` rewritten") is the anchor
+both corrections now point readers to.
+
+*Addendum status: COMPLETE — developer, 2026-07-03. Both MEDIUM findings fixed; no plugin files
+touched (no bump); no commit (team lead owns commits).*
