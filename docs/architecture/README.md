@@ -61,6 +61,10 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-43 — Docs render FROM the verified KB, never the reverse; registry machinery borrowed from kb-sync *(Accepted — adhoc-SddMergeGen, 2026-07-03)*
 - ADR-44 — Spec write-back is a routed obligation: solo trivial-factual only, developer never *(Accepted — adhoc-SddMergeGen, 2026-07-03)*
 - ADR-45 — Mined business-rules registries are their own artifact species: `docs/business-rules/`, flat per-class, one canonical set over linked evidence *(Accepted — adhoc-RulesRegistry, 2026-07-04)*
+- ADR-46 — mine-verify-repo is the third mine: unit = graphify area + one global structure pass, feeding the ad-hoc refactoring lane *(Accepted — adhoc-MineVerifyRepo, 2026-07-04)*
+- ADR-47 — The fact/judgment split: facts pass an empirical must-reproduce Verify gate; judgments are human-adjudicated by-design triage *(Accepted — adhoc-MineVerifyRepo, 2026-07-04)*
+- ADR-48 — The hotspot gate: bot-filtered git-history metrics are the repo mine's objective prioritization layer *(Accepted — adhoc-MineVerifyRepo, 2026-07-04)*
+- ADR-49 — Tech-debt triage registries are their own species: `docs/tech-debt/<area>.md`, ADR-43/45 invariants carried, refresh keeps them current *(Accepted — adhoc-MineVerifyRepo, 2026-07-04)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -1072,6 +1076,149 @@ with zero churn. *`golden-rules` / `domain-rules` / `mine-rules` as names* — c
 `golden` criticality tier, misname spec-arm ui/api/settings rules, and name the process rather than
 the artifact, respectively. *Mine everything* — cost scales linearly, value doesn't; noise ledgers
 rot. *Replace graphify* — different axes (structure vs semantics); fusion beats substitution.
+
+---
+
+## ADR-46 — mine-verify-repo is the third mine: unit = graphify area + one global structure pass, feeding the ad-hoc refactoring lane — Accepted
+
+> **Status: Accepted — adhoc-MineVerifyRepo, owner-ratified 2026-07-04.** Extracts
+> `docs/proposals/mine-verify-repo.md` (Ratified 2026-07-04). Implementation vehicle:
+> `docs/specs/adhoc-MineVerifyRepo/definition/tech-spec.md`. Evidence base:
+> `docs/kb/research/repo-technical-evaluation-for-refactoring.md`.
+
+**Context.** The end goal is refactoring, and the architect's ad-hoc lane (ADR register + triage +
+backlog row) presupposes a repo-level triage artifact nothing produces. The two shipped mines are
+unit-scoped (one class / one spec). Research confirms the field-wide gap: architectural tech-debt
+management is largely untooled and prioritized by gut feeling.
+
+**Decision.** Build `mine-verify-repo` — the mine-verify invariant (clean-room miners → consensus →
+skeptic verify → graded registry) at repo scope. Unit = one graphify area (fan-out), plus ONE global
+miner reading only the structure graph (layering violations, dependency-direction violations, god
+nodes / hub classes — smells invisible per-area). Four diverse lenses: code-quality, architecture,
+performance, test-coverage. The
+**security lens is deferred** to `/security-review` (overlap + a different verification discipline —
+exploitability, not grep-reproducibility). Output feeds the ad-hoc lane; before executing an accepted
+refactor, `mine-verify-cover` (M2, ADR-38) is the behavior-preservation safety net. This skill
+**supersedes `improve-architecture`'s discovery phase**; its heuristic catalog becomes donor look-for
+material for the architecture lens.
+
+**Why.** graphify is the shipped scoping engine — areas are the natural clean-room unit. Diverse
+lenses beat redundant voters (research: lens diversity is the ensemble mechanism; naive consensus
+degrades teams). One discovery skill, not two overlapping ones.
+
+**Tradeoffs.** A per-area scan misses cross-area smells — accepted, that is exactly what the global
+pass exists for. Refactoring *payoff* is unproven (only defect-density prediction is validated) —
+carried as the pilot's measured hypothesis, never a claim.
+
+**Rejected.** *Port docs-bootstrap Phase 5 as-is* — battle-tested donor, but self-graded findings, no
+git-history gate, no by-design adjudication, feeds docs not refactoring. *ATAM-lineage formal
+assessment* — near-zero validation; beaten by a lighter method in the one controlled comparison.
+*Keep a security lens* — duplicates a shipped specialized tool.
+
+---
+
+## ADR-47 — The fact/judgment split: facts pass an empirical must-reproduce Verify gate; judgments are human-adjudicated by-design triage — Accepted
+
+> **Status: Accepted — adhoc-MineVerifyRepo, owner-ratified 2026-07-04.** Extracts
+> `docs/proposals/mine-verify-repo.md` §Approach 4–6.
+
+**Context.** Per the research's **unverified-but-directional §5 leads** (flagged "treat as leads,
+not established facts"): raw LLM repo audits run ~79–83% false positive, and consensus alone does
+not fix it — 80+ agents (including adversarial reviewers) unanimously endorsed a nonexistent OpenSSL
+bug; only a mandatory empirical evidence gate killed it. Separately, "is this a problem *here*?" is
+not a fact at all — the fokus "anemic by design" lesson: a textbook smell can be a deliberate
+convention.
+
+**Decision.** Every registry-bound finding is **fact-shaped**: a reproducible check (grep, metric
+threshold, graph query) + evidence excerpt. The Verify skeptic **re-executes** the evidence command —
+reasoning-only verification is forbidden and structurally enforced (a verdict without its
+re-execution output is dropped by the orchestrator). Verdict grammar: CONFIRMED / WRONG / IMPRECISE.
+The skeptic also recalibrates severity downward-by-default (LLMs inflate; adversarial pass corrected
+8/9). **Judgments** — whether a confirmed fact is a problem in this repo — are adjudicated by the
+architect + owner against the repo's reference model (ADRs, conventions; degraded runs flag
+`no-reference-model`), recorded as the row's disposition, never automated. A cross-model critic seam
+(e.g. Codex) is named in the Verify schema for a later slice.
+
+**Why.** The must-reproduce gate is the difference between a trustable registry and the
+~80%-false-positive audit dumps the literature documents. Human by-design triage is what stops the
+system from "fixing" deliberate architecture.
+
+**Tradeoffs.** Re-execution costs a command run per finding — cheap next to one false refactor.
+Human triage is a throughput ceiling — accepted; dispositions are durable, so it is paid once per
+finding, not per run (refresh re-stamps).
+
+**Rejected.** *Consensus/vote-count as the gate* — empirically endorsed a nonexistent bug.
+*Automated by-design classification* — the judgment needs the reference model + owner intent.
+*Skeptic re-reasoning without execution* — the exact failure mode the evidence gate exists to kill.
+
+---
+
+## ADR-48 — The hotspot gate: bot-filtered git-history metrics are the repo mine's objective prioritization layer — Accepted
+
+> **Status: Accepted — adhoc-MineVerifyRepo, owner-ratified 2026-07-04.** Extracts
+> `docs/proposals/mine-verify-repo.md` §Approach 2–3.
+
+**Context.** mine-verify-cover's objective layer is the mutation gate — inapplicable at repo scope
+(no per-finding test suite to gate). Phase 5's donor approach — agent-estimated likelihood — is the
+weakest link the research identifies; the validated defect predictors are git-history metrics,
+computable for free.
+
+**Decision.** The deterministic metric layer runs **before any miner**: bot filtering first
+(mandatory — bots dominated churn in measured corpora), then relative churn, churn×complexity
+hotspots (filter: > μ+3σ AND >1 change/month), minor-contributor ownership, change coupling. Free
+tooling only (`git log --numstat` commands, Code Maat, lizard). Two uses: **scan order** (miners
+visit the top-N hot areas — the cost cap) and **finding rank** (`hotspot-priority` is computed,
+never agent-assigned). Miners consume the metric tables and are forbidden from estimating any metric
+a table provides. Thresholds calibrate within-repo; uninformative signals (e.g. ownership on a
+single-maintainer repo) are dropped loudly in the run report, never silently zeroed.
+
+**Why.** Churn/ownership are the strongest **validated** defect correlates known, and a god class
+nobody touches is a non-problem — importance must come from history, not opinion. Directional
+support from an unverified research §5 lead: hybrid deterministic-signal + LLM triage killed 94–98%
+of false positives.
+
+**Tradeoffs.** History-blind debt (a hot problem in a not-yet-touched area) ranks low — accepted;
+the global structure pass and triage can still promote it. Cross-project threshold transfer is poor —
+hence within-repo calibration as a rule.
+
+**Rejected.** *Agent-estimated likelihood* (Phase 5's approach) — the research's identified weak
+link. *Mutation gating at repo scope* — doesn't scale, wrong unit. *Commercial tooling (CodeScene)*
+— same signal lineage computable free; revisit only on demonstrated friction.
+
+---
+
+## ADR-49 — Tech-debt triage registries are their own species: `docs/tech-debt/<area>.md`, ADR-43/45 invariants carried, refresh keeps them current — Accepted
+
+> **Status: Accepted — adhoc-MineVerifyRepo, owner-ratified 2026-07-04.** Extracts
+> `docs/proposals/mine-verify-repo.md` §Approach 7–8. Sibling decision to ADR-45 (same
+> species-separation logic, different artifact).
+
+**Context.** ADR-45 settled that mined rule registries are their own species outside `docs/kb/`.
+The repo mine's output is a third artifact kind — verified debt findings with dispositions — and a
+one-shot audit report rots silently, which is worse than absent.
+
+**Decision.** Triage registries live at `docs/tech-debt/<area>.md` **in the target repo** — per-area
+flat files, sibling species to `docs/business-rules/`, never inside `docs/kb/`. Registry invariants
+carry unchanged from ADR-43/45: per-row provenance + `last_verified`, rows never deleted
+(dispositions flip: `accepted | by-design | deferred | resolved | superseded`), append-only
+changelog, idempotent re-runs. `by-design` rows cite their adjudication basis. A **refresh pass**
+(run 2+) re-verifies each row against the git delta since `last_verified`, mapping onto the same
+fields — no extra state: `resolved` when the evidence command no longer reproduces; still-active =
+a re-stamped `last_verified` only; `superseded` when restructuring moved the problem (the fresh
+finding row cites the old row's id in its provenance). Consumers:
+the ad-hoc lane (accepted → backlog row) and the M2 safety-net composition.
+
+**Why.** The species split is the same argument as ADR-45 — `docs/kb/` means the knowledge base, and
+a debt registry is a work queue with provenance, not knowledge. The refresh pass is what makes this a
+registry instead of a report.
+
+**Tradeoffs.** Another top-level docs folder in consuming repos — accepted, the alternative
+(overloading `docs/kb/` or `docs/business-rules/`) re-creates the collision ADR-45 just removed.
+
+**Rejected.** *One repo-global `registry.md`* — per-area files match the mine's unit and keep
+diffs/reads scoped. *Housing findings in `docs/business-rules/`* — different species: rules document
+what code does; findings document what should change. *A docs-layer rendering as the primary
+artifact* — ADR-43 direction: render FROM the registry if ever needed, never the reverse.
 
 ---
 
