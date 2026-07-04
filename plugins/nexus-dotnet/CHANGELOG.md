@@ -1,6 +1,11 @@
 # nexus-dotnet — Changelog
 
 
+## [1.3.1] — 2026-07-04
+- PATCH — `improve-architecture/SKILL.md`: added an ADR-46 supersession note pointing repo-scoped
+  structural-debt discovery at the new `mine-verify-repo` skill (the .NET skill stays the in-file /
+  aggregate-level improver).
+
 ## [1.3.0] — 2026-07-03
 - **`mine-verify-cover-dotnet` — fact tags & test tiers mapping (`adhoc-SddMergeGen`).** New capability:
   maps the core method's fact-tagging vocabulary (`mine-verify-cover` → "Fact tagging & test tiers") to

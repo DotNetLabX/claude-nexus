@@ -326,7 +326,7 @@ Pin the `agent()` calls to **Sonnet** (`model: 'sonnet'`) — do **not** inherit
 - Provide the toolchain — that is the stack adapter's job (`mine-verify-cover-dotnet` for .NET, `mine-verify-cover-flutter` for Dart/Flutter, `mine-verify-cover-cpp` for C/C++).
 - Author NEW rules or judge whether the code is correct — it documents and tests EXISTING behavior (red-on-current tests are flagged as candidate bugs, not fixes).
 - Measure recall/completeness — without a hand-authored golden set, the 3-miner consensus + surviving mutants are the practical completeness signal, not a proof that no rule was missed.
-- Multi-class sweeps, boundary Discover, or graph-scoped targeting — single-class only; those are deferred extensions (graphify is the natural engine for graph-scoped target selection).
+- Multi-class sweeps, boundary Discover, or graph-scoped targeting — single-class only. Graph-scoped repo evaluation is now the shipped `mine-verify-repo` (the repo-scoped sibling mine, with graphify as its scope engine and a docs/tech-debt triage registry as its output); this skill's single-class stance is unchanged.
 
 ## SDD lifecycle (M0–M3)
 
@@ -409,5 +409,6 @@ arm's rule set does — and that combination is shipped now, for the scope above
 | `mine-verify-cover-dotnet` | the .NET stack adapter — fills the 5 capabilities (Stryker, dotnet test, xUnit + FsCheck, the test-project scaffold) |
 | `mine-verify-cover-flutter` | the Dart/Flutter stack adapter — fills the 5 capabilities (mutation_test driving flutter test, flutter_test + mocktail, kiri_check, the build_runner + HTTPS-rewrite bringup) |
 | `mine-verify-cover-cpp` | the C/C++ stack adapter — fills the 5 capabilities (mull-15 driving GoogleTest/CTest, libclang, GoogleTest + RapidCheck, the Docker image + exit()-wrap bringup) |
+| `mine-verify-repo` | the repo-scoped sibling mine — this skill scans ONE class; that one scans ONE repo (graphify areas + a global structure pass) to find WHERE to refactor. It composes back via **M2**: before an accepted repo-scale refactor executes, run this skill on the affected classes as the behavior-preserving safety net (M1 first if the class is uncovered). |
 | `kb-entry-schema` | the registry's non-row context sections (row grammar lives in `## The rule registry`) |
 | `tdd` | the test discipline the Cover agent follows (boundary cases, kill the mutant) |

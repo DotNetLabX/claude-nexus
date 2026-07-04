@@ -1,6 +1,15 @@
 # nexus — Changelog
 
 
+## [1.22.0] — 2026-07-04
+- **MINOR — new capability: the `mine-verify-repo` skill (the third mine).** Repo-scoped Mine→Verify →
+  tech-debt triage registry (ADR-46..49): a metric-first hotspot layer (bot-filtered git-history churn +
+  ownership + coupling via Code Maat, churn×complexity via lizard), the fact/judgment split gated by an
+  empirical must-reproduce Verify pass, and a `docs/tech-debt/<area>.md` registry species. Ships
+  `references/metric-layer.md` as the deterministic, copy-paste runbook.
+  - `mine-verify-cover/SKILL.md` — cross-reference edits: a relationship-table row for the new skill and
+    a "does NOT" boundary bullet distinguishing per-class Cover from repo-scoped triage.
+
 ## [1.21.1] — 2026-07-04
 
 - **Business-rules registry: mined/merged rule artifacts move to `docs/business-rules/<area>/<unit>.md`

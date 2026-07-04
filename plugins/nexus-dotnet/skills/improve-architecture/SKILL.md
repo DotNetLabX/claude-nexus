@@ -7,6 +7,8 @@ description: Proactive discovery of architectural improvement opportunities — 
 
 Find and propose "deepening opportunities" — refactors that improve domain boundaries, reduce coupling, and consolidate scattered logic. Discovery-first, not catalog-driven.
 
+> **Superseded discovery phase (ADR-46).** Proactive *discovery* of new architectural debt across a repo is now owned by `mine-verify-repo` — the repo-scoped mine whose global structure-graph pass and per-area architecture lens do bot-filtered, must-reproduce hotspot discovery into a docs/tech-debt registry. This skill's heuristic catalog (Structural Health, Domain Health, the Deletion Test) stays as **donor look-for material** for that mine's architecture lens, and its architect→backlog flow for **already-known** improvements is untouched. Reach for `mine-verify-repo` to *discover* repo-wide debt; reach here to reason through a specific, already-identified improvement.
+
 ## When to Use
 
 - User asks to improve or clean up an area of the codebase

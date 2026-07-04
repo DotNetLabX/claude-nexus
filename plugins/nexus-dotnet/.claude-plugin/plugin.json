@@ -1,6 +1,6 @@
 {
   "name": "nexus-dotnet",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Nexus .NET (thin) — a stack extension for the `nexus` core pipeline. Ships the 33 .NET / ASP.NET Core / EF Core / CQRS / DDD / FastEndpoints + Vue / Pinia / Tailwind code-pattern skills (including the mine-verify-cover .NET adapter) plus the stack convention files (Read-Index model). Reuses nexus's agents, rules, commands, and security guard — install ALONGSIDE nexus, not instead of it.",
   "author": {
     "name": "ldumit"
