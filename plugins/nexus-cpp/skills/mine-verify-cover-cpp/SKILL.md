@@ -104,16 +104,25 @@ final step of the loop; the operator never has to request them):
 
 1. **The gated test suite** → `tests/mine-code/<area>/<class>_test.cpp` — the deliverable.
    Landed only when the gates pass; a refused run lands no suite (but still writes #2).
-2. **The run report** → `tests/mine-code/<area>/<class>_report-<date>.md` — the full record:
-   target (path + version/sha), date + skill version, suite size + double-run pass/fail/skip counts,
-   the 6-gate table (each gate pass/fail with its detail), mutation score (killed / reachable /
-   excluded / floor), **every reachable survivor** (line, mutator, replacement) each classified
-   killable vs equivalent-with-reasoning, red-on-current candidate bugs, iterations used, and an
-   evaluation verdict (certified / refused-with-why + what would raise the score). A refused or
-   halted run STILL writes this report with the stop reason — never silently exit (core-method rule).
+2. **The run report** → append a per-class section to the consuming repo's
+   `docs/specs/{slug}/delivery/mvc-report.md` (the canonical, cumulative report — one file per
+   MVC campaign, one section per class/run; a thin per-run summary next to the test file is optional).
+   Required content per section — match the depth of the Flutter pilot's report, not a gate printout:
+   verdict + full 6-gate table; **Mine stats** (miners, raw-rules-per-miner, consensus count, agreement
+   distribution, triage); **Verify verdicts** (CONFIRMED/IMPRECISE/WRONG + notable corrections);
+   **Cover stats** (tests per iteration, cover-quality findings, CANDIDATE BUGS — state "none" explicitly);
+   **Gate stats** (mutants, kill history across iterations, **every reachable survivor** classified
+   killable vs equivalent-with-reasoning + the `expectedSurvivorLines` hand-off for the next run);
+   **incidents** (every anomaly and what rule/fix it produced); **cost** (agents, tokens, wall time).
+   A refused or halted run STILL writes its section with the stop reason — never silently exit.
 3. **The verified rule KB (the mined BRs)** → the consuming repo's `docs/kb/<class>.md`
    (`kb-entry-schema` shape) — written at the Mine→Verify seam, flipped `verified → mutation-gated`
-   when the gates pass. The BRs belong to the consuming project, not to the harness side.
+   when the gates pass. The BRs belong to the consuming project, not to the harness side. **Even when a
+   run reuses a previously-mined KB, copy it into the consuming repo** — every input artifact must exist
+   there, not only on the harness side.
+4. **Evidence copies** → beside the report in `docs/specs/{slug}/delivery/`: every generated suite
+   (dated, including refused ones that never land in `tests/`), the KB snapshot(s), and the raw
+   per-mutant gate JSON. The consuming repo must hold the complete evidence trail of every run.
 
 `mine-code` vs `mine-spec` stay separate trees (`tests/mine-spec/` for the spec-conformance mode) —
 the two modes must never read each other's output during a run.

@@ -2,6 +2,15 @@
 
 All notable changes to the `nexus-cpp` plugin.
 
+## [0.1.3] — 2026-07-04
+
+- **Run report deepened + full evidence trail in the consuming repo.** The canonical report is now the
+  cumulative `docs/specs/{slug}/delivery/mvc-report.md` (one section per class/run) at the Flutter
+  pilot's depth: Mine/Verify/Cover/Gate stats, every survivor classified, candidate bugs stated
+  explicitly, incidents, cost. Reused KBs must still be copied into the consuming repo, and every
+  generated suite (including refused ones) + KB snapshots + raw gate JSON land as evidence copies in
+  the same delivery folder.
+
 ## [0.1.2] — 2026-07-04
 
 - **Mandatory run artifacts, written automatically.** Every run (green OR refused) now ends by landing
