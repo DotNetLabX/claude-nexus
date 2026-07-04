@@ -96,6 +96,28 @@ Some survivors are **equivalent mutants** a behaviour-asserting test can never k
 
 Record these facts in a project `docs/conventions/mutation-testing.md` so the Cover agent reads the contract from the consuming repo.
 
+## Run artifacts — written AUTOMATICALLY, every run, without being asked
+
+A run that leaves only a green console is not done. Every run — **all-gates-green OR refused** —
+ends by landing THREE artifacts in the **consuming repo** (the orchestrator/agents write them as the
+final step of the loop; the operator never has to request them):
+
+1. **The gated test suite** → `tests/mine-code/<area>/<class>_test.cpp` — the deliverable.
+   Landed only when the gates pass; a refused run lands no suite (but still writes #2).
+2. **The run report** → `tests/mine-code/<area>/<class>_report-<date>.md` — the full record:
+   target (path + version/sha), date + skill version, suite size + double-run pass/fail/skip counts,
+   the 6-gate table (each gate pass/fail with its detail), mutation score (killed / reachable /
+   excluded / floor), **every reachable survivor** (line, mutator, replacement) each classified
+   killable vs equivalent-with-reasoning, red-on-current candidate bugs, iterations used, and an
+   evaluation verdict (certified / refused-with-why + what would raise the score). A refused or
+   halted run STILL writes this report with the stop reason — never silently exit (core-method rule).
+3. **The verified rule KB (the mined BRs)** → the consuming repo's `docs/kb/<class>.md`
+   (`kb-entry-schema` shape) — written at the Mine→Verify seam, flipped `verified → mutation-gated`
+   when the gates pass. The BRs belong to the consuming project, not to the harness side.
+
+`mine-code` vs `mine-spec` stay separate trees (`tests/mine-spec/` for the spec-conformance mode) —
+the two modes must never read each other's output during a run.
+
 ## Picking a target (this decides the ceiling)
 
 The kill-rate ceiling is the **target's observable surface**, not the harness. Same adapter: Hungarian (output in an opaque `int**`, `exit()` guards, lots of internal bookkeeping) capped at **64%**; Levenshtein (pure input→`int`/op-list return) hit **96%**. **Choose a slice whose rules are observable through its public return value(s)** — a dependency-isolated slice proves the toolchain but is not automatically a good kill-rate target. `index_slice.py` + the mined KB's `[OBS]`/`[INT]` tags tell you which rules are observable.

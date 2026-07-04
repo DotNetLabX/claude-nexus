@@ -2,6 +2,15 @@
 
 All notable changes to the `nexus-cpp` plugin.
 
+## [0.1.2] — 2026-07-04
+
+- **Mandatory run artifacts, written automatically.** Every run (green OR refused) now ends by landing
+  three artifacts in the consuming repo without being asked: the gated test suite
+  (`tests/mine-code/<area>/<class>_test.cpp`), a full run report beside it (gate table, mutation score,
+  every reachable survivor classified killable-vs-equivalent, candidate bugs, evaluation verdict —
+  refused/halted runs still write it with the stop reason), and the mined BR KB in the consuming repo's
+  `docs/kb/` (verified → mutation-gated on green). Also pins the `mine-code`/`mine-spec` folder split.
+
 ## [0.1.1] — 2026-07-04
 
 - **Runner contract: never execute mutant binaries outside mull.** Survivor triage is read-only
