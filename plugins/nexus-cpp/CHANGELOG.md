@@ -2,6 +2,14 @@
 
 All notable changes to the `nexus-cpp` plugin.
 
+## [0.1.1] — 2026-07-04
+
+- **Runner contract: never execute mutant binaries outside mull.** Survivor triage is read-only
+  (reason from `cover.json` + the source); any unavoidable SUT execution outside `ctest`/`mull-runner-15`
+  must be wrapped in `timeout`. Grounded in a live deadlock: a hand-run non-terminating mutant (broken
+  loop guard, no timeout) hung a whole Cover run at 100% CPU until killed. Feedback:
+  `docs/plugin-feedback/nexus-cpp-0.1.0-2026-07-02.md`.
+
 ## [0.1.0] — 2026-06-25
 
 Initial release. C/C++ stack adapter for the nexus `mine-verify-cover` method.

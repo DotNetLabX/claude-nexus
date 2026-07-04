@@ -337,6 +337,12 @@ STEPS:
      (mull.yml scopes to the target, so normally just one entry — but report every key for the fake-green guard.)
   5. Note any test that FAILS on the current production code (red-on-current) — list it; do NOT delete it.
 
+FORBIDDEN — executing mutant binaries by hand. Survivor triage is READ-ONLY (reason from cover.json + the
+source); never compile or run individual mutants outside mull-runner-15. A mutation can break a loop guard
+and produce a NON-TERMINATING binary — mull's per-mutant timeout contains that; an ad-hoc probe deadlocks
+the whole workflow (live incident: a hand-built mutant diff harness spun forever at 100% CPU). If any SUT
+execution outside ctest/mull-runner-15 is ever unavoidable, wrap it in \`timeout <N>s\`.
+
 ALSO WRITE YOUR RESULTS HERE for the record (nexus-side, git-ignored — NEVER into the consuming source tree):
   ${RUNNER_RESULT}
 

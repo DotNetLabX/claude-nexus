@@ -65,6 +65,7 @@ The Cover agent writes the test file; a distinct runner agent executes the toolc
    ```
 3. Read `/probe/mull-out/cover.json`. It is **already** mutation-testing-elements: `files[<path>].mutants[{status, location.start.line, mutatorName, replacement}]`, statuses `Killed`/`Survived`/`Timeout`/`NoCoverage` — exactly the gate's denominator set. Take the target file's `mutants` array **AS-IS** (no translation; `Timeout` counts as a kill).
 4. Build `mutatedFiles` (one `{file,count}` per key in `cover.json.files`) for the `target_mutated` anti-fake-green guard — verify your slice's basename was actually mutated (count > 0).
+5. **Never execute mutant binaries outside mull.** Survivor triage is **read-only** — reason from `cover.json` + the source. A mutation can break a loop guard and produce a **non-terminating binary**; mull's per-mutant timeout contains that, an ad-hoc probe does not (a live run hand-compiled surviving mutants into a diff harness with no timeout — one spun at 100% CPU and deadlocked the whole workflow until killed). If SUT execution outside `ctest`/`mull-runner-15` is ever unavoidable, wrap it in `timeout <N>s`.
 
 Two path namespaces (the one structural difference from host-native adapters): the **container** source path (`/probe/src/<slice>`) is the mull-report key + the `mutation_floor` lookup; the **host** path is what the Cover agent reads. `target_mutated` matches on basename, so it is namespace-agnostic.
 
