@@ -2,6 +2,17 @@
 
 All notable changes to the `nexus-cpp` plugin.
 
+## [0.1.4] — 2026-07-04
+
+- **Registry artifact contract: ledger emission moves to `docs/business-rules/<area>/<unit>.md`.** Per
+  ADR-45 (nexus dev repo), mined rule ledgers are their own artifact species, separate from the KB
+  namespace. The `mine-verify-cover-cpp/SKILL.md` emission path now lands at
+  `docs/business-rules/<area>/<unit>.md` in registry row grammar (`source: code | spec | both`,
+  `status`, `criticality: golden | core | edge | untagged`, `last_verified` — defined in the core
+  `mine-verify-cover` skill's `## The rule registry` section), replacing the old per-class KB path. The
+  research-pool grounding reference is untouched. Contract-text only, no adapter/tooling behavior change
+  (PATCH).
+
 ## [0.1.3] — 2026-07-04
 
 - **Run report deepened + full evidence trail in the consuming repo.** The canonical report is now the

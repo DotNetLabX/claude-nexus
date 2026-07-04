@@ -63,7 +63,7 @@ When working directly with the user (e.g., `be developer`), run both phases in s
 
 Before writing any code, **read `docs/conventions/coding-conventions.md` if it exists**, then read every file it lists. These are binding project standards — follow them like plan steps. If the project defines no such file, proceed without it. (A stack extension plugin may ship these convention files for the project to place under `docs/conventions/`.)
 
-**Attestation drift check (pre-implementation).** When the class you are about to touch has an **attested golden set** (a C2 attestation record at `docs/kb/golden/{Class}.md`), **update the affected tests in the same pass**, or flag an **M3 re-mine**. Forward conditional — no C2 attestation records exist in this codebase yet; this rule activates the day the first one ships (`docs/specs/adhoc-SddLifecycle/definition/tech-spec.md`).
+**Attestation drift check (pre-implementation).** When the class you are about to touch has an **attested golden set** (the class's registry at `docs/business-rules/<area>/<unit>.md`), **update the affected tests in the same pass**, or flag an **M3 re-mine**. Forward conditional — no C2 attestation records exist in this codebase yet; this rule activates the day the first one ships (`docs/specs/adhoc-SddLifecycle/definition/tech-spec.md`).
 
 ## Skill Authority — Skill-First Implementation
 

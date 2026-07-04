@@ -7,6 +7,17 @@ description: Standard section order for knowledge-base entries under docs/kb/. L
 
 Standard section order for all `docs/kb/` entries. Use these headings exactly — agents and lint checks rely on consistent naming.
 
+## Species boundary
+
+Two species live in this neighborhood, and they are not the same thing. **KB entries** — vocabulary,
+research-pool write-ups, general concept documentation — stay under `docs/kb/`, following this schema.
+The mined/merged **rule registry** (Mine→Verify/Merge output) is a different species: it lives at
+`docs/business-rules/<area>/<unit>.md`, and its row grammar (`source:`, `status:`, `criticality:`,
+`last_verified:`) is defined in the core `mine-verify-cover` skill's `## The rule registry` section —
+the shipped reference, never the tech-spec or an ADR number. This schema's sections (`Key Files`,
+`Edge Cases`, `Source`, etc.) still apply to a registry file, but only as its non-row context body,
+sitting below the rule rows.
+
 ## Required Sections
 
 ```markdown

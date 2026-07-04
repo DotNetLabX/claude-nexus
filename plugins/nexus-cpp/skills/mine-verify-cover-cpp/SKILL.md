@@ -115,11 +115,12 @@ final step of the loop; the operator never has to request them):
    killable vs equivalent-with-reasoning + the `expectedSurvivorLines` hand-off for the next run);
    **incidents** (every anomaly and what rule/fix it produced); **cost** (agents, tokens, wall time).
    A refused or halted run STILL writes its section with the stop reason — never silently exit.
-3. **The verified rule KB (the mined BRs)** → the consuming repo's `docs/kb/<class>.md`
-   (`kb-entry-schema` shape) — written at the Mine→Verify seam, flipped `verified → mutation-gated`
-   when the gates pass. The BRs belong to the consuming project, not to the harness side. **Even when a
-   run reuses a previously-mined KB, copy it into the consuming repo** — every input artifact must exist
-   there, not only on the harness side.
+3. **The verified rule KB (the mined BRs)** → the consuming repo's
+   `docs/business-rules/<area>/<unit>.md` (registry rows over `kb-entry-schema` context sections — row
+   grammar defined in `mine-verify-cover`'s `## The rule registry` section) — written at the
+   Mine→Verify seam, flipped `verified → mutation-gated` when the gates pass. The BRs belong to the
+   consuming project, not to the harness side. **Even when a run reuses a previously-mined KB, copy it
+   into the consuming repo** — every input artifact must exist there, not only on the harness side.
 4. **Evidence copies** → beside the report in `docs/specs/{slug}/delivery/`: every generated suite
    (dated, including refused ones that never land in `tests/`), the KB snapshot(s), and the raw
    per-mutant gate JSON. The consuming repo must hold the complete evidence trail of every run.

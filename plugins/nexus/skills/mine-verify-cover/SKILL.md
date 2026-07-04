@@ -241,9 +241,29 @@ The scoring this stage reports is guarded by the anti-fake-green invariant above
 - **Forbidden to the Cover agent** — editing the production class, the mutation config, the gate infra, or the KB. A test that is RED on current code is KEPT and flagged as a candidate bug, never deleted.
 - **Generation guard (Cover)** — the Cover agent must not emit categorically-dead tests: no log-output assertions (the adapter's existing test-style policy) and one representative per mutation-equivalence class. This is volume reduction, not enforcement — a prompt instruction is a request, not a guarantee that it is followed. The Minimize stage's confirm re-gate is the actual enforcement.
 
-## The KB rule-ledger
+## The rule registry
 
-Mine→Verify writes a per-class entry (one file) with a `## Rules` list (`- BR-1: {statement}`) and a status footer. Rule statements are durable prose — describe rules by SYMBOL and CONDITION (names, predicates), never by source line number (line numbers rot when the source shifts; keep them in a separate field). Status is `verified` after Verify, flipped to `mutation-gated` after the Cover gate passes. See `kb-entry-schema`.
+Mine→Verify writes a per-unit registry (one file) at `docs/business-rules/<area>/<unit>.md` — flat per
+mined unit, no folder-per-class slice (`<area>` may be omitted in single-area repos; provenance: this
+artifact-species split is ADR-45). Each rule is a `## Rules` bullet (`- BR-1: {statement}`) carrying an
+appended row of fields — this sentence is the grammar every other shipped file references:
+
+- `source: code | spec | both`
+- `status`: `verified` after Verify, flipped to `mutation-gated` after the Cover gate passes; also
+  `divergence-pending-triage` for an unresolved Merge-arm conflict awaiting a human ruling
+- `criticality: golden | core | edge | untagged` (`untagged` = the arm never mined that fact — never
+  invent a value)
+- `last_verified`: the date of the row's most recent verification-against-code event, coherent with
+  `status`
+
+Rule statements are durable prose — describe rules by SYMBOL and CONDITION (names, predicates), never
+by source line number (line numbers rot when the source shifts; keep them in a separate field). See
+`kb-entry-schema` for the registry's non-row context sections (Key Files, Edge Cases, Source, etc.) —
+those stay unchanged below the rows.
+
+**Flutter migration note.** Existing Flutter-repo rule ledgers under `docs/kb/` and registries under
+`docs/kb/golden/` migrate to `docs/business-rules/` on that repo's next campaign touch; until then,
+consumers of those specific repos keep reading the old paths.
 
 ## Fact tagging & test tiers
 
@@ -356,7 +376,7 @@ attestation — plus an optional `suspect-stale-spec` tag when the code-arm KB a
 source the mined spec predates), `spec-only-unimplemented`, `code-only-precision` — every rule lands in
 exactly one bucket, nothing silently dropped. `ambiguous`-verdicted spec rules are **excluded from
 generation-eligible buckets** and routed to a spec-repair list. Merge writes/updates the canonical rule
-registry (SddLifecycle C1; default path `docs/kb/golden/{Class}.md`) — `source:`/`last_verified`
+registry (SddLifecycle C1; default path `docs/business-rules/<area>/<unit>.md`) — `source:`/`last_verified`
 mandatory on every row, existing rows **never deleted** (disposition flips to `retire`/`supersede`,
 the record is kept), every write appends a changelog entry, a re-run against unchanged input is
 idempotent. For M3, the registry's prior rows drive the `add`/`carried`/`supersede`/`retire`
@@ -389,5 +409,5 @@ arm's rule set does — and that combination is shipped now, for the scope above
 | `mine-verify-cover-dotnet` | the .NET stack adapter — fills the 5 capabilities (Stryker, dotnet test, xUnit + FsCheck, the test-project scaffold) |
 | `mine-verify-cover-flutter` | the Dart/Flutter stack adapter — fills the 5 capabilities (mutation_test driving flutter test, flutter_test + mocktail, kiri_check, the build_runner + HTTPS-rewrite bringup) |
 | `mine-verify-cover-cpp` | the C/C++ stack adapter — fills the 5 capabilities (mull-15 driving GoogleTest/CTest, libclang, GoogleTest + RapidCheck, the Docker image + exit()-wrap bringup) |
-| `kb-entry-schema` | the KB rule-ledger shape this method reads and writes |
+| `kb-entry-schema` | the registry's non-row context sections (row grammar lives in `## The rule registry`) |
 | `tdd` | the test discipline the Cover agent follows (boundary cases, kill the mutant) |

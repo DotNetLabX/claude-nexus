@@ -59,10 +59,20 @@ None.
 In `D:\omnishelf\omnivision-ai-sdk` (PowerShell for all filesystem operations/verification):
 - `docs\kb\hungarian.md` → `docs\business-rules\tracking\hungarian.md`
 - `docs\kb\levenshtein.md` → `docs\business-rules\planogram\levenshtein.md`
-- Convert each `## Rules` bullet to a Contract R1 row: append `source: code`; `status:` from the file's
-  existing verify/mutation-gated footer; `last_verified:` from the run record date; `criticality:
-  untagged` (cpp fact-mapping is deferred — never invent a value). Keep the kb-entry-schema context
-  sections (Key Files, Edge Cases, Source) below the rows.
+- Convert each `## Rules` bullet to a Contract R1 row — **an annotated bullet, never a table rebuild**: the
+  row IS the existing rule bullet plus four appended fields (the "columns as-is" grammar names the field set,
+  not a rendering; the golden-registry *table* is the out-of-scope Merge stage). Append `source: code`;
+  `status:` from the file's existing verify/mutation-gated footer; `last_verified:` = the file's most recent
+  verification-against-code event, coherent with `status` (hungarian.md → `2026-06-24`, Mine→Verify run
+  `wf_356fb6ab-024`, `status: verified`; levenshtein.md → `2026-07-01`, the mutation-gate re-validation that
+  sets `status: mutation-gated`, **not** the 2026-06-25 mining date); `criticality: untagged` (cpp
+  fact-mapping is deferred — never invent a value). **Preserve each rule's verified prose** (IMPRECISE
+  corrections, entailment/`[OBS]`/`[INT]`/`[DEAD]` tags, MUTATION NOTE, per-op guidance) — that prose is the
+  mining value. Keep each file's own kb-entry-schema context sections below the rows: hungarian.md's are
+  `Key Files / Edge Cases / Source`; levenshtein.md has **no `## Rules` heading** (its rules sit under the two
+  API-signature headings — annotate those bullets in place) and its own non-rule sections
+  (`Mutation targets / Asserting editops safely / Source`) stay as-is — do not rename them to match
+  hungarian's.
 - Append a run-report entry to `docs\specs\mvc-tests\delivery\mvc-report.md` recording the move+convert
   (this is AC-5b's artifact of record).
 - Leave no copies at the old paths.
@@ -129,10 +139,12 @@ Satisfies: AC-2.
 - `grep -r "docs/kb/golden" plugins/` → hits ONLY in: the Step-3 migration note (core SKILL.md, names
   the old location by design) and `CHANGELOG.md` files (if a bump entry mentions the old path). Any
   other hit fails the step.
-- `grep -rn "docs/kb" plugins/nexus-dotnet/ plugins/nexus-flutter/ plugins/nexus-cpp/` → exactly FOUR
-  sanctioned hits remain, all staying under `docs/kb/` by design: cpp `:31` + flutter `:30`/`:163`
-  (research pool) and `plugins/nexus-dotnet/skills/improve-architecture/SKILL.md:35`
-  (`docs/kb/index.md` — the actual KB index; DO NOT "fix" it). Zero ledger-path hits.
+- `grep -rn "docs/kb" plugins/nexus-dotnet/ plugins/nexus-flutter/ plugins/nexus-cpp/` → FOUR sanctioned
+  research/index hits **plus any `CHANGELOG.md` historical entries** (the same append-only carve-out the
+  second bullet grants — a `CHANGELOG.md` line describing what a past version shipped, e.g. nexus-cpp
+  `[0.1.2]`'s `docs/kb/` mention, is immutable history: sanctioned, never edited). The four: cpp `:31` +
+  flutter `:30`/`:163` (research pool) and `plugins/nexus-dotnet/skills/improve-architecture/SKILL.md:35`
+  (`docs/kb/index.md` — the actual KB index; DO NOT "fix" it). Zero **live ledger-path** hits.
 Record all three grep outputs verbatim in implementation.md.
 Satisfies: AC-1.
 

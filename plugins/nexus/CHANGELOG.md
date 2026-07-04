@@ -1,6 +1,24 @@
 # nexus — Changelog
 
 
+## [1.21.1] — 2026-07-04
+
+- **Business-rules registry: mined/merged rule artifacts move to `docs/business-rules/<area>/<unit>.md`
+  (ADR-45).** The rule registry is now its own artifact species, split from the KB namespace
+  (`docs/kb/…`, unchanged for vocabulary/research-pool entries):
+  - `mine-verify-cover/SKILL.md` — retitled `## The KB rule-ledger` → `## The rule registry`; added the
+    explicit landing path and enumerated the full row grammar inline (`source: code | spec | both`,
+    `status` incl. `divergence-pending-triage`, `criticality: golden | core | edge | untagged`,
+    `last_verified`) as THE shipped grammar reference; the Merge-stage canonical-registry default path
+    updated to match; added a Flutter migration note (existing Flutter ledgers/registries move to
+    `docs/business-rules/` on that repo's next campaign touch).
+  - `kb-entry-schema/SKILL.md` — added a species-boundary note disambiguating KB entries from the rule
+    registry species.
+  - `agents/{solo,developer,architect}.md` (+ regenerated `commands/`) — the attestation-drift hook's
+    old per-class registry path re-pointed to `docs/business-rules/<area>/<unit>.md`; trigger semantics
+    (attested golden set, forward conditional) unchanged.
+  - Contract-text only, no runtime behavior change (PATCH).
+
 ## [1.21.0] — 2026-07-03
 - **SDD merge/generate — `mine-verify-cover` gains shipped Merge + Generate stages (`adhoc-SddMergeGen`,
   AC-6 GO).** New capability: adjudicates the `adhoc-SddCoverageLoop` pilot AC-6 gate GO
