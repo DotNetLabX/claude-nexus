@@ -1,6 +1,6 @@
 # Proposal P5 — Skill-authoring recipe (extract the omnishelf gap)
 
-**Status:** Draft (independent of the research system).
+**Status:** Ratified (2026-07-04, owner go-ahead in-session — "it has a plan, let's do it"; implemented via `adhoc-SkillAuthoringRecipe`).
 **Confidence:** **High** — concrete identified gap, clear home, low risk.
 **Priority:** independent; do whenever convenient.
 

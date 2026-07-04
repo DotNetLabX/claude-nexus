@@ -1,6 +1,17 @@
 # nexus — Changelog
 
 
+## [1.22.1] — 2026-07-04
+- **PATCH — additive skill-authoring reference.** `improve-skills` gains
+  `references/skill-recipe.md` — the archetype decision (heavy/autonomous vs
+  light/conversational, nexus-grounded examples), the reusable-element menu (re-pointed to
+  nexus's own artifacts — `communication-log.md`/`.pipeline-state` for state persistence,
+  `skill-lint.mjs` + Write Discipline for loader safety, `proven-patterns.md` P5/P6 by
+  reference), and a frontmatter cheat-sheet for all 9 fields verified against live Claude Code
+  Skills semantics. Wired into "For New Project-Local Skills" steps 2 and 4 (both authoring
+  paths). Closes the one real gap identified in `docs/proposals/skill-authoring-recipe.md`
+  (P5) — no new capability surface, no behavior change to `improve-skills` itself.
+
 ## [1.22.0] — 2026-07-04
 - **MINOR — new capability: the `mine-verify-repo` skill (the third mine).** Repo-scoped Mine→Verify →
   tech-debt triage registry (ADR-46..49): a metric-first hotspot layer (bot-filtered git-history churn +

@@ -39,10 +39,15 @@ Shipped nexus skills live in the plugin's version-keyed cache — not editable f
    - **`references/proven-patterns.md`** — design the recipe against the P1–P11 mechanisms that
      earned their keep (state-first writing, deterministic post-conditions, …) and the AP1–AP7
      anti-patterns to design out.
+   - **`references/skill-recipe.md`** — consult it for the **archetype decision** (pick heavy vs
+     light *first*) and the **reusable-element menu**, before matching structure to existing
+     skills below. Applies to both authoring paths — a project-local skill and, under the
+     dev-repo carve-out above, a new shipped skill.
    - **2–3 existing skills** closest in type (project-local, or shipped from your context) —
      match their structure.
 3. **Scaffold:** `.claude/skills/{skill-name}/SKILL.md` (add `workflows/` or `references/` only if variant-aware or template-bearing).
-4. **Write SKILL.md born compliant** — frontmatter first:
+4. **Write SKILL.md born compliant** — frontmatter first (see `references/skill-recipe.md`
+   §frontmatter cheat-sheet for the full field semantics — applies to both authoring paths):
    - `name:` — must equal the folder name.
    - `description:` — what it does AND when to use it; this line is the auto-invocation trigger, so name the situations ("Use when …"), not just the topic.
    - Decide `user-invocable:` (should a human trigger it as `/{name}`?) and, for side-effecting skills, whether `disable-model-invocation: true` is safer.

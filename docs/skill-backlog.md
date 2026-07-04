@@ -46,6 +46,20 @@ Tracks every skill created or fixed by the learner/developer pipeline. One entry
 
 ## Skills Fixed
 
+### improve-skills
+- **Status:** Fixed
+- **Type:** Fix
+- **Source:** adhoc-SkillAuthoringRecipe
+- **Description:** Added `references/skill-recipe.md` (archetype decision / reusable-element
+  menu / frontmatter cheat-sheet authoring recipe, extracted from omnishelf
+  `SKILL_AND_AGENT_RECIPES.md` §0/§1/§4, nexus-grounded — examples swapped for real nexus
+  skills, all 9 frontmatter fields fact-checked against live Claude Code Skills semantics via
+  the `claude-code-guide` agent) + wired a pointer into "For New Project-Local Skills" steps 2
+  and 4 (both authoring paths). Reference-not-restate throughout — no duplication of
+  `proven-patterns.md` or the `skill-lint.mjs` gate. skill-lint exit 0. Plugin bump 1.22.0 →
+  1.22.1 (PATCH, owner-confirmed — additive reference, not a new capability).
+- **Date:** 2026-07-04
+
 ### distill-prompt
 - **Status:** Fixed
 - **Type:** Fix
