@@ -60,6 +60,7 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-42 — Fact-based test tagging: discrete facts + derived named tiers, no scalar score *(Accepted — adhoc-SddMergeGen, 2026-07-03)*
 - ADR-43 — Docs render FROM the verified KB, never the reverse; registry machinery borrowed from kb-sync *(Accepted — adhoc-SddMergeGen, 2026-07-03)*
 - ADR-44 — Spec write-back is a routed obligation: solo trivial-factual only, developer never *(Accepted — adhoc-SddMergeGen, 2026-07-03)*
+- ADR-45 — Mined business-rules registries are their own artifact species: `docs/business-rules/`, flat per-class, one canonical set over linked evidence *(Accepted — adhoc-RulesRegistry, 2026-07-04)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -1025,6 +1026,52 @@ The altitude rule (research §2a, "same thinking at two altitudes, one authorita
 **Tradeoffs.** Every behavioral spec-vs-code disagreement now requires a human touchpoint even when the "obviously correct" answer seems clear to the agent — accepted because an agent's obviousness judgment is exactly the thing this rule exists not to trust blindly.
 
 **Rejected.** *Let solo resolve behavioral drift when confident* — reintroduces the silent-resolution risk this decision exists to close. *Let the developer also apply trivial fixes* — owner-stated: the developer never touches a spec, full stop, no trivial-fix carve-out (unlike solo, which operates outside the team pipeline's plan/review ceremony and can act with lower ceremony).
+
+---
+
+## ADR-45 — Mined business-rules registries are their own artifact species: `docs/business-rules/`, flat per-class, one canonical set over linked evidence — Accepted
+
+> **Status: Accepted — adhoc-RulesRegistry, owner-ratified 2026-07-04.** Extracts
+> `docs/proposals/rules-registry-vertical-slice.md` (Ratified 2026-07-04, all six resolutions).
+> Implementation vehicle: `docs/specs/adhoc-RulesRegistry/definition/tech-spec.md`.
+
+**Context.** The mined rule ledgers and merged registries (SddLifecycle C1, ADR-43's registry
+machinery) land in `docs/kb/` — the namespace of the *actual* knowledge base (research pool,
+`kb-entry-schema`, graphify inputs). Two artifact species share one folder and one word; after a full
+two-arm run, one class's truth is scattered across up to five files in three directories. Separately
+unresolved: whether Merge leaves one rule set or two, and how far the registry estate should scale.
+
+**Decision.** Mined/merged rule artifacts are their **own species**, named and homed apart from the
+KB: `docs/business-rules/<area>/<Class>.md` — one canonical **flat** registry per class, per-row
+provenance (`source: code | spec | both`, `status`, `criticality`, `last_verified`), over the two
+mined ledgers demoted to **linked, immutable evidence** (never co-located folders; spec evidence is
+per-slug and cannot move per-class). The registry exists from the code arm alone (day one). Registry
+invariants carry over unchanged from ADR-43 (rows never deleted, append-only changelog, idempotent
+re-runs). Coverage scales **by selection, not sweep**: graphify-selected rule-rich classes (~10–20
+per repo); consumers stay ahead of coverage. Consumer order is ratified: agent guardrails + a
+rule-aware-review rider first; cross-platform conformance is **spike-gated** (a 2026-07-04 check
+found zero rule-text overlap between the C++ and Flutter registries — the diff needs a shared-logic
+pair first).
+
+**Why.** The name is the collision: `docs/kb/` already means the knowledge base, and bare `rules`
+already means the plugin's always-on agent rules (`.claude/rules/`) — `business-rules` is the
+method's own noun (`BR-n` rows). One canonical set with provenance beats two peer sets because every
+consumer would otherwise reconcile on read and divergences would have no home (the PD-5263 pilot
+empirically needed the merged registry). Selection-based coverage exists because an unconsumed
+registry decays silently — worse than absent; the guardrail loop is what keeps registries true.
+
+**Tradeoffs.** A rename touches a shipped contract in the core skill + agent docs (7 files carry the
+old path) and owes the Flutter repo a migration note — accepted once, early, while the estate is 6
+registries small. `business-rules` is slightly imprecise for mined algorithmic invariants — the
+`BR-` prefix already made that tradeoff.
+
+**Rejected.** *Keep `docs/kb/` with a subfolder* — the word is the problem, not just the path.
+*Two peer rule sets after Merge* — reconcile-on-read for every consumer. *Folder-per-class vertical
+slice* — partial under any layout (spec evidence is per-slug); flat + links gives the one-place view
+with zero churn. *`golden-rules` / `domain-rules` / `mine-rules` as names* — collide with the
+`golden` criticality tier, misname spec-arm ui/api/settings rules, and name the process rather than
+the artifact, respectively. *Mine everything* — cost scales linearly, value doesn't; noise ledgers
+rot. *Replace graphify* — different axes (structure vs semantics); fusion beats substitution.
 
 ---
 
