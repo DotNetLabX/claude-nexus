@@ -28,3 +28,65 @@
   transcripts.** The prompt said "from KG project"; the file actually lived in the Flutter pilot
   repo. Glob + PowerShell sweep + session-transcript grep resolved it without asking the user a
   question they'd already part-answered ("might be contradictory").
+- **Done-check confirmed the surgical additive edit is the highest-risk line on a term-overload
+  pass.** The whole slug's HIGH was the "reference model" collision; the done-check's load-bearing
+  read was C4/C5 in the live sibling, confirming both sites carry the "additional formal source …
+  never a replacement" wording and preserve the `no-reference-model` degrade condition. On a
+  concept-overload pass, the done-check should always re-read the consumer sites' final text, not
+  trust the implementation.md summary — the collision is invisible in a step-disposition table.
+- **Operator-owned build-only increments PASS with a disclosed production gate, not a clean bill.**
+  Step 4 was `Owner: operator` up front, so its non-execution is `Deviated (valid reason)`, not
+  Missing — but the verdict still states what a PASS does NOT prove (the method is unvalidated on a
+  real reference repo; the flattery-survival-rate is unmeasured until the pilot). Binary verdict,
+  non-binary risk disclosure: the open gate belongs in the done-check, not lost at closure.
+
+- **An `evaluate-skill` overlay item the tech-spec AND the structural donor both omit is a design
+  carry-over, not a developer fix.** The Judgment Gate's fan-out overlay flagged "state a model
+  policy" (F1) on the new skill; but the tech-spec (R1–R6) was silent on model and the primary
+  structural donor `mine-verify-repo` carries no `## Model` section either (only `mine-verify-cover`
+  does, and it has a mechanical mutation gate where model quality is measurable). Inventing a
+  `## Model` section would have been architecture the plan/spec never asked for — so it was routed
+  as a Low carry-over to the architect/reviewer, not silently added. Rule: satisfy a rubric line by
+  *flagging* the gap when closing it means designing past the spec, never by improvising the design.
+- **`bump-plugin.mjs --check` after an already-applied (uncommitted) bump reads as "no bump
+  needed", exit 0 — that is the SATISFIED state, not a missed detection.** The dry-run (pre-bump)
+  correctly listed the three skill changes and proposed PATCH; after `--minor` applied, `--check`
+  printed "no plugin behavior-surface changes detected — no bump needed" and exited 0. The skill
+  changes weren't lost — the version already advanced past HEAD, so the CI gate is satisfied.
+  Corroborates the MEMORY `uncommitted-bump-rides-within` note (do NOT re-bump on this signal).
+- **A plugin skill's `references/` file may exist in the repo source before it reaches the version-
+  keyed cache.** `improve-skills/references/skill-recipe.md` (shipped in nexus 1.22.1) was present
+  under `plugins/nexus/skills/**` but absent from the 1.21.0 plugin cache the Skill tool loaded.
+  When the plan cites a skill's reference file, read the repo-source `plugins/**` copy — it is the
+  authoritative, current one in the dev repo; the cache can lag.
+
+## Reviewer Lessons
+
+- **A term-overload carry-over (the "reference model" additive-vs-replacement clause) is checkable
+  by direct site comparison, not just re-reading the summary.** Rather than trusting
+  implementation.md's claim that C4 and C5 use identical wording, diffing both live sites against
+  each other and against the new skill's own R5 confirmed zero drift across all three — cheap
+  independent verification for a HIGH-severity concept the plan/critic already flagged once.
+- **An ordinal self-reference ("This is the third mine.") isn't automatically stale when a fourth
+  family member is added — check whether the file carries a total-count table before flagging it.**
+  `mine-verify-repo/SKILL.md` has no family-count table of its own (that table lives only in the new
+  skill and `mine-verify-cover`), so the clause reads as a build-order position, not a claim about
+  family size. Would have been a plausible-looking LOW finding without that check.
+- **For a docs-only (no executable code) feature, the reviewer's "fresh build output" still has a
+  concrete analog: re-run the skill-lint + CI bump-check scripts and grep the skill-invocation /
+  violations logs for the actual session ID.** All four reproduced cleanly and independently
+  corroborated the architect's done-check and the developer's implementation.md claims — the
+  evidence bar doesn't relax just because there's no compiler.
+
+## Skill Gaps
+
+- **(Strengthening the architect's finding — provenance, not a twin.)** The
+  `skill-recipe.md:79` lint-coverage overstatement (claims comparator rephrasing is "enforced by
+  the shipped skill-lint.mjs gate (checks E7/E8)"; E7 matches XML-tag-shaped tokens only) was
+  independently re-confirmed while authoring `mine-reference-model` under that recipe — I rephrased
+  comparators as prose by authoring discipline, and the lint would not have caught a bare `>`. Route
+  to the learner as a `skill-recipe.md` fix (feedback channel, shipped skill); provenance now
+  `[adhoc-MineReferenceModel × 3 sightings: architect + developer + reviewer]` — the reviewer's Step 2
+  pass re-confirmed the same E7 boundary directly against the live `skill-lint.mjs` source and by
+  grepping the new SKILL.md for comparator/angle-bracket tokens (none found — this pass avoided the
+  gap by authoring discipline, not lint enforcement).

@@ -65,6 +65,7 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-47 — The fact/judgment split: facts pass an empirical must-reproduce Verify gate; judgments are human-adjudicated by-design triage *(Accepted — adhoc-MineVerifyRepo, 2026-07-04)*
 - ADR-48 — The hotspot gate: bot-filtered git-history metrics are the repo mine's objective prioritization layer *(Accepted — adhoc-MineVerifyRepo, 2026-07-04)*
 - ADR-49 — Tech-debt triage registries are their own species: `docs/tech-debt/<area>.md`, ADR-43/45 invariants carried, refresh keeps them current *(Accepted — adhoc-MineVerifyRepo, 2026-07-04)*
+- ADR-50 — mine-reference-model is the fourth mine: unit = one reference repo, output = a portability-graded virtues registry consumed at C5 triage *(Accepted — adhoc-MineReferenceModel, 2026-07-05)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -1219,6 +1220,55 @@ registry instead of a report.
 diffs/reads scoped. *Housing findings in `docs/business-rules/`* — different species: rules document
 what code does; findings document what should change. *A docs-layer rendering as the primary
 artifact* — ADR-43 direction: render FROM the registry if ever needed, never the reverse.
+
+---
+
+## ADR-50 — mine-reference-model is the fourth mine: unit = one reference repo, output = a portability-graded virtues registry consumed at C5 triage — Accepted
+
+> **Status: Accepted — adhoc-MineReferenceModel, owner-ratified 2026-07-05.** Proposal provenance:
+> the mine-verify-repo pilot's Entry 8 (`docs/plugin-feedback/omni-1.22.0-2026-07-05.md` in the
+> pilot repo), ratified by owner directive. Implementation vehicle:
+> `docs/specs/adhoc-MineReferenceModel/definition/tech-spec.md`.
+
+**Context.** mine-verify-repo's C5 triage adjudicates `by-design` against "the repo's reference
+model" and degrades to `no-reference-model` when none exists — but producing the reference model
+has no owner in the skill family. The first pilot (omnishelf_flutter_app) needed exactly that
+artifact for its triage step, and a hand-built precursor
+(`dotnet-reference.md`, 2026-05-31) proved the artifact shape by hand: code-verified pattern
+choices + the rule each reveals + a portability mapping to the consuming stack.
+
+**Decision.** Build `mine-reference-model` — the "what to copy" arm. Unit = ONE designated
+reference repository; parallel clean-room extractors per dimension (default five: layering, module
+boundaries, error handling, DI, testing strategy) → one consolidate+skeptic that **re-executes**
+every pattern's evidence against the reference source (verdict without its re-execution excerpt is
+dropped — C3 inherited) → `docs/reference-model.md` written in the **consuming** repo: the third
+registry species (ADR-43/45/49 invariants carried), with a per-pattern **portability stamp**
+(`portable | adapt | not-portable`) and a translation dictionary built from confirmed rows only.
+The gate kills **invented virtues** (flattery) where the debt mine kills false positives.
+Pattern *existence* is the skeptic-gated fact; *portability* is an ADR-47 judgment column —
+agent-drafted, advisory, human-confirmed at the point of use (triage/roadmap citation), never a
+new in-run adjudication gate. The artifact is an **additional formal source** of C5's "reference
+model" alongside the repo's own ADRs/conventions (ADR-47's referent stands unchanged);
+`no-reference-model` fires only when no reference model of any kind is available. **No metric layer — a deliberate asymmetry with ADR-48:** virtues
+are structural choices, not churn concentrations; the dimension list + per-dimension cap replace
+hotspot ranking as the cost bound.
+
+**Why.** An unverified virtue in the adjudication reference silently legitimizes `by-design`
+dispositions — worse than a false debt finding. The must-reproduce gate transfers unchanged; only
+the failure mode it kills differs. Species logic is ADR-45/49's argument a third time: a virtues
+registry is an adjudication reference with provenance, neither knowledge (`docs/kb/`) nor a work
+queue (`docs/tech-debt/`).
+
+**Tradeoffs.** A dimension-scoped scan misses virtues outside the listed dimensions — accepted;
+the list is a run parameter. Portability stamps ride unadjudicated until first cited — accepted,
+the alternative (a human gate per run) re-creates the throughput ceiling ADR-47 already declined.
+
+**Rejected.** *Run mine-verify-repo on the reference repo* — produces a debt registry, the wrong
+artifact (the pilot's architect recommendation records this explicitly). *Auto-generating project
+skills from the extracted patterns* (Entry 8's optional stage 2) — `improve-skills` owns skill
+scaffolding; separate proposal if demand proves out. *Housing the output in `docs/kb/` or
+`docs/tech-debt/`* — re-creates the species collision ADR-45/49 removed. *A metric layer on the
+reference repo* — measures pain, not judgment.
 
 ---
 

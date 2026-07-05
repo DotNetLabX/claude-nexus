@@ -1,6 +1,23 @@
 # nexus — Changelog
 
 
+## [1.23.0] — 2026-07-05
+- **MINOR — new capability: the `mine-reference-model` skill (the fourth mine, the "what to copy"
+  arm).** Stack-neutral reference-repo virtue extraction (ADR-50): parallel clean-room extractors read
+  ONE designated reference repo per dimension (default five — layering, module boundaries, error
+  handling, DI, testing strategy), a fresh skeptic RE-EXECUTES each pattern's evidence to kill invented
+  virtues (the flattery failure mode), and confirmed patterns are graded for portability to the
+  consuming stack (`portable | adapt | not-portable`) with a cross-stack translation dictionary. Output
+  is a `docs/reference-model.md` registry species in the consuming repo — the third alongside
+  `docs/business-rules/` (ADR-45) and `docs/tech-debt/` (ADR-49) — consumed at `mine-verify-repo`'s C5
+  triage as the by-design adjudication reference. Read-only on both repos, no toolchain.
+  - `mine-verify-repo/SKILL.md` — cross-reference edits: the family enumeration now names the fourth
+    mine; C4/C5 add `docs/reference-model.md` as an **additional** formal source of the reference model
+    alongside the repo's own ADRs/conventions (`no-reference-model` still fires only when no reference
+    model of any kind exists — additive, never a replacement); a relationship-table row for the new skill.
+  - `mine-verify-cover/SKILL.md` — cross-reference edit: a relationship-table row for the new skill (the
+    reference-repo sibling; virtues not debts; no Cover arm).
+
 ## [1.22.1] — 2026-07-04
 - **PATCH — additive skill-authoring reference.** `improve-skills` gains
   `references/skill-recipe.md` — the archetype decision (heavy/autonomous vs

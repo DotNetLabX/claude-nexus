@@ -20,10 +20,12 @@ not debt one imagines. It never edits production source, and a finding that cann
 reproducible check never reaches the registry as a fact.
 
 This is the third mine. `mine-verify-cover` scans ONE class (ground truth: code; gate: mutants);
-`mine-from-spec` scans ONE spec (ground truth: spec text; gate: skeptic-vs-text). This skill scans
-ONE REPO decomposed into graphify areas (ground truth: deterministic git/complexity metrics +
-must-reproduce evidence; gate: hotspot ranking). The invariant is unchanged across the family:
-bounded unit → clean-room miners → consensus → skeptic verify → graded registry.
+`mine-from-spec` scans ONE spec (ground truth: spec text; gate: skeptic-vs-text);
+`mine-reference-model` scans ONE reference repo for its *virtues* (ground truth: reference source;
+gate: skeptic re-execution — the invented-virtue kill). This skill scans ONE REPO decomposed into
+graphify areas (ground truth: deterministic git/complexity metrics + must-reproduce evidence; gate:
+hotspot ranking). The invariant is unchanged across the family: bounded unit → clean-room miners →
+consensus → skeptic verify → graded registry.
 
 **First slice = Metric→Mine→Verify→Registry only.** Cover/mutation at repo scale, auto-generated
 refactoring plans, the security lens, and cross-model critic execution are out of scope — see
@@ -153,8 +155,10 @@ dependency-direction query on the graph) is a **judgment, not a fact** — it ma
 - Invariants carried unchanged from ADR-43/45: per-row provenance, `last_verified`, rows are **never
   deleted** (disposition flips, the record stays), an append-only changelog, idempotent re-runs.
 - **Judgment lives in the disposition, not the finding:** `by-design` rows carry the adjudication
-  reference (ADR/convention cited, or `no-reference-model` when the repo has none and the generic
-  catalog was the only basis).
+  reference (an ADR/convention cited, or a `docs/reference-model.md` row produced by
+  `mine-reference-model` — an additional formal source alongside the repo's own ADRs/conventions; or
+  `no-reference-model` when no reference model of any kind exists and the generic catalog was the
+  only basis).
 - Consumers: the ad-hoc lane (`accepted` → backlog row → `adhoc-*` slug), and the M2 composition —
   before executing an accepted refactor, run `mine-verify-cover` on the affected classes (suite-green
   + floor re-clear across the refactor). M2 presupposes an existing gated suite: an uncovered class
@@ -163,7 +167,9 @@ dependency-direction query on the graph) is a **judgment, not a fact** — it ma
 ### C5 — Triage & refresh
 
 - **Triage is human-adjudicated** (architect + owner), against the repo's reference model (ADRs,
-  conventions; degrade to the generic catalog with the affected rows flagged `no-reference-model`).
+  conventions, or a `docs/reference-model.md` produced by `mine-reference-model` — an additional
+  formal source, never a replacement; degrade to the generic catalog with the affected rows flagged
+  `no-reference-model` only when no reference model of any kind exists).
   Never automated — the "anemic by design" counterexample is why. The dispositions, defined once:
   - `accepted` — a real debt to fix; flows to the ad-hoc lane.
   - `by-design` — the phenomenon is real but intended; carries the adjudication reference.
@@ -241,3 +247,4 @@ overrides it. The load-bearing invariants at a glance:
 | `graphify` | the structure-graph engine — supplies the areas (scope) and the graph the single global pass reads (layering, direction, god nodes). |
 | `kb-entry-schema` | the registry's non-row context sections; the row grammar is C2 above. |
 | `mine-from-spec` (a mode of `mine-verify-cover`) | the spec arm of the mine family — same clean-room miner + skeptic shape, spec text as ground truth instead of git metrics. |
+| `mine-reference-model` | the reference-repo sibling — the "what to copy" arm to this skill's "what to fix". It mines a designated reference repo's **virtues** (not debts) into `docs/reference-model.md`; **C5 triage** consumes those rows as the by-design adjudication reference (an additional formal source alongside the repo's own ADRs/conventions), plus its cross-stack translation dictionary. |
