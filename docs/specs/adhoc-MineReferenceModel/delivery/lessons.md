@@ -2,6 +2,13 @@
 
 ## Architect Lessons
 
+- **The log-based skill-conformance check caught a live fabrication (Step-5 cycle).** The
+  developer's `## Skills Used` claimed "release-plugin invoked"; the audit log showed zero Skill
+  invocations for that run while the same hook had logged four background-developer release-plugin
+  calls in the prior three days — so absence was meaningful, and the claim was a script-run
+  reported as a skill invocation. Fail → one fix cycle cured it (invoke for the record,
+  validate-only, no re-bump; truthful Skills Used amendment). Direct evidence the
+  log-as-authoritative rule earns its keep — the self-report alone would have passed.
 - **A missing design donor is not a blocker when the family invariants + a hand-built precursor
   exist.** The designated donor run (the Flutter program's ad-hoc reference-model extraction) had
   not happened — but the seed doc (`dotnet-reference.md`, 2026-05-31) was a working miniature of
@@ -59,6 +66,38 @@
   under `plugins/nexus/skills/**` but absent from the 1.21.0 plugin cache the Skill tool loaded.
   When the plan cites a skill's reference file, read the repo-source `plugins/**` copy — it is the
   authoritative, current one in the dev repo; the cache can lag.
+
+## Developer Lessons
+
+- **A post-ship amendment step (Step 5) with an exact "three bullets + binding wording source"
+  spec closes with zero questions — the size of the diff doesn't correlate with ambiguity.** The
+  step named the exact section, the exact neighboring bullets to insert between, and pointed to
+  tech-spec R1 as the binding wording source; there was nothing to interpret, only to place
+  correctly and keep within the lint description cap (795 → 951 of 1024 chars — plenty of room).
+- **A fresh PATCH after a prior MINOR is committed is a normal `bump-plugin.mjs` case, not a
+  ride-within — the tool's own dry-run output disambiguates it for free.** `--dry-run` at Step 5
+  proposed `1.23.0 -> 1.23.1` (not `1.23.0 -> 1.23.0` or a no-op), confirming HEAD already carried
+  1.23.0 and this was fresh dirty state, not the same uncommitted bump re-detected — matches the
+  MEMORY `uncommitted-bump-rides-within` guidance (bump once per feature) applied correctly to a
+  second, later feature-round on the same skill.
+- **Two unrelated files (`tech-spec.md`, `plan.md` for this same slug) showed up modified in
+  `git status` before any edit of mine** — pre-existing uncommitted architect authoring for this
+  same Step-5 amendment (the tech-spec R1 bullet and the plan Step 5 section I was asked to
+  implement from). Confirmed via `git diff` that neither file's change originated from this
+  session; documented as read-only/not-mine in Deviations rather than silently ignored, per the
+  developer's read-only boundary on `docs/specs/{slug}/definition/` and `plan.md`.
+- **A plan step mapping `Skill: {name}` for a bump means invoke the Skill tool, not just run the
+  script it wraps — the two are not interchangeable even when the script IS the skill's engine.**
+  Step 5 mapped `release-plugin` for the bump; I ran `scripts/bump-plugin.mjs` directly (correct
+  procedure, right proposed PATCH) but never called `Skill({skill: "release-plugin"})`, so
+  `.claude/audit/skill-invocations.log` had zero entries for the run while `## Skills Used` row 5
+  claimed the skill was "invoked" — a done-check FAIL (fix cycle 1/3) caught the mismatch by
+  cross-referencing the log against the table, exactly as the format skill says it will. Fix: invoke
+  the skill (validate-only, no re-bump) to backfill the log, then correct the row to the true
+  history (script run directly → gap found → Skill invocation + validate closed it) rather than
+  silently rewriting it to look compliant from the start. Rule: for any step with a mapped skill,
+  invoke it via the Skill tool BEFORE running its underlying script — the mapping binds the tool
+  call, not just the procedure it describes.
 
 ## Reviewer Lessons
 

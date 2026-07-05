@@ -80,6 +80,15 @@ comfortably — a virtues run yields far fewer rows.
   strategy; overridable per run — e.g. add "state management" for a frontend reference).
 - **Optional seed docs** (a prior hand-built reference doc): seed rows are **input hypotheses**,
   re-verified by the skeptic like any mined pattern — never trusted on age or authorship.
+- **Self-reference mode (supported, owner-directed 2026-07-05):** reference repo **=** consuming
+  repo is a valid parameterization — extract the repo's *own* virtues as its self-model
+  (formalizing conventions it never wrote down; consumed at its own C5 triage). Semantics that
+  degenerate: portability stamps collapse to `portable` (same stack) and the translation
+  dictionary section is omitted — the run report states the mode. Semantics that do NOT relax:
+  the skeptic gate is unchanged, and flattery risk is *higher* when a repo grades itself — in
+  self-reference mode the skeptic additionally cross-checks each confirmed pattern against the
+  repo's `docs/tech-debt/` rows and flags any contradiction (a claimed virtue refuted by a
+  confirmed debt finding is IMPRECISE at best, never silently CONFIRMED).
 - **Cost rail:** per-dimension pattern cap (run parameter, default small) — a reference model is a
   yardstick, not an inventory; ten load-bearing patterns beat fifty observations.
 

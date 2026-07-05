@@ -125,6 +125,28 @@ A PASS on Steps 1–3 proves the skill text ships and gates green — it does **
 works on a real reference repo; that lands only here.
 - Satisfies: AC-5.
 
+### Step 5 — Self-reference mode amendment (post-ship, owner-directed 2026-07-05)
+The skill shipped (nexus 1.23.0) cross-repo only in its prose; the owner directed both modes.
+Skill: None — one shipped file, surgical; then **Follow release-plugin** for the bump.
+
+- `plugins/nexus/skills/mine-reference-model/SKILL.md`:
+  - Inputs/R1 section: add the self-reference mode per tech-spec R1 (reference repo = consuming
+    repo is valid; portability collapses to `portable`; translation dictionary omitted; run
+    report states the mode).
+  - Verify-gate section: add the self-mode skeptic cross-check — each confirmed pattern is
+    checked against the repo's `docs/tech-debt/` rows; a contradiction demotes to IMPRECISE,
+    never silent CONFIRMED.
+  - Frontmatter `description`: extend with the self-reference trigger ("… or the repo itself —
+    self-reference mode — to formalize its own unwritten conventions"). Keep within the combined
+    description cap; loader-safety discipline unchanged (curly placeholders, comparators as
+    prose).
+- Then the bump: accept the tool's default PATCH unless the owner escalates. New bump (1.23.0 is
+  committed — this is a new release, not a ride-within). Re-check branch before commit
+  (concurrent-tree rule); omni sync at commit time.
+- Acceptance: grep SKILL.md for `self-reference` — hits in inputs, verify-gate, and frontmatter
+  description; `skill-lint.mjs` green; bump applied uncommitted.
+- Satisfies: tech-spec R1 (self-reference mode clause).
+
 ## Cross-Service Changes
 None.
 

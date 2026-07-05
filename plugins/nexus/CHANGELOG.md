@@ -1,6 +1,10 @@
 # nexus — Changelog
 
 
+## [1.23.1] — 2026-07-05
+- PATCH bump.
+  - skill change (mine-reference-model)
+
 ## [1.23.0] — 2026-07-05
 - **MINOR — new capability: the `mine-reference-model` skill (the fourth mine, the "what to copy"
   arm).** Stack-neutral reference-repo virtue extraction (ADR-50): parallel clean-room extractors read

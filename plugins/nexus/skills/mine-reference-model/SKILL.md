@@ -1,6 +1,6 @@
 ---
 name: mine-reference-model
-description: Extract skeptic-verified virtues from ONE designated reference repository — parallel clean-room extractors read the reference source per dimension (layering, module boundaries, error handling, DI, testing strategy), a fresh skeptic re-executes each pattern's evidence to kill invented virtues, and confirmed patterns are graded for portability to the consuming stack (portable | adapt | not-portable) plus a cross-stack translation dictionary, written to docs/reference-model.md in the consuming repo. Stack-neutral, read-only, no toolchain. Use when you need a code-verified "what to copy" reference model — consumed at mine-verify-repo's C5 triage as the by-design adjudication reference. Not a debt mine (mine-verify-repo), a class miner (mine-verify-cover), or a spec miner (mine-from-spec).
+description: Extract skeptic-verified virtues from ONE designated reference repository — parallel clean-room extractors read the reference source per dimension (layering, module boundaries, error handling, DI, testing strategy), a fresh skeptic re-executes each pattern's evidence to kill invented virtues, and confirmed patterns are graded for portability to the consuming stack (portable | adapt | not-portable) plus a cross-stack translation dictionary, written to docs/reference-model.md in the consuming repo. Stack-neutral, read-only, no toolchain. Use when you need a code-verified "what to copy" reference model — consumed at mine-verify-repo's C5 triage as the by-design adjudication reference — or the repo itself, self-reference mode, to formalize its own unwritten conventions. Not a debt mine (mine-verify-repo), a class miner (mine-verify-cover), or a spec miner (mine-from-spec).
 user-invocable: true
 ---
 
@@ -89,6 +89,12 @@ a virtues run yields far fewer rows.
 - **Optional seed docs** (a prior hand-built reference doc): seed rows are **input hypotheses**,
   re-verified by the skeptic like any mined pattern — never trusted on age or authorship. A seed
   row that fails re-execution is killed exactly like an extractor-mined one.
+- **Self-reference mode** (supported): reference repo **=** consuming repo is a valid
+  parameterization — extract the repo's own virtues as its self-model (formalizing conventions it
+  never wrote down; consumed at its own C5 triage). Portability stamps collapse to `portable`
+  (same stack) and the translation dictionary section is omitted — the run report states the mode.
+  The skeptic gate does not relax in this mode (see R3's self-mode cross-check) — flattery risk is
+  higher, not lower, when a repo grades itself.
 - **Cost rail:** per-dimension pattern cap (run parameter, default small) — a reference model is a
   yardstick, not an inventory; ten load-bearing patterns beat fifty observations.
 
@@ -125,6 +131,10 @@ run id), `last_verified`.
 - Extractors are clean-room per dimension and are **not told the repo is exemplary** — the stage
   prompt asks "what pattern choices does this repo make, and what rule does each encode", not "list
   this repo's best practices". Framing is half the flattery defense; the skeptic is the other half.
+- **Self-reference mode cross-check.** When reference repo = consuming repo (self-reference mode),
+  the skeptic additionally cross-checks each confirmed pattern against the repo's
+  `docs/tech-debt/` rows — a contradiction (a claimed virtue refuted by a confirmed debt finding)
+  demotes the pattern to IMPRECISE at best, never silently CONFIRMED.
 
 ### R4 — Output artifact & species
 

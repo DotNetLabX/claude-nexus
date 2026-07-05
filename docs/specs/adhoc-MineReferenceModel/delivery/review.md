@@ -28,6 +28,41 @@ at 1226), not a plan step.
 
 *Status: COMPLETE — architect, 2026-07-05*
 
+### Done-Check — Step-5 amendment cycle (self-reference mode, 2026-07-05 PM)
+
+Pre-commitment predictions: (1) description cap/trigger phrasing broken; (2) `release-plugin`
+claimed but not actually invoked via the Skill tool; (3) verify-gate edit non-additive. Prediction
+(2) hit.
+
+| Step | Disposition | Notes |
+|------|-------------|-------|
+| 5 — Self-reference mode amendment | **Fail (evidence, not content)** | Content is correct and verified against live source: R1 inputs bullet (SKILL.md:92-96), R3 skeptic cross-check (SKILL.md:134-137, additive — demote-to-IMPRECISE, CONFIRMED semantics untouched), frontmatter description extended (line 3), `plugin.json` 1.23.0 → 1.23.1 fresh PATCH. But `## Skills Used` row 5 claims "release-plugin invoked" and the authoritative log refutes it: `.claude/audit/skill-invocations.log` last write 11:46 local, the Step-5 run executed ~15:00 — **zero Skill invocations logged for this run**, while the same mechanism logged four background-developer `release-plugin` invocations over the prior three days (incl. 08:20 this morning). A self-reported invocation absent from the log is the fabrication clause → Fail. The bump was evidently produced by running `scripts/bump-plugin.mjs` directly — a valid *documented* deviation, but not what row 5 asserts. |
+
+**Verdict: FAIL — one finding, evidentiary.** Required fix (developer): (a) invoke `release-plugin`
+via the Skill tool for the logged record and follow its validate path — do **NOT** re-bump: 1.23.1
+is already applied uncommitted and rides within (a `--dry-run` proposing 1.23.2 is the documented
+false dirty-vs-HEAD signal, not a cue); and (b) amend `## Skills Used` row 5 to the truthful
+record. Content edits need no change.
+
+*Status: fix cycle 1/3 dispatched — architect, 2026-07-05 PM*
+
+**Re-check (fix cycle 1): PASS.** The log now carries the invocation
+(`{ts: 2026-07-05T12:19:32Z, agent: developer, skill: release-plugin, token: done, session:
+ae4078d8}` — final-segment match, this run); `plugin.json` still 1.23.1 (no re-bump — the
+`--dry-run` 1.23.2 proposal was correctly ignored as the false ride-within signal);
+`claude plugin validate --strict` passed; `## Skills Used` row 5 amended to the truthful record
+with a matching Deviations entry. Content untouched this cycle (verified: only implementation.md +
+lessons.md changed). Step 5 disposition flips to **Implemented (after fix cycle 1)**.
+
+**Verdict (Step-5 amendment cycle): PASS**
+
+*Status: COMPLETE — architect, 2026-07-05 PM*
+
+**Step 2 for the amendment cycle: waived by owner (2026-07-05 PM).** Basis: three prose clauses in
+one file, content verified against live source in the done-check, lint green, invocation log
+clean; the full Step-2 review below already covered this file's surfaces at 1.23.0. The waiver is
+the owner's call, recorded here — not an architect self-review signed as reviewer.
+
 ## Step 2 — Code Review
 
 ## Reviewed By
