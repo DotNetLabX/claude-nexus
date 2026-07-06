@@ -24,7 +24,8 @@ Proceed only after: service CLAUDE.md confirms MediatR usage.
 ```csharp
 public record {FeatureName}Command : ICommand<{ResponseType}>, IAuditableAction
 {
-    public int CreatedById { get; set; } // set by pipeline behavior
+    [JsonIgnore] // stamped server-side by AssignUserIdBehavior — NEVER bound from the request body
+    public int CreatedById { get; set; }
     public required int {EntityId} { get; init; }
     // other properties...
 }
@@ -32,6 +33,11 @@ public record {FeatureName}Command : ICommand<{ResponseType}>, IAuditableAction
 
 - Use `ICommand<T>` for mutations, `IQuery<T>` for reads
 - Implement `IAuditableAction` if the command needs user ID assignment via pipeline behavior
+- **Acting-user provenance is server-side, never wire-bound.** `IAuditableAction` requires `CreatedById`, so
+  the property stays — but it MUST be non-bindable from the request: mark it `[JsonIgnore]` (or inherit a base
+  command that stamps it, e.g. the reference app's `ArticleCommandBase` — `[JsonIgnore] public int CreatedById`).
+  The `AssignUserIdBehavior` pipeline sets it from the JWT claims. Binding the creator id from the caller is a
+  provenance/security regression.
 - Validator class co-located in same file (see `workflows/Validator.md`)
 
 ### Handler file: `{FeatureName}CommandHandler.cs`

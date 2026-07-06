@@ -11,7 +11,10 @@ public class {ServiceName}GrpcService({Dependencies}) : I{ServiceName}Service
 {
     public async ValueTask<{Response}> {Method}Async({Request} request, CallContext context = default)
     {
-        var entity = await _repository.FindByIdOrThrowAsync(request.Id);
+        // Fork the repository lookup by persistence engine:
+        //   Redis-backed services MUST use GetByIdOrThrowAsync — FindByIdOrThrowAsync is EF-only and
+        //   does not exist on the Redis repository. GetByIdOrThrowAsync exists on BOTH engines.
+        var entity = await _repository.GetByIdOrThrowAsync(request.Id);
         return entity.Adapt<{Response}>();
     }
 }
@@ -37,4 +40,7 @@ app.MapGrpcService<{ServiceName}GrpcService>();
 
 - gRPC services are plain classes implementing the contract interface
 - Use Mapster for entity → response mapping
-- Throw `NotFoundException` for missing entities — middleware maps to gRPC status codes
+- Throw `NotFoundException` for missing entities. **There is no gRPC error-mapping interceptor yet** — the
+  standing gap is the `//todo` in the reference app's `JournalGrpcService`. Until it exists, an unmapped
+  domain exception surfaces as a raw gRPC failure, not a clean gRPC status code — do not assume middleware
+  translates it.

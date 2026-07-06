@@ -47,12 +47,18 @@ Create the `.csproj` files for each layer of the new service with the correct `P
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\Blocks.EntityFrameworkCore\Blocks.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\{Name}.Domain\{Name}.Domain.csproj" />
+    <!-- EF provider — belongs HERE (the layer that calls UseSqlServer/UseNpgsql), NOT in .API: -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <!-- PostgreSQL branch instead: <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" /> -->
   </ItemGroup>
 
 </Project>
 ```
 
-For PostgreSQL, the same Blocks.EntityFrameworkCore reference applies — the provider (`Npgsql.EntityFrameworkCore.PostgreSQL`) is added at the API project level via `options.UseNpgsql(...)` in the DI setup.
+The EF provider PackageReference lives in the **`.Persistence`** csproj — the project that calls
+`UseSqlServer`/`UseNpgsql` in its DI. For PostgreSQL, swap `Microsoft.EntityFrameworkCore.SqlServer` for
+`Npgsql.EntityFrameworkCore.PostgreSQL` here. (The API csproj keeps only the `Microsoft.EntityFrameworkCore.Design`
+build-time tooling for migrations — that is not the runtime provider.)
 
 ### Redis branch
 
@@ -92,9 +98,10 @@ For PostgreSQL, the same Blocks.EntityFrameworkCore reference applies — the pr
     <ProjectReference Include="..\..\..\BuildingBlocks\Blocks.Core\Blocks.Core.csproj" />
     <!-- MediatR variants only: -->
     <ProjectReference Include="..\..\..\BuildingBlocks\Blocks.MediatR\Blocks.MediatR.csproj" />
-    <!-- Integration events only: -->
+    <!-- Integration events only (NOTE: csproj filename ≠ folder name — folder is
+         {ProjectName}.Integration.Contracts, project file is {ProjectName}.IntegrationEvents.Contracts.csproj): -->
     <ProjectReference Include="..\..\..\BuildingBlocks\Blocks.Messaging\Blocks.Messaging.csproj" />
-    <ProjectReference Include="..\..\..\BuildingBlocks\{ProjectName}.Integration.Contracts\{ProjectName}.Integration.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\{ProjectName}.Integration.Contracts\{ProjectName}.IntegrationEvents.Contracts.csproj" />
     <!-- gRPC clients only: -->
     <ProjectReference Include="..\..\..\BuildingBlocks\{ProjectName}.Grpc.Contracts\{ProjectName}.Grpc.Contracts.csproj" />
     <!-- Always: -->

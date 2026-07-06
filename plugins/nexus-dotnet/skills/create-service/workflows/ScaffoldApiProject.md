@@ -48,7 +48,8 @@ Minimal — usually just verbose logging levels. Copy from exemplar.
 
 **Reference:** `src/Services/{Svc}/{Svc}.API/Properties/launchSettings.json`
 
-Set the HTTP and HTTPS ports from the port axis. Four profiles: `http`, `https`, `IIS Express`, `Docker` (if docker=Y).
+Set the HTTPS port from the port axis. The live exemplars ship **two** profiles: `https` (commandName
+`Project`) and `Container (Dockerfile)` (commandName `Docker`, only when docker=Y) — not `http` / `IIS Express`.
 
 ## Framework branches
 
@@ -60,21 +61,22 @@ Set the HTTP and HTTPS ports from the port axis. Four profiles: `http`, `https`,
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
+// Uniform registration methods — NOT per-service Add{Name}Services. Order: API → Application → Persistence.
 builder.Services
-    .Add{Name}Services(builder.Configuration);
-
-// Persistence
-builder.Services.Add{Name}Persistence(builder.Configuration);
-
-// Application layer (if present)
-builder.Services.Add{Name}Application(builder.Configuration);
+    .AddApiServices(builder.Configuration)          // API-layer services (endpoints, auth, Swagger, MassTransit…)
+    .AddApplicationServices(builder.Configuration)  // only if the service has an .Application project; omit otherwise
+    .AddPersistenceServices(builder.Configuration); // DbContext, repositories, DispatchDomainEventsInterceptor
 
 // Shared modules (if any) — e.g., file storage, email
 // builder.Services.AddAzureFileStorage(builder.Configuration);
 
 var app = builder.Build();
 
-app.Use{Name}Middleware();
+// Explicit middleware chain — there is NO per-service Use{Name}Middleware helper. Copy the chain from the exemplar.
+app
+    .UseMiddleware<GlobalExceptionMiddleware>()
+    .UseMiddleware<RequestContextMiddleware>()
+    .UseMiddleware<RequestDiagnosticsMiddleware>();
 
 app.Migrate<{Name}DbContext>();
 if (app.Environment.IsDevelopment())

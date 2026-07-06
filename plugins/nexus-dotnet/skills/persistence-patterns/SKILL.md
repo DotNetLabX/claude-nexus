@@ -72,6 +72,19 @@ await repository.FindByIdOrThrowAsync(id);
 | Auto (assembly scan) | `AddDerivedTypesOf(typeof(Repository<>))` | Services with many repositories |
 | Manual | `AddScoped<{Entity}Repository>()` per repo | Services with few repositories or explicit control needed |
 
+## Spine Rules
+
+Two load-bearing conventions the persistence layer rests on:
+
+- **Repository is the unit of work.** The repository base owns the commit — handlers call
+  `repository.SaveChangesAsync()`, not a separately injected `IUnitOfWork`/`DbContext.SaveChanges`. One
+  repository, one transaction boundary; the `DispatchDomainEventsInterceptor` fires on that save. Do not
+  expose the `DbContext` directly to handlers to save.
+- **Reference data is cached type-keyed.** `ApplicationDbContext<T>` exposes an in-memory cache keyed by
+  **entity type** (`GetAllCached<TEntity>`, `GetByIdCached<TEntity>`) for slow-changing reference/master data,
+  so repeated reads don't round-trip the database. (Reminder: these helpers use `ref` internally and cannot be
+  awaited — call them from synchronous paths, see DbContext Setup.)
+
 ## Entity Configuration
 
 ### Base: `EntityConfiguration<T>`
@@ -83,7 +96,10 @@ await repository.FindByIdOrThrowAsync(id);
 ### Audited: `AuditedEntityConfiguration<T>`
 **File:** `src/BuildingBlocks/Blocks.EntityFrameworkCore/EntityConfigurations/AuditedEntityConfiguration.cs`
 
-Extends `EntityConfiguration<T>`. Three opt-in override points:
+The configuration base is a generic **ladder**, not a flat extend:
+`AuditedEntityConfiguration<T> : AuditedEntityConfiguration<T,int> : EntityConfiguration<T,TKey>`.
+The `<T>` convenience form fixes `TKey = int`; the two-arg `<T,TKey>` form carries the real key type and
+extends `EntityConfiguration<T,TKey>`. Three opt-in override points:
 - `HasGeneratedId` — `ValueGeneratedOnAdd()` vs `ValueGeneratedNever()`
 - `DefaultDateSql` — default `"GETUTCDATE()"`, override `"NOW() AT TIME ZONE 'UTC'"` for PostgreSQL. **Requires** `Microsoft.EntityFrameworkCore.Relational` package — `HasDefaultValueSql()` is not in the base EF Core package.
 - `HasConcurrencyToken` — default `false`, set `true` for opt-in `RowVersion` shadow property
@@ -134,7 +150,8 @@ See `create-feature` (Mappings workflow) for the Mapster eligibility test and th
 **Database engine variants:**
 - SQL Server: `UseSqlServer(connectionString)` — default
 - PostgreSQL: `UseNpgsql(connectionString)` — opt-in per service
-- SQLite: `UseSqlite(connectionString)` — lightweight single-node
+
+(Redis-backed services do not use EF Core at all — see `redis-patterns`.)
 
 ## Seed Data (Dual Pattern)
 

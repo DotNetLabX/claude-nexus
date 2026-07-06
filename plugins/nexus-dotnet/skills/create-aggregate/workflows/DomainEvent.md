@@ -7,10 +7,13 @@
 ### Variant A: With Action Tracking
 
 ```csharp
-public record {EventName}({AggregateName} {AggregateName}, IAction Action) : DomainEvent<IAction>(Action);
+public record {EventName}({AggregateName} {AggregateName}, {Action} Action) : DomainEvent<{Action}>(Action);
 ```
 
-Services that track which action triggered an event use this variant.
+Services that track which action triggered an event use this variant. `{Action}` is the service's own
+action interface — substitute the real one; do **not** hard-code a generic action type. Reference app:
+`IArticleAction` (which extends `IAuditableAction`) in `Articles.Abstractions`; the base record is
+`DomainEvent<TAction> where TAction : IArticleAction`.
 
 ### Variant B: Aggregate Reference Only
 
@@ -25,8 +28,11 @@ Services where events are simple notifications use this variant.
 In the aggregate behavior method (in `Behaviors/{Aggregate}.cs`):
 
 ### Variant A (with action):
+The action/owner parameter is **always last, after the factory/domain arguments** — an owner-binding rule,
+not a preference. (Reference-app drift: Submission places the action *before* a trailing
+`stateMachineFactory` argument; treat that as the documented exception, not the template.)
 ```csharp
-public void {Method}({Params}, IAction action)
+public void {Method}({Params}, {Action} action)
 {
     // validate + mutate
     AddDomainEvent(new {EventName}(this, action));

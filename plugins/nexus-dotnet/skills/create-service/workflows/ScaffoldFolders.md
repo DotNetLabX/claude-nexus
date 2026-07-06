@@ -17,7 +17,9 @@ src/Services/{Name}/
 │   ├── EntityConfigurations/
 │   ├── Repositories/
 │   ├── Migrations/
-│   ├── MasterData/
+│   ├── Data/
+│   │   ├── Master/
+│   │   └── Test/
 ```
 
 ## Conditional tree
@@ -39,13 +41,15 @@ The `Features/` folder in `.Application/` is where handlers live for MediatR ser
 ```
 {Name}.Persistence/
 ├── Repositories/
-├── MasterData/
+├── Data/
+│   ├── Master/
+│   └── Test/
 ```
 
 Redis services do not use EF Core entity configurations or migrations — omit those folders.
 
 ### If persistence = EF Core → keep full Persistence tree
-Keep `EntityConfigurations/`, `Repositories/`, `Migrations/`, `MasterData/` as above.
+Keep `EntityConfigurations/`, `Repositories/`, `Migrations/`, `Data/` (with `Master/` and `Test/`) as above.
 
 ### If endpoint framework = read-model → Features/ in `.API`
 Read-model services use a flat `{Aggregate}/Consumers/` layout inside the API project rather than `Features/`. For read-model services:

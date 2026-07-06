@@ -46,6 +46,34 @@ Tracks every skill created or fixed by the learner/developer pipeline. One entry
 
 ## Skills Fixed
 
+### nexus-dotnet 1.3.1 feedback — 13-skill application (consolidated)
+- **Status:** Fixed
+- **Type:** Fix
+- **Source:** adhoc-DotnetFeedbackApply
+- **Description:** Applied the routed `dotnet-microservices` feedback file
+  (`docs/plugin-feedback/nexus-dotnet-1.3.1-2026-07-05.md`, 13 entries / ~45 defects) + the recovered Phase-B
+  verdict record. **11 patched:** `add-integration-event` (namespace-vs-folder trap, consumer-placement keyed
+  off `AddMassTransitWithRabbitMQ` not complexity, `sealed` optional); `error-handling` (Result<T>/try-catch
+  prohibitions, MapStatusCode recipe step, UnauthorizedException throw-site); aggregate cluster
+  `create-aggregate`+`domain-patterns`+`cqrs-patterns` (action-always-last + Submission drift, VO `private`+
+  `[JsonConstructor]` ctor, fictional `IAction`→`IArticleAction`); `create-feature` (Critical `SendOkAsync`→
+  `Send.OkAsync`, wire-protected `CreatedById`, Carter mutate-then-assign, `:verb` routes, two-layer auth);
+  `create-service` (10-defect staleness cluster — generic DbContext ctor, `Blocks.Entities` globals, uniform
+  `AddApiServices`/`UseMiddleware` chain, MediatR behavior order, `DispatchDomainEventsInterceptor`, Mapster,
+  csproj-name divergence, EF-provider→`.Persistence`, `https`+`Container` profiles, `Data/Master`+`Data/Test`);
+  `create-grpc-contract` (no error-mapping interceptor honesty, `GetByIdOrThrowAsync` fork, when-to-use gate,
+  Docker port note); spine cluster `service-registration`+`central-package-management`+`persistence-patterns`
+  (behavior order, no-Application API-layer messaging, transactional interceptor variant, Articles examples;
+  nested-props check; config ladder + repository-as-UoW/type-keyed-cache spine rules; SQLite dropped).
+  **2 content-replaced** (verdicts #6/#7, keep-A supersede): `create-domain-event-handler` (from base
+  `domain-event-wiring` — variant keys off `IDomainEventPublisher`, not the endpoint framework) and
+  `authorization-patterns` (from base `authorization-security` — real closed `UserRoleType`/`Role` vocabulary,
+  two-layer `RequireRoleAuthorization`, auth-only read-model single-layer case, tenant variant dropped).
+  Every defect's live-source proof re-verified against `D:\dotnet-microservices` before editing; folder + `name:`
+  frontmatter unchanged for all 13; per-skill + full-estate skill-lint exit 0; test suite 484 pass. Plugin bump
+  nexus-dotnet 1.3.1 → 1.4.0 (MINOR, owner-confirmed — two skills' content replaced + new decision layers).
+- **Date:** 2026-07-06
+
 ### improve-skills
 - **Status:** Fixed
 - **Type:** Fix
@@ -132,3 +160,19 @@ Tracks every skill created or fixed by the learner/developer pipeline. One entry
 - **Source:** adhoc-Pass4-IdentityExtraction, adhoc-Pass5-EventCorrectness (learner consolidation)
 - **Description:** Added "Promote an Existing Entity to an Aggregate Root (in place)" section — folded the promote-entity-to-aggregate gap into the existing skill per owner decision. Variant-aware (plain DDD vs ASP.NET Identity).
 - **Date:** 2026-06-10
+
+---
+
+## Deferred
+
+### create-module
+- **Status:** Deferred
+- **Type:** Fix
+- **Source:** adhoc-DotnetFeedbackApply
+- **Description:** Shares the `create-service` staleness family — `Blocks.Domain` GlobalUsings + `MasterData/`
+  seed folder at `create-module/workflows/ScaffoldDomain.md:21,40-51` (same defect class as create-service's
+  ScaffoldDomainProject/ScaffoldFolders). **Not** in the routed nexus-dotnet 1.3.1 feedback file, so out of
+  scope for this pass (the feedback's 13 entries are the acceptance checklist). Fix when a feedback pass covers
+  it, or as a follow-up ad-hoc: mirror the create-service Step-5 corrections (`Blocks.Entities` globals,
+  `Data/Master`+`Data/Test`).
+- **Date:** 2026-07-06

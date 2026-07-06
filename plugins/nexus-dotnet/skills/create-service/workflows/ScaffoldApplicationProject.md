@@ -34,13 +34,19 @@ namespace {Name}.Application;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection Add{Name}Application(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
     {
-        // MediatR (only for Carter + MediatR or Minimal APIs + MediatR):
-        // services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<DependencyInjection>());
-
-        // Mappings (AutoMapper, Mapperly, or hand-written — check exemplar):
-        // services.AddAutoMapper(typeof(DependencyInjection).Assembly);
+        services
+            // Mapster is the repo's mapper — register its configs from the assembly:
+            .AddMapsterConfigsFromAssemblyContaining<DependencyInjection>()
+            // MediatR (only for Carter + MediatR or Minimal APIs + MediatR) — open behaviors in this order:
+            .AddMediatR(config =>
+            {
+                config.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
+                config.AddOpenBehavior(typeof(AssignUserIdBehavior<,>)); // 1. AssignUserId — runs first
+                config.AddOpenBehavior(typeof(ValidationBehavior<,>));   // 2. Validation
+                config.AddOpenBehavior(typeof(LoggingBehavior<,>));      // 3. Logging
+            });
 
         // State machines — registered by create-aggregate later
 
@@ -71,7 +77,7 @@ Omit `Features/` — FastEndpoints collapses the feature slice into the endpoint
 **In `.Application` only:**
 - Cross-feature reusable DTOs
 - State machines (Stateless library)
-- AutoMapper / Mapperly profiles
+- Mapster mapping configs (`IRegister` implementations)
 - Shared enums or constants used by multiple features
 - Seeders that depend on application services
 

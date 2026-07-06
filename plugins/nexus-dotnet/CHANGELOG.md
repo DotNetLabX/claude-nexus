@@ -1,6 +1,25 @@
 # nexus-dotnet — Changelog
 
 
+## [1.4.0] — 2026-07-06
+- **MINOR — applied the routed `dotnet-microservices` nexus-dotnet 1.3.1 feedback (13 skills, ~45 defects; `adhoc-DotnetFeedbackApply`).**
+  Clean-room regeneration + comparative evaluation (repo `dotnet-microservices` @ `cd4d0b1`, skeptic-verified
+  against live source) found stale APIs, fictional identifiers, wrong placement heuristics, a security
+  regression, and a 10-defect `create-service` staleness cluster. Every defect's live-source proof was
+  re-verified before editing; folder + `name:` frontmatter unchanged for all 13; per-skill + full-estate
+  skill-lint exit 0. Owner-escalated to MINOR (two skills' content replaced + new decision layers).
+  - **11 patched (MERGE verdicts):**
+    - `add-integration-event` — namespace-vs-folder trap (`Articles.IntegrationEvents.Contracts` ≠ folder `Articles.Integration.Contracts`); consumer placement keyed off the `AddMassTransitWithRabbitMQ` site, not consumer complexity; `sealed` softened to optional.
+    - `error-handling` — added the `Result<T>` / boundary-only `try/catch` prohibitions; `MapStatusCode` recipe step; `UnauthorizedException` thrown from endpoint code (not auth middleware).
+    - `create-aggregate`, `domain-patterns`, `cqrs-patterns` — action/owner param always last (Submission drift named); VO ctor `private` + `[JsonConstructor]`; removed fictional `IAction` (real `IArticleAction`).
+    - `create-feature` — **[Critical]** `SendOkAsync` → `Send.OkAsync` + dropped the false "used across all services" claim; wire-protected `CreatedById` (`[JsonIgnore]`); Carter mutate-then-assign; `:verb` routes; two-layer authorization.
+    - `create-service` — 10-defect staleness cluster: generic `ApplicationDbContext<T>(options, cache)`; `Blocks.Entities` globals; uniform `AddApiServices` + explicit `UseMiddleware` chain; MediatR behavior order; `DispatchDomainEventsInterceptor`; Mapster; csproj-name divergence; EF provider in `.Persistence`; `https`+`Container` profiles; `Data/Master`+`Data/Test`.
+    - `create-grpc-contract` — no gRPC error-mapping interceptor (honest `//todo` gap); `GetByIdOrThrowAsync` engine fork; when-to-use decision layer; internal-Docker-port note.
+    - `service-registration`, `central-package-management`, `persistence-patterns` — behavior order + no-Application API-layer messaging + transactional interceptor variant + Articles examples; nested-`Directory.Packages.props` check; config ladder `AuditedEntityConfiguration<T> : AuditedEntityConfiguration<T,int> : EntityConfiguration<T,TKey>` + repository-as-UoW / type-keyed-cache spine rules; SQLite dropped.
+  - **2 content-replaced (keep-A supersede verdicts):**
+    - `create-domain-event-handler` — replaced from base `domain-event-wiring`; handler variant keys off the registered `IDomainEventPublisher` (event bus), **not** the endpoint framework (Production counterexample: FastEndpoints endpoints + MediatR bus).
+    - `authorization-patterns` — replaced from base `authorization-security`; real closed `UserRoleType`/`Role` vocabulary (no fictional `Role.Admin`/`UserRoleType.Editor`), two-layer `RequireRoleAuthorization`, authentication-only read-model single-layer case, tenant variant dropped.
+
 ## [1.3.1] — 2026-07-04
 - PATCH — `improve-architecture/SKILL.md`: added an ADR-46 supersession note pointing repo-scoped
   structural-debt discovery at the new `mine-verify-repo` skill (the .NET skill stays the in-file /

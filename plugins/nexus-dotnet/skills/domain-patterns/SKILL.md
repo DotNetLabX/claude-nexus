@@ -17,8 +17,13 @@ Pick the variant from the service's CLAUDE.md; the patterns below are otherwise 
 
 **File:** `src/BuildingBlocks/Blocks.Domain/Entities/AggregateRoot.cs`
 
-- Extends `Entity<TPrimaryKey>`, adds audit fields:
-  - `CreatedById (string?)`, `CreatedOn (DateTime?)`, `LastModifiedById (string?)`, `LastModifiedOn (DateTime?)`
+- Extends `Entity<TPrimaryKey>`, implements `IAuditedEntity<TPrimaryKey>`, adds audit fields (types per live
+  `Blocks.Domain/Entities/AggregateRoot.cs` / `IAuditedEntity.cs`):
+  - `CreatedById` — `TPrimaryKey`, non-null `init`
+  - `CreatedOn` — `DateTime`, non-null `init` (defaults `DateTime.UtcNow`)
+  - `LastModifiedById` — `TPrimaryKey?` (nullable), `set`
+  - `LastModifiedOn` — `DateTime?` (nullable), `set`
+  - For the non-generic `AggregateRoot` convenience form, `TPrimaryKey` = `int` (so `CreatedById` is `int`, `LastModifiedById` is `int?`)
 - Private `_domainEvents` list exposed as `IReadOnlyList<IDomainEvent>`
 - Methods: `AddDomainEvent()`, `ClearDomainEvents()`
 - Convenience form: `AggregateRoot` (non-generic, PK = int)
@@ -47,11 +52,13 @@ Three base types:
 - `StringValueObject` — single string `Value`, full equality (`Equals`, `==`/`!=`, `GetHashCode`)
 - `SingleValueObject<T>` — single struct `Value`; `Equals(object?)` compares against another `SingleValueObject<T>` of the **same concrete type** (runtime type check via `GetType()` — not a general boxed-T comparison)
 
-Pattern: static `Create()` factory with validation, internal constructor:
+Pattern: static `Create()` factory with validation and a **`private` + `[JsonConstructor]`** constructor
+(`[JsonConstructor]` lets the serializer rehydrate past the private ctor, `using Newtonsoft.Json;`):
 ```csharp
 public class EmailAddress : StringValueObject
 {
-    internal EmailAddress(string value) { Value = value; }
+    [JsonConstructor]
+    private EmailAddress(string value) { Value = value; }
     public static EmailAddress Create(string value)
     {
         Guard.ThrowIfNullOrWhiteSpace(value);
@@ -59,6 +66,13 @@ public class EmailAddress : StringValueObject
     }
 }
 ```
+
+**`private` is the prescriptive default** — it keeps the static `Create()` factory the only construction path
+(live majority, ~14 of 17 VO ctors). **`internal` + `[JsonConstructor]` is a sanctioned minority variant**
+(live: `Auth.Domain/Persons/ValueObjects/EmailAddress.cs`, `Review.Domain/_Shared/ValueObjects/EmailAddress.cs`,
+`Review.Domain/Assets/ValueObjects/FileName.cs`), used when a factory or behavior in the same assembly must
+construct the VO directly — it widens construction to the assembly, so prefer `private` unless that in-assembly
+access is genuinely needed.
 
 **Per-bounded-context duplication is intentional.** Each service defines its own VOs even if the shape is identical. This follows DDD — each BC owns its types. Only share VOs through BuildingBlocks when they are truly cross-cutting (e.g., `SingleValueObject<T>` base).
 
@@ -91,11 +105,15 @@ private readonly List<LineItem> _lineItems = new();
 public IReadOnlyList<LineItem> LineItems => _lineItems.AsReadOnly();
 ```
 
-Behavior method convention — **action parameter is typically last.** Prefer action last when writing new code:
+Behavior method convention — **the action/owner parameter is always last, after the factory/domain
+arguments.** This is an owner-binding rule, not a preference. (Reference-app drift: Submission places the
+action *before* a trailing `stateMachineFactory` argument — e.g.
+`SetStage(ArticleStage, IArticleAction<...> action, ArticleStateMachineFactory)` — treat Submission's
+ordering as the documented exception, not the template.)
 
 ```csharp
-// action last (preferred convention) — illustrative; substitute your own types
-public void AssignTo(Assignee assignee, IAction action)
+// action always last — illustrative; substitute your own real action interface
+public void AssignTo(Assignee assignee, IArticleAction action)
 {
     // validate
     // mutate state
@@ -111,13 +129,24 @@ public sealed record PersonCreated(int PersonId) : IDomainEvent;
 
 ## Domain Events
 
-**Light-stack interface (`Blocks.Domain/Events/IDomainEvent.cs`):**
+**Interface — light-stack variant (`Blocks.Domain/IDomainEvent.cs`, MediatR dropped):**
 
 ```csharp
 public interface IDomainEvent : IEvent;
 ```
 
-`IDomainEvent` extends FastEndpoints `IEvent` only — **no** MediatR `INotification`, so the light stack takes no MediatR package dependency.
+This `IEvent`-only shape is the **light-stack variant**: `IDomainEvent` extends FastEndpoints `IEvent` only —
+**no** MediatR `INotification` — so a stack that has genuinely dropped MediatR takes no MediatR package
+dependency. The **reference app keeps MediatR**, so its live file at this same path (`Blocks.Domain/IDomainEvent.cs`)
+is instead **dual-typed** `IDomainEvent : INotification, IEvent` (see the variant-axis note below) — verify the
+live `IDomainEvent.cs` before assuming either shape.
+
+> **Variant axis — which shape a stack uses.** The discriminator is **whether the stack retains MediatR at
+> all**, not the endpoint framework. A stack that has genuinely dropped MediatR types it `IDomainEvent : IEvent`
+> (above). A stack that keeps MediatR — including a service that runs FastEndpoints endpoints but a MediatR
+> event bus — types it **dual** as `IDomainEvent : INotification, IEvent`, so the publisher choice stays a
+> DI-time decision (this is the reference-app shape; see `create-domain-event-handler`). Verify the live
+> `IDomainEvent.cs` before assuming either.
 
 **Event record pattern:**
 ```csharp
@@ -132,7 +161,7 @@ public sealed record PersonCreated(int PersonId, string Email) : IDomainEvent;
 > In MediatR-based services, domain events extend both `INotification` and a base `DomainEvent<TAction>` record:
 > ```csharp
 > public abstract record DomainEvent<TAction>(TAction Action) : IDomainEvent
->     where TAction : IDomainAction;
+>     where TAction : IAuditableAction;
 > public record OrderApproved(Order Order, IOrderAction Action) : DomainEvent<IOrderAction>(Action);
 > ```
 > This adds MediatR's `INotification` to `IDomainEvent` so events route through `INotificationHandler<T>`. Use only when the service has MediatR wired.

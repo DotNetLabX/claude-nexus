@@ -37,7 +37,7 @@ public class {FeatureName}Endpoint({Dependencies})
         // Execute domain logic
         // Save changes
 
-        await SendOkAsync(new {ResponseType}(...), ct);
+        await Send.OkAsync(new {ResponseType}(...), ct);
     }
 }
 ```
@@ -92,12 +92,12 @@ catch (SomeDomainException ex)
 }
 ```
 
-Never write `catch → SendAsync(statusCode)` or `catch → SendUnauthorizedAsync()` in an endpoint.
+Never write `catch → Send.ResponseAsync(body, statusCode, ct)` or `catch → Send.UnauthorizedAsync(ct)` in an endpoint.
 
 ## Notes
 
 - If the service defines a custom base validator (check service CLAUDE.md), extend it instead of `Validator<T>`
-- Use `SendOkAsync()` for all FastEndpoints responses — the pattern used across all services
+- Use the modern static `Send.*` API (`Send.OkAsync()`, `Send.ResponseAsync()`, …) for FastEndpoints responses; never the legacy `Send*Async` instance methods. `framework-currency` owns the full migration map + version-verification — do not restate it here.
 - Domain events: dispatched automatically via interceptor on SaveChanges, or via `await PublishAsync(new {Event}(...))` for FastEndpoints events
 
 Check the service's CLAUDE.md for which variant to use.

@@ -37,7 +37,9 @@ public partial class {AggregateName}
 }
 ```
 
-**Convention:** action parameter is preferred last.
+**Convention:** the action/owner parameter is **always last, after the factory/domain arguments** — an
+owner-binding rule, not a preference. (Reference-app drift: Submission places the action before a trailing
+`stateMachineFactory` argument; that is the documented exception, not the template.)
 
 ## Folder Structure
 

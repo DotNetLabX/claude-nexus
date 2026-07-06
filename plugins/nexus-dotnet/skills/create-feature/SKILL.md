@@ -42,6 +42,16 @@ Before invoking this skill, ensure you have read:
 
 7. **Verify the build:** `dotnet build`
 
+## Route Conventions
+
+- **CRUD writes** use REST resource routes (`POST /articles`, `PUT /articles/{id}`).
+- **Non-CRUD writes** (state transitions, actions) use the **`:verb` convention** — the verb is appended to
+  the resource path after a colon: `POST /articles/{articleId:int}:accept`,
+  `POST /articles/{articleId:int}/assets/final/files:upload`. This keeps action endpoints distinct from
+  resource CRUD. (Reference app: `AcceptArticleEndpoint`, `UploadFinalFileEndpoint`.)
+- **Authorization is two-layer for writes** — role gate + resource gate; a group-level `RequireAuthorization`
+  alone drops the resource layer. See `authorization-patterns` and the per-framework endpoint workflows.
+
 ## Arguments
 
 Pass the feature name as argument: `/create-feature CreateOrder`

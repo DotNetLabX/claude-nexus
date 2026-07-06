@@ -8,6 +8,17 @@
 | `SingleValueObject<T>` | Single struct value (int, decimal, Guid) | `Money`, `Quantity` |
 | `ValueObject` | Multiple properties | `Address`, `DateRange` |
 
+## Constructor rule
+
+The construction constructor is **`private` + `[JsonConstructor]`** (Newtonsoft — `using Newtonsoft.Json;`).
+**`private` is the prescriptive default** — it keeps the static `Create()` factory the only construction path
+(live majority, ~14 of 17 VO ctors); `[JsonConstructor]` lets the persistence/serialization layer rehydrate the
+VO past the private ctor. **`internal` + `[JsonConstructor]` is a sanctioned minority variant**
+(live: `Auth.Domain/Persons/ValueObjects/EmailAddress.cs`, `Review.Domain/_Shared/ValueObjects/EmailAddress.cs`,
+`Review.Domain/Assets/ValueObjects/FileName.cs`), used when a factory or behavior in the same assembly must
+construct the VO directly — it widens construction to the assembly, so prefer `private` unless that in-assembly
+access is genuinely needed.
+
 ## Pattern: StringValueObject
 
 **Reference:** `src/BuildingBlocks/Blocks.Domain/ValueObjects/StringValueObject.cs`
@@ -15,7 +26,8 @@
 ```csharp
 public class {Name} : StringValueObject
 {
-    internal {Name}(string value) { Value = value; }
+    [JsonConstructor]
+    private {Name}(string value) { Value = value; }
 
     public static {Name} Create(string value)
     {
@@ -31,7 +43,8 @@ public class {Name} : StringValueObject
 ```csharp
 public class {Name} : SingleValueObject<decimal>
 {
-    internal {Name}(decimal value) { Value = value; }
+    [JsonConstructor]
+    private {Name}(decimal value) { Value = value; }
 
     public static {Name} Create(decimal value)
     {
@@ -51,7 +64,8 @@ public class {Name} : ValueObject
     public string Street { get; }
     public string City { get; }
 
-    internal {Name}(string street, string city) => (Street, City) = (street, city);
+    [JsonConstructor]
+    private {Name}(string street, string city) => (Street, City) = (street, city);
 
     public static {Name} Create(string street, string city)
     {

@@ -2,12 +2,21 @@
 
 MassTransit consumer in the target service. Auto-discovered — no manual registration.
 
+## Placement — key off the registration site, not the consumer's shape
+
+The consumer goes in **whichever project calls `AddMassTransitWithRabbitMQ(...)`** for the target service — regardless of whether the consumer is simple or rich. Grep the service for that call and place the consumer in the same project (`{ConsumerProject}` below):
+
+- A service **with** an `.Application` project registers MassTransit there → consumers live in `.Application`.
+- A service **without** one registers in `.API` → consumers live in `.API`.
+
+The Simple/Rich split below is about the consumer's **shape** (update/upsert vs factory + supporting entities), not about which project it lands in. Do not key placement off complexity — the reference app hosts a rich consumer in `.API` (Production) and simple consumers in `.Application` (Submission/Review).
+
 ## Simple Consumer (Update/Upsert)
 
-**Reference:** `src/Services/{Svc}/{Svc}.API/{Domain}/Consumers/{EventName}Consumer.cs`
+**Reference:** `src/Services/{Svc}/{ConsumerProject}/{Domain}/Consumers/{EventName}Consumer.cs`
 
 ```csharp
-public sealed class {EventName}Consumer({DbContext} _dbContext)
+public class {EventName}Consumer({DbContext} _dbContext)
     : IConsumer<{EventName}Event>
 {
     public async Task Consume(ConsumeContext<{EventName}Event> context)
@@ -35,12 +44,12 @@ public sealed class {EventName}Consumer({DbContext} _dbContext)
 
 ## Rich Consumer (Factory Method + Supporting Entities)
 
-**Reference:** `src/Services/{Svc}/{Svc}.Application/Features/{Domain}/{Feature}/{EventName}Consumer.cs`
+**Reference:** `src/Services/{Svc}/{ConsumerProject}/Features/{Domain}/{Feature}/{EventName}Consumer.cs`
 
 When the consumer creates a full local aggregate with supporting entities:
 
 ```csharp
-public sealed class {EventName}Consumer({Dependencies})
+public class {EventName}Consumer({Dependencies})
     : IConsumer<{EventName}Event>
 {
     public async Task Consume(ConsumeContext<{EventName}Event> context)
@@ -66,7 +75,7 @@ public sealed class {EventName}Consumer({Dependencies})
 
 1. **Consumers MUST be idempotent** — events may be delivered more than once
 2. Check for existing records before inserting
-3. Use `sealed class`
+3. `sealed` is optional — a minority pattern in the reference app (2 of 9 consumers), not a rule
 4. Inject DbContext or repository depending on the service's persistence pattern
 5. Use Mapster for DTO → entity mapping
 6. Factory methods (e.g., `{Entity}.From{Source}()`) keep creation logic in the domain
@@ -87,5 +96,7 @@ Example: `OrderAcceptedForFulfillmentEvent` -> `OrderAcceptedForFulfillmentConsu
 
 ## Location
 
-- Read-model services: `{Svc}.API/{Domain}/Consumers/`
-- Other services: `{Svc}.API/Features/{Domain}/Consumers/` or `{Svc}.Application/Features/{Domain}/Consumers/`
+Project = wherever `AddMassTransitWithRabbitMQ(...)` is registered (see **Placement** above). Sub-path follows the service's folder convention:
+
+- Read-model / API-only services: `{Svc}.API/{Domain}/Consumers/`
+- Feature-organized services: `{ConsumerProject}/Features/{Domain}/Consumers/` (or `.../{Feature}/` for a rich consumer that owns a feature slice)

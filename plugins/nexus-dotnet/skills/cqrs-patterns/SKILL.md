@@ -31,7 +31,9 @@ public class {Feature}CommandHandler({AggregateRepository} _repository, {Depende
     {
         var entity = await _repository.FindByIdOrThrowAsync(command.{EntityId});
 
-        entity.{DomainMethod}({params}, command, _stateMachineFactory);
+        // Action/owner (the command — it implements IAuditableAction) is passed LAST, after the
+        // factory/domain arguments (e.g. the state-machine factory). See create-aggregate/domain-patterns.
+        entity.{DomainMethod}({params}, _stateMachineFactory, command);
 
         await _repository.SaveChangesAsync();
 

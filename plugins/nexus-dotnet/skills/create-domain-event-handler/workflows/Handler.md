@@ -52,7 +52,10 @@ public sealed class {HandlerName}({Dependencies})
 }
 ```
 
-Check the service's CLAUDE.md for which variant to use.
+**Pick the variant from the service's registered `IDomainEventPublisher` (its event bus), NOT its endpoint
+framework** — the two are independent axes. MediatR event bus → `INotificationHandler`/`Handle`; FastEndpoints
+event bus → `IEventHandler`/`HandleAsync`. (Reference app: Production runs FastEndpoints endpoints but a MediatR
+event bus, so its domain-event handlers are `INotificationHandler`.) See the SKILL.md Decision-1 table.
 
 ## Reference
 

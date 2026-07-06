@@ -26,9 +26,10 @@ public class {FeatureName}Endpoint : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
-        app.Map{Method}("/{domain}/{route}", async ([{FromRoute}] int id, {CommandType} command, ISender sender) =>
+        app.Map{Method}("/{domain}/{route}", async (int id, {CommandType} command, ISender sender) =>
         {
-            var result = await sender.Send(command with { Id = id });
+            command.{EntityId} = id;                 // mutate-then-assign — the dominant live pattern,
+            var result = await sender.Send(command); // NOT `command with { Id = id }`
             return Results.Ok(result);
         })
         .WithTags("{Domain}")
@@ -70,4 +71,8 @@ Never write `catch → Results.Problem(statusCode)` in an endpoint.
 
 - Route parameters bind via `[FromRoute]`, body via `[FromBody]` or parameter name matching
 - Multiple routes can be defined in a single `ICarterModule`
-- Group-level authorization: apply `.RequireAuthorization()` on the route
+- **Authorization — two layers, not one.** A write endpoint needs both the **role** gate and the
+  **resource** gate. Use `.RequireRoleAuthorization(Role.{Role}, ...)` for the role layer (reference app:
+  `AcceptArticleEndpoint` → `.RequireRoleAuthorization(Role.Editor, Role.EditorAdmin)`); the per-resource
+  ownership/access check runs inside the handler. A bare group-level `.RequireAuthorization()` drops the
+  resource layer — never rely on it alone for writes. See `authorization-patterns` for the full two-layer model.

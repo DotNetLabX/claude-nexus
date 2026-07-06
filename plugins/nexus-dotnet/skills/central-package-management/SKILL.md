@@ -20,7 +20,9 @@ Introduces or audits **Central Package Management (CPM)** for a .NET solution. O
 
 ## The Props File
 
-Create `src/Directory.Packages.props` (one file at the `src/` root, not per-project):
+Create `src/Directory.Packages.props` at the `src/` root. The **intended** state is exactly one such file for
+the whole solution — but that is not an MSBuild-enforced invariant (nearest-wins lets a nested file override
+it), so treat it as intended-state-plus-check (see **Nested Props Check** below), not a guarantee:
 
 ```xml
 <Project>
@@ -108,6 +110,21 @@ rg -n 'Version="' --glob '*.csproj' src/
 ```
 
 **Expected output after clean migration:** all three greps return zero hits in `.csproj` files (`Directory.Packages.props` itself intentionally declares versions — its hits are expected and correct). The three-form grep is a general requirement to run against any project that has not yet been confirmed clean.
+
+## Nested Props Check — expect exactly one
+
+MSBuild resolves `Directory.Packages.props` by **nearest-wins**: a stray `Directory.Packages.props` nested
+under a project folder silently overrides the `src/` root file for that project — and the three-form grep
+above **structurally cannot** detect it (it only inspects `.csproj` version declarations). So audit the file
+count directly:
+
+```
+grep -rl --include="Directory.Packages.props" "" src/     # or: find src -name Directory.Packages.props
+```
+
+**Expect exactly one hit, at `src/Directory.Packages.props`.** Any nested hit — live example seen at
+`src/Services/Review/Review.API/Directory.Packages.props` — is a silent override; reconcile it into the root
+file or justify it explicitly.
 
 ## Interplay with `framework-currency`
 

@@ -7,8 +7,14 @@
 Create in `BuildingBlocks/{ProjectName}.Integration.Contracts/{Domain}/`:
 
 ```csharp
+namespace {ContractsNamespace}.{Domain};
+
 public record {EventName}Event({DtoType} {DtoName});
 ```
+
+> **Namespace ≠ folder — verify, don't derive.** The contracts project's **namespace may diverge from its folder name**. Declare and reference the project's *actual* namespace (open an existing contract file to read it); never infer it from the folder path. Getting this wrong compiles nowhere the consumer can `using` it.
+>
+> Reference app: the folder is `Articles.Integration.Contracts` but the namespace is `Articles.IntegrationEvents.Contracts` (a commented-out wrong-namespace line in source marks the trap). So `{ContractsNamespace}` = `Articles.IntegrationEvents.Contracts`, not the folder-derived `Articles.Integration.Contracts`.
 
 ### DTO (included in same file or separate)
 

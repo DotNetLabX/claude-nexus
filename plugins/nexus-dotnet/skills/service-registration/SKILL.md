@@ -44,7 +44,7 @@ Each layer lives in its own `DependencyInjection.cs` static class within the res
 
 ### Application layer (`AddApplicationServices`)
 
-- MediatR registration + open pipeline behaviors (Validation, Logging, AssignUserId)
+- MediatR registration + open pipeline behaviors, registered in order **AssignUserId → Validation → Logging** (AssignUserId must run first so the downstream behaviors see the acting user)
 - FluentValidation assembly scanning (`AddValidatorsFromAssemblyContaining<T>`)
 - Mapster configuration (`AddMapsterConfigsFromAssemblyContaining<T>`)
 - MassTransit + RabbitMQ (`AddMassTransitWithRabbitMQ`)
@@ -52,10 +52,15 @@ Each layer lives in its own `DependencyInjection.cs` static class within the res
 - Domain service factories (e.g., state machine factories)
 - Access checkers / domain-level authorization
 
+> **No Application project?** For services without an `.Application` layer (e.g. FastEndpoints services with
+> handler logic in endpoints), MediatR and MassTransit (`AddMassTransitWithRabbitMQ`) register in the **API**
+> layer instead — the consumer/handler lives wherever `AddMassTransitWithRabbitMQ` is called. (Reference app:
+> Production, Journals, ArticleHub register messaging in `.API`; Submission, Review register it in `.Application`.)
+
 ### Persistence layer (`AddPersistenceServices`)
 
 - `DbContext` registration (with interceptors)
-- `ISaveChangesInterceptor` (scoped — `DispatchDomainEventsInterceptor`)
+- `ISaveChangesInterceptor` (scoped) — `DispatchDomainEventsInterceptor` (post-save, non-transactional) **or** `TransactionalDispatchDomainEventsInterceptor` (save + dispatch in one DB transaction); register whichever the service needs
 - Shared `DbConnection` (if transaction provider needed)
 - `TransactionProvider`
 - `Repository<>` open generic + `AddDerivedTypesOf(typeof(Repository<>))`
@@ -77,21 +82,22 @@ services.AddDbContext<{Service}DbContext>((provider, options) =>
 });
 ```
 
-### DbContext (simple — SQLite, no shared connection)
+### DbContext (simple — connection string, no shared connection)
 
 ```csharp
 services.AddScoped<ISaveChangesInterceptor, DispatchDomainEventsInterceptor>();
 services.AddDbContext<{Service}DbContext>((provider, options) =>
 {
     options.AddInterceptors(provider.GetServices<ISaveChangesInterceptor>());
-    options.UseSqlite(configuration.GetConnectionString("{ConnectionName}"));
+    options.UseSqlServer(configuration.GetConnectionString("{ConnectionName}"));
+    // PostgreSQL branch: options.UseNpgsql(...)
 });
 ```
 
 ### DbContext (ASP.NET Core Identity)
 
 ```csharp
-services.AddDbContext<{Service}DbContext>(opts => opts.UseSqlite(connectionString));
+services.AddDbContext<{Service}DbContext>(opts => opts.UseSqlServer(connectionString));
 services.AddIdentityCore<User>(options => { /* lockout, password rules */ })
     .AddRoles<Role>()
     .AddEntityFrameworkStores<{Service}DbContext>()
@@ -161,19 +167,19 @@ public static WebApplication Map{Service}Endpoints(this WebApplication app)
 
 ```csharp
 // Host/Program.cs — Add section
-builder.Services.AddIdentityModule(builder.Configuration);
-builder.Services.AddCatalogModule(builder.Configuration);
+builder.Services.AddSubmissionModule(builder.Configuration);
+builder.Services.AddJournalsModule(builder.Configuration);
 
 // Host/Program.cs — InitData section
-app.Migrate<IdentityDbContext>();
-app.Migrate<CatalogDbContext>();
+app.Migrate<SubmissionDbContext>();
+app.Migrate<JournalsDbContext>();
 
 // Host/Program.cs — Use section (shared pipeline)
 // ... middleware ...
 // ... endpoint framework with multi-assembly scanning ...
 
-app.MapIdentityEndpoints();
-app.MapCatalogEndpoints();
+app.MapSubmissionEndpoints();
+app.MapJournalsEndpoints();
 ```
 
 ### FastEndpoints multi-assembly scanning

@@ -6,6 +6,14 @@ user-invocable: true
 
 # Error Handling
 
+## Prohibitions (load-bearing)
+
+- **No `Result<T>` error monad.** Errors flow as **thrown exceptions**, caught and translated once by the
+  global middleware — never as returned result objects threaded through handlers. Do not introduce a
+  `Result<T>`/`Either` type for error signalling.
+- **`try/catch` only at genuine I/O boundaries** (external calls, streams, transactions) — **never as domain
+  control flow.** Domain rule violations `throw`; they are not caught and branched on locally.
+
 ## Exception Hierarchy
 
 **Files:** `src/BuildingBlocks/Blocks.Exceptions/`
@@ -26,7 +34,7 @@ DomainException (in Blocks.Domain) → mapped to 400 by middleware
 | `DomainException` | Domain rule violation inside aggregate | Domain layer (behavior methods) |
 | `BadRequestException` | Input validation failure | Handlers, endpoints, validators |
 | `NotFoundException` | Entity not found by ID | Repositories, handlers |
-| `UnauthorizedException` | Auth/permission failure | Authentication middleware |
+| `UnauthorizedException` | Auth/permission failure | Endpoint/handler code (reference app: the Auth RefreshToken endpoint) — the middleware only **translates** it to a 401, it never raises it |
 | Custom `{Context}Exception : DomainException` | Service-specific domain errors | Domain layer |
 
 ### Extension Points
@@ -34,7 +42,12 @@ The hierarchy currently covers 400, 401, 404. If needed, extend with:
 - `ConflictException` → 409 (optimistic concurrency, duplicate)
 - `ForbiddenException` → 403 (authenticated but not authorized)
 
-Follow the same pattern: extend `HttpException`, set `StatusCode` in constructor.
+Recipe to add a new exception type:
+1. Extend `HttpException`, set `StatusCode` in the constructor.
+2. **Add its arm to the middleware's `MapStatusCode` switch** (see below) — this is mandatory, not
+   optional. A new exception type with no `MapStatusCode` arm silently falls through to the `Unhandled → 500`
+   case, so the intended status code (409/403/…) never reaches the client. The type and its mapping must
+   land together.
 
 ## Global Exception Middleware
 
