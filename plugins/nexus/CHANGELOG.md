@@ -1,6 +1,12 @@
 # nexus — Changelog
 
 
+## [1.25.0] — 2026-07-06
+- Architect Decision Disclosure: plans now carry a `## Decisions` section (decision · why · rejected alternative · status decided|deferred) declaring self-resolved two-way-door calls; architect emits a `Decisions taken: N` metric in the plan-approval message; critic flags a missing/silent section as a MEDIUM plan-hygiene finding.
+  - agent instruction/behavior change
+  - skill change (create-implementation-plan)
+  - owner-escalated to minor
+
 ## [1.24.0] — 2026-07-06
 - **MINOR — utility-skill audit hardening: two new lint gate capabilities + a widened check.**
   Applies the six consolidating fixes from the routed dotnet-microservices utility-skill audit

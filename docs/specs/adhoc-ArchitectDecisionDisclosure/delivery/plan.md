@@ -108,7 +108,7 @@ escalate to `--minor` (new capability; user-ratified 2026-07-06). Agents changed
 covers `commands/architect.md` + `commands/critic.md`; omni sync commit per CLAUDE.md mirror-subject
 convention (`feat(adhoc-ArchitectDecisionDisclosure): sync architect decision disclosure (omni {version})`).
 
-**Accept:** `plugins/nexus/plugin.json` version = 1.25.0; CHANGELOG.md has a 1.25.0 entry naming the
+**Accept:** `plugins/nexus/.claude-plugin/plugin.json` version = 1.25.0; CHANGELOG.md has a 1.25.0 entry naming the
 Decisions mechanism; `git diff --stat HEAD` shows content + bump + regenerated commands staged
 together (ADR-9 one-commit rule); `claude plugin validate plugins/nexus --strict` passes. The omni
 twin commit lands in `../omni` and is **not grep-verifiable from this repo** — its verification is

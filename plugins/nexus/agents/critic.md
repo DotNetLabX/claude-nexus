@@ -46,6 +46,7 @@ Before reading the artifact in detail, predict 3–5 most likely problem areas b
 3. Skill mapping: does each step reference a skill or justify inline detail?
 4. File paths: consistent with the repo structure?
 5. Step ordering: dependencies correct? Any missing handoffs?
+6. `## Decisions` section present and non-silent (a row set, or the explicit `None — no self-resolved calls met the disclosure bar` sentence)? A plan under review that lacks the section, or whose section is empty without that exact sentence, is a **MEDIUM** finding (silent-decision hygiene) — but plans that **predate** the section are exempt: flag only the plan under review in this run, never referenced historical plans.
 
 ### Phase 2.5: Implementation Feasibility (codebase-aware)
 

@@ -2,7 +2,7 @@
 
 Use this template for every `docs/specs/{slug}/delivery/plan.md` file. This template extends the plan format in `agents-workflow.md`. The Skill Mapping section and anti-pattern rules are additions — all other sections follow the existing format.
 
-**Section map (targeting index).** `plan.md`'s fixed top-level headings — the set agents target for a section read (ADR-22 Extended): `## Context`, `## Scope`, `## Skill Mapping`, `## Domain Model Changes`, `## Data Model Changes`, `## Implementation Steps`, `## Cross-Service Changes`, `## Migration Notes`, `## Testing Strategy`, `## KB Impact`, `## Open Questions`. Grep `^##` for live line numbers, then `Read` with `offset/limit` around the section you need rather than the whole file.
+**Section map (targeting index).** `plan.md`'s fixed top-level headings — the set agents target for a section read (ADR-22 Extended): `## Context`, `## Scope`, `## Skill Mapping`, `## Domain Model Changes`, `## Data Model Changes`, `## Implementation Steps`, `## Cross-Service Changes`, `## Migration Notes`, `## Testing Strategy`, `## KB Impact`, `## Decisions`, `## Open Questions`. Grep `^##` for live line numbers, then `Read` with `offset/limit` around the section you need rather than the whole file.
 
 ---
 
@@ -78,6 +78,9 @@ Key scenarios to test.
 Which `docs/kb/` entries need updating or creating after this feature? (None if purely frontend/infra)
 
 **Important:** If any KB entries need updating, the architect MUST include a numbered implementation step for KB updates (e.g., "Step N: Update KB entries"). Trailing sections after the numbered steps are routinely skipped by developers. Making it a numbered step ensures the done check catches it.
+
+## Decisions
+One row per judgment call the architect resolved alone — **decision · one-line why · rejected alternative · status (`decided` | `deferred`)**. A call earns a row when **a reasonable user might have decided differently AND the call is a two-way door** (reversible enough that asking first isn't warranted); below that bar, just decide — no row. A **one-way door** (hard to reverse) is never a row — the ask-first machinery (questions checkpoint / ADR-25 options panel) applies to it, not this section. `deferred` marks a call explicitly left to the developer or a later pass; genuinely *open* items go to `## Open Questions`, not here. The section is **always present** — when nothing met the bar, write exactly: `None — no self-resolved calls met the disclosure bar`. Additive: plans predating this section are not retro-flagged.
 
 ## Open Questions
 Unresolved decisions needing input.
