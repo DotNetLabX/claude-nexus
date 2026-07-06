@@ -1,6 +1,30 @@
 # nexus — Changelog
 
 
+## [1.24.0] — 2026-07-06
+- **MINOR — utility-skill audit hardening: two new lint gate capabilities + a widened check.**
+  Applies the six consolidating fixes from the routed dotnet-microservices utility-skill audit
+  (`nexus-1.23.1-2026-07-06.md`, Entries 1–6; no Critical/High — the audit otherwise validated the
+  estate). Owner-escalated to MINOR because Entries 1/2/6 add new gate capability.
+  - `improve-skills/scripts/skill-lint.mjs` — **E6 widened** (Entry 1, amended): the citation net now
+    covers **file-shaped** `scripts/`/`assets/` paths in addition to `references/`/`workflows/`, and a
+    citation resolves if it exists **skill-relative OR at the `.git`-anchored repo root** (deterministic
+    from any cwd — never `process.cwd()`). This keeps the two DO-NOT-BREAK sites green: `release-plugin`'s
+    repo-root `scripts/bump-plugin.mjs` (repo-root fallback) and `figma-to-flutter`'s directory-shaped
+    `assets/icons/` (file-shaped filter). **W3** (Entry 2) warns — never errors — on a SKILL.md body over
+    500 lines (progressive-disclosure split). **W4** (Entry 6) warns on a cited `references/*.md` that
+    itself cites another reference (canon: one level deep from SKILL.md; references-only scope). Header +
+    rationale comments updated. 9 TDD cases added (`tests/unit/skill-lint.test.mjs`).
+  - `evaluate-skill/references/rubric.md` — **Entry 3:** deleted the Layer 0 "skills index" dead-letter
+    (the scripted layer's script has no index check; Layer 4.3 already owns index sync as judgment);
+    synced Layer 0 item 4's folder list to the widened E6; softened item 3's scripted-vs-judgment
+    boundary. **Entry 5 (rubric half):** Layer 2.2 gains a degrees-of-freedom clause.
+  - `improve-skills/references/skill-recipe.md` — **Entry 4 + Entry 5 (recipe half):** §2 sanctions a
+    bundled `scripts/` folder element (P1 post-condition home) and names the degrees-of-freedom axis;
+    intro harmonized to sanction both `references/` and `scripts/`.
+  - `improve-skills/SKILL.md` — scaffold step 3 now offers `scripts/`; the lint-scope sentence synced to
+    the widened E6 and the two new warnings.
+
 ## [1.23.1] — 2026-07-05
 - PATCH bump.
   - skill change (mine-reference-model)

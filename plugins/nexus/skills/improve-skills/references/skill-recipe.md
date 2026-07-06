@@ -44,14 +44,23 @@ its own sake.
 
 Pull the elements that fit; don't ship all of them in a light skill. Nexus does not use the
 `phases/` / `playbooks/` / `templates/` directory split some source material describes — heavy
-nexus skills instead keep a single `references/` folder for durable inputs (a metric-layer
-runbook, a rubric, a plan template).
+nexus skills instead keep a `references/` folder for durable inputs (a metric-layer runbook, a
+rubric, a plan template) and, when a post-condition is deterministically checkable, a `scripts/`
+folder for the executable that checks it.
 
 - **Frontmatter** — `name`, `description` (drives auto-invocation — be specific), `user-invocable`,
   and `disable-model-invocation` for side-effecting or timing-controlled skills. Full field
   semantics: §3 below.
 - **Thin `SKILL.md` orchestrator + a `references/` folder** for durable operational material, so
   the body loads only when invoked — progressive disclosure keeps reference material cheap.
+- **Bundled executable `scripts/`** — the home of a P1 deterministic post-condition check: a script
+  that runs the gate every pass and is runnable without being read into context. Live exemplars:
+  `improve-skills`' `skill-lint.mjs`, `research`'s `cite-check.mjs`, `fleet`'s `render-fleet.mjs`.
+  See `proven-patterns.md` P1 for when a post-condition earns a script — don't restate it here (AP3).
+- **Degrees of freedom, matched to fragility** — set each step's specificity by how badly a misread
+  hurts: high freedom (heuristic prose) where any reasonable reading works; medium (a parameterized
+  template or pseudocode) for a shaped-but-flexible step; low ("run exactly this; do not modify") for
+  a fragile step where drift corrupts the output.
 - **Modes** (a create / update / check-style split) — reuse for any skill that both produces and
   later revises an artifact.
 - **Configuration constants** — named thresholds kept in one place.

@@ -154,7 +154,7 @@ Confidence: high. Satisfies: feedback Entries 4, 5 (recipe half).
 **4. Full-estate lint sweep, skill-backlog, MINOR release + omni twin.**
 Follow release-plugin. Run **once, after Steps 1–3 all land** (never per-step — CLAUDE.md bump rule).
 - **Sweep:** lint every `plugins/*/skills/*` folder from the repo root → exit 0 (warnings allowed, errors
-  not). This is the regression gate for the two DO-NOT-BREAK sites. Also `node --test tests/` green.
+  not). This is the regression gate for the two DO-NOT-BREAK sites. Also `node --test tests/lint/*.test.mjs tests/unit/*.test.mjs` green (glob form — bare `node --test tests/` regressed on Node ≥22; see lessons.md).
 - **Skill-backlog:** one `## Skills Fixed` entry each for `improve-skills` and `evaluate-skill`, source
   `adhoc-UtilitySkillsHardening`, summarizing the audit-driven fixes.
 - **Release:** `node scripts/bump-plugin.mjs --dry-run` then `--minor` (owner-confirmed MINOR — new gate
@@ -178,7 +178,7 @@ N/A.
 
 Step 1 is the only executable change and is TDD-gated (`tests/unit/skill-lint.test.mjs`, sandbox harness).
 The estate-wide regression gate is the Step 4 lint sweep (exit 0 across all three plugins' skill folders)
-plus the full `node --test tests/` suite. Steps 2–3 are prose edits verified by grep-shaped acceptance and
+plus the full `node --test tests/lint/*.test.mjs tests/unit/*.test.mjs` suite. Steps 2–3 are prose edits verified by grep-shaped acceptance and
 the code-grounded critic review.
 
 ## KB Impact

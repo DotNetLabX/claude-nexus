@@ -10,14 +10,17 @@
 //   E3  frontmatter block present (--- fenced)
 //   E4  frontmatter name: present and equal to the folder name
 //   E5  frontmatter description: present
-//   E6  relative reference files cited in the body (references/, workflows/) exist on disk
+//   E6  cited reference files exist — references/ and workflows/ (any shape), plus file-shaped
+//       scripts/ and assets/ paths; resolved skill-relative OR at the .git-anchored repo root
 //   E7  no XML-tag-shaped tokens in prose (use {placeholder}, never <placeholder>) — code blocks exempt
 //   E8  no mojibake markers (U+FFFD, UTF-8-as-1252 sequences) — the bad-save signature
 //   W1  description shorter than 40 chars — too vague for auto-invocation
 //   W2  description longer than 1024 chars — bloats every auto-invocation scan
+//   W3  SKILL.md body over 500 lines — suggest a progressive-disclosure references/ split
+//   W4  a cited references/*.md that itself cites another references/ file (canon: one level deep)
 // Errors exit 1; warnings alone exit 0; no arguments exits 2.
 import { readFileSync, existsSync } from 'node:fs';
-import { join, basename, resolve } from 'node:path';
+import { join, basename, resolve, dirname } from 'node:path';
 
 const args = process.argv.slice(2);
 if (!args.length) {
@@ -25,11 +28,31 @@ if (!args.length) {
   process.exit(2);
 }
 
+// Repo root = nearest ancestor of the skill folder that contains a `.git`. Deterministic from any
+// invocation directory — never process.cwd(), which would make the exit code caller-cwd-dependent.
+function findRepoRoot(startDir) {
+  let cur = startDir;
+  for (;;) {
+    if (existsSync(join(cur, '.git'))) return cur;
+    const parent = dirname(cur);
+    if (parent === cur) return null;
+    cur = parent;
+  }
+}
+
+// A cited path's last segment is file-shaped when it contains a dot (`scripts/x.mjs`); a
+// directory-shaped path (`assets/icons/`) is anatomy description, not a file citation.
+function isFileShaped(ref) {
+  const last = ref.replace(/\/+$/, '').split('/').pop();
+  return last.includes('.');
+}
+
 let failed = false;
 
 for (const arg of args) {
   const dir = resolve(arg);
   const name = basename(dir);
+  const repoRoot = findRepoRoot(dir);
   const errors = [];
   const warnings = [];
   const skillPath = join(dir, 'SKILL.md');
@@ -59,18 +82,51 @@ for (const arg of args) {
       if (!data.description) errors.push('frontmatter has no description:');
       else if (data.description.length < 40) warnings.push('description is thin (<40 chars) — say what the skill does AND when to use it, or auto-invocation will miss it');
       else if (data.description.length > 1024) warnings.push('description is overlong (>1024 chars) — every auto-invocation scan pays for it; move detail into the body');
+
+      // W3 — a SKILL.md body (after the frontmatter block) over 500 lines should adopt progressive
+      // disclosure. WARN, never ERROR: a long body can be justified, so the author decides.
+      const body = text.slice(fm[0].length);
+      const bodyLines = body.replace(/\r?\n$/, '').split(/\r?\n/).length;
+      if (bodyLines > 500) {
+        warnings.push(`SKILL.md body is ${bodyLines} lines (over 500) — split durable material into references/ for progressive disclosure, or record why the length is justified`);
+      }
     }
 
-    // E6 — files the body cites relative to the skill folder must exist. Scoped to the
-    // folders a skill legitimately ships (references/, workflows/) so repo-level paths
-    // like `scripts/bump-plugin.mjs` in prose don't false-positive; the lookbehind skips
-    // segments inside longer paths (`skills/other/references/x.md` is not skill-relative).
+    // E6 — cited files must exist somewhere real. A citation resolves if it exists skill-relative
+    // (`join(dir, ref)`) OR at the repo root (nearest `.git` ancestor) — so a repo-level path like
+    // `scripts/bump-plugin.mjs` in release-plugin's prose passes deterministically from any cwd.
+    // Four folders are read (references/, workflows/, scripts/, assets/); the two new ones are
+    // checked only when file-shaped so directory anatomy like `assets/icons/` is not flagged. The
+    // lookbehind skips segments inside longer paths (`skills/other/references/x.md`, `src/assets/x`).
     const refs = new Set();
-    for (const m of text.matchAll(/(?<![\w/])(?:references|workflows)\/[\w.-][\w./-]*/g)) {
+    for (const m of text.matchAll(/(?<![\w/])(?:references|workflows|scripts|assets)\/[\w.-][\w./-]*/g)) {
       refs.add(m[0].replace(/[.,;:]+$/, ''));
     }
     for (const ref of refs) {
-      if (!existsSync(join(dir, ref))) errors.push(`dangling reference: ${ref} is cited in SKILL.md but not on disk`);
+      const folder = ref.split('/', 1)[0];
+      // scripts/ and assets/ are checked only when file-shaped: a directory-shaped path there
+      // (`assets/icons/`) is anatomy, not a file citation. references/ and workflows/ keep their
+      // existing shape-agnostic check. A directory-shaped *fictional* cite escapes by design.
+      if ((folder === 'scripts' || folder === 'assets') && !isFileShaped(ref)) continue;
+      const found = existsSync(join(dir, ref)) || (repoRoot && existsSync(join(repoRoot, ref)));
+      if (!found) errors.push(`dangling reference: ${ref} is cited in SKILL.md but not on disk`);
+    }
+
+    // W4 — a cited references/*.md that itself cites another references/ file is two levels deep.
+    // Scope is references/-ONLY (never the widened four-folder regex): workflows/ and scripts/
+    // chains inside a reference are legitimate. WARN naming the chain so the author can flatten it.
+    for (const ref of refs) {
+      if (!/^references\/[\w./-]+\.md$/.test(ref)) continue;
+      const refPath = existsSync(join(dir, ref)) ? join(dir, ref)
+        : (repoRoot && existsSync(join(repoRoot, ref)) ? join(repoRoot, ref) : null);
+      if (!refPath) continue; // dangling — already reported by E6
+      const nested = new Set();
+      for (const m of readFileSync(refPath, 'utf8').matchAll(/(?<![\w/])references\/[\w.-][\w./-]*/g)) {
+        nested.add(m[0].replace(/[.,;:]+$/, ''));
+      }
+      for (const n of nested) {
+        warnings.push(`nested reference: ${ref} cites ${n} — canon keeps references one level deep from SKILL.md; inline it or flatten the chain`);
+      }
     }
 
     // E7 — XML-tag-shaped tokens confuse loaders and models; placeholders are {curly}.

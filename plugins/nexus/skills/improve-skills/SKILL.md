@@ -45,7 +45,7 @@ Shipped nexus skills live in the plugin's version-keyed cache — not editable f
      dev-repo carve-out above, a new shipped skill.
    - **2–3 existing skills** closest in type (project-local, or shipped from your context) —
      match their structure.
-3. **Scaffold:** `.claude/skills/{skill-name}/SKILL.md` (add `workflows/` or `references/` only if variant-aware or template-bearing).
+3. **Scaffold:** `.claude/skills/{skill-name}/SKILL.md` (add `workflows/` or `references/` only if variant-aware or template-bearing, or `scripts/` when a post-condition is deterministically checkable (P1)).
 4. **Write SKILL.md born compliant** — frontmatter first (see `references/skill-recipe.md`
    §frontmatter cheat-sheet for the full field semantics — applies to both authoring paths):
    - `name:` — must equal the folder name.
@@ -67,7 +67,7 @@ Every fix and every scaffold ends by running the lint that ships with this skill
 node {improve-skills folder}/scripts/skill-lint.mjs .claude/skills/{name}
 ```
 
-`scripts/skill-lint.mjs` sits next to this SKILL.md; in a consuming project resolve it via the plugin cache (glob `~/.claude/plugins/cache/**/skills/improve-skills/scripts/skill-lint.mjs`, highest version). It checks: SKILL.md exists, no BOM, frontmatter valid, `name` matches the folder, `description` present, cited `references/`/`workflows/` files exist.
+`scripts/skill-lint.mjs` sits next to this SKILL.md; in a consuming project resolve it via the plugin cache (glob `~/.claude/plugins/cache/**/skills/improve-skills/scripts/skill-lint.mjs`, highest version). It checks: SKILL.md exists, no BOM, frontmatter valid, `name` matches the folder, `description` present, and cited reference files exist — `references/`/`workflows/` (any shape) plus file-shaped `scripts/`/`assets/` paths, resolved skill-relative or at the repo root. It also warns (never errors) on an oversized body (over 500 lines) and on a reference that itself cites another reference.
 
 **Exit 0 is the done-condition.** (For a **new** skill this is the form half — the Judgment Gate below is the other half.) Fix every ERROR before reporting the item complete; WARNs are advice. A prose rule no machine executes decays silently — this gate is the machine. (If node is genuinely unavailable, walk the checklist above by hand and say so in the report.)
 

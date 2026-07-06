@@ -49,6 +49,37 @@ Tracks every skill created or fixed by the learner/developer pipeline. One entry
 ### improve-skills
 - **Status:** Fixed
 - **Type:** Fix
+- **Source:** adhoc-UtilitySkillsHardening
+- **Description:** Applied the routed dotnet-microservices utility-skill audit (Entries 1, 2, 4, 5, 6).
+  Hardened the shipped `scripts/skill-lint.mjs` gate: **widened E6** to check file-shaped
+  `scripts/`/`assets/` citations, each resolving skill-relative OR at the `.git`-anchored repo root
+  (deterministic from any cwd — never `process.cwd()`); added two **WARN-only** canon checks — **W3**
+  (SKILL.md body over 500 lines → progressive-disclosure split) and **W4** (a cited `references/*.md`
+  that itself cites another reference → one-level-deep canon, references-only scope). Sanctioned a
+  bundled `scripts/` folder element + named the degrees-of-freedom axis in `references/skill-recipe.md`
+  §2, and synced the SKILL.md scaffold step + lint-scope sentence to the widened gate. 9 TDD cases added
+  to `tests/unit/skill-lint.test.mjs` (25 total, green); full-estate lint sweep exit 0 — the two
+  DO-NOT-BREAK sites (release-plugin repo-root `scripts/`, figma-to-flutter `assets/icons/`) stay clean.
+  Plugin bump 1.23.1 → 1.24.0 (MINOR, owner-confirmed — two new gate capabilities + widened E6).
+- **Date:** 2026-07-06
+
+### evaluate-skill
+- **Status:** Fixed
+- **Type:** Fix
+- **Source:** adhoc-UtilitySkillsHardening
+- **Description:** Applied the audit's rubric-half (Entries 3, 5). `references/rubric.md`: deleted the
+  Layer 0 dead-letter (item 6 "skills index" — the scripted layer's `skill-lint.mjs` has no index check;
+  Layer 4.3 already owns index sync as judgment); synced Layer 0 item 4's folder list to the widened E6;
+  softened item 3 to make the scripted (W1 thinness) vs judgment (Layer 1.1 "real prose, not the name
+  repeated") boundary honest; added a Layer 2.2 degrees-of-freedom clause pointing at improve-skills'
+  `skill-recipe.md` §2 in **prose** (no `references/`-prefixed path — that would trip the new W4).
+  Consolidating pass, net complexity down (one item deleted). skill-lint exit 0. Ships in the nexus
+  1.24.0 release tree (same bump as improve-skills).
+- **Date:** 2026-07-06
+
+### improve-skills
+- **Status:** Fixed
+- **Type:** Fix
 - **Source:** adhoc-SkillAuthoringRecipe
 - **Description:** Added `references/skill-recipe.md` (archetype decision / reusable-element
   menu / frontmatter cheat-sheet authoring recipe, extracted from omnishelf

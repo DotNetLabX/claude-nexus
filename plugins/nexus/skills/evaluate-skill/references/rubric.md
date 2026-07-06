@@ -11,11 +11,12 @@ All blocking; fixed (or recorded, for shipped skills) before judgment review sta
 
 1. UTF-8 **without BOM**; no mojibake markers.
 2. Frontmatter parses; has `name:` + `description:`; `name` matches the folder name.
-3. `description` is real prose stating what the skill does AND when to use it — not the
-   skill name repeated, not too thin for auto-invocation.
-4. Files the body cites relative to the skill folder (`references/`, `workflows/`) exist.
+3. `description` is real prose stating what the skill does AND when to use it. Thinness is
+   scripted (W1, the under-40-char warn); "real prose, not the skill name repeated" is judgment,
+   confirmed at Layer 1.1.
+4. Files the body cites relative to the skill folder exist — `references/`/`workflows/` (any
+   shape), plus file-shaped `scripts/`/`assets/` paths — resolved skill-relative or at the repo root.
 5. No XML-tag-shaped tokens in prose (`{placeholder}`, never angle brackets).
-6. If the project keeps a skills index, the skill is listed and the row matches.
 
 ## Layer 1 — Contract & safety (every skill)
 
@@ -45,7 +46,8 @@ All blocking; fixed (or recorded, for shipped skills) before judgment review sta
 2. **Mechanical checks over exhortation.** Counts, gates, and self-checks the model must
    *emit* — not prose "be careful." A prose rule that has failed twice in run evidence MUST
    be converted to a mechanical gate or escalated; a third edit of the same prose is the
-   known-failed move (P1).
+   known-failed move (P1). And is each fragile step pinned to low freedom — "run exactly this,"
+   not heuristic prose? See the degrees-of-freedom axis in improve-skills' `skill-recipe.md` §2.
 3. **Right weight for the job.** A light skill is a single SKILL.md (+ at most a template);
    a heavy multi-phase skill is a thin orchestrator + phase files + state. A light skill
    grown phases-in-prose, or a heavy skill whose SKILL.md duplicates its phase files, fails.
