@@ -1,7 +1,7 @@
 # adhoc-SkillEstateConsolidation — Communication Log
 
 **Branch:** adhoc-SkillEstateConsolidation
-**Step:** reviewer:review (re-review after cycle-1 fixes)
+**Step:** done
 **Cycle:** 1/3
 **Team Mode:** standard
 **Review Mode:** critic (plan review already ran pre-pipeline — code-grounded critic, verdict REVISE, all 10 findings folded; see plan.md ## Plan Review)
@@ -38,6 +38,9 @@
 | 14 | team-lead → developer | developer:implement | "Fix findings in review.md. Cycle 1/3." (resumed Phase-2 developer instance — frontmatter model fallback accepted knowingly: small register fixes, context continuity outweighs model pin) | — |
 | 15 | developer → team-lead | developer:implement | All 3 findings + Open Question fixed (HIGH genericized, MEDIUM param dropped, LOW templated). Lint 3 skills OK + full estate exit 0; 484/484 tests; zero flagged tokens remain. implementation.md ## Fix Cycle 1 + lessons updated. | — |
 | 16 | team-lead → reviewer | reviewer:review | "Re-review after fixes. Cycle 1/3." (resumed same reviewer instance) | — |
+| 17 | reviewer → team-lead | reviewer:review | APPROVED. All 3 findings + Open Question independently re-verified resolved; fresh lint 65/65, tests 484/484, leaked-token greps 0. No CRITICAL/HIGH/MEDIUM open. (Reviewer self-labels "Cycle 2/3" = its review-round count; fix-cycle count is 1.) | — |
+| 18 | team-lead → close | done | Verdict validated in review.md (APPROVED, none open). summary.md written; implement commit 8760c18 (30 files) on top of plan commit 02d4707. Push/PR + lessons pending user; gen-omni deferred to merged main; Step 9 = follow-up round. | — |
+| 19 | user → team-lead | done | Closure decisions (user-confirmed, verbatim selections): "Push only" (no PR tail — user opens/merges PR themselves); "Skip for now" (lessons recorded, unprocessed). | — |
 
 ## Runtime / Plugin Issues Log
 
