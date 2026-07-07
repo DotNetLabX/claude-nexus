@@ -1,6 +1,30 @@
 # nexus-dotnet — Changelog
 
 
+## [1.5.0] — 2026-07-07
+Skill estate consolidation (adhoc-SkillEstateConsolidation) — the estate becomes pattern-first and
+exemplar-cited (PROPOSED ADR-51); count claim 33 → 37. MINOR (4 new skills = new capability).
+
+- **4 new skills** — pattern-first ports of the last four project-local skills that had no shipped
+  counterpart, Articles material recast as explicit `(reference app: …)` exemplars:
+  - `add-state-machine` — data-driven state-transition validation for a write-side aggregate (cached
+    transition table, factory-provided validator, validate-before-mutate guard, cache/DbContext DI variants).
+  - `file-storage-patterns` (+ `references/templates.md`) — pluggable file-storage module composition,
+    options-marker second stores, compensating `TryDeleteAsync`, cross-stage byte migration.
+  - `consumer-patterns` (+ 3 references) — MassTransit consumer shape, three-variant idempotency decision,
+    reference-data hydration, projection-vs-write-side split.
+  - `service-infra-conventions` — cross-cutting infra (ambient request context, fail-fast options, MediatR
+    pipeline order, JSON casing, validators) + repo conventions.
+- **Re-registration** — `authorization-patterns` description + framing made pattern-first (was
+  "the article lifecycle"); content facts unchanged.
+- **Fold-upstream** — 10-pair diff of the overlapping locals against their shipped counterparts folded the
+  genuinely-missing portable patterns: exclusive-publish-site rule + Verify greps (`add-integration-event`),
+  a resource-check-location fix (`create-feature`), a cross-cutting `EventHandlers/` exception + wiring
+  verify-greps (`create-domain-event-handler`), gRPC handler-usage patterns + ProtoMember-permanence
+  (`create-grpc-contract`), and `EnumEntityConfiguration`/`MetadataConfiguration` ladder rungs
+  (`persistence-patterns`). `add-integration-event/workflows/Consumer.md` slimmed to wiring-only (routes to
+  `consumer-patterns`). `domain-patterns` gained a build-recipe pointer to `add-state-machine`.
+
 ## [1.4.0] — 2026-07-06
 - **MINOR — applied the routed `dotnet-microservices` nexus-dotnet 1.3.1 feedback (13 skills, ~45 defects; `adhoc-DotnetFeedbackApply`).**
   Clean-room regeneration + comparative evaluation (repo `dotnet-microservices` @ `cd4d0b1`, skeptic-verified

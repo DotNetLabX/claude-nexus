@@ -69,10 +69,15 @@ skills (names are stable public surface).
 
 ## Binding vs developer's-call
 
-- **Precondition (binding, critic F7):** the plugin repo currently sits on the `adhoc-MineVerifyPhpAdapter`
-  branch with a concurrent pipeline's dirty communication-logs. This pass starts from a clean checkout of
-  `main` (coordinate with the concurrent session; never commit on its branch); verify `git branch
-  --show-current` = `main` before Step 1.
+- **Precondition (binding, critic F7 — satisfied by sanctioned worktree isolation, Q2):** F7's intent is a
+  clean start isolated from the concurrent `adhoc-MineVerifyPhpAdapter` pipeline's dirty communication-logs.
+  The **owner chose worktree isolation**: this pass runs in a dedicated worktree
+  `D:\src\claude-plugins\nexus-skillwt` on branch **`adhoc-SkillEstateConsolidation`**, cut cleanly from
+  `main` (HEAD `02d4707` = plan commit; parent `a86e842` = the `main` tip / nexus 1.25.0; `a86e842` verified
+  an ancestor of HEAD). Tree is clean except this pass's own untracked `delivery/` files — no foreign dirty
+  files. This **satisfies F7's `= main` check in spirit** (isolation is stronger than working on `main`
+  directly). Proceed on this worktree branch; **do NOT** switch branches or touch the concurrent `nexus`
+  worktree, and never commit on its branch.
 - **Binding:** D1–D3 above; the 4 ported skills pass skill-lint exit 0 AND an inline rubric judgment pass
   (Layers 1–4, no Critical/High) — ADR-23's meta-loop for new shipped skills; folder `name:` = skill name;
   every exemplar citation names the reference app explicitly (D3); **register gate semantics (critic F5):**
@@ -102,7 +107,7 @@ skills (names are stable public surface).
 | 4 | improve-skills | Follow | no | port service-infra-conventions | — |
 | 5 | improve-skills | Follow | no | re-register authorization-patterns; sweep create-domain-event-handler | — |
 | 6 | improve-skills | Follow | no | fold-upstream diff of the 9 overlapping locals; disposition table | — |
-| 7 | (none) | — | no | PROPOSED ADR row (ADR-50, D3 register rule) in docs/architecture/README.md | expected — ADR authoring has no skill |
+| 7 | (none) | — | no | PROPOSED ADR row (ADR-51, D3 register rule) in docs/architecture/README.md | expected — ADR authoring has no skill |
 | 8 | release-plugin | Follow | no | estate lint; count claim 33→37; backlog; single bump; gen-omni | — |
 | 9 | (none) | — | no | consuming-repo retirement + record corrections, AFTER the release is installed | expected — cross-repo doc/deletion step |
 
@@ -211,10 +216,12 @@ port)`.
   touched skills.
 Satisfies: D2 (nothing of the mining is lost), D3.
 
-**7. Encode the D3 register rule as PROPOSED ADR-50.** Skill: none — ADR authoring (ADR-28 lifecycle: the
+**7. Encode the D3 register rule as PROPOSED ADR-51.** Skill: none — ADR authoring (ADR-28 lifecycle: the
 owner ratifies; PROPOSED until then).
-File: `docs/architecture/README.md` (the ADR register) — next free number is **ADR-50** (index ends at
-ADR-49; ADR-24's PROPOSED row at `README.md:42` is the format precedent).
+File: `docs/architecture/README.md` (the ADR register) — next free number is **ADR-51** (index now ends at
+**ADR-50** — the `adhoc-MineReferenceModel` Accepted row at `README.md:68`/body `:1226`, verified live
+2026-07-07; the plan's original "ADR-50 free / index ends at ADR-49" was stale, see Q1); ADR-24's PROPOSED
+row at `README.md:42` is the format precedent.
 - One-decision record: *nexus-dotnet skills are pattern-first and exemplar-cited — they teach the pattern
   for a new .NET project in the consuming family, citing the reference app (dotnet-microservices) as the
   worked example; repo-exact framing is a defect except where the pattern IS the app.* Point back at this
@@ -257,9 +264,12 @@ under `D:\src\dotnet-microservices`:
 - CLAUDE.md: verify the "Agents and skills" section is accurate post-retirement (it already claims skills
   come from the plugins); fix only if stale.
 - Commit in the consuming repo, `[Skills]` tag, containing only the paths named above.
-- Accept: `.claude\skills\` empty; grep `architecture-reference.md` for `What exists: 13 project-local
-  skills` and the repo-exact design paragraph → 0 hits, and for a supersession line naming the Step-8
-  version → 1 hit; backlog: 13 `Ported-to-plugin` rows + `Applied upstream` on the routed rows.
+- Accept: `.claude\skills\` empty; §14 rewrite proven as a **real before/after gate** (Q3 — the live claims
+  are markdown-bolded, so a literal-string grep is 0 both before and after = vacuous, the F1 class):
+  `grep -E 'What exists.*13 project-local skills'` → **1 hit before** the rewrite (live line 1032), **0
+  after**; `grep -E 'phased, variant-aware, and repo-exact'` → **1 hit before** (the design paragraph, live
+  line 1034), **0 after**; and a supersession line naming the Step-8 version → **1 hit**. Backlog: 13
+  `Ported-to-plugin` rows + `Applied upstream` on the routed rows.
 Satisfies: D1, D2, End state.
 
 ## Cross-Service Changes
@@ -326,3 +336,17 @@ Checked clean: 13 local folders = exact 4+9 partition; all 33 shipped descriptio
 `add-integration-event/SKILL.md:10` fence block; ADR-50 free + ADR-24 PROPOSED precedent; the drift
 example verified live both sides; dangling-consumer sweep (post-retirement, only §14 and backlog rows
 reference `.claude/skills` — both rewritten by Step 9); single-bump timing; all named scripts exist.
+
+### Post-review corrections (architect, developer Phase-1 questions, 2026-07-07)
+
+Two of the critic's "checked clean" items were re-verified against live source at developer Phase-1 and
+found stale — corrected in the operative steps above:
+- **Q1 supersedes "ADR-50 free".** ADR-50 is now **Accepted** (`adhoc-MineReferenceModel`, 2026-07-05 —
+  index `README.md:68`, body `:1226`, verified live 2026-07-07). Step 7 + Skill-Mapping row 7 retargeted to
+  **ADR-51** (next genuinely-free number; no ADR-51 exists). The `PROPOSED`-on-new-row acceptance grep is
+  unaffected; ADR-24's PROPOSED precedent at `README.md:42` still holds.
+- **Q3 supersedes the vacuous §14 grep** (same F1 class F1 was raised to fix). The live claims are
+  markdown-bolded (`**What exists:**` at line 1032), so the literal-string acceptance was 0 before *and*
+  after. Step 9 acceptance now uses regex before/after gates that match the live text.
+
+Q2 (worktree vs `main`) resolved by owner-chosen worktree isolation — see the Precondition bullet above.

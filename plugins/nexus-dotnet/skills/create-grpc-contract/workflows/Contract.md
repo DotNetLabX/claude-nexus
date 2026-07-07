@@ -40,7 +40,7 @@ public class {Response}
 
 ## Rules
 
-- `[ProtoMember(n)]` numbers must be unique and sequential per class
+- `[ProtoMember(n)]` numbers must be unique and sequential per class — and **permanent once the contract has shipped**: never renumber or reuse a number, or an old peer and a new peer will silently mis-map fields on the wire. Add new fields with the next free number; retire a field by leaving its number unused, never by reassigning it.
 - Use `= default!` for non-nullable reference properties
 - Request/response classes must have parameterless constructors (protobuf-net requirement)
 - Collections: use `List<T>` (not arrays) with `[ProtoMember]`

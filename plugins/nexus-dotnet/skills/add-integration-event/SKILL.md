@@ -1,6 +1,6 @@
 ---
 name: add-integration-event
-description: Adds a MassTransit integration event — contract, publisher (domain event handler), and consumer. Variant-aware for MediatR and FastEndpoints handlers. Use when a business event needs to propagate across service boundaries.
+description: Adds a MassTransit integration event — contract, publisher (domain event handler), and consumer wiring. Variant-aware for MediatR and FastEndpoints handlers. Use when a business event needs to propagate across service boundaries. For the consumer body itself (idempotency variants, reference-data hydration, projection vs write-side), see consumer-patterns.
 ---
 
 # Add Integration Event
@@ -13,8 +13,14 @@ Creates a complete MassTransit integration event with contract, publisher, and c
 
 1. **Create the event contract** — follow `workflows/EventContract.md`
 2. **Create the publisher** (domain event handler) — follow `workflows/Publisher.md` (variant-aware)
-3. **Create consumer(s)** in target services — follow `workflows/Consumer.md`
-4. **Verify the build:** `dotnet build`
+3. **Create consumer(s)** in target services — `workflows/Consumer.md` for placement, discovery, and naming; **`consumer-patterns`** for the consumer body (idempotency, hydration, projection vs write-side)
+4. **Verify** the boundary rules hold, then build (replace `{ProjectName}`/`{Svc}`):
+   ```bash
+   rg -n "using .*\.Domain"      src/BuildingBlocks/{ProjectName}.Integration.Contracts   # contract carries NO domain type — expect zero
+   rg -n "_publishEndpoint.Publish|IPublishEndpoint" src/Services --glob '!**/PublishIntegrationEventOn*'  # publish lives ONLY in the publisher handler — expect zero
+   rg -n "AddConsumer\b|RegisterConsumer" src/Services   # no manual consumer registration — auto-discovered — expect zero
+   dotnet build
+   ```
 
 ## Arguments
 

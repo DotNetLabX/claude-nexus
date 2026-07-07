@@ -1,6 +1,6 @@
 ---
 name: authorization-patterns
-description: Endpoint authorization for the article lifecycle — the closed UserRoleType/Role vocabulary, the two-layer role + resource gate (both wired by the single RequireRoleAuthorization extension), the authentication-only read-model exception, per-service resource access checks, framework-specific identity stamping, and JWT validation. Use when gating an endpoint by role, adding a resource access check, stamping the acting user onto a command, configuring JWT authentication, or adding a role.
+description: Endpoint authorization for a role-based domain — a closed role enum surfaced as string constants, the two-layer role + resource endpoint gate (both wired by one RequireRoleAuthorization extension), the authentication-only read-model exception, per-service resource access checks, framework-specific server-side identity stamping, and JWT validation. Use when gating an endpoint by role, adding a resource access check, stamping the acting user onto a command, configuring JWT authentication, or adding a role.
 user-invocable: true
 ---
 
@@ -11,6 +11,8 @@ a role check inside a handler or domain body. A role-gated write endpoint passes
 one of these roles?) and a **resource gate** (does this caller have access to *this* resource?). Read-only
 aggregate views take **authentication only**. The acting user is stamped onto the command by a framework hook,
 and every service validates the same JWT identically.
+
+> **Worked exemplar — the reference app (dotnet-microservices).** The concrete `UserRoleType` enum, the `Role` string constants, the `RequireRoleAuthorization` extension, `IArticleAccessChecker` / `ArticleRoleRequirement` / `ArticleActors`, the ArticleHub read models, and the Submission / Review / Production service names below are that app's Articles pipeline. The pattern — a closed role enum surfaced as constants, a stacked role+resource gate, auth-only reads, stamped provenance, one shared JWT validator — is domain-neutral; substitute your own aggregate and roles. (The `Article*` names appear throughout as that worked example, not because the pattern is article-specific.)
 
 ## Binding rules
 
@@ -88,7 +90,7 @@ group.MapPost("/{articleId:int}:approve", ApproveArticle)
 ```
 
 **The one sanctioned single-layer case: authentication-only read models.** Read-only aggregate/read-model
-views (ArticleHub-style: `SearchArticles`, `GetTimeline`, `GetArticle`) use a bare `.RequireAuthorization()` —
+views (reference app: the ArticleHub service — `SearchArticles`, `GetTimeline`, `GetArticle`) use a bare `.RequireAuthorization()` —
 any authenticated user, no role or resource check — because they expose a cross-service **read model**, not a
 write on one resource. The rule: **writes get role + resource; aggregate reads get authentication only.** A
 role-only admin endpoint is **not** the single-layer case — do not drop the resource layer for a write.
@@ -99,9 +101,9 @@ searchGroup.MapGet("/", SearchArticles).RequireAuthorization(); // read model �
 
 ## Phase 3 — Resource check
 
-The resource gate answers "does *this* caller reach *this* article?" — `IArticleAccessChecker.HasAccessAsync`,
-implemented **once per write-side service** against that service's own replicated `ArticleActors` table
-(local data, never a synchronous cross-service query). The `ArticleRoleRequirement` from Phase 2 is handled by
+The resource gate answers "does *this* caller reach *this* resource?" — in the reference app,
+`IArticleAccessChecker.HasAccessAsync`, implemented **once per write-side service** against that service's own
+replicated actors table (`ArticleActors`) — local data, never a synchronous cross-service query. The `ArticleRoleRequirement` from Phase 2 is handled by
 the shared `ArticleAccessAuthorizationHandler`, which narrows the caller's token roles to the requirement's
 allowed set, then — only if at least one survives — asks the checker.
 
@@ -187,7 +189,7 @@ options.TokenValidationParameters = new TokenValidationParameters
 `ValidateAudience = false` is intentional (one audience); `ValidateIssuer` + `ValidateIssuerSigningKey` are the
 real boundary; `RoleClaimType = ClaimTypes.Role` is what makes `GetUserRoles<UserRoleType>()` work.
 
-## Source Files
+## Source Files (reference app)
 
 - `src/BuildingBlocks/Articles.Abstractions/Enums/UserRoleType.cs` — the closed role enum
 - `src/BuildingBlocks/Articles.Security/Role.cs` — role string constants

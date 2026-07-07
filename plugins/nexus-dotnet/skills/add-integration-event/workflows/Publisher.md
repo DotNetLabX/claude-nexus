@@ -2,6 +2,8 @@
 
 A domain event handler that bridges to MassTransit `IPublishEndpoint.Publish()`.
 
+> **One handoff seam.** This `PublishIntegrationEventOn{DomainEvent}Handler` is the **only** sanctioned place `_publishEndpoint.Publish(...)` is called — an aggregate, a command handler, or an endpoint never publishes an integration event directly. The domain→integration boundary crosses here and nowhere else.
+
 ## MediatR Variant
 
 **Reference:** `src/Services/{Svc}/{Svc}.Application/Features/{Domain}/{Feature}/PublishIntegrationEventOn{DomainEvent}Handler.cs`

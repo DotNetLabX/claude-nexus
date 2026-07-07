@@ -155,7 +155,13 @@ FastEndpoints auto-registration) — no manual DI line.
    `PublishAsync` from step 2 is the trigger.
 5. **Write the handler** — feature folder, `{Effect}On{Event}Handler`, the interface matching the publisher
    (`INotificationHandler`/`Handle` or `IEventHandler`/`HandleAsync`). No DI line — follow `workflows/Handler.md`.
-6. **Verify the build:** `dotnet build`.
+6. **Verify** the wiring is present, then build (replace `{Svc}` with the service folder):
+   ```bash
+   rg -n "AddScoped<IDomainEventPublisher"  src/Services/{Svc}   # a publisher is registered (Decision 1)
+   rg -n "AddScoped<ISaveChangesInterceptor" src/Services/{Svc}   # the EF interceptor is registered (Decision 2, write-side)
+   dotnet build
+   ```
+   (A pure read-model or a manual-publish-only service registers neither — expect zero there by design.)
 
 ## What this skill does NOT do
 
