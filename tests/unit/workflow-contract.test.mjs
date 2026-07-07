@@ -26,6 +26,7 @@ const MINE_VERIFY_PATH = new URL('../../harness/mine-verify.workflow.js', import
 const COVER_PATH       = new URL('../../harness/cover.workflow.js',       import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 const COVER_FLUTTER_PATH = new URL('../../harness/cover-flutter.workflow.js', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 const COVER_CPP_PATH   = new URL('../../harness/cover-cpp.workflow.js',    import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
+const COVER_PHP_PATH   = new URL('../../harness/cover-php.workflow.js',    import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 const LOOP_PATH        = new URL('../../harness/loop.workflow.js',        import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 const LOOP_FLUTTER_PATH = new URL('../../harness/loop-flutter.workflow.js', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 // Spec-driven Cover front-end (adhoc-SpecDrivenHarnessBuild, Inc 1). Its full sandbox-run contract lives in
@@ -1524,6 +1525,72 @@ test('cover-cpp runs in sandbox; gate battery + equivalent-mutant filter work', 
 });
 
 // ==================================================================================================
+// Slice 9h: the PHP cover adapter (cover-php.workflow.js) runs in the sandbox, reuses the gate battery,
+// its equivalent-mutant filter excludes a survivor via expectedSurvivorLines, AND its Infection→gate
+// translation cross-check (mutants.length === total − ignored − skipped) HALTs on a mismatch. The runner
+// fixtures are PHP-SHAPED: an Infection-json-TRANSLATED mutants array (Killed/Survived, no mull shape) +
+// a mutationSummary carrying Infection's stats. Validating the translation seam OFFLINE is the whole point
+// (Step 5) — the seam must never be discovered broken on a paid live run.
+// ==================================================================================================
+test('cover-php runs in sandbox; gate battery + equivalent-mutant filter + translation cross-check pass', async () => {
+  const src = readWorkflow(COVER_PHP_PATH);
+  const coverAgentReturn = null; // cover agent's Write() is the deliverable
+  const runnerReturn = {
+    testRuns: [ { passed: 8, failed: 0, skipped: 0 }, { passed: 8, failed: 0, skipped: 0 } ],
+    reportPath: 'D:\\src\\claude-plugins\\nexus\\harness\\php\\workspace\\infection-log.json',
+    // Infection's `stats`, carried through for the cross-check. total 3 = 1 killed + 1 escaped + 1 syntaxError.
+    mutationSummary: { total: 3, killed: 1, escaped: 1, timeout: 0, notCovered: 0, errored: 0, killedByStaticAnalysis: 0, syntaxError: 1, ignored: 0, skipped: 0 },
+    // TRANSLATED mutants (from Infection's `killed`/`escaped`/`syntaxErrors` group arrays → gate statuses; NOT the mull shape).
+    mutants: [
+      // a LogicalAnd mutant on a full-period predicate — killed
+      { status: 'Killed',   location: { start: { line: 57 } }, mutatorName: 'LogicalAnd', replacement: '' },
+      // a survivor on a KB-pre-documented equivalent line — excluded via expectedSurvivorLines, not chased
+      { status: 'Survived', location: { start: { line: 47 } }, mutatorName: 'Plus', replacement: '' },
+      // a syntaxErrors-group mutant, translated to CompileError (reviewer F2 — this fork is the first that
+      // can actually produce it): enumerated (present, honest count) but NOT in DENOMINATOR_STATUSES, so it
+      // must not affect the score in either direction.
+      { status: 'CompileError', location: { start: { line: 99 } }, mutatorName: 'ArrayItemRemoval', replacement: '' },
+    ],
+    // basename must match the default CONTAINER_SRC (CalculateReferencePeriodAction.php) so target_mutated passes
+    mutatedFiles: [{ file: '/native/src/Actions/CalculateReferencePeriodAction.php', count: 3 }],
+    redOnCurrent: [],
+  };
+  // Pass line 47 as an equivalent-mutant exclusion — the harness must NOT chase it.
+  const argsValue = JSON.stringify({ expectedSurvivorLines: [47] });
+
+  const { result } = await runInSandbox(src, [coverAgentReturn, runnerReturn], argsValue);
+  assert.equal(result?.variant, 'inc4-cover-php', 'returns the PHP cover variant');
+  assert.equal(result?.stopped, 'all-gates-green', 'all gates green once the equivalent-line survivor is excluded');
+  assert.equal(result?.achievedScore, 100, '1/1 reachable killed = 100% (line 47 excluded; CompileError never enters the denominator)');
+  assert.equal(result.gates.mutation_floor.detail.expectedSurvivorsExcluded, 1, 'the equivalent-line survivor was excluded, not chased');
+  assert.equal(result.gates.mutation_floor.detail.reachableDenominator, 1, 'the CompileError mutant (syntaxErrors-translated) is NOT counted in the denominator — present but unscored');
+  assert.equal(result.gates.mutation_floor.detail.reachableSurvivors.length, 0, 'no reachable survivors remain');
+  assert.equal(result.gates.target_mutated.pass, true, 'target_mutated passes (target file was mutated)');
+});
+
+test('cover-php HALTs on a translation count mismatch (anti-fake-green — the seam guard)', async () => {
+  const src = readWorkflow(COVER_PHP_PATH);
+  const runnerReturn = {
+    testRuns: [ { passed: 8, failed: 0, skipped: 0 }, { passed: 8, failed: 0, skipped: 0 } ],
+    reportPath: 'D:\\src\\claude-plugins\\nexus\\harness\\php\\workspace\\infection-log.json',
+    // stats say 3 non-excluded mutants (total 3, nothing ignored/skipped)...
+    mutationSummary: { total: 3, killed: 2, escaped: 1, timeout: 0, notCovered: 0, errored: 0, killedByStaticAnalysis: 0, syntaxError: 0, ignored: 0, skipped: 0 },
+    // ...but the translated array enumerates only 2 → the runner dropped/mis-translated one. Must HALT, never score.
+    mutants: [
+      { status: 'Killed',   location: { start: { line: 57 } }, mutatorName: 'LogicalAnd', replacement: '' },
+      { status: 'Survived', location: { start: { line: 62 } }, mutatorName: 'Identical', replacement: '' },
+    ],
+    mutatedFiles: [{ file: '/native/src/Actions/CalculateReferencePeriodAction.php', count: 3 }],
+    redOnCurrent: [],
+  };
+  const { result } = await runInSandbox(src, [null, runnerReturn], JSON.stringify({}));
+  assert.equal(result?.stopped, 'mutant-count-mismatch', 'the translation cross-check HALTs on an inconsistent set');
+  assert.equal(result?.enumerated, 2, 'reports the translated count');
+  assert.equal(result?.expected, 3, 'reports the expected count (total − ignored − skipped)');
+  assert.equal(result?.gates, undefined, 'no gates were scored on the inconsistent set');
+});
+
+// ==================================================================================================
 // Slice 10: `meta` must be a PURE LITERAL (4th Workflow-runtime rule — Inc-3a bringup)
 // ==================================================================================================
 // The Workflow tool rejects any non-literal node in `meta` ("meta must be a pure literal: non-literal
@@ -1551,13 +1618,16 @@ function metaNonLiteralReason(src) {
   return null; // pure literal by these heuristics
 }
 
-for (const [name, path] of [['mine-verify', MINE_VERIFY_PATH], ['cover', COVER_PATH], ['cover-flutter', COVER_FLUTTER_PATH], ['cover-cpp', COVER_CPP_PATH], ['loop', LOOP_PATH], ['loop-flutter', LOOP_FLUTTER_PATH], ['spec-cover', SPEC_COVER_PATH], ['spec-cover-calc', SPEC_COVER_CALC_PATH], ['merge', MERGE_PATH]]) {
+for (const [name, path] of [['mine-verify', MINE_VERIFY_PATH], ['cover', COVER_PATH], ['cover-flutter', COVER_FLUTTER_PATH], ['cover-cpp', COVER_CPP_PATH], ['cover-php', COVER_PHP_PATH], ['loop', LOOP_PATH], ['loop-flutter', LOOP_FLUTTER_PATH], ['spec-cover', SPEC_COVER_PATH], ['spec-cover-calc', SPEC_COVER_CALC_PATH], ['merge', MERGE_PATH]]) {
   test(`${name}.workflow.js meta is a pure literal (no concat / interpolation)`, () => {
     const reason = metaNonLiteralReason(readWorkflow(path));
     assert.equal(reason, null, `meta must be a pure literal — found: ${reason}`);
   });
 }
 
+test('cover-php.workflow.js has no static import (joins the shared contract loop)', () => {
+  assert.equal(hasStaticImport(readWorkflow(COVER_PHP_PATH)), false, 'static `import` would be a syntax error in the Workflow runtime');
+});
 test('spec-cover.workflow.js has no static import (joins the shared contract loop)', () => {
   assert.equal(hasStaticImport(readWorkflow(SPEC_COVER_PATH)), false, 'static `import` would be a syntax error in the Workflow runtime');
 });

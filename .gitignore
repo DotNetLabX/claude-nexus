@@ -47,3 +47,4 @@ yarn-error.log*
 Thumbs.db
 Desktop.ini
 harness/cpp/workspace*/
+harness/php/workspace*/

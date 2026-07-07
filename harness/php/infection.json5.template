@@ -1,0 +1,27 @@
+{
+    // Infection config for the workspace-copy Cover runner.
+    //
+    // Single-file mutation is pinned by the POSITIONAL CLI arg (e.g. `vendor/bin/infection
+    // src/Actions/Foo.php`), NOT by this directory list — `source.directories` only bounds the mutable
+    // universe; the positional arg narrows the ACTUAL mutation + coverage to the one target file.
+    // (Infection's initial sanity check still runs the FULL suite once — research Q2.)
+    "source": {
+        "directories": ["src"]
+    },
+    "logs": {
+        // The `json` logger is Infection's OWN (proprietary) per-mutant format — NOT the Stryker
+        // mutation-testing-elements schema. The Cover runner reads this file and TRANSLATES it to the
+        // gate's Stryker-shaped `mutants` schema (status map in harness/cover-php.workflow.js).
+        "json": "infection-log.json",
+        "summary": "infection-summary.log"
+    },
+    "mutators": {
+        "@default": true
+        // Per-target equivalent-mutant suppression slot — provably behavior-free lines ONLY (never
+        // "everything that survived"). Per-mutator regex form, e.g.:
+        //   "MethodCallRemoval": { "ignoreSourceCodeByRegex": ["\\$this->logger.*"] }
+    },
+    // Timeout counts as a KILL by default (matches the gate's Timeout->killed semantics); do NOT set
+    // timeoutsAsEscaped. Seconds.
+    "timeout": 30
+}
