@@ -3,6 +3,8 @@
 **Branch:** main
 **Step:** done — reviewer APPROVED; commit 2 + bump + omni regen + push complete
 **Cycle:** 1/3 → APPROVED
+**Commits:** 1f73f81 (plan) · f50b9fd (implement + release nexus 1.22.0 / nexus-dotnet 1.3.1) · omni d93fcc3 (twin sync)
+**Pushed:** nexus d084520..f50b9fd (DotNetLabX/claude-nexus) · omni d2d9ab7..d93fcc3 (omniaz/claude-omni)
 **Cycle:** 1/3 (fixes not yet applied)
 **Team Mode:** standard+codex
 **Review Mode:** n/a (plan pre-authored — no architect plan-review phase; done-check + Step-2 review still run)

@@ -1,8 +1,8 @@
 # adhoc-DotnetFeedbackApply — Communication Log
 
 **Branch:** main
-**Step:** reviewer:review
-**Cycle:** 1/3
+**Step:** done
+**Cycle:** 1/3 (approved on cycle 1)
 **Team Mode:** standard+codex
 **Review Mode:** critic (plan review already done — REVISE, folded); code review = reviewer + Codex
 **Architect / Developer / Reviewer ID:** a7203e513e6e48c48 (done-check) / acaf1538041b88543 (Phase 2), aa6d679d7a3cc4256 (fix cycle 1, opus) / a9f35926b0c84c9f9 (reviewer), a7b944bea33b73e50 (codex)
@@ -35,8 +35,14 @@
 | 16 | team-lead → developer | developer:implement | Fix cycle 1/3: 4 findings, verify-then-fix, no re-bump (rides within 1.4.0), re-gen-omni | — |
 | 17 | developer → team-lead | developer:implement | 4 fixes applied, all reproduced vs live; lint 61 exit 0, gen-omni --check 0; no re-bump/commit | verify verdict pass |
 | 18 | team-lead → reviewer | reviewer:review | Re-review cycle 1/3 (resumed same reviewer, keeps context) | — |
+| 19 | reviewer → team-lead | reviewer:review | Re-review APPROVED, all 4 resolved, no regressions; audit-count Open Question noted | valid approval |
+| 20 | team-lead → git | commit-2 | Commit 2 scoped (35 files, no foreign) → 46dcc0d | 1st attempt arg-order abort, no partial commit; retried w/ -F |
+| 21 | team-lead → omni | twin-sync | omni-dotnet twin → 99f7edd (scoped; omni-core left for concurrent session) | — |
+| 22 | user → team-lead | close | Push=deferred (both commits local; concurrent session still active); lessons=skip (recorded, unprocessed) | — |
 
 ## Runtime / Plugin Issues Log
 
 - **Codex dispatch (msg 12):** codex:codex-rescue returned a chat ack ("Codex Task started … task-mr9m69ac-66aoif"), not the result. Per protocol the ack is not proof of a live job; polling for `review-codex.md` (the channel). Will surface wait/retry/proceed if it stalls ~40min with no file.
 - **`.pipeline-state` external rewrites:** after each team-lead write, the file is being reset to a stale token (`developer:analyze`, then `developer:implement`) by a hook/linter (harness system-reminders confirm the change as intentional). Best-effort tripwire only — no correctness impact; the comm-log + violations.log are the real audit trail. Team lead re-issues the correct token at each phase advance regardless.
+- **Shared-tree collision (concurrent pipeline `adhoc-ArchitectDecisionDisclosure`):** ran in the same working tree; committed its plan on `main` (HEAD moved 8c61df3 → 3a135a8 mid-run) and left 7 nexus-core files STAGED in the shared index (+ omni-core changes in the twin repo). Reviewer also saw transient gen-omni drift from it (self-resolved = confirmed noise). Mitigation: commit 2 and the omni sync both scoped by pathspec (`git commit -o -- <paths>`), excluding all foreign files; verified clean post-commit (0 foreign in 46dcc0d / 99f7edd). Concurrent session's staged files left intact for it to commit.
+- **Commit-2 first attempt aborted (self-inflicted, recovered):** `git commit -o -- <paths> -m "msg"` put `-m` after the `--` pathspec separator → git parsed the message as a pathspec and errored. No partial commit was made (HEAD unchanged). Retried with `-F msgfile` placed before `--`; succeeded. Lesson: with `-o -- <paths>`, message flags must precede `--`.

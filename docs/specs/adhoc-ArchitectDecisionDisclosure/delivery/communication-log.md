@@ -31,7 +31,8 @@
 | 14 | team-lead → developer | developer:implement | Cycle 1/3: apply #2 (predate exemption in architect.md done-check) + regen commands, no re-bump | — |
 | 15 | developer → team-lead | developer:implement | Fix #2 applied (architect.md:275 predate exemption), commands regen, validate PASS, no re-bump; escalated concurrent-run index pollution warning | — |
 | 16 | team-lead | verify | Verified fix #2 grep landed; gen-commands in sync; validate PASS. No reviewer re-review (reviewer already APPROVED; additive one-clause fix, grep acceptance) | — |
-| 17 | team-lead | closure | summary.md written; commit 2 (scoped pathspec) + gen-omni + omni twin sync | — |
+| 17 | team-lead | closure | summary.md written; commit 2 `a86e842` (scoped pathspec) + gen-omni + omni twin `85b4c65` sync | — |
+| 18 | team-lead → user | closure | selfcheck 5/5 green; user chose: no push (both commits local), lessons skipped (recorded, unprocessed). Pipeline COMPLETE. | — |
 
 ## Runtime / Plugin Issues Log
 

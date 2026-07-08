@@ -1,7 +1,7 @@
 # adhoc-UtilitySkillsHardening — Communication Log
 
 **Branch:** main
-**Step:** done (pending commit 2 + omni twin)
+**Step:** done (nexus 068ba4f, omni twin a4ae64f)
 **Cycle:** 0/3
 **Team Mode:** standard+codex
 **Review Mode:** critic (plan review completed 2026-07-06, code-grounded, findings folded)
@@ -34,3 +34,5 @@
 ## Runtime / Plugin Issues Log
 
 - 2026-07-06 verify-gate `blocking_failed` on `developer:implement` completion: `scripts/selfcheck.mjs` exit 1 solely from `gen-omni --check` twin drift — a by-design mid-feature state (twin sync deferred to post-commit so the omni footer can pin the impl sha). Same class as the known gen-commands git-HEAD-based pre-commit false positive. Attended run → verdict informs, not blocks; triaged and proceeded. Consider a selfcheck flag to exempt deferred twin drift mid-feature.
+- 2026-07-06 `scripts/bump-plugin.mjs` has **no unknown-flag guard**: the reviewer ran `node scripts/bump-plugin.mjs --help` to check usage and it silently applied a real bump (1.24.0→1.24.1 + a duplicate CHANGELOG entry) instead of printing help/erroring. Reviewer caught it via `git diff --stat`, hand-reverted, and confirmed byte-clean; team-lead re-verified version=1.24.0 + single CHANGELOG entry before commit. **Follow-up candidate:** add an arg-parse guard so any unrecognized flag (incl. `--help`) errors or prints usage without mutating files. Logged also in lessons.md (Reviewer Lessons).
+- 2026-07-06 closure clean: nexus commit `068ba4f`, omni twin `a4ae64f` (footer `nexus 068ba4f`), `gen-omni --check` exit 0, scoped staging (unrelated adhoc-MineVerifyRepo file left unstaged).
