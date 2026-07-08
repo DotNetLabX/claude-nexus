@@ -22,7 +22,12 @@ const CHARS_PER_TOKEN = 4;
 export const DEFAULT_TOKEN_CEILING = 2000;
 
 function clusterKey(row) {
-  return `${row?.symbol ?? row?.canonicalName ?? ''}|${row?.layer ?? ''}`;
+  // Cluster = symbol + layer. When NO symbol is present (no stage emits one today), fall back to
+  // LAYER-ONLY — never to canonicalName, which made every rule its own cluster (degenerate 1-rule-per-
+  // line distillate). Layer-only collapses symbol-less rows to one cluster per layer.
+  const symbol = row?.symbol;
+  const layer = row?.layer ?? '';
+  return symbol ? `${symbol}|${layer}` : `${layer}`;
 }
 
 function estimateTokens(text) {
@@ -45,16 +50,23 @@ export function distillRegistry({ className, rows = [], ledgerPath } = {}) {
     if (existing) {
       existing.count += 1;
     } else {
-      clusters.set(key, { symbol: row?.symbol ?? row?.canonicalName, layer: row?.layer, count: 1 });
+      // Drop the `?? row.canonicalName` pseudo-symbol — a symbol-less cluster carries NO symbol, so the
+      // renderer never prints an arbitrary rule name as its label (critic LOW-4).
+      clusters.set(key, { symbol: row?.symbol, layer: row?.layer, count: 1 });
     }
   }
 
   const hotRows = [];
   for (const { symbol, layer, count } of clusters.values()) {
-    const cluster = symbol ?? '(unnamed)';
+    const layerLabel = layer ?? 'unlayered';
+    const countLabel = `${count} rule${count !== 1 ? 's' : ''}`;
     // ONE LINE ONLY — no embedded newline, no full rule statement/body (Slice-1b / Slice-3 invariants).
-    const line = `- ${cluster} [${layer ?? 'unlayered'}]: ${count} rule${count !== 1 ? 's' : ''} — see ${ledgerPath}`;
-    hotRows.push({ cluster, layer, ruleCount: count, pointer: ledgerPath, line });
+    // Symbol-present: "- <symbol> [<layer>]: N rules — see <ledger>". Symbol-absent: a LAYER-ONLY line
+    // "- [<layer>]: N rules — see <ledger>" — never a rule name as a pseudo-symbol label (LOW-4).
+    const line = symbol
+      ? `- ${symbol} [${layerLabel}]: ${countLabel} — see ${ledgerPath}`
+      : `- [${layerLabel}]: ${countLabel} — see ${ledgerPath}`;
+    hotRows.push({ cluster: symbol, layer, ruleCount: count, pointer: ledgerPath, line });
   }
 
   const renderedDistillate = [

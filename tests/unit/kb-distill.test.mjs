@@ -40,6 +40,40 @@ test('distillRegistry: a hot row is a ONE-LINE summary — never carries the ful
 });
 
 // =================================================================================================
+// Slice 1c (adhoc-SddMergeFeedback item 4, LOW): no stage emits `symbol`, so falling back to
+// `canonicalName` made every rule its own cluster (degenerate 1-rule-per-line distillate). When symbol
+// is absent the cluster key is LAYER-ONLY — rows collapse to one cluster per layer, and the line is
+// layer-only (no arbitrary rule name printed as a pseudo-symbol label — LOW-4).
+// =================================================================================================
+test('distillRegistry: symbol-less rows collapse to ONE cluster per layer (item 4) — not one-per-rule', () => {
+  const counts = { 'domain-calc': 20, api: 14, ui: 7 }; // 41 total, none carrying `symbol`
+  const rows = [];
+  for (const [layer, n] of Object.entries(counts)) {
+    for (let i = 0; i < n; i++) rows.push({ canonicalName: `${layer}-BR-${i}`, layer, disposition: 'add' });
+  }
+  assert.equal(rows.length, 41);
+  const { hotRows } = distillRegistry({ className: 'X', rows, ledgerPath: 'docs/kb/golden/X.md' });
+  assert.equal(hotRows.length, 3, 'one hot row per LAYER when no symbol is present — not 41 degenerate one-rule clusters');
+  const byLayer = Object.fromEntries(hotRows.map((r) => [r.layer, r.ruleCount]));
+  assert.equal(byLayer['domain-calc'], 20);
+  assert.equal(byLayer['api'], 14);
+  assert.equal(byLayer['ui'], 7);
+});
+
+test('distillRegistry: a symbol-less cluster renders a LAYER-only line — no canonicalName as a pseudo-symbol label (LOW-4)', () => {
+  const rows = [
+    { canonicalName: 'FirstRuleName', layer: 'domain-calc', disposition: 'add' },
+    { canonicalName: 'SecondRuleName', layer: 'domain-calc', disposition: 'add' },
+  ];
+  const { hotRows } = distillRegistry({ className: 'X', rows, ledgerPath: 'docs/kb/golden/X.md' });
+  assert.equal(hotRows.length, 1);
+  const line = hotRows[0].line;
+  assert.ok(!line.includes('FirstRuleName') && !line.includes('SecondRuleName'), 'no canonicalName leaks as a pseudo-symbol cluster label');
+  assert.match(line, /^- \[domain-calc\]: 2 rules — see docs\/kb\/golden\/X\.md$/, 'symbol-less line is layer-only');
+  assert.equal(line.includes('\n'), false, 'still one line');
+});
+
+// =================================================================================================
 // Slice 2: token-budget lint — fails over ceiling, passes AT the ceiling.
 // =================================================================================================
 test('lintTokenBudget: passes when the hot layer is AT the ceiling', () => {

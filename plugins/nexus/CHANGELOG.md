@@ -1,5 +1,18 @@
 # nexus — Changelog
 
+
+## [1.25.2] — 2026-07-08
+- **`mine-verify-cover` Merge doc honesty (sprint-rituals feedback `nexus-1.21.0-2026-07-04.md`, item 2
+  doc half).** Rewrote the **Merge** paragraph to drop the inaccurate "Content-keyed, granularity-tolerant
+  matching (symbol + condition content)" claim the exact-string compare never delivered. It now states
+  the spec/code rule sets are reconciled by the human-authored crosswalk (many-to-one tolerant both ways)
+  and that agree-vs-diverge is **operator-declared via the crosswalk**, with the condition-boundary
+  comparison as a corroborating hint consulted only when nothing is declared; the `suspect-stale-spec` tag
+  is likewise operator-declared (or date-derived). Text-only, method-honest — no behavior change to the
+  skill. Ships alongside the harness defect-fixes for the same feedback's items 1–4 (registry code-only-row
+  drop, crosswalk-declared expectations, boundary demotion, layer-only distillate clustering), which live
+  outside `plugins/**` and carry no version.
+  - skill change (mine-verify-cover)
 ## [1.25.1] — 2026-07-08
 - **`mine-verify-cover` core skill: PHP adapter registered.** Adds the new `nexus-php` stack adapter
   (`mine-verify-cover-php`) across the core method's four adapter-mention sites — the method intro, the

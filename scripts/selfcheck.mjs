@@ -157,7 +157,7 @@ const checks = [
         {
           lib: 'harness/lib/rule-crosswalk.mjs',
           workflow: 'harness/merge.workflow.js',
-          fns: ['applyCrosswalk', 'reconcileRuleSets'],
+          fns: ['applyCrosswalk', 'crosswalkExpectations', 'reconcileRuleSets'],
         },
         {
           lib: 'harness/lib/merge-rules.mjs',

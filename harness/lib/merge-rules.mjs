@@ -1,10 +1,14 @@
 // merge-rules.mjs — the M1/M3 merge/triage engine (adhoc-SddMergeGen, Step 1).
 //
-// Content-keyed, granularity-tolerant matching of a spec-rules.md rule set against a code-arm KB rule
-// set. Match on symbol + condition content (never names or counts; many-to-one both ways) — composes
-// with harness/lib/rule-crosswalk.mjs's `reconcileRuleSets` (the canonical-name rewrite that fixes the
-// empty-intersection gap), does NOT replace it: the crosswalk runs FIRST, then this lib's own matching
-// keys on the reconciled `ruleName`.
+// Reconciles a spec-rules.md rule set against a code-arm KB rule set via the human-authored crosswalk
+// (harness/lib/rule-crosswalk.mjs's `reconcileRuleSets` — the canonical-name rewrite that fixes the
+// empty-intersection gap), then triages the matched pairs. The crosswalk runs FIRST; this lib keys on
+// the reconciled `ruleName` (many-to-one tolerant both ways — multiple rules can share a canonical key).
+// Whether a matched pair AGREES or DIVERGES is OPERATOR-DECLARED: the crosswalk states, per canonical
+// name, `expect:'overlap'` or `expect:'divergent'` (crosswalkExpectations), which is authoritative. The
+// condition-boundary string-compare (`boundaryDiverges`) is only a CORROBORATING HINT, consulted when
+// the operator declared nothing — string equality was never the granularity-tolerant content match an
+// earlier comment claimed, so it is demoted, not trusted as the primary signal.
 //
 // Output = the FIVE delta buckets (proposal §A.1 condition 5 / SR-addendum): overlap-confirmed |
 // spec-only-other-layer | spec-only-divergent | spec-only-unimplemented | code-only-precision. Every
@@ -28,7 +32,7 @@
 //
 // PURE — no fs, no LLM. Consumes already-mined rule arrays; produces the triage in memory.
 
-import { reconcileRuleSets } from './rule-crosswalk.mjs';
+import { reconcileRuleSets, crosswalkExpectations } from './rule-crosswalk.mjs';
 
 export const DELTA_BUCKETS = [
   'overlap-confirmed',
@@ -42,8 +46,12 @@ function ruleKey(r) {
   return (r?.ruleName ?? r?.id ?? '').trim();
 }
 
-// A spec/code rule pair "diverges" when both state a boundary and the boundaries differ (string
-// compare — never coerce, an operator change like `>` vs `>=` must not silently equal).
+// A CORROBORATING HINT only (never authoritative — the operator-declared `expect` decides; this is
+// consulted just when no declaration exists). Reports a boundary mismatch when both rules state a
+// boundary and the strings differ (never coerce, an operator change like `>` vs `>=` must not silently
+// equal). A missing boundary on either side yields `false` (no evidence of divergence from this hint) —
+// which is exactly why a genuinely-divergent pair with an absent code boundary needs the declared
+// `expect:'divergent'` to be caught (the false-overlap flavor).
 function boundaryDiverges(specRule, codeRule) {
   const sb = specRule?.boundary;
   const cb = codeRule?.boundary;
@@ -75,6 +83,9 @@ function isStaleSpec(specRule, codeRule, specDate) {
  */
 export function triageRuleSets({ specRules = [], codeRules = [], crosswalkMap = {}, targetLayer, specDate } = {}) {
   const { specRules: specR, codeRules: codeR } = reconcileRuleSets({ specRules, codeRules, crosswalkMap });
+  // Operator-declared expectations from the crosswalk's object-valued entries (keyed by canonical name).
+  // AUTHORITATIVE over the boundary hint below; empty when the crosswalk is all-string (today's behavior).
+  const expectations = crosswalkExpectations(crosswalkMap);
 
   const buckets = {
     'overlap-confirmed': [],
@@ -114,8 +125,15 @@ export function triageRuleSets({ specRules = [], codeRules = [], crosswalkMap = 
     }
 
     matchedCodeKeys.add(key);
-    // Many-to-one tolerant: agree if ANY matching code rule agrees on boundary.
-    const agreeing = matches.find((c) => !boundaryDiverges(s, c));
+    // Divergence decision: the operator-declared `expect` is AUTHORITATIVE — expect:'overlap' forces
+    // overlap-confirmed and expect:'divergent' forces spec-only-divergent, regardless of boundaries.
+    // With NO declaration, fall back to the boundary string-compare hint exactly as before (many-to-one
+    // tolerant: agree if ANY matching code rule agrees on boundary).
+    const decl = expectations.get(key);
+    let agreeing;
+    if (decl?.expect === 'overlap') agreeing = matches[0];
+    else if (decl?.expect === 'divergent') agreeing = undefined;
+    else agreeing = matches.find((c) => !boundaryDiverges(s, c));
     if (agreeing) {
       buckets['overlap-confirmed'].push({ ...s, bucket: 'overlap-confirmed', codeRule: agreeing });
     } else {
@@ -130,7 +148,9 @@ export function triageRuleSets({ specRules = [], codeRules = [], crosswalkMap = 
           codeAttestation: codeRule.attestation ?? codeRule.lines ?? codeRule.id,
         },
       };
-      if (isStaleSpec(s, codeRule, specDate)) {
+      // suspect-stale-spec fires on the operator-declared `staleSpec` flag OR the (dormant-but-valid)
+      // date-based check — either signal tags the row.
+      if (decl?.staleSpec === true || isStaleSpec(s, codeRule, specDate)) {
         entry.tags = [...(entry.tags ?? []), 'suspect-stale-spec'];
       }
       buckets['spec-only-divergent'].push(entry);

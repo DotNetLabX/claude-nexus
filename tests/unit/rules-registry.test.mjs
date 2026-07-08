@@ -259,6 +259,27 @@ test('THE FIX: render -> parse -> updateRegistry on UNCHANGED input is idempoten
   assert.equal(afterRoundTrip.changelog.length, parsed.changelog.length, 'ZERO changelog growth — the idempotency invariant holds across the real file boundary');
 });
 
+// =================================================================================================
+// Slice 10 (adhoc-SddMergeFeedback item 1, HIGH): a code-only-precision entry carrying ONLY `id`
+// (BR-n, no ruleName) must NOT be silently dropped. `triageRuleSets` keys rules via ruleKey = ruleName
+// ?? id, but `updateRegistry` used to read `entry.ruleName` only, so a code-only-precision entry
+// (which carries no ruleName) was skipped — the row never reached the registry. The fix keys the new
+// entry (and the retire-walk lookup) by the SAME ruleName ?? id fallback.
+// =================================================================================================
+test('updateRegistry: a code-only-precision entry with only `id` (no ruleName) still produces a registry row (item 1)', () => {
+  const triage = {
+    buckets: {
+      ...emptyBuckets(),
+      'code-only-precision': [{ id: 'BR-9', bucket: 'code-only-precision', layer: 'domain-calc' }],
+    },
+    specRepair: [],
+  };
+  const { rows } = updateRegistry({ existingRows: [], triage, source: 'F13-BugRatio run 1', date: '2026-07-01' });
+  assert.ok(rows.some((r) => r.canonicalName === 'BR-9'), 'the code-only row keyed by id BR-9 must persist, not be silently dropped');
+  const row = rows.find((r) => r.canonicalName === 'BR-9');
+  assert.equal(row.arms, 'code', 'a code-only-precision entry with no attached codeRule → arms: code');
+});
+
 // ---- fixture helper ------------------------------------------------------------------------------
 function emptyBuckets() {
   return {

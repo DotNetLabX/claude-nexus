@@ -1,14 +1,19 @@
 // merge-rules.test.mjs — the M1/M3 merge/triage engine (adhoc-SddMergeGen, Step 1).
 //
-// Content-keyed, granularity-tolerant matching of a spec-rules.md rule set against a code-arm KB rule
-// set. Composes with harness/lib/rule-crosswalk.mjs's reconcileRuleSets (the canonical-name rewrite) —
-// does NOT replace it. Output = the five delta buckets (proposal §A.1 condition 5): overlap-confirmed |
-// spec-only-other-layer | spec-only-divergent | spec-only-unimplemented | code-only-precision — every
-// eligible spec rule lands in exactly one bucket, nothing silently dropped. `spec-only-divergent` rows
-// carry the `divergence-pending-triage` state + the evidence pair (spec citation + code attestation),
-// plus a `suspect-stale-spec` tag when the code-arm KB attributes the behavior to a source the mined
-// spec predates. `ambiguous`-verdicted spec rules are excluded from the five buckets and routed to a
-// `specRepair` list instead.
+// Reconciles a spec-rules.md rule set against a code-arm KB rule set via the human-authored crosswalk
+// (harness/lib/rule-crosswalk.mjs's reconcileRuleSets — the canonical-name rewrite; many-to-one tolerant
+// both ways), then triages the matched pairs — it composes with reconcileRuleSets, does NOT replace it.
+// Whether a matched pair AGREES or DIVERGES is OPERATOR-DECLARED via the crosswalk (`expect:'overlap'` |
+// `'divergent'`, authoritative); the condition-boundary string-compare is only a CORROBORATING HINT,
+// consulted when the operator declared nothing — string equality was never the granularity-tolerant
+// content match an earlier comment claimed. Output = the five delta buckets (proposal §A.1 condition 5):
+// overlap-confirmed | spec-only-other-layer | spec-only-divergent | spec-only-unimplemented |
+// code-only-precision — every eligible spec rule lands in exactly one bucket, nothing silently dropped.
+// `spec-only-divergent` rows carry the `divergence-pending-triage` state + the evidence pair (spec
+// citation + code attestation), plus a `suspect-stale-spec` tag operator-declared via the crosswalk (or
+// derived when the code-arm KB attributes the behavior to a source the mined spec predates).
+// `ambiguous`-verdicted spec rules are excluded from the five buckets and routed to a `specRepair` list
+// instead.
 //
 // Runs inside the CI glob: `node --test tests/lint/*.test.mjs tests/unit/*.test.mjs` (selfcheck.mjs:45).
 import test from 'node:test';
@@ -140,6 +145,66 @@ test('triageRuleSets: an ambiguous-verdicted spec rule is excluded from the five
   assert.equal(specRepair[0].ruleName, 'ThresholdZero');
   assert.equal(specRepair[0].reason, 'boundary not stated — 0 or 1?');
   assert.ok(allBucketed.includes('Clear'), 'the non-ambiguous rule still triages normally');
+});
+
+// =================================================================================================
+// Slice 7 (adhoc-SddMergeFeedback items 2b + 3): the operator-declared `expect` on the crosswalk is
+// AUTHORITATIVE over the boundary string-compare (now demoted to a no-declaration hint). A declared
+// `staleSpec` flags the divergent row even when the date-based check is dormant.
+// =================================================================================================
+test('triageRuleSets: declared expect:divergent forces spec-only-divergent even when boundaries are string-EQUAL', () => {
+  const specRules = [{ id: 'SR-1', ruleName: 'BoundaryRule', boundary: '>0', citation: 'spec says gt zero' }];
+  const codeRules = [{ id: 'BR-1', boundary: '>0', attestation: 'X.cs:1' }];
+  // boundaries are EQUAL (>0 == >0): today boundaryDiverges=false → falsely overlap-confirmed.
+  const crosswalkMap = { 'BR-1': { canonical: 'BoundaryRule', expect: 'divergent' } };
+  const { buckets } = triageRuleSets({ specRules, codeRules, crosswalkMap });
+  assert.equal(buckets['overlap-confirmed'].length, 0, 'the declared divergence overrides the boundary-equal hint');
+  assert.equal(buckets['spec-only-divergent'].length, 1, 'declared expect:divergent lands spec-only-divergent');
+  assert.equal(buckets['spec-only-divergent'][0].ruleName, 'BoundaryRule');
+});
+
+test('triageRuleSets: declared expect:overlap forces overlap-confirmed even when boundaries DIFFER', () => {
+  const specRules = [{ id: 'SR-1', ruleName: 'BoundaryRule', boundary: '>' }];
+  const codeRules = [{ id: 'BR-1', boundary: '>=' }];
+  // boundaries DIFFER (> vs >=): today boundaryDiverges=true → falsely spec-only-divergent.
+  const crosswalkMap = { 'BR-1': { canonical: 'BoundaryRule', expect: 'overlap' } };
+  const { buckets } = triageRuleSets({ specRules, codeRules, crosswalkMap });
+  assert.equal(buckets['spec-only-divergent'].length, 0, 'the declared overlap overrides the differing-boundary hint');
+  assert.equal(buckets['overlap-confirmed'].length, 1, 'declared expect:overlap lands overlap-confirmed');
+  assert.equal(buckets['overlap-confirmed'][0].ruleName, 'BoundaryRule');
+});
+
+test('triageRuleSets: NO declaration → bucketing is byte-identical to the boundary-hint behavior (backward-compat)', () => {
+  // differing-boundary pair → spec-only-divergent (as today); equal-boundary pair → overlap-confirmed (as today).
+  const specRules = [
+    { id: 'SR-1', ruleName: 'Differ', boundary: '>' },
+    { id: 'SR-2', ruleName: 'Equal', boundary: '>0' },
+  ];
+  const codeRules = [
+    { id: 'BR-1', ruleName: 'Differ', boundary: '>=' },
+    { id: 'BR-2', ruleName: 'Equal', boundary: '>0' },
+  ];
+  const { buckets } = triageRuleSets({ specRules, codeRules, crosswalkMap: {} }); // all-string (here: empty) crosswalk, no declarations
+  assert.deepEqual(buckets['spec-only-divergent'].map((e) => e.ruleName), ['Differ'], 'differing boundary still diverges');
+  assert.deepEqual(buckets['overlap-confirmed'].map((e) => e.ruleName), ['Equal'], 'equal boundary still overlaps');
+});
+
+test('triageRuleSets: declared staleSpec:true tags suspect-stale-spec on a divergent pair (date-based check dormant)', () => {
+  const specRules = [{ id: 'SR-1', ruleName: 'StaleRule', boundary: '>0', citation: 'c' }];
+  const codeRules = [{ id: 'BR-1', boundary: '>0', attestation: 'a' }]; // no attributedSource date → isStaleSpec dormant
+  const crosswalkMap = { 'BR-1': { canonical: 'StaleRule', expect: 'divergent', staleSpec: true } };
+  const { buckets } = triageRuleSets({ specRules, codeRules, crosswalkMap });
+  const row = buckets['spec-only-divergent'][0];
+  assert.ok(row.tags?.includes('suspect-stale-spec'), 'the declared staleSpec flag tags the row even with no date-based signal');
+});
+
+test('triageRuleSets: false-overlap flavor — declared expect:divergent forces divergence when the CODE rule has no boundary (LOW-2)', () => {
+  const specRules = [{ id: 'SR-1', ruleName: 'CycleTimeRule', boundary: '>0', citation: 'c' }];
+  const codeRules = [{ id: 'BR-1', attestation: 'a' }]; // NO boundary → boundaryDiverges returns false → would falsely overlap
+  const crosswalkMap = { 'BR-1': { canonical: 'CycleTimeRule', expect: 'divergent' } };
+  const { buckets } = triageRuleSets({ specRules, codeRules, crosswalkMap });
+  assert.equal(buckets['overlap-confirmed'].length, 0, 'a missing code boundary must NOT silently confirm overlap when divergence is declared');
+  assert.equal(buckets['spec-only-divergent'].length, 1, 'declared expect:divergent catches the false-overlap flavor');
 });
 
 // =================================================================================================

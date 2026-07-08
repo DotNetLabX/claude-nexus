@@ -35,6 +35,15 @@
 
 const REQUIRED_PROVENANCE_MSG = 'updateRegistry: `source` is required — every registry write must carry provenance (no anonymous rows).';
 
+// ruleKey — the entry's identity, `ruleName ?? id` (the SAME fallback triageRuleSets/merge-rules.mjs
+// use). Defined locally (not imported from merge-rules.mjs) so this lib stays self-contained for the
+// verbatim inline into merge.workflow.js — where the inlined updateRegistry reuses the workflow's
+// already-inlined merge-rules `ruleKey`, so no second copy is inlined. A code-only-precision entry
+// carries only `id` (no ruleName); keying by ruleName alone silently dropped its row (item 1, HIGH).
+function ruleKey(entry) {
+  return (entry?.ruleName ?? entry?.id ?? '').trim();
+}
+
 function bucketOf(entry) {
   return entry?.bucket;
 }
@@ -78,14 +87,14 @@ export function updateRegistry({ existingRows = [], existingChangelog = [], tria
 
   const priorByName = new Map(existingRows.map((r) => [r.canonicalName, r]));
   const newEntries = flattenTriage(triage);
-  const newByName = new Map(newEntries.map((e) => [e.ruleName, e]));
+  const newByName = new Map(newEntries.map((e) => [ruleKey(e), e]));
 
   const rows = [];
   const changelog = [...existingChangelog];
 
   // 1) Walk the NEW triage entries — add or carried/supersede against a prior row.
   for (const entry of newEntries) {
-    const name = entry.ruleName;
+    const name = ruleKey(entry);
     if (!name) continue;
     const prior = priorByName.get(name);
     const newKey = evidenceKey(entry);

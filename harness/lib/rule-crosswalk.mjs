@@ -27,9 +27,41 @@
 export function applyCrosswalk(rules, crosswalkMap) {
   const map = crosswalkMap ?? {};
   return (rules ?? []).map((r) => {
-    const canonical = map[r?.id] ?? map[r?.ruleName] ?? r?.ruleName;
+    const mapped = map[r?.id] ?? map[r?.ruleName];
+    // A crosswalk value is either a canonical-name STRING (as today) or a {canonical, expect?, staleSpec?}
+    // OBJECT carrying operator-declared metadata — resolve the canonical name from either shape. Defensive
+    // fallback: an object missing `canonical` keeps the rule's existing ruleName rather than keying by
+    // `undefined` (critic LOW-3).
+    const canonical = (typeof mapped === 'string' ? mapped : mapped?.canonical) ?? r?.ruleName;
     return { ...r, ruleName: canonical };
   });
+}
+
+/**
+ * Build the operator-declared expectations lookup from a crosswalk's OBJECT-valued entries — the map
+ * `triageRuleSets` consults to force a matched pair's bucket (`expect: 'overlap' | 'divergent'`,
+ * authoritative over the boundary hint) and to flag a stale spec (`staleSpec: true`). String-valued
+ * entries (canonical name only, no declaration) contribute nothing, so an all-string crosswalk yields an
+ * empty map and today's behavior is preserved. Keyed by CANONICAL name — the same key `triageRuleSets`
+ * matches on after reconciliation. An object entry with no `canonical` is skipped (nothing to key on).
+ * @param {Record<string, string | {canonical?:string, expect?:'overlap'|'divergent', staleSpec?:boolean}>} crosswalkMap
+ * @returns {Map<string, {expect?:string, staleSpec?:boolean}>}
+ */
+export function crosswalkExpectations(crosswalkMap) {
+  const map = crosswalkMap ?? {};
+  const out = new Map();
+  for (const value of Object.values(map)) {
+    if (!value || typeof value === 'string' || value.canonical === undefined) continue;
+    const decl = {};
+    if (value.expect !== undefined) decl.expect = value.expect;
+    if (value.staleSpec !== undefined) decl.staleSpec = value.staleSpec;
+    // Only store a NON-EMPTY declaration: a metadata-less object (`{canonical:'X'}`, decl `{}`) must not
+    // overwrite/clear a sibling alias's real declaration for the same canonical (Codex finding 2). An
+    // absent entry and a stored-empty entry are indistinguishable to the consumer anyway — both fall
+    // through to the boundary hint — so skipping the empty set is behavior-preserving.
+    if (Object.keys(decl).length > 0) out.set(value.canonical, decl);
+  }
+  return out;
 }
 
 /**

@@ -369,13 +369,16 @@ pass/fail criterion; `suite_green` + `mutation_floor` re-clearing is. Code arm o
 orchestrator instantiates from this spec, per `## Substrate` above; skill text never references harness
 files).
 
-**Merge.** Content-keyed, granularity-tolerant matching (symbol + condition content — never names or
-counts; many-to-one both ways) of the spec arm's rule set against the code arm's rule set, producing the
-**five delta buckets**: `overlap-confirmed`, `spec-only-other-layer`, `spec-only-divergent` (→ the
-distinct **`divergence-pending-triage`** state, carrying the **evidence pair** — spec citation + code
-attestation — plus an optional `suspect-stale-spec` tag when the code-arm KB attributes the behavior to a
-source the mined spec predates), `spec-only-unimplemented`, `code-only-precision` — every rule lands in
-exactly one bucket, nothing silently dropped. `ambiguous`-verdicted spec rules are **excluded from
+**Merge.** The spec arm's rule set is reconciled against the code arm's by the **human-authored
+crosswalk** (a post-hoc canonical-name map; many-to-one tolerant both ways) and triaged into the **five
+delta buckets**: `overlap-confirmed`, `spec-only-other-layer`, `spec-only-divergent` (→ the distinct
+**`divergence-pending-triage`** state, carrying the **evidence pair** — spec citation + code attestation
+— plus an optional `suspect-stale-spec` tag, **operator-declared via the crosswalk** (or derived when the
+code-arm KB carries an attributed-source date the mined spec predates)), `spec-only-unimplemented`,
+`code-only-precision` — every rule lands in exactly one bucket, nothing silently dropped. Whether a
+matched pair **agrees or diverges is operator-declared**: the crosswalk states, per canonical rule,
+whether its matched code/spec pair agrees or diverges, and the condition-boundary comparison is only a
+**corroborating hint** — consulted when the operator declared nothing. `ambiguous`-verdicted spec rules are **excluded from
 generation-eligible buckets** and routed to a spec-repair list. Merge writes/updates the canonical rule
 registry (SddLifecycle C1; default path `docs/business-rules/<area>/<unit>.md`) — `source:`/`last_verified`
 mandatory on every row, existing rows **never deleted** (disposition flips to `retire`/`supersede`,

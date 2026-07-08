@@ -72,9 +72,31 @@ export const meta = {
 function applyCrosswalk(rules, crosswalkMap) {
   const map = crosswalkMap ?? {};
   return (rules ?? []).map((r) => {
-    const canonical = map[r?.id] ?? map[r?.ruleName] ?? r?.ruleName;
+    const mapped = map[r?.id] ?? map[r?.ruleName];
+    // A crosswalk value is either a canonical-name STRING (as today) or a {canonical, expect?, staleSpec?}
+    // OBJECT carrying operator-declared metadata — resolve the canonical name from either shape. Defensive
+    // fallback: an object missing `canonical` keeps the rule's existing ruleName rather than keying by
+    // `undefined` (critic LOW-3).
+    const canonical = (typeof mapped === 'string' ? mapped : mapped?.canonical) ?? r?.ruleName;
     return { ...r, ruleName: canonical };
   });
+}
+
+function crosswalkExpectations(crosswalkMap) {
+  const map = crosswalkMap ?? {};
+  const out = new Map();
+  for (const value of Object.values(map)) {
+    if (!value || typeof value === 'string' || value.canonical === undefined) continue;
+    const decl = {};
+    if (value.expect !== undefined) decl.expect = value.expect;
+    if (value.staleSpec !== undefined) decl.staleSpec = value.staleSpec;
+    // Only store a NON-EMPTY declaration: a metadata-less object (`{canonical:'X'}`, decl `{}`) must not
+    // overwrite/clear a sibling alias's real declaration for the same canonical (Codex finding 2). An
+    // absent entry and a stored-empty entry are indistinguishable to the consumer anyway — both fall
+    // through to the boundary hint — so skipping the empty set is behavior-preserving.
+    if (Object.keys(decl).length > 0) out.set(value.canonical, decl);
+  }
+  return out;
 }
 
 function reconcileRuleSets(r) {
@@ -118,6 +140,9 @@ function isStaleSpec(specRule, codeRule, specDate) {
 
 function triageRuleSets({ specRules = [], codeRules = [], crosswalkMap = {}, targetLayer, specDate } = {}) {
   const { specRules: specR, codeRules: codeR } = reconcileRuleSets({ specRules, codeRules, crosswalkMap });
+  // Operator-declared expectations from the crosswalk's object-valued entries (keyed by canonical name).
+  // AUTHORITATIVE over the boundary hint below; empty when the crosswalk is all-string (today's behavior).
+  const expectations = crosswalkExpectations(crosswalkMap);
 
   const buckets = {
     'overlap-confirmed': [],
@@ -156,7 +181,15 @@ function triageRuleSets({ specRules = [], codeRules = [], crosswalkMap = {}, tar
     }
 
     matchedCodeKeys.add(key);
-    const agreeing = matches.find((c) => !boundaryDiverges(s, c));
+    // Divergence decision: the operator-declared `expect` is AUTHORITATIVE — expect:'overlap' forces
+    // overlap-confirmed and expect:'divergent' forces spec-only-divergent, regardless of boundaries.
+    // With NO declaration, fall back to the boundary string-compare hint exactly as before (many-to-one
+    // tolerant: agree if ANY matching code rule agrees on boundary).
+    const decl = expectations.get(key);
+    let agreeing;
+    if (decl?.expect === 'overlap') agreeing = matches[0];
+    else if (decl?.expect === 'divergent') agreeing = undefined;
+    else agreeing = matches.find((c) => !boundaryDiverges(s, c));
     if (agreeing) {
       buckets['overlap-confirmed'].push({ ...s, bucket: 'overlap-confirmed', codeRule: agreeing });
     } else {
@@ -171,7 +204,9 @@ function triageRuleSets({ specRules = [], codeRules = [], crosswalkMap = {}, tar
           codeAttestation: codeRule.attestation ?? codeRule.lines ?? codeRule.id,
         },
       };
-      if (isStaleSpec(s, codeRule, specDate)) {
+      // suspect-stale-spec fires on the operator-declared `staleSpec` flag OR the (dormant-but-valid)
+      // date-based check — either signal tags the row.
+      if (decl?.staleSpec === true || isStaleSpec(s, codeRule, specDate)) {
         entry.tags = [...(entry.tags ?? []), 'suspect-stale-spec'];
       }
       buckets['spec-only-divergent'].push(entry);
@@ -220,13 +255,13 @@ function updateRegistry({ existingRows = [], existingChangelog = [], triage, sou
 
   const priorByName = new Map(existingRows.map((r) => [r.canonicalName, r]));
   const newEntries = flattenTriage(triage);
-  const newByName = new Map(newEntries.map((e) => [e.ruleName, e]));
+  const newByName = new Map(newEntries.map((e) => [ruleKey(e), e]));
 
   const rows = [];
   const changelog = [...existingChangelog];
 
   for (const entry of newEntries) {
-    const name = entry.ruleName;
+    const name = ruleKey(entry);
     if (!name) continue;
     const prior = priorByName.get(name);
     const newKey = evidenceKey(entry);
@@ -380,7 +415,12 @@ const CHARS_PER_TOKEN = 4;
 const DEFAULT_TOKEN_CEILING = 2000;
 
 function clusterKey(row) {
-  return `${row?.symbol ?? row?.canonicalName ?? ''}|${row?.layer ?? ''}`;
+  // Cluster = symbol + layer. When NO symbol is present (no stage emits one today), fall back to
+  // LAYER-ONLY — never to canonicalName, which made every rule its own cluster (degenerate 1-rule-per-
+  // line distillate). Layer-only collapses symbol-less rows to one cluster per layer.
+  const symbol = row?.symbol;
+  const layer = row?.layer ?? '';
+  return symbol ? `${symbol}|${layer}` : `${layer}`;
 }
 
 function estimateTokens(text) {
@@ -395,15 +435,23 @@ function distillRegistry({ className, rows = [], ledgerPath } = {}) {
     if (existing) {
       existing.count += 1;
     } else {
-      clusters.set(key, { symbol: row?.symbol ?? row?.canonicalName, layer: row?.layer, count: 1 });
+      // Drop the `?? row.canonicalName` pseudo-symbol — a symbol-less cluster carries NO symbol, so the
+      // renderer never prints an arbitrary rule name as its label (critic LOW-4).
+      clusters.set(key, { symbol: row?.symbol, layer: row?.layer, count: 1 });
     }
   }
 
   const hotRows = [];
   for (const { symbol, layer, count } of clusters.values()) {
-    const cluster = symbol ?? '(unnamed)';
-    const line = `- ${cluster} [${layer ?? 'unlayered'}]: ${count} rule${count !== 1 ? 's' : ''} — see ${ledgerPath}`;
-    hotRows.push({ cluster, layer, ruleCount: count, pointer: ledgerPath, line });
+    const layerLabel = layer ?? 'unlayered';
+    const countLabel = `${count} rule${count !== 1 ? 's' : ''}`;
+    // ONE LINE ONLY — no embedded newline, no full rule statement/body (Slice-1b / Slice-3 invariants).
+    // Symbol-present: "- <symbol> [<layer>]: N rules — see <ledger>". Symbol-absent: a LAYER-ONLY line
+    // "- [<layer>]: N rules — see <ledger>" — never a rule name as a pseudo-symbol label (LOW-4).
+    const line = symbol
+      ? `- ${symbol} [${layerLabel}]: ${countLabel} — see ${ledgerPath}`
+      : `- [${layerLabel}]: ${countLabel} — see ${ledgerPath}`;
+    hotRows.push({ cluster: symbol, layer, ruleCount: count, pointer: ledgerPath, line });
   }
 
   const renderedDistillate = [
