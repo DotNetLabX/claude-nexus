@@ -227,3 +227,5 @@ Two location variants — choose based on whether the project has an Application
 When there is no Application layer, state machine factories live in the module's API or Domain composition instead. Register them in the module's `AddApiServices` or alongside the relevant aggregate's DI wiring. See `service-registration` for the layer structure without an Application project.
 
 The pattern is the same regardless of layer: DB-stored transition rules + factory-provided validator + aggregate-enforced invariants.
+
+For the build recipe — the seed table, the factory delegate, the DI variants, and the validate-before-mutate guard step by step — follow `add-state-machine`. This section is the design-level placement decision; `add-state-machine` is how you construct it.

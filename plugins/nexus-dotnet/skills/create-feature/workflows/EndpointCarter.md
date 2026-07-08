@@ -74,5 +74,7 @@ Never write `catch → Results.Problem(statusCode)` in an endpoint.
 - **Authorization — two layers, not one.** A write endpoint needs both the **role** gate and the
   **resource** gate. Use `.RequireRoleAuthorization(Role.{Role}, ...)` for the role layer (reference app:
   `AcceptArticleEndpoint` → `.RequireRoleAuthorization(Role.Editor, Role.EditorAdmin)`); the per-resource
-  ownership/access check runs inside the handler. A bare group-level `.RequireAuthorization()` drops the
+  ownership/access check is a **declarative authorization requirement** that `RequireRoleAuthorization` stacks on
+  top of the role gate (answered by the shared authorization handler against the service's own data) — it is
+  **not** a role/access check inside the command handler. A bare group-level `.RequireAuthorization()` drops the
   resource layer — never rely on it alone for writes. See `authorization-patterns` for the full two-layer model.

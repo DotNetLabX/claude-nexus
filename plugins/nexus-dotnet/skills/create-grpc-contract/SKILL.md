@@ -26,6 +26,33 @@ Reach for gRPC only when (1) genuinely holds — a fresh, on-demand read the cal
 3. **Register the client** in consuming services — follow `workflows/Client.md`
 4. **Verify the build:** `dotnet build`
 
+## Handler usage — the two ways a handler calls the client
+
+Registering the client is not the point; how a handler *uses* it is. There are two sanctioned shapes:
+
+1. **Lazy get-or-create hydration** (fill missing local data on the write path). Read the local store first; call gRPC **only on a miss**; then persist the copy so the next request stays local — the gRPC call is a fallback, not a per-request dependency.
+
+   ```csharp
+   var entity = await _repository.FindByIdAsync(command.EntityId);
+   if (entity is null)
+   {
+       var dto = await _{serviceName}Service.GetByIdAsync(new {Request} { Id = command.EntityId }, new CallOptions(cancellationToken: ct));
+       entity = dto.Adapt<{Entity}>();
+       await _repository.AddAsync(entity); // persist the copy — next read is local
+   }
+   ```
+
+2. **Authoritative gate on a state transition** (the owner is the source of truth *right now*). Call the owning service live and **throw before you mutate**, so the transition can't proceed on stale local data.
+
+   ```csharp
+   var status = await _{serviceName}Service.GetStatusAsync(new {Request} { Id = aggregate.ForeignId }, new CallOptions(cancellationToken: ct));
+   if (!status.IsActive)
+       throw new BadRequestException("Dependency is not active."); // gate BEFORE the mutation
+   aggregate.Approve(action);
+   ```
+
+Use lazy hydration when the data can be replicated and read repeatedly; use the authoritative gate when the answer must be fresh at the moment of the decision. A **pure read-model service registers zero gRPC clients** — a client there is the signal you reached for the wrong tool (prefer event-replicated local data or the event payload).
+
 ## Arguments
 
 Pass the service contract name: `/create-grpc-contract OrderQueryService`

@@ -66,6 +66,7 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-48 — The hotspot gate: bot-filtered git-history metrics are the repo mine's objective prioritization layer *(Accepted — adhoc-MineVerifyRepo, 2026-07-04)*
 - ADR-49 — Tech-debt triage registries are their own species: `docs/tech-debt/<area>.md`, ADR-43/45 invariants carried, refresh keeps them current *(Accepted — adhoc-MineVerifyRepo, 2026-07-04)*
 - ADR-50 — mine-reference-model is the fourth mine: unit = one reference repo, output = a portability-graded virtues registry consumed at C5 triage *(Accepted — adhoc-MineReferenceModel, 2026-07-05)*
+- ADR-51 — nexus-dotnet skills are pattern-first and exemplar-cited: teach the pattern, cite the reference app as the worked example *(PROPOSED — owner ratifies)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -1269,6 +1270,22 @@ skills from the extracted patterns* (Entry 8's optional stage 2) — `improve-sk
 scaffolding; separate proposal if demand proves out. *Housing the output in `docs/kb/` or
 `docs/tech-debt/`* — re-creates the species collision ADR-45/49 removed. *A metric layer on the
 reference repo* — measures pain, not judgment.
+
+---
+
+## ADR-51 — nexus-dotnet skills are pattern-first and exemplar-cited: teach the pattern, cite the reference app as the worked example — PROPOSED
+
+> **Status: PROPOSED (owner ratifies).** Written by the architect as part of `adhoc-SkillEstateConsolidation`; the implementation (the 4 ported skills, the `authorization-patterns` re-registration, the fold-upstream pass) ships, but this ADR text is **not** a decided record until the owner ratifies it. Do not treat the wording below as settled architecture; the owner may amend the framing before it is accepted. Provenance: the owner directive (D1–D3) recorded verbatim-in-substance in `docs/specs/adhoc-SkillEstateConsolidation/delivery/plan.md` (Definition section).
+
+**Context.** The nexus-dotnet estate was mined from ONE reference application (`dotnet-microservices`), which is a template/quarry for the owner's *other and future* .NET projects — not a consumer with ongoing feature work. When a shipped skill is framed to that one repo's domain (the Articles lifecycle), it teaches "how this app is built" instead of "how to build a .NET app in this family." One shipped skill had exactly this defect (`authorization-patterns`' description led with "Endpoint authorization for the article lifecycle"); a repo-exact estate silently narrows every downstream run to a domain the new project does not have.
+
+**Decision.** A nexus-dotnet skill is **pattern-first and exemplar-cited**: it teaches the *pattern* for a new .NET project in the consuming family (the closed role enum range-partitioned by domain, the two-layer auth gate, the data-driven state machine, the idempotency variants, …), and cites the reference app (`dotnet-microservices`) as the **worked example** — never as the only reality it serves. The concrete register gate: repo-domain vocabulary (`Article*`, `UserRoleType`, ArticleHub, service names) may appear **only** inside an explicit exemplar clause that names the reference app; a skill's `description` leads with the pattern, not the domain. Repo-exact framing is a **defect** — except in the one case where the pattern genuinely *is* the app (a convention that only makes sense as that repo's choice).
+
+**Why.** The estate is a mining instrument for future projects (D1/D2). A pattern-first skill ports to any project in the family; a repo-exact one ports to none but the quarry. Making the register a durable rule (not a one-pass cleanup) keeps future skill authoring and the `improve-skills`/`evaluate-skill` meta-loop pointed at the pattern, so the next mined skill is born compliant rather than re-cleaned.
+
+**Tradeoffs.** The case-insensitive `article` description grep is only a **smoke test**, not the rule — a skill can be repo-exact without the literal token (service names, `UserRoleType`), and can legitimately name the reference app inside an exemplar clause. The binding gate is the register rule (repo vocabulary only inside a named-exemplar clause), which is a judgment check, not a deterministic one; it rides the `evaluate-skill` rubric's Layer-1 register review rather than a lint.
+
+**Rejected.** *Keeping project-local skills as the estate* — they are a mining instrument, never an end state (D2); they drift behind every plugin release. *Renaming the two already-replaced skills to drop domain flavor* — names are stable public surface; the register lives in the description and body, not the folder name. *A deterministic `article`-token lint as the gate* — both stricter and weaker than the rule (false-flags a named exemplar clause, misses `UserRoleType`/service-name framing); demoted to a smoke test.
 
 ---
 

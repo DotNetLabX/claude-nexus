@@ -42,6 +42,34 @@ Tracks every skill created or fixed by the learner/developer pipeline. One entry
 - **Description:** nexus-flutter design-fidelity skill (`/figma-to-flutter`, user-invocable). Maps a Figma node (via the Figma MCP — `get_design_context`/`get_metadata`/`get_screenshot`) to a pixel-accurate Flutter widget using this project's design-system primitives — `AppColors` tokens (no inline `Color(0x…)`), `AppText.*` (no raw `Text()`), `pxToW`/`pxToH` scaling (no raw px), lucide-first `AppIcons` — then verifies with a golden test against the Figma screenshot. Ported verbatim from omnishelf_flutter_app; omnishelf-family-specific by design. Grounded in the PD-5444 cycle-count card rebuild (eyeballed layouts → crashing card + wrong icons). Authored on the omni twin, relocated to nexus-flutter as source-of-truth (flows to the omni twin via gen-omni). skill-lint exit 0; evaluate-skill verdict ACCEPT (`docs/skill-evals/2026-06-30-figma-to-flutter.md`) — the gate added a scope fence, a prefix-agnostic Figma-MCP tool-load step, and a lessons-capture pointer. Plugin bump 0.1.3 → 0.2.0 (MINOR, owner-decided; new capability).
 - **Date:** 2026-06-30
 
+### add-state-machine
+- **Status:** Created
+- **Type:** Gap (port from project-local)
+- **Source:** adhoc-SkillEstateConsolidation
+- **Description:** nexus-dotnet skill, pattern-first port of the local `article-state-machine` (D2/D3). Data-driven state-transition validation for a write-side aggregate: cached `{Aggregate}StateTransition` seed table, `I{Aggregate}StateMachine` + `{Aggregate}StateMachineFactory` delegate, `ValidateStateTransition` guard as the first line of the state-mutation method, cache-backed + DbContext-backed DI variants. Articles material cited only inside `(reference app: …)` exemplar clauses. `domain-patterns` gained a build-recipe pointer. skill-lint exit 0; inline rubric (Layers 1–4) ACCEPT, no Critical/High.
+- **Date:** 2026-07-07
+
+### file-storage-patterns
+- **Status:** Created
+- **Type:** Gap (port from project-local)
+- **Source:** adhoc-SkillEstateConsolidation
+- **Description:** nexus-dotnet skill (+ `references/templates.md`), pattern-first port of the local `file-storage-patterns`. Pluggable file-storage module composition — provider choice per service, generic options-marker subclass as the DI key (no keyed DI), singleton-default + scoped-per-extra registration, compensating `TryDeleteAsync`, cross-stage byte migration, factory-vs-direct-injection decision. Kept the `## Verify` deterministic greps. Description neutralized; reference-model tags dropped. skill-lint exit 0; inline rubric ACCEPT.
+- **Date:** 2026-07-07
+
+### consumer-patterns
+- **Status:** Created
+- **Type:** Gap (port from project-local)
+- **Source:** adhoc-SkillEstateConsolidation
+- **Description:** nexus-dotnet skill (+ 3 references), pattern-first port of the local `consumer-patterns`. Five-phase MassTransit consumer shape, three-variant idempotency decision table (silent skip / throw-if-exists / ExistsAsync-return), reference-data hydration + shadow-row pair, projection-vs-write-side split. Delimited against `add-integration-event` (F6: this skill = author/edit an `IConsumer`; add-integration-event = propagate an event); `add-integration-event/workflows/Consumer.md` slimmed to wiring-only with a pointer. skill-lint exit 0; inline rubric ACCEPT.
+- **Date:** 2026-07-07
+
+### service-infra-conventions
+- **Status:** Created
+- **Type:** Gap (port from project-local)
+- **Source:** adhoc-SkillEstateConsolidation
+- **Description:** nexus-dotnet skill, pattern-first port of the local `service-infra-conventions` (recorded divergence from Phase B pairing #9 — ported as a new skill, not folded into `service-registration`). Ten cross-cutting-infra sections: segregated claims/route providers, scoped `RequestContext` + correlation chain, fail-fast options binding, default-interface derivations, MediatR pipeline order, JSON casing, GlobalUsings, private-field naming, framework-split validators. CPM section slimmed to a convention + pointer (mechanics owned by `central-package-management`, AP3). skill-lint exit 0; inline rubric ACCEPT.
+- **Date:** 2026-07-07
+
 ---
 
 ## Skills Fixed
@@ -161,6 +189,13 @@ Tracks every skill created or fixed by the learner/developer pipeline. One entry
 - **Description:** Added "Promote an Existing Entity to an Aggregate Root (in place)" section — folded the promote-entity-to-aggregate gap into the existing skill per owner decision. Variant-aware (plain DDD vs ASP.NET Identity).
 - **Date:** 2026-06-10
 
+### Skill Estate Consolidation — re-registration + fold-upstream (consolidated)
+- **Status:** Fixed
+- **Type:** Fix
+- **Source:** adhoc-SkillEstateConsolidation
+- **Description:** **Step 5 (D3 re-registration):** `authorization-patterns` description + framing made pattern-first ("a role-based domain", was "the article lifecycle"); a top-level reference-app exemplar clause now attributes all `UserRoleType`/`Article*`/ArticleHub identifiers; content facts unchanged. `create-domain-event-handler` sweep = no-op (its only `article` token is `ArticleHub` inside a "Reference-app resolution" table). **Step 6 (fold-upstream of 9+1 overlapping locals):** the 1.4.0 fold held — overwhelmingly `already-upstream`. Seven fold-groups landed (targets: `add-integration-event` exclusive-publish-site rule + Verify greps; `create-feature/workflows/EndpointCarter.md` resource-check-location fix; `create-domain-event-handler` cross-cutting `EventHandlers/` exception + wiring verify-greps; `create-grpc-contract` handler-usage patterns + ProtoMember-permanence; `persistence-patterns` `EnumEntityConfiguration`/`MetadataConfiguration` ladder rungs + `MaxLength.C*` rule). Two contradictions (VO-ctor absolute; promote-in-place EF-config; UpsertAsync framing) resolve as shipped-is-correct — local stale wording superseded, not re-folded. Full disposition table in `docs/specs/adhoc-SkillEstateConsolidation/delivery/implementation.md`. All touched skills re-lint exit 0.
+- **Date:** 2026-07-07
+
 ---
 
 ## Deferred
@@ -176,3 +211,10 @@ Tracks every skill created or fixed by the learner/developer pipeline. One entry
   it, or as a follow-up ad-hoc: mirror the create-service Step-5 corrections (`Blocks.Entities` globals,
   `Data/Master`+`Data/Test`).
 - **Date:** 2026-07-06
+
+### Fold-upstream residual patterns (adhoc-SkillEstateConsolidation Step 6)
+- **Status:** Deferred
+- **Type:** Fix
+- **Source:** adhoc-SkillEstateConsolidation
+- **Description:** Genuine, portable local-only patterns identified in the Step-6 fold-upstream diff but deferred (larger/lower-priority folds, not drops — recorded here so the mining is not lost, D2). **persistence-patterns:** the caching implementation cluster (`ICacheable` marker + `GetOrCreateByType`, `CachedRepository`, `DatabaseCacheLoader` prewarm, `UnTrackCacheableEntities`) — the *concept* (type-keyed reference data) is already upstream; the impl cluster is a coherent future "Caching" section. Also `{Svc}DbContext`-not-`AppDbContext` check, no-per-repo-interface guardrail, `UseEntityTypeNamesAsTables` + engine-conditional snake_case table naming. **error-handling:** repository `*OrThrow` family docs, "two not-found spellings, don't add a third" + `SingleOrThrow` discipline, DomainException-subclass-needs-no-switch-arm. **create-feature:** Mapster inheritance/VO-factory idioms, FastEndpoints `[AllowFileUploads]`, Minimal-API `[AsParameters]` query binding. **create-service:** two layering verify-greps, Postgres snake_case rewriter, Redis Domain-csproj branch. **create-aggregate:** EF-vs-Redis variant-decision heuristic, AddDomainEvent-exclusivity rule, two Domain-layer verify-greps. **authorization-patterns:** JWT `RequireHttpsMetadata=false`/`SaveToken=true` knobs, Minimal-API filter `CreatedById==default` guard. Full per-item disposition: implementation.md Step-6 table.
+- **Date:** 2026-07-07

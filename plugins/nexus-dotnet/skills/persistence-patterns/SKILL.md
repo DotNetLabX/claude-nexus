@@ -117,6 +117,16 @@ public class {Entity}EntityConfiguration : AuditedEntityConfiguration<{Entity}>
 }
 ```
 
+### Enum-backed metadata: `EnumEntityConfiguration<T, TEnum>`
+
+When an enum **drives behavior** and must be queryable/joinable (not just a `[Description]` + reflection lookup), model it as a seeded entity whose rows mirror the enum members, and configure it with `EnumEntityConfiguration<TEntity, TEnum>`: it adds a unique index on `Name` and enum-converts the `Name`/`Description` columns. This makes the enum's metadata a first-class, seed-driven table rather than something reflected over at runtime.
+
+### Composite-key metadata: `MetadataConfiguration<T>`
+
+For a lookup/metadata table keyed by a composite of its own columns (e.g. a state-transition table), derive from `MetadataConfiguration<T>` — its base `Configure` already calls `ToTable(typeof(T).Name)` and `SeedFromJsonFile()`; you add only the composite `HasKey` and the enum conversions. (The `add-state-machine` skill's transition table uses this rung.)
+
+**Column lengths** come from the shared `MaxLength.C*` constant ladder (`C8`, `C64`, `C256`, … powers of two), never a numeric literal like `HasMaxLength(500)` — so a length change is one edit in one place.
+
 ### Value Object Mapping
 Two approaches:
 - `OwnsOne` (owned entity type): `builder.OwnsOne(p => p.Email, ...)`
