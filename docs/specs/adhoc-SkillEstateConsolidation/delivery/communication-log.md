@@ -41,6 +41,7 @@
 | 17 | reviewer → team-lead | reviewer:review | APPROVED. All 3 findings + Open Question independently re-verified resolved; fresh lint 65/65, tests 484/484, leaked-token greps 0. No CRITICAL/HIGH/MEDIUM open. (Reviewer self-labels "Cycle 2/3" = its review-round count; fix-cycle count is 1.) | — |
 | 18 | team-lead → close | done | Verdict validated in review.md (APPROVED, none open). summary.md written; implement commit 8760c18 (30 files) on top of plan commit 02d4707. Push/PR + lessons pending user; gen-omni deferred to merged main; Step 9 = follow-up round. | — |
 | 19 | user → team-lead | done | Closure decisions (user-confirmed, verbatim selections): "Push only" (no PR tail — user opens/merges PR themselves); "Skip for now" (lessons recorded, unprocessed). | — |
+| 20 | user → team-lead | done (post-closure) | "Merge in main and push" (explicit user instruction — the one-way merge is user-controlled and was given). main had advanced to 10af118 (adhoc-MineVerifyPhpAdapter landed: nexus-php 0.1.0, nexus 1.25.1) — disjoint paths, no ADR-51 collision; merge commit published to origin/main after merged-tree test run. gen-omni twin sync STILL deferred: adhoc-MineVerifyCppAdapter remains in flight (nexus-cppwt). | main checked out in primary worktree — merge done via plumbing, not checkout |
 
 ## Runtime / Plugin Issues Log
 
