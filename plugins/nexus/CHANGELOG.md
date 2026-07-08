@@ -1,5 +1,12 @@
 # nexus — Changelog
 
+## [1.25.1] — 2026-07-08
+- **`mine-verify-cover` core skill: PHP adapter registered.** Adds the new `nexus-php` stack adapter
+  (`mine-verify-cover-php`) across the core method's four adapter-mention sites — the method intro, the
+  fact/tier stack-adapter table (a `deferred` PHP row mirroring cpp), the "What this skill does NOT do"
+  bullet, and the "Relationship to other skills" table. Text-only, no method/behavior change; ships
+  alongside the new `nexus-php` plugin (PHP is the fourth stack adapter after .NET, Flutter, C++).
+  - skill change (mine-verify-cover)
 
 ## [1.25.0] — 2026-07-06
 - Architect Decision Disclosure: plans now carry a `## Decisions` section (decision · why · rejected alternative · status decided|deferred) declaring self-resolved two-way-door calls; architect emits a `Decisions taken: N` metric in the plan-approval message; critic flags a missing/silent section as a MEDIUM plan-hygiene finding.

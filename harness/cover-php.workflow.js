@@ -366,11 +366,11 @@ NON-NEGOTIABLE RULES:
   • A test that FAILS on the CURRENT production code is KEPT and FLAGGED with a \`// CANDIDATE BUG:\` comment —
     NEVER deleted, and you NEVER change production code to make it pass.
   • Coverage is NOT the goal — KILLING MUTANTS is. Pin exact boundary cases: every logical connective
-    (\`&&\`/\`||\`), every predicate (isMonday/isSunday/isStartOf*/isEndOf*), every \`===\`/\`!==\`, the exact
-    arithmetic (\`diffInDays(...) + 1\`, subDays/subWeek/subMonth semantics). Assert on execute()'s RETURN
-    VALUE (\`$result['from']\` / \`$result['to']\`), so a mutated comparison or constant flips a test RED.
-  • ASSERT STRUCTURAL INVARIANTS, not a wall of hand-typed dates (contract: assert period-length
-    conservation, adjacency, previous-full-period mapping; exactly ONE hand-computed anchor case). The SUT's
+    (\`&&\`/\`||\`), every predicate the KB documents, every \`===\`/\`!==\`/relational comparison, and the exact
+    arithmetic the SUT performs (each \`+1\`/\`-1\`, each \`(int)\`/cast, each offset/period call). Assert on the
+    method's RETURN VALUE, so a mutated comparison, constant, or arithmetic op flips a test RED.
+  • ASSERT STRUCTURAL INVARIANTS, not a wall of hand-typed expected values (contract: conservation,
+    adjacency, and the mapping invariants the KB documents; exactly ONE hand-computed anchor case). The SUT's
     public API + how inputs are built come from the PATTERN file (STEP 3) and the KB (STEP 2) — mirror them
     EXACTLY. Do NOT assume the CalculateReferencePeriod shape for a different target — follow the pattern.${SUT_NOTES}
   • Pest-compatibility: use ONLY plain PHPUnit-class APIs (TestCase, assertSame, #[DataProvider],

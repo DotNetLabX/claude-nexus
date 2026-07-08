@@ -33,6 +33,17 @@ Infection does not emit a Stryker-schema-family per-mutant JSON file. Its `json`
 ## Caveat
 The exact top-level array keys of Infection's JSON (escaped/killed/errored/timeouted/notCovered/ignored plus a `stats` block) are inferred from the summary categories and field-level JsonLogger evidence, not from a published JSON schema.
 
+**RESOLVED BY OBSERVATION (2026-07-07, Infection 0.34.0 probe — supersedes the inferred list above).**
+The Step-1 toolchain probe (`docs/specs/adhoc-MineVerifyPhpAdapter/delivery/probe-report.md`) ran the
+`json` logger and recorded the ACTUAL top-level keys: `stats` (an object of counts) + one per-status
+ARRAY each — `escaped`, `timeouted`, `killed`, `killedByStaticAnalysis`, `errored`, `syntaxErrors`,
+`uncovered`, `ignored`. **The status is the array key — there is no per-mutant `status` field.** Two
+corrections to the inference: the not-covered array is keyed **`uncovered`** (not `notCovered` — that
+form is the `stats` count key `notCoveredCount`), and the inferred list MISSED two groups that do
+appear: **`killedByStaticAnalysis`** (→ Killed) and **`syntaxErrors`** (→ CompileError, unscored). The
+translation map baked into the shipped `mine-verify-cover-php` adapter is authored against these
+observed keys.
+
 ## Fallback
 If Infection's JSON shape shifts, diff JsonLogger.php and re-derive fields; if a native Stryker-schema logger later ships, prefer it over hand translation.
 

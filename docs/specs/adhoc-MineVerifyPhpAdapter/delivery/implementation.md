@@ -157,4 +157,162 @@ No new deviations introduced by the fix cycle; all four findings addressed as sp
   SKILL.md must carry the probe-observed map + live-run lessons (critic L-2); pre-authoring it now would
   bake in stale guesses. Step 8's mapped `release-plugin` skill fires in that resume.
 
-*Status: COMPLETE (block {1,3,4,5} + Fix Cycle 1/3) — developer, 2026-07-07*
+*Status: block {1,3,4,5} + Fix Cycle 1/3 COMPLETE — developer, 2026-07-07*
+
+---
+
+# Steps 8-9 — Ship `nexus-php` + close-out (post-run developer resume, 2026-07-08)
+
+**Scope of this pass:** Steps **8** (ship the proven adapter as `nexus-php` + wiring + bump) and **9**
+(close-out: roadmap/KB/lessons), per the Q1 ruling (`questions.md` → Q1). The deterministic block
+{1,3,4,5} shipped earlier (commit `f4f3c07`, reviewed + approved); the operator batch {2,6,7} is COMPLETE
+(both live runs landed — `mvc-report.md` in fmcg_platform + the two KBs). This pass baked the
+**probe-OBSERVED** map + the **live-run lessons** into the shipped SKILL.md, none of which existed until
+the runs. **Everything is left UNCOMMITTED** for the plan's MANDATORY code-grounded review, then the
+team-lead ship commit. Steps 1–7 were NOT touched.
+
+## Files Created (Steps 8-9)
+- `plugins/nexus-php/.claude-plugin/plugin.json` — the new plugin manifest, **`0.1.0`** (initial version),
+  `dependencies: ["nexus"]`, description/keywords mirroring the nexus-cpp manifest shape (Infection,
+  PHPUnit/Pest, PCOV, eris, Docker).
+- `plugins/nexus-php/CHANGELOG.md` — the `0.1.0` initial-release entry (5-capability summary, the
+  translation fork, the baked live-run lessons, the two proof-run verdicts).
+- `plugins/nexus-php/skills/mine-verify-cover-php/SKILL.md` — **the primary Step-8 deliverable.** Modeled
+  on the cpp adapter's section set: 5-capability table; the trust anchor (*Infection is the PHP mutation
+  standard, but its JSON needs translation*); Docker + workspace-copy bringup; the **native-fs MANDATORY**
+  section; the Infection run commands; the **probe-observed** Infection-json→gate status map (the table
+  from `probe-report.md`, NOT the plan's pre-commitment — critic L-2); the `^0.34` pin-moves-with-the-map
+  rule; the `known-bug` group convention + cross-suite-contamination lesson; the seed-the-RNG /
+  stub-the-framework-coupled collaborator rules; the equivalent-mutant filter; PHPUnit-12/eris/Pest-
+  compatible test style; run artifacts; target-picking; and the in-repo/Pest variant documented as a later
+  mode. Every command/version/path/JSON key is grounded in the live artifacts (`probe-report.md`,
+  `mvc-report.md`, `cover-php.workflow.js`).
+- `plugins/nexus-php/skills/mine-verify-cover-php/toolchain/{Dockerfile, composer.json.template,
+  phpunit.xml.template, infection.json5.template}` — the Step-1 toolchain assets, copied from
+  `harness/php/`. Comment references to dev-repo artifacts (`delivery/probe-report.md`,
+  `harness/cover-php.workflow.js`, "Step-1 probe") were neutralized to point at the shipped SKILL.md
+  (**comments only** — every build instruction is byte-identical to the harness original, mirroring the
+  cpp toolchain's self-contained style).
+
+## Files Modified (Steps 8-9)
+- `.claude-plugin/marketplace.json` — added the `nexus-php` entry after `nexus-cpp` (wiring).
+- `scripts/gen-omni.mjs` — added `mirrorDir(NEXUS/plugins/nexus-php → OMNI/plugins/omni-php)` beside the
+  cpp mirror (:96) AND the companion `{ name: 'omni-php', source: './plugins/omni-php' }` in the
+  `wantPlugins` marketplace array (:113). The plan named only the mirrorDir; the wantPlugins entry is its
+  necessary companion (see Deviations).
+- `tests/unit/gen-omni.test.mjs` — seeded `plugins/nexus-php/skills/mine-verify-cover-php/SKILL.md` in the
+  sandbox `before()` (so `collect()` doesn't ENOENT) AND extended the expected-plugins `deepEqual` (:55)
+  with `'omni-php'` — both per the plan's critic-C-1 wiring.
+- `plugins/nexus/skills/mine-verify-cover/SKILL.md` — the **four** adapter-mention sites (critic M-2): the
+  method intro, the fact/tier stack-adapter table (a `deferred` PHP row mirroring cpp, with the PHPUnit
+  `#[Group(…)]` filter note), the "What this skill does NOT do" bullet, and the "Relationship to other
+  skills" table (a full PHP row). Text-only; no method/behavior change.
+- `plugins/nexus/.claude-plugin/plugin.json` — **`1.25.0 → 1.25.1`** (PATCH, the core-skill edit; the cpp
+  precedent shipped its core-skill mention as a nexus PATCH).
+- `plugins/nexus/CHANGELOG.md` — the `1.25.1` entry describing the PHP adapter registration (rewritten from
+  the tool's stub).
+- `harness/cover-php.workflow.js` — **residue cleanup** (small harness edit): neutralized the Cover
+  prompt's target-#1-flavored example-arithmetic bullet (`diffInDays(...) + 1` / `subDays/subWeek/subMonth`
+  / `$result['from']`/`$result['to']` → stack-generic wording). The "Do NOT assume the
+  CalculateReferencePeriod shape" warning stays (it names the default). No gate-battery / logic change.
+- `harness/mine-verify.workflow.js` — **cosmetic-defect fix** (mvc-report incident 2): `target.class` now
+  derives from the source basename via a new pure `classFromSource(SRC)` helper when no explicit
+  `targetClass` arg is given, instead of always reporting the back-compat `'BugRatioAnalyzer'`. The `.cs`
+  default path still derives to `'BugRatioAnalyzer'`, so all existing offline-guard tests stay green.
+
+## Key Decisions (Steps 8-9)
+- **The shipped status map is the probe-OBSERVED one, not the plan's pre-commitment table (critic L-2).**
+  The SKILL.md's Infection-json→gate table is copied from `probe-report.md`'s observed map — `killed`/
+  `errored`/`killedByStaticAnalysis`→`Killed`, `escaped`→`Survived`, `timeouted`→`Timeout`,
+  `uncovered`→`NoCoverage`, `syntaxErrors`→`CompileError` (unscored), `ignored`/`skipped` excluded — with
+  the two groups the research inferred-away (`killedByStaticAnalysis`, `syntaxErrors`) explicitly present.
+- **`nexus-php` ships at `0.1.0` (not the tool's proposed `0.1.1`).** `bump-plugin.mjs` over-bumps a brand-
+  new plugin; corrected back to the authored initial version (see Deviations). Only `nexus` took the real
+  PATCH bump (the core-skill edit).
+- **All five run lessons landed in the SKILL.md** (per the resume brief): native-fs mandatory; the observed
+  map; the `known-bug` per-target-scoping convention; the `^0.34` pin-moves-with-the-map rule; and the
+  seed-the-RNG (`Xoshiro256StarStar`) / stub-the-framework-coupled-collaborator rules.
+- **Boy-scout considered, not invoked.** The touched files are new authored content (already clean) or
+  precise single-line insertions into well-maintained files; no adjacent in-file dead code / naming /
+  duplication warranted cleanup, and this ship is left for review — no scope creep.
+
+## Skills Used (Steps 8-9)
+| Step | Skill(s) invoked | Notes |
+|------|------------------|-------|
+| 8 | release-plugin | Plan Skill: `release-plugin` (Follow). Invoked before the bump; ran `bump-plugin.mjs --dry-run` → apply, then corrected the new-plugin over-bump; gen-omni sync + `--check`; `claude plugin validate --strict` (both plugins). |
+| 8 (harness edits) | None | The residue cleanup + cosmetic-defect fix are harness (not shipped) — no skill; offline guard re-run green. |
+| 9 | None | Close-out (roadmap append, research-entry supersede, lessons) — docs only, no skill (plan Skill: none, TDD no). |
+
+## KB Changes (Steps 8-9)
+| Entry | Action | What changed |
+|-------|--------|-------------|
+| `docs/kb/research/php-mutation-and-test-tooling.md` | UPDATE | Q1 Caveat block: appended a **RESOLVED BY OBSERVATION** note superseding the inferred top-level-key list with the probe-observed keys (`uncovered` not `notCovered`; `+killedByStaticAnalysis`, `+syntaxErrors`). Supersede, not delete (plan KB Impact). |
+| `docs/specs/adhoc-MineVerifyCoverHarness/roadmap.md` | UPDATE | Added a "Multi-language adapters — status" section: PHP shipped as the fourth adapter, both run verdicts + kill scores, cost vs the .NET/Flutter/C++ baselines, the in-repo/Pest variant as named future work. |
+
+## Deviations from Plan (Steps 8-9)
+- **Corrected `bump-plugin.mjs`'s over-bump of the new plugin.** The tool proposed `nexus-php 0.1.0 → 0.1.1`
+  (it classifies the new manifest as a change-vs-HEAD and cannot know `0.1.0` is the intended initial
+  version) and prepended a stub `0.1.1` CHANGELOG block that mangled the intro line. Reverted `nexus-php` to
+  `0.1.0` and restored its clean CHANGELOG (the cpp precedent shipped at `0.1.0`; plan Step 8 states
+  "nexus-php is a NEW plugin at 0.1.0"). The `--check` CI gate does not flag this (a new plugin has
+  `baseV === null`). Reason: a first release must be `0.1.0`, not `0.1.1`.
+- **Added the `wantPlugins` omni-php entry to gen-omni.mjs — the plan named only the `mirrorDir`.** Without
+  it the regenerated omni `marketplace.json` would omit omni-php and the `gen-omni.test.mjs :55` deepEqual
+  (which the plan DOES mandate extending with `'omni-php'`) would fail. The cpp precedent touched both
+  sites; this is the necessary companion, not new scope. Verified: `gen-omni --check` in sync.
+- **Neutralized dev-repo path references in the shipped toolchain copies (comments only).** The plan said
+  "the Step-1 assets"; a verbatim copy would ship `delivery/probe-report.md` / `harness/cover-php.workflow.js`
+  references a consumer can't resolve. Adjusted comments to reference the SKILL.md; no build-instruction
+  change. Reason: shipped-quality (the cpp toolchain templates are self-contained).
+- **Fixed the mine-verify `target.class` cosmetic defect rather than only documenting it.** The resume brief
+  offered "document (or fix if trivial)"; the fix is a 4-line pure helper and keeps every offline-guard test
+  green (the `.cs` default still derives to `'BugRatioAnalyzer'`; the `null`-args test asserts only `source`,
+  the string/object-args tests pass an explicit `targetClass`). Reason: trivial + test-safe.
+
+## Verification (Steps 8-9)
+```
+node --test tests/unit/workflow-contract.test.mjs        → 65/65 pass (after the two harness edits)
+claude plugin validate plugins/nexus-php --strict         → Validation passed
+claude plugin validate plugins/nexus     --strict         → Validation passed
+node --test tests/lint/*.test.mjs tests/unit/*.test.mjs   → 489/489 pass (full CI glob)
+node plugins/nexus/skills/improve-skills/scripts/skill-lint.mjs plugins/nexus-php/skills/mine-verify-cover-php   → OK
+node scripts/gen-omni.mjs && node scripts/gen-omni.mjs --check    → ✓ omni twin is in sync with nexus
+```
+Ship file groups present (git status): plugins/nexus-php/ (plugin.json, CHANGELOG, SKILL.md, toolchain/×4);
+modified marketplace.json, gen-omni.mjs, gen-omni.test.mjs, core mine-verify-cover/SKILL.md, nexus
+plugin.json + CHANGELOG; harness cover-php + mine-verify workflows. `nexus-php`/`omni-php` grep-confirmed in
+marketplace.json, gen-omni.mjs, gen-omni.test.mjs. Omni twin regenerated (uncommitted, in ../omni) — the
+team lead owns BOTH the nexus ship commit and the mirrored omni commit.
+
+## Carry-Over Findings (Steps 8-9)
+| Title | Severity | For | Evidence | Note |
+|-------|----------|-----|----------|------|
+| Code-grounded review — RESOLVED | high→closed | reviewer | review verdict | Reviewer APPROVED (code-grounded) + Codex GO, no blocking findings. Consolidated F1-F5 fixed in Fix Cycle 1 below. |
+| Ship is entirely UNCOMMITTED (nexus + omni twin) | high | team lead | git status | Team lead owns the single nexus ship commit (all 7 file groups + bump + core-skill edit + harness edits) AND the mirrored `../omni` commit (CLAUDE.md omni convention). Developer never commits. |
+| New-plugin ship checklist is a recurring gap | medium | learner | lessons.md Improvement Proposal | cpp needed fixup commits `3d14501`/`3e6cafe`; php needed the bump-over-bump correction + both gen-omni sites. 2 occurrences — flagged for promotion to the release-plugin skill. |
+
+## Fix Cycle 1 (Ship review — reviewer APPROVED + Codex GO, 5 non-blocking findings)
+
+| Finding | Severity | Fix | Verified |
+|---------|----------|-----|----------|
+| F1 — SKILL.md:128 documented the landed suite filename as `<Class>Test.php`, contradicting :44's own claim and the actual landed filenames (`CalculateReferencePeriodActionHarnessTest.php`, `SelectStratifiedSampleActionHarnessTest.php` — confirmed on disk in fmcg_platform `tests/Unit/MineCode/`) | MEDIUM (reviewer) | Changed :128 to `<Class>HarnessTest.php`, matching :44 and reality. | Read-verified against the two on-disk filenames. |
+| F2 — no offline-guard test exercised the `classFromSource` derivation path (`args.src` given, `targetClass` omitted) — only the explicit-targetClass and null-args-default shapes were covered | MEDIUM (reviewer) | Added `mine-verify derives target.class from args.src basename when targetClass is absent` to `tests/unit/workflow-contract.test.mjs` (beside the null-args-default test): passes `{ src: '...SelectStratifiedSampleAction.php' }` with no `targetClass`, asserts `target.class === 'SelectStratifiedSampleAction'` and `target.source` unchanged. | `node --test` — full CI glob grew 489→**490**, all green. |
+| F3 — implementation.md's Verification transcript recorded `node skill-lint.mjs plugins/nexus-php/...` which is not reproducible (no repo-root `skill-lint.mjs`) | LOW (Codex) | Corrected the recorded command to `node plugins/nexus/skills/improve-skills/scripts/skill-lint.mjs plugins/nexus-php/skills/mine-verify-cover-php` (the real, reproducible path). | Re-ran the corrected command from repo root — `OK    mine-verify-cover-php`. |
+| F4 — `gen-omni.mjs`:156's success banner was stale (`plugins: omni, omni-dotnet (omni-net removed)`) though the script mirrors 5 plugins now | LOW (Codex) | Refactored the 5 `mirrorDir(...)` calls into a `mirrorPlugin(srcName, dstName)` helper that appends each `dstName` to a `mirroredPlugins` array; the banner now prints `mirroredPlugins.join(', ')` — derived from the actual mirrored list, never hand-maintained again. | Ran `node scripts/gen-omni.mjs` — banner now reads `plugins: omni, omni-dotnet, omni-flutter, omni-cpp, omni-php   (omni-net removed)`. |
+| F5 — OPTIONAL (reviewer's Open Question, included per team-lead call): bake the eris platform-requirement fallback from `mvc-report.md`'s Postscript into the SKILL.md's test-style section | OPTIONAL | Added one sentence to the "Property tests" bullet: `composer require --dev giorgiosironi/eris` can fail on root platform requirements (`ext-gd`/`ext-pgsql`/`ext-exif` absent) — fallback is a deterministic exhaustive sweep over the input range (run-proven on the fixed bug post-script run). | Text-only; run-proven per `mvc-report.md` Postscript (2026-07-08). |
+
+**Verification after fixes:**
+```
+node plugins/nexus/skills/improve-skills/scripts/skill-lint.mjs plugins/nexus-php/skills/mine-verify-cover-php   → OK
+node --test tests/lint/*.test.mjs tests/unit/*.test.mjs   → 490/490 pass (grew from 489 — F2's new test)
+claude plugin validate plugins/nexus-php --strict         → Validation passed
+claude plugin validate plugins/nexus     --strict         → Validation passed
+node scripts/gen-omni.mjs && node scripts/gen-omni.mjs --check   → banner lists all 5 mirrored plugins; ✓ omni twin is in sync with nexus
+```
+No new deviations introduced by this fix cycle; all five findings addressed as specified, nothing disputed.
+Everything remains UNCOMMITTED (nexus working tree + the regenerated `../omni` twin) — the team lead owns
+both commits.
+
+*Status: COMPLETE (Steps 8-9 — ship `nexus-php` + close-out — including Fix Cycle 1) — developer,
+2026-07-08. Reviewer APPROVED + Codex GO; F1-F5 fixed and re-verified. Everything left UNCOMMITTED for the
+team-lead ship commit (nexus + omni twin).*

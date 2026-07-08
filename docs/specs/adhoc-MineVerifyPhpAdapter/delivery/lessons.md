@@ -51,6 +51,17 @@
   rule, I should have written them as "gate-battery diff = only the sanctioned per-language disable-regex
   const" and "the `MODEL` default is `?? 'sonnet'` and every agent() call passes `model: MODEL`."
 
+- **A commit-shaped acceptance line is unverifiable at a developer done-check when the plan itself
+  routes the commit to the team lead.** Step 8's accept read "`git show --stat` of the ship commit
+  contains all SEVEN file groups" — but the same step (:111) mandates leaving everything UNCOMMITTED for
+  the code-grounded review, and the developer never commits (team lead owns the ship commit + omni
+  twin). So at done-check HEAD is still the prior commit and the acceptance can only be met as a
+  **working-tree-presence** check, not a `git show`. It resolved cleanly (all 7 groups present as
+  `M`/`??` entries) but forced a Deviated-with-note instead of a clean Implemented. For any ship/close
+  step the developer is expected to leave uncommitted, write the acceptance against the **working tree**
+  (`git status --short` shows groups X..Z; grep hits in the staged files) — never against a commit the
+  developer's role forbids making. (Mechanism-not-surface, applied to the commit boundary.)
+
 ## Developer Lessons
 
 - **Step 3's L-1 acceptance grep ("`model: 'sonnet'` on the Cover + runner agent() calls") won't
@@ -102,6 +113,32 @@
   diff (the const + its one `charPin` reference). The translation seam lives OUTSIDE the battery (runner
   schema + prompt + a loop-body cross-check), so it never touches the diff.
 
+- **`bump-plugin.mjs` over-bumps a BRAND-NEW plugin — correct it back to its authored initial version.**
+  Running `node scripts/bump-plugin.mjs` on a ship that ADDS a new plugin (its plugin.json authored at
+  `0.1.0`) classifies the new manifest as a change-vs-HEAD and proposes `0.1.0 → 0.1.1`; it also prepends
+  a stub `0.1.1` CHANGELOG block that mangles the file (it lands the block ABOVE the "All notable changes"
+  intro line). The tool has no per-plugin filter and cannot know `0.1.0` is the intended *initial* version.
+  After applying, revert the new plugin's `version` to `0.1.0` and restore its clean CHANGELOG (keep only
+  the authored `0.1.0` entry). Only the pre-existing plugin (here `nexus` for the core-skill edit) takes
+  the real PATCH bump. (Step-8 handled this; the `--check` CI gate does NOT catch it — a new plugin has
+  `baseV === null`, so `baseV === headV` is never true regardless of the version.)
+
+- **A new stack plugin needs BOTH gen-omni edits, not just the `mirrorDir` the plan names.** The plan's
+  Step-8 wiring named only `mirrorDir(... 'nexus-php' ... 'omni-php')` (gen-omni.mjs :96), but the
+  `wantPlugins` marketplace array (:108–113) MUST also gain `{ name: 'omni-php', source: './plugins/omni-php' }`
+  — otherwise the regenerated omni `marketplace.json` omits omni-php and the `gen-omni.test.mjs` :55
+  deepEqual (which the plan itself mandates extending with `'omni-php'`) fails. The cpp precedent touched
+  both sites; treat the mirrorDir + wantPlugins entry + the test's `before()` seed + the `deepEqual`
+  extension as ONE four-part unit for every new stack plugin.
+
+- **Shipped toolchain assets should reference the SKILL.md, not dev-repo delivery paths.** The
+  `harness/php/*.template` + Dockerfile carry dev-repo references (`delivery/probe-report.md`,
+  `harness/cover-php.workflow.js`, "Step-1 probe") that are stale in a shipped plugin a consumer installs.
+  When copying them into `plugins/nexus-php/skills/.../toolchain/`, neutralize those comment references to
+  point at the skill's own SKILL.md — comments only, every build instruction (`FROM`, `RUN`, the `^0.34`
+  pin, the loggers, `timeout 30`) stays byte-identical. Mirrors the cpp toolchain's self-contained style
+  (its templates carry no dev-repo paths).
+
 ### Improvement Proposal (optional, for systemic issues)
 **Target:** `plugins/nexus/skills/mine-verify-cover/SKILL.md` (Docker/workspace bringup guidance) and the
 per-stack adapter contracts (`harness/*/cover-*-contract.md`).
@@ -114,6 +151,20 @@ false universal timeouts.
 (First occurrence; C++ compiled-stack did not hit it because it does not re-read a huge vendor tree per
 mutant. Watch for recurrence on a Node/Python adapter before promoting.)
 **Priority:** medium
+
+### Improvement Proposal (optional, for systemic issues)
+**Target:** `plugins/nexus/skills/release-plugin/SKILL.md` (a "new plugin" sub-section) and/or the
+create-implementation-plan skill's ship-wiring checklist.
+**Change:** Codify a **new-stack-plugin ship checklist** so it stops being rediscovered per adapter:
+(1) `bump-plugin.mjs` over-bumps the new plugin — after applying, revert its `version` to the authored
+`0.1.0` and restore its CHANGELOG (only the pre-existing plugin takes the real bump); (2) gen-omni needs
+BOTH the `mirrorDir` AND the `wantPlugins` marketplace entry; (3) `gen-omni.test.mjs` needs BOTH the
+`before()` SKILL.md seed AND the expected-plugins `deepEqual` extension; (4) shipped toolchain assets
+reference the SKILL.md, not dev-repo paths. Treat items 2–3 as one four-part unit.
+**Evidence:** [adhoc-MineVerifyCppAdapter (needed fixup commits `3d14501`/`3e6cafe` for the
+gen-omni.test.mjs seed+deepEqual), adhoc-MineVerifyPhpAdapter (bump over-bump corrected + both gen-omni
+sites + test seed/deepEqual)]. Two occurrences — meets the promotion threshold.
+**Priority:** high
 
 ## Reviewer Lessons
 
@@ -164,3 +215,23 @@ mutant. Watch for recurrence on a Node/Python adapter before promoting.)
   property that motivated the finding in the first place — checking both that the assertion exists AND
   that its value is mathematically inevitable given the gate logic is what makes a re-review a
   verification rather than a checklist tick.
+
+- **A shipped SKILL.md's own two mentions of the same artifact are a cheap, high-yield cross-check —
+  don't just check prose against external reports.** The Steps 8-9 code-grounded review found the landed
+  test filename claim (`SKILL.md:128`, "Run artifacts") contradicted the SKILL.md's *own* workspace-layout
+  claim four sections earlier (`:44`, "the Cover agent writes `<Class>HarnessTest.php` here") — an
+  internal self-contradiction that external cross-referencing (`mvc-report.md`, the runner's `COVER_TEST`
+  const) then confirmed was also wrong against the live artifacts. For a long, multi-section skill doc
+  authored across several implementation steps, grep the doc for every mention of the same path/filename
+  pattern and diff them against each other before reaching for the external source — an internal
+  contradiction is often cheaper to spot than a doc-vs-code drift and just as real a finding.
+
+- **A "trivial 4-line pure helper" fix is still a testable behavior change, and disclosing "existing
+  tests stay green" is not the same claim as "the new behavior is tested."** The `classFromSource` fix
+  (mine-verify.workflow.js) was correctly disclosed as a deviation with a specific, true claim — the
+  `.cs` default path still derives to `'BugRatioAnalyzer'`, so no regression. But that claim is about
+  *non*-regression on the OLD default path, not coverage of the NEW derivation path (a custom `src` with
+  no `targetClass`) the fix exists to add. Hand-tracing confirmed the logic was correct, but "confirmed
+  correct by the reviewer's hand-trace" is not the same gate as "covered by the regression suite" — worth
+  distinguishing explicitly in a finding rather than letting a passing hand-trace substitute for a missing
+  test.

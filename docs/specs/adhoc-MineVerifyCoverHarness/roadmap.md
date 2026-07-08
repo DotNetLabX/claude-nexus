@@ -141,3 +141,41 @@ stays deferred until Flutter forces it.
 
 **After Inc 4:** Discover / 3b (graph-scoped multi-class sweep — the structure→behavior seam above), then
 **Flutter Phase 0** (de-risk Dart mutation tooling — BLOCKING), then the Dart adapter. C++ deferred.
+
+## Multi-language adapters — status (2026-07-08)
+
+The multi-language end goal is now **four adapters shipped**: **.NET ✅, Flutter ✅, C++ ✅, PHP ✅**.
+
+**PHP adapter — SHIPPED (`nexus-php` 0.1.0, 2026-07-08).** The fourth stack adapter, graduated from
+`docs/specs/adhoc-MineVerifyPhpAdapter`. Fills the 5 capabilities with **Infection 0.34** (the PHP
+Stryker-equivalent) driving **PHPUnit 12**, **workspace-copy isolation** (copy ONE target slice into a
+self-contained composer workspace — the consuming repo stays pristine), **eris** property tests, and a
+**Docker toolchain** (`php:8.4-cli` + PCOV + composer) run on the **container's native fs**. Like the
+Flutter fork it is a **translation adapter** (not as-is like mull/Stryker): Infection's `json` logger is
+proprietary — a mutant's status is the top-level group ARRAY it sits in, no per-mutant `status` field — so
+the runner translates the group arrays into the gate's Stryker schema via the probe-observed status map.
+
+- **Verdicts (both live runs on `fmcg_platform`, honest — the gate refused to fake-green both):**
+  - `CalculateReferencePeriodAction` (pure Carbon date logic): **89% reachable kill** (51/57), `char_pin`
+    0 — **REFUSED honestly on a GENUINE production bug** (`isFullWeek` dead code: Carbon 3 `diffInDays()`
+    returns float, the strict `=== 6` predicate is permanently false → the full-week branch never runs).
+    The Cover agent pinned the bug via reflection and tagged it `#[Group('known-bug')]` rather than
+    delete the failing test. A sub-floor/refused run that mechanically worked is a valid outcome (the cpp
+    precedent).
+  - `SelectStratifiedSampleAction` (largest-remainder quota allocation + injected RNG, the de-hardcoding
+    target): **88% reachable kill** (152/173), its own 42-method suite green (93/93, 657 assertions with
+    `--exclude-group known-bug`). Formal refusal was **cross-suite contamination** (run #1's known-bug pin
+    shares the workspace `tests/` dir), not this class. **Zero PHP-adapter prompt edits between the two
+    runs** — the unlike-target de-hardcoding proof held (grep of the Cover prompt: zero `Carbon` hits).
+- **Cost vs the baselines:** run #2 Cover = 760,940 subagent tokens / 4 agents / ~118 min (the mutation
+  phase dominates: 173 mutants × 94 tests × 2 iterations on container native fs) — the same
+  Docker-bound cost profile as the C++ adapter, well above the host-native .NET runs (BugRatio/CycleTime
+  100%, ReviewInvitation 91% — no container tax). Campaign total (both classes, four workflow runs):
+  ~1.53M subagent tokens. Native-fs execution is **mandatory** — the first probe hit 45/45 false
+  timeouts on the Windows→Linux bind mount (a ~20× autoloader I/O tax); `cp -r /work /native` first.
+- **Named future work:** the **in-repo / Pest-native variant** (run Infection against the consuming
+  repo's own Pest suite instead of the copied workspace) is documented in the shipped SKILL.md but **not
+  built** — it needs Infection + a driver installed into the consuming repo and drags the full (often
+  live-DB) suite through Infection's initial sanity check; adopt only when a repo already ships both and
+  its suite is fast + DB-free. Also deferred: the fact/tier vocabulary mapping for the PHP adapter
+  (PHPUnit `#[Group(…)]` + `--group`/`--exclude-group`), mirroring the still-deferred cpp mapping.

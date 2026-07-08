@@ -18,7 +18,7 @@ The spec arm (`## mine-from-spec mode` below) runs the same Mine→Verify stages
 instead of a class, and documents what the spec *commits to*, not what code does. See `## Input-source
 axis` for how the two relate.
 
-This is the **stack-neutral method**. The toolchain (test runner, mutation tool, test style) comes from a paired **stack adapter** skill — `mine-verify-cover-dotnet` for .NET, `mine-verify-cover-flutter` for Dart/Flutter, `mine-verify-cover-cpp` for C/C++. The method here does not change per language; only the adapter does.
+This is the **stack-neutral method**. The toolchain (test runner, mutation tool, test style) comes from a paired **stack adapter** skill — `mine-verify-cover-dotnet` for .NET, `mine-verify-cover-flutter` for Dart/Flutter, `mine-verify-cover-cpp` for C/C++, `mine-verify-cover-php` for PHP. The method here does not change per language; only the adapter does.
 
 ## The pipeline
 
@@ -300,6 +300,7 @@ unlimited tier flexibility without a fake number; do not re-propose the scalar i
 | `mine-verify-cover-dotnet` | `[Trait("layer",…)]` etc. + `dotnet test --filter` tier expressions; the parked-red idiom (`[Fact(Skip = "SPEC-CODE DIVERGENCE … pending triage")]`) |
 | `mine-verify-cover-flutter` | flutter test `tags:` + `--tags` tier expressions; the parked-red idiom via `skip:` |
 | `mine-verify-cover-cpp` | **deferred** — the fact/tier vocabulary is not yet mapped for the C++ adapter (proposal §B names dotnet+flutter only); a follow-up gives it the same tag mapping |
+| `mine-verify-cover-php` | **deferred** — the fact/tier vocabulary is not yet mapped for the PHP adapter (proposal §B names dotnet+flutter only); a follow-up gives it the same tag mapping (PHPUnit `#[Group(…)]` + `--group`/`--exclude-group`) |
 
 ## The adapter contract (what a stack skill provides)
 
@@ -323,7 +324,7 @@ Pin the `agent()` calls to **Sonnet** (`model: 'sonnet'`) — do **not** inherit
 
 ## What this skill does NOT do
 
-- Provide the toolchain — that is the stack adapter's job (`mine-verify-cover-dotnet` for .NET, `mine-verify-cover-flutter` for Dart/Flutter, `mine-verify-cover-cpp` for C/C++).
+- Provide the toolchain — that is the stack adapter's job (`mine-verify-cover-dotnet` for .NET, `mine-verify-cover-flutter` for Dart/Flutter, `mine-verify-cover-cpp` for C/C++, `mine-verify-cover-php` for PHP).
 - Author NEW rules or judge whether the code is correct — it documents and tests EXISTING behavior (red-on-current tests are flagged as candidate bugs, not fixes).
 - Measure recall/completeness — without a hand-authored golden set, the 3-miner consensus + surviving mutants are the practical completeness signal, not a proof that no rule was missed.
 - Multi-class sweeps, boundary Discover, or graph-scoped targeting — single-class only. Graph-scoped repo evaluation is now the shipped `mine-verify-repo` (the repo-scoped sibling mine, with graphify as its scope engine and a docs/tech-debt triage registry as its output); this skill's single-class stance is unchanged.
@@ -409,6 +410,7 @@ arm's rule set does — and that combination is shipped now, for the scope above
 | `mine-verify-cover-dotnet` | the .NET stack adapter — fills the 5 capabilities (Stryker, dotnet test, xUnit + FsCheck, the test-project scaffold) |
 | `mine-verify-cover-flutter` | the Dart/Flutter stack adapter — fills the 5 capabilities (mutation_test driving flutter test, flutter_test + mocktail, kiri_check, the build_runner + HTTPS-rewrite bringup) |
 | `mine-verify-cover-cpp` | the C/C++ stack adapter — fills the 5 capabilities (mull-15 driving GoogleTest/CTest, libclang, GoogleTest + RapidCheck, the Docker image + exit()-wrap bringup) |
+| `mine-verify-cover-php` | the PHP stack adapter — fills the 5 capabilities (Infection 0.34 driving PHPUnit 12, workspace-copy isolation, eris property tests, the Docker + PCOV native-fs bringup, the Infection-json → Stryker-schema translation) |
 | `mine-verify-repo` | the repo-scoped sibling mine — this skill scans ONE class; that one scans ONE repo (graphify areas + a global structure pass) to find WHERE to refactor. It composes back via **M2**: before an accepted repo-scale refactor executes, run this skill on the affected classes as the behavior-preserving safety net (M1 first if the class is uncovered). |
 | `mine-reference-model` | the reference-repo sibling of the mine family — mines ONE designated reference repo's **virtues** (deliberate pattern choices worth copying) into `docs/reference-model.md`, graded for portability to the consuming stack. It has **no Cover arm**: its gate is skeptic re-execution (the invented-virtue kill), not a mutation gate. |
 | `kb-entry-schema` | the registry's non-row context sections (row grammar lives in `## The rule registry`) |

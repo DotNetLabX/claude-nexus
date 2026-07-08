@@ -268,6 +268,19 @@ test('mine-verify falls back to BugRatio defaults when args absent (null)', asyn
   assert.ok(result?.target?.source.endsWith('BugRatioAnalyzer.cs'), 'null args → BugRatio default src');
 });
 
+// classFromSource derivation (cosmetic-defect fix, adhoc-MineVerifyPhpAdapter Step 8): when `src` is given
+// but `targetClass` is NOT, target.class must derive from the source basename — not the stale
+// 'BugRatioAnalyzer' back-compat default (mvc-report.md incident 2, fixed alongside the PHP adapter ship).
+test('mine-verify derives target.class from args.src basename when targetClass is absent', async () => {
+  const src = readWorkflow(MINE_VERIFY_PATH);
+  const customSrc = 'D:\\custom\\path\\SelectStratifiedSampleAction.php';
+  // src given, targetClass deliberately omitted.
+  const { result } = await runInSandbox(src, _mvFixtures(), { src: customSrc });
+  assert.equal(result?.target?.class, 'SelectStratifiedSampleAction',
+    'no targetClass arg → class derived from the src basename (dir + extension stripped), not the BugRatioAnalyzer default');
+  assert.equal(result?.target?.source, customSrc, 'src is still honored as given');
+});
+
 // Transient-API resilience (surfaced live by the Article run): an API 500 returned null from the verify
 // agents. The old code crashed on `transcribedCheck.failures`; worse, a naive null-guard would have emitted
 // a hollow "verified" result with zero verdicts (fake-verify). The fix halts with `verify-failed` instead.

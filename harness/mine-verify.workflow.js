@@ -48,6 +48,12 @@ const _argsRaw = (typeof args !== 'undefined' && args) ? args : {}
 let _args = {}
 try { _args = typeof _argsRaw === 'string' ? JSON.parse(_argsRaw) : _argsRaw } catch { _args = {} }
 const SRC = _args.src ?? 'D:\\src\\sprint-rituals\\src\\Services\\Fokus\\Fokus.Domain\\Analytics\\BugRatioAnalyzer.cs'
+// Derive the reported class name from the source path's basename (drop dir + extension) when no explicit
+// targetClass arg is given — so a run on any stack reports the real class, not the back-compat 'BugRatioAnalyzer'
+// default (the .cs default path still derives to 'BugRatioAnalyzer'). Pure string op (resume-safe).
+function classFromSource(p) {
+  return (p ?? '').split(/[\\/]/).pop().replace(/\.[^.]+$/, '') || 'UnknownTarget'
+}
 const BATCH_SIZE = 5 // interpretive rules per batched verifier call (design §2: cluster ~5/call).
 // Model for every agent in this workflow. Default Sonnet (cheaper; the mutation/verify gates measure
 // quality, so model choice is validated by the gate, not assumed). Override via _args.model.
@@ -282,7 +288,7 @@ log(
 )
 return {
   variant: 'inc1-batched-sliced',
-  target: { class: _args.targetClass ?? 'BugRatioAnalyzer', source: SRC },
+  target: { class: _args.targetClass ?? classFromSource(SRC), source: SRC },
   consistencyScore: consensus.consistencyScore,
   contradictions: consensus.contradictions,
   counts: {

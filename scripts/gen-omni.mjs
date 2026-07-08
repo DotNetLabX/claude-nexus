@@ -90,10 +90,16 @@ function mirrorDir(src, dst) {
 }
 
 // 1) plugins
-mirrorDir(join(NEXUS, 'plugins', 'nexus'), join(OMNI, 'plugins', 'omni'));
-mirrorDir(join(NEXUS, 'plugins', 'nexus-dotnet'), join(OMNI, 'plugins', 'omni-dotnet'));
-mirrorDir(join(NEXUS, 'plugins', 'nexus-flutter'), join(OMNI, 'plugins', 'omni-flutter'));
-mirrorDir(join(NEXUS, 'plugins', 'nexus-cpp'), join(OMNI, 'plugins', 'omni-cpp'));
+const mirroredPlugins = []; // dst basenames, in mirror order — the success banner derives from this (never hand-listed).
+function mirrorPlugin(srcName, dstName) {
+  mirrorDir(join(NEXUS, 'plugins', srcName), join(OMNI, 'plugins', dstName));
+  mirroredPlugins.push(dstName);
+}
+mirrorPlugin('nexus', 'omni');
+mirrorPlugin('nexus-dotnet', 'omni-dotnet');
+mirrorPlugin('nexus-flutter', 'omni-flutter');
+mirrorPlugin('nexus-cpp', 'omni-cpp');
+mirrorPlugin('nexus-php', 'omni-php');
 assertAbsent(join(OMNI, 'plugins', 'omni-net'));
 
 // 2) scripts: only the command generator (token-swapped). Drop obsolete/source-only scripts.
@@ -110,6 +116,7 @@ const wantPlugins = [
   { name: 'omni-dotnet', source: './plugins/omni-dotnet' },
   { name: 'omni-flutter', source: './plugins/omni-flutter' },
   { name: 'omni-cpp', source: './plugins/omni-cpp' },
+  { name: 'omni-php', source: './plugins/omni-php' },
 ];
 if (CHECK) {
   if (JSON.stringify(mp.plugins) !== JSON.stringify(wantPlugins))
@@ -151,6 +158,6 @@ if (CHECK) {
   process.exit(0);
 }
 console.log('=== omni regenerated from nexus ===');
-console.log('  plugins: omni, omni-dotnet   (omni-net removed)');
+console.log(`  plugins: ${mirroredPlugins.join(', ')}   (omni-net removed)`);
 console.log('  preserved: omni/LICENSE, marketplace name/owner');
 console.log('  verify: node scripts/gen-omni.mjs --check');

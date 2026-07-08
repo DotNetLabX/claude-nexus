@@ -23,6 +23,10 @@
     {
       "name": "nexus-cpp",
       "source": "./plugins/nexus-cpp"
+    },
+    {
+      "name": "nexus-php",
+      "source": "./plugins/nexus-php"
     }
   ]
 }
