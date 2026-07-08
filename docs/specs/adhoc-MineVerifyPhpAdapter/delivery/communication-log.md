@@ -77,6 +77,8 @@
 | 58 | team-lead → developer | fix-pass | Merged outcome APPROVED/GO; 4 non-blocking findings (no overlap) + optional F5 (OQ resolved: include eris one-liner) routed to developer; gates re-run + twin re-sync required; still uncommitted | — |
 | 59 | developer → team-lead | fix-pass | 5/5 fixed: SKILL:128 filename; classFromSource guard test (suite 489→490); reproducible skill-lint command; gen-omni banner now derived (mirrorPlugin helper); eris one-liner baked. Re-verified: 490/490, validate ×2, twin regenerated + in sync. All uncommitted | — |
 | 60 | team-lead | shutdown | summary.md written; ship commit (nexus) + mirrored omni twin commit = team-lead-owned closure. fmcg side complete (37b8a90f6, not pushed). Lessons question → user | — |
+| 61 | user → team-lead | closure | "merge in main and push" (nexus) | — |
+| 62 | team-lead → git(nexus) | closure | main fast-forwarded a86e842→32a392f, pushed to origin (github.com/DotNetLabX/claude-nexus). No release tag (repo convention: releases 1.20–1.25.0 untagged). Feature branch left in place | — |
 
 ## Runtime / Plugin Issues Log
 
