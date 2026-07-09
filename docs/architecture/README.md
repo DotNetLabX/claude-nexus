@@ -68,6 +68,8 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-50 — mine-reference-model is the fourth mine: unit = one reference repo, output = a portability-graded virtues registry consumed at C5 triage *(Accepted — adhoc-MineReferenceModel, 2026-07-05)*
 - ADR-51 — nexus-dotnet skills are pattern-first and exemplar-cited: teach the pattern, cite the reference app as the worked example *(PROPOSED — owner ratifies)*
 - ADR-52 — The consumer-repo grounding contract: three thin indexes + a script-synced KB copy ground every agent session *(Accepted — adhoc-AgentGrounding, 2026-07-09)*
+- ADR-53 — The Conformance Reviewer: a corpus-grounded advisory lens outside the pipeline; cite-or-drop; never correctness, never the deterministic tier, never a gate *(Accepted — adhoc-ConformanceReviewer, 2026-07-09)*
+- ADR-54 — Precision-first runtime: rules-grounded generation + fail-closed skeptic filter + capped advisory output, gated by human-graded calibration before any live PR *(Accepted — adhoc-ConformanceReviewer, 2026-07-09)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -880,7 +882,7 @@ The altitude rule (research §2a, "same thinking at two altitudes, one authorita
 
 **Why.** Reuse over rebuild — the reviewer already emits severity-rated `file:line` findings, so *projecting* them is one coherent review with no reconciliation; a second reviewer is the *opt-in*, not the default. "AI first, human curates" keeps the human in control of the one-way action (merge). Attended-only + fail-closed unattended honors ADR-18/20/32; the team-lead is the existing owner of outward actions.
 
-**Tradeoffs.** MEDIUM/LOW review.md findings may lack `file:line` and post in the body, not inline (inline is the opt-in independent pass's job). `gh` is not blocked by hardened mode, so the hardened deferral is prose-level in v1 (a hook block is roadmap).
+**Tradeoffs.** MEDIUM/LOW review.md findings may lack `file:line` and post in the body, not inline (inline is the opt-in independent pass's job). `gh` is not blocked by hardened mode, so the hardened deferral is prose-level in v1 (a hook block is roadmap). → **Delivery-mechanics pointer (ADR-53/54, `adhoc-ConformanceReviewer`):** the hunk-level inline-comment posting (`gh api …/reviews`, `@@`-hunk parsing, the out-of-hunk-422 fallback ladder) that this ADR left as roadmap for the opt-in independent pass is absorbed and realized by the Conformance Reviewer — a separate advisory lens on the same PR tail, not a change to this projection.
 
 **Rejected.** *A second on-PR reviewer as default* — reconciliation cost; fresh eyes is the opt-in. *Auto-merge* (even unattended-flagged) — a one-way action unwatched is the OMC/ADR-32 failure mode. *A custom curation UI* — GitHub's native dismiss/resolve/approve already is the curation surface.
 
@@ -1303,6 +1305,38 @@ reference repo* — measures pain, not judgment.
 **Tradeoffs.** Thin indexes are one more artifact to maintain per repo (mitigated: they are indexes, cheap to refresh, and agents flag their absence). A script-synced copy can still lag between syncs — tracked-and-diffable, not fresh-by-construction. The once-per-session surfacing adds a small prompt obligation to every agent session in non-compliant repos — the intended pressure, kept to one note.
 
 **Rejected.** *Baking grounding into each consumer repo's CLAUDE.md* — duplicates per repo and drifts; the plugin owns the navigation rules. *Gateway-only KB access* — agents go blind when the MCP is absent, and the gateway indexes only the docs hub today. *A plugin-owned embedding/KG memory layer* — the gateway already provides runtime memory; file-based registries and KB stay the reviewable source of truth; corpus size keeps grep competitive. *A standalone always-on rule file for the contract* — a per-session context cost (ADR-25) for what fits as one section of the existing navigation rule.
+
+---
+
+## ADR-53 — The Conformance Reviewer: a corpus-grounded advisory lens outside the pipeline; cite-or-drop; never correctness, never the deterministic tier, never a gate — Accepted
+
+> **Status: Accepted — adhoc-ConformanceReviewer, owner-ratified 2026-07-09.** Extracted (not re-authored) from the tech-spec (`docs/specs/adhoc-ConformanceReviewer/definition/tech-spec.md`, Layer A + "ADRs to extract") per ADR-27/28 at Ready. Register re-checked immediately before extraction — highest was ADR-52; 53/54 free, no renumber. Supersedes the parked `adhoc-PRReviewTailV2` drafts' delivery mechanics (see ADR-35 tradeoff pointer).
+
+**Context.** The pipeline's review estate saturates correctness (reviewer, Codex, tests) but produces the conceptual lens — patterns, principles, conventions, semantic naming — only incidentally (10–20% of findings, internal evidence). That lens is what the human PR reviewer actually does; it was the only unautomated review in the flow. Independent evidence (c-CRAB) shows review agents systematically under-cover exactly these repo-specific categories, and the recommended remedy is documented conventions — the artifact estate this plugin already maintains.
+
+**Decision.** A **Conformance Reviewer** — shipped as the `conformance-review` skill, invoked at the PR tail (team-lead-owned, attended, opt-in via `prConformance`) and standalone — that reviews the **diff against the repo's own corpus** (`docs/conventions/`, `docs/architecture/` + graph facts, `docs/reference-model.md`, `docs/tech-debt/`, shipped skill patterns). **Cite-or-drop:** every finding must cite the corpus source it enforces; no corpus → the skill declines to run. **Charter exclusions are permanent:** correctness (the pipeline owns it), the deterministic tier (linters/Sonar territory per the T3 boundary — whoever owns it per-project), git-history metrics. **Advisory forever:** COMMENT events only, no gate, no merge authority; the human curates and merges. It lives outside the pipeline roles — it can never become a fourth gate.
+
+**Why.** Owner decision (build over buy — maintenance parity, 2026-07-09); the defensible value is the maintained grounding corpus, which commercial tools can ingest but not keep true; the cite-or-drop rule is what structurally separates "our conventions" from generic-taste noise; the charter exclusions prevent re-reviewing saturated or mechanically-owned ground.
+
+**Tradeoffs.** In corpus-poor consuming repos the reviewer is unavailable until conventions exist — accepted: that is the honest signal to write them (c-CRAB's own recommendation). The conceptual lens's density on product code is unmeasured (internal evidence is plugin-repo-shaped) — calibration (ADR-54) is the control. The inline-posting recipe (`gh api …/reviews`) lives in the skill under the ADR-36 `post-review` op — a third recipe locus beyond the rule and the team-lead subsection; the 4-op seam itself is unchanged (recorded so a future non-GitHub adapter author knows where to look).
+
+**Rejected.** *Adopt a commercial reviewer fed our docs* — unmeasured, non-deterministic adherence; truncation limits; noise profiles; consumes a fraction of the corpus. *A fourth correctness pass at the PR* — the saturated lens; explicitly the owner's anti-goal. *Generic quality review without citations* — the measured <10%-precision failure mode.
+
+---
+
+## ADR-54 — Precision-first runtime: rules-grounded generation + fail-closed skeptic filter + capped advisory output, gated by human-graded calibration before any live PR — Accepted
+
+> **Status: Accepted — adhoc-ConformanceReviewer, owner-ratified 2026-07-09.** Extracted (not re-authored) from the tech-spec (`docs/specs/adhoc-ConformanceReviewer/definition/tech-spec.md`, Layer B/C + "ADRs to extract") per ADR-27/28 at Ready.
+
+**Context.** Ground-truthed benchmarks put most AI PR reviewers under 10% precision; the only production-scale counterexample (BitsAI-CR, 75% precision) pairs rule-taxonomy-grounded generation with a fail-closed second-stage filter. Context ablations show more repo context degrades review models; volume correlates with lower relevance and slower PRs.
+
+**Decision.** The Conformance Reviewer runs **two stages**: Stage 1 generates candidates from the **diff + targeted corpus facts** (never whole-file context); Stage 2, a fresh-context skeptic, refutes each candidate (citation validity + diff reading) and kills what it cannot confirm. Survivors post **capped** (default 5) and confidence-labeled. **Calibration-before-live:** the skill replays repo history into a graded calibration report, and PR posting is locked until the owner records a pass verdict — the precision bar is the owner's, set at grading time. Helper-model work runs on the configured sonnet-class tier.
+
+**Why.** Each element carries independent measured evidence: two-stage (BitsAI-CR), diff+facts (SWE-PRBench ablation; LLM4FPM), cap (MSR volume↔relevance), calibration on own history (vendor benchmarks demonstrated unreliable). The shape is the in-house mine→verify pattern applied to a diff — no new machinery species.
+
+**Tradeoffs.** Two stages double per-review cost — accepted; precision is the deployment bottleneck, not cost. Calibration delays first live use by one grading session — accepted; an ungraded reviewer posting noise to a real PR is the failure mode this ADR exists to prevent.
+
+**Rejected.** *Single-pass review* (the <10%-precision baseline). *Whole-repo RAG/context* (measurably degrades). *A fixed precision threshold in the spec* (the bar is repo- and owner-relative; inventing a number here would be false precision).
 
 ---
 

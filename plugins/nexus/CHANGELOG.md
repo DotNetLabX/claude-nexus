@@ -1,6 +1,23 @@
 # nexus — Changelog
 
 
+## [1.26.0] — 2026-07-09
+- **The Conformance Reviewer — a corpus-grounded advisory lens for the PR tail (adhoc-ConformanceReviewer,
+  ADR-53/54).** New opt-in capability: reviews a diff against the repo's **own corpus** (conventions,
+  architecture + graph facts, reference-model, tech-debt, shipped skill patterns) — the *conceptual* lens
+  (patterns, principles, naming, conventions), **never** correctness and **never** the deterministic
+  linter tier.
+  - **New skill `conformance-review`** — charter (six checks + permanent exclusions + cite-or-drop + the
+    No-corpus-no-review decline + advisory-forever `COMMENT` posture); a precision-first **two-stage
+    runtime** (grounded generation, then a fail-closed skeptic filter, capped at `prConformanceCap`,
+    sonnet-class helpers); a **calibration mode** gated by a human-graded `## Owner verdict: PASS` marker
+    before any live PR posting; PR + standalone delivery recipes (`/nexus:conformance-review`).
+  - **Team-lead Pre-Flight 4b** gains two optional `.claude/nexus-agents.json` keys: `prConformance`
+    (bool, default `false`) and `prConformanceCap` (int, default `5`), captured in the existing one read.
+  - **Team-lead PR Tail** gains an opt-in conformance step after the projection posts — attended-only,
+    host-gated, advisory, respecting the skill's calibration gate. Defaults preserve today's behavior
+    exactly (both keys off → no change to any pre-push or tail path).
+
 ## [1.25.3] — 2026-07-09
 - **Registry consumers wired: guardrail rebase, review rider, discoverability, and the grounding
   contract (adhoc-AgentGrounding).** The three agent guardrail hooks (`solo.md`, `developer.md`,
