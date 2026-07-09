@@ -2,6 +2,17 @@
 
 All notable changes to the `nexus-cpp` plugin.
 
+## [0.1.5] — 2026-07-09
+- **C++ graph-extraction recipe: clang-uml + Joern fallback (adhoc-AgentGrounding).**
+  `mine-verify-cover-cpp/SKILL.md` gains a self-contained graph-extraction section beside `## Picking
+  a target`: **clang-uml** as the extraction layer feeding `graphify-out/GRAPH_REPORT.md`
+  (`compile_commands.json` via Ninja, GraphML + JSON model output, context-radius and path/regex
+  filters that exclude god nodes at extraction time); **CodeQL** flagged licence-barred for private
+  repos; **Joern** as the zero-build fallback when no compilation database can be produced. The SDK
+  research entry (`docs/kb/research/cpp-code-graph-tooling.md`, omnivision repo) is cited as
+  provenance only.
+  - skill change (mine-verify-cover-cpp)
+
 ## [0.1.4] — 2026-07-04
 
 - **Registry artifact contract: ledger emission moves to `docs/business-rules/<area>/<unit>.md`.** Per

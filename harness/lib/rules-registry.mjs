@@ -1,7 +1,7 @@
 // rules-registry.mjs — the M1/M3 registry writer lib (adhoc-SddMergeGen, Step 2).
 //
-// Writes/updates the per-repo canonical rule registry (SddLifecycle C1; OD-L5 default path
-// `docs/kb/golden/{Class}.md`) from Step 1's triage output (merge-rules.mjs). Binding invariants
+// Writes/updates the per-repo canonical rule registry (SddLifecycle C1; Contract R1 default path
+// `docs/business-rules/<area>/<unit>.md`) from Step 1's triage output (merge-rules.mjs). Binding invariants
 // (borrowed from omnishelf kb-sync's registry machinery, cited in the proposal §C):
 //   - every row carries `source:` provenance and `lastVerified`
 //   - existing rows are NEVER deleted — disposition flips to retire/supersede, the record is kept
@@ -155,8 +155,8 @@ export function updateRegistry({ existingRows = [], existingChangelog = [], tria
 }
 
 /**
- * Render the registry rows + changelog as the C1 markdown shape (OD-L5 default path
- * `docs/kb/golden/{Class}.md`). A pure string builder — the caller writes the result to disk.
+ * Render the registry rows + changelog as the C1 markdown shape (Contract R1 default path
+ * `docs/business-rules/<area>/<unit>.md`). A pure string builder — the caller writes the result to disk.
  *
  * @param {{className:string, rows:Array<object>, changelog:Array<string>}} opts
  * @returns {string}

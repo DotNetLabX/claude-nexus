@@ -63,7 +63,7 @@ When working directly with the user (e.g., `be developer`), run both phases in s
 
 Before writing any code, **read `docs/conventions/coding-conventions.md` if it exists**, then read every file it lists. These are binding project standards — follow them like plan steps. If the project defines no such file, proceed without it. (A stack extension plugin may ship these convention files for the project to place under `docs/conventions/`.)
 
-**Attestation drift check (pre-implementation).** When the class you are about to touch has an **attested golden set** (the class's registry at `docs/business-rules/<area>/<unit>.md`), **update the affected tests in the same pass**, or flag an **M3 re-mine**. Forward conditional — no C2 attestation records exist in this codebase yet; this rule activates the day the first one ships (`docs/specs/adhoc-SddLifecycle/definition/tech-spec.md`).
+**Registry guardrail (pre/post-edit).** When the unit you are about to touch **has a registry at `docs/business-rules/<area>/<unit>.md`**, read it before editing — its rows are the load-bearing behaviors. After the edit, run a **scoped skeptic re-verify** of the touched rules: spawn a read-only `general-purpose` verifier over the edited source vs the touched rows (if subagent spawn is unavailable, do the re-check in-context and disclose it in implementation.md); semantic drift is flagged and fixed or escalated — never silently absorbed, never a full re-mine. **Update the affected tests in the same pass**, or flag an **M3 re-mine**. (C2 attestation records remain a future SddLifecycle arc; when they ship, attestation joins this trigger.)
 
 ## Skill Authority — Skill-First Implementation
 

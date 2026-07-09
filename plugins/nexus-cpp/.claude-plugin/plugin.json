@@ -1,6 +1,6 @@
 {
   "name": "nexus-cpp",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Nexus C/C++ (thin) — a stack extension for the `nexus` core pipeline. Ships the C/C++ adapter for the mine-verify-cover method: mull (the C++ Stryker-equivalent) driving GoogleTest/CTest inside a Docker toolchain (clang-15 + mull-15 + GoogleTest + libclang), the exit()-wrap neutralization, header-only template mutation, and the equivalent-mutant filter. Reuses nexus's agents, rules, commands, and security guard — install ALONGSIDE nexus, not instead of it.",
   "author": {
     "name": "ldumit"

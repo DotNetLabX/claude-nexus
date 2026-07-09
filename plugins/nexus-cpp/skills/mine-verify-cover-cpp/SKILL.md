@@ -132,6 +132,18 @@ the two modes must never read each other's output during a run.
 
 The kill-rate ceiling is the **target's observable surface**, not the harness. Same adapter: Hungarian (output in an opaque `int**`, `exit()` guards, lots of internal bookkeeping) capped at **64%**; Levenshtein (pure input→`int`/op-list return) hit **96%**. **Choose a slice whose rules are observable through its public return value(s)** — a dependency-isolated slice proves the toolchain but is not automatically a good kill-rate target. `index_slice.py` + the mined KB's `[OBS]`/`[INT]` tags tell you which rules are observable.
 
+## Graph extraction — clang-uml (feeds `graphify-out/GRAPH_REPORT.md`)
+
+Generate the structural graph that `graphify-out/GRAPH_REPORT.md` and target-picking above consume, using **clang-uml**:
+
+- **Prerequisite:** `compile_commands.json`, generated via a Ninja build (`cmake -G Ninja ... && ninja`) — clang-uml reads the compilation database to resolve includes/templates correctly.
+- **Output:** GraphML + JSON model — the JSON model is what `graphify-out` consumes; GraphML is for visual inspection.
+- **Filter at extraction time, not after:** use clang-uml's context-radius and path/regex include/exclude filters to exclude god nodes (framework base classes, STL/Boost internals) from the graph BEFORE it's generated — filtering post-hoc on an already-bloated graph wastes the extraction pass.
+- **CodeQL is licence-barred** for private repos — do not reach for it here.
+- **Joern** is the zero-build fallback when a `compile_commands.json` can't be produced (no working build, exotic build system) — it parses source directly, no compilation database required, at some precision cost vs clang-uml's semantic resolution.
+
+Provenance only (not the resolver): `docs/kb/research/cpp-code-graph-tooling.md` (omnivision repo).
+
 ## Cost / scaling note
 
 mull embeds all mutants in ONE compiled binary, then runs them in-process — **far cheaper than per-mutation rebuilds**: ~300 mutants run in one in-process pass, no per-mutant rebuild. The cost is the LLM Cover loop, not the engine. For an exploratory first run on a new slice, cap `maxIterations` low (1–2) to get the kill signal cheaply before committing to the full feedback loop.

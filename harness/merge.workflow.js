@@ -488,8 +488,12 @@ const TARGET_CLASS = _args.targetClass ?? 'BugRatioAnalyzer'
 const SPEC_RULES_PATH = _args.specRulesPath ?? `${NEXUS}\\docs\\specs\\adhoc-SddCoverageLoop\\delivery\\spec-rules-bugratio.md`
 const CODE_ARM_KB_PATH = _args.codeArmKbPath ?? `${SR}\\docs\\kb\\bug-ratio.md`
 
-// The registry lives in the CONSUMING repo beside its KB (OD-L5 default path).
-const REGISTRY_PATH = _args.registryPath ?? `${SR}\\docs\\kb\\golden\\${TARGET_CLASS}.md`
+// The registry lives in the CONSUMING repo beside its KB (Contract R1 default path:
+// docs/business-rules/<area>/<unit>.md — <area> omitted in single-area repos via _args.area).
+const AREA = _args.area ?? undefined
+const REGISTRY_PATH = _args.registryPath ?? (AREA
+  ? `${SR}\\docs\\business-rules\\${AREA}\\${TARGET_CLASS}.md`
+  : `${SR}\\docs\\business-rules\\${TARGET_CLASS}.md`)
 
 // The hot-layer distillate is written as a STANDALONE reviewable artifact (nexus-side, git-ignored) by
 // default — NOT auto-spliced into the consuming repo's docs/kb/index.md. Splicing a generated block into

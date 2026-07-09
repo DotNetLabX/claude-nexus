@@ -1,6 +1,23 @@
 # nexus — Changelog
 
 
+## [1.25.3] — 2026-07-09
+- **Registry consumers wired: guardrail rebase, review rider, discoverability, and the grounding
+  contract (adhoc-AgentGrounding).** The three agent guardrail hooks (`solo.md`, `developer.md`,
+  `architect.md`) — previously inert on the old C2-conditional trigger — now rebase onto the live
+  registry at `docs/business-rules/<area>/<unit>.md`: pre-edit registry read, post-edit scoped skeptic
+  re-verify (read-only `general-purpose` verifier, in-context fallback disclosed), test-update-or-M3-
+  re-mine obligation retained. `reviewer.md` gains a rule-aware review rider: a registry check in
+  `## Before Reviewing` and a rule-diff rider in `## Review Dimensions` that names the specific rule a
+  change flips. `kb-navigation.md`/`kb-maintenance.md` make the registry species discoverable — a new
+  navigation layer plus a species-boundary note (never hand-edit a registry). New `## Repo Grounding
+  Contract` section in `kb-navigation.md` (ADR-52): the three thin indexes + a tracked, script-synced
+  KB copy a consumer repo needs for instant agent grounding, with the knowledge-gateway MCP clause
+  marked conditional. Commands regenerated to match.
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (injected every session)
+
 ## [1.25.2] — 2026-07-08
 - **`mine-verify-cover` Merge doc honesty (sprint-rituals feedback `nexus-1.21.0-2026-07-04.md`, item 2
   doc half).** Rewrote the **Merge** paragraph to drop the inaccurate "Content-keyed, granularity-tolerant

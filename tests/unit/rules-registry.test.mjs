@@ -1,7 +1,7 @@
 // rules-registry.test.mjs — the M1/M3 registry writer lib (adhoc-SddMergeGen, Step 2).
 //
-// Writes/updates the per-repo canonical rule registry (SddLifecycle C1, OD-L5 default path
-// docs/kb/golden/{Class}.md) from Step 1's triage output. Binding invariants (borrowed from omnishelf
+// Writes/updates the per-repo canonical rule registry (SddLifecycle C1, Contract R1 default path
+// docs/business-rules/<area>/<unit>.md) from Step 1's triage output. Binding invariants (borrowed from omnishelf
 // kb-sync, cited in the proposal): every row carries `source:` provenance and `last_verified`; existing
 // rows are NEVER deleted — disposition flips to retire/supersede with the record kept; every write
 // appends a changelog entry; a re-run against an unchanged input pair is idempotent (no diff).
@@ -126,7 +126,7 @@ test('updateRegistry: M3 supersede — rule persists in both arms but the bucket
 });
 
 // =================================================================================================
-// Slice 7: renderRegistry produces the C1 markdown shape (OD-L5 default path docs/kb/golden/{Class}.md)
+// Slice 7: renderRegistry produces the C1 markdown shape (Contract R1 default path docs/business-rules/<area>/<unit>.md)
 // with source:/last_verified columns and an append-only changelog section.
 // =================================================================================================
 test('renderRegistry: renders a markdown table with source/last_verified columns + a changelog section', () => {

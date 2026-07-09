@@ -11,6 +11,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { distillRegistry, lintTokenBudget, DEFAULT_TOKEN_CEILING } from '../../harness/lib/kb-distill.mjs';
+// NOTE (adhoc-AgentGrounding, Step 7): fixture ledger paths below use the Contract R1 default path
+// (docs/business-rules/<unit>.md, single-area form) — re-pointed from the retired docs/kb/golden/ path.
 
 // =================================================================================================
 // Slice 1: one row per cluster (same symbol + layer) with a resolving pointer back to the ledger.
@@ -21,11 +23,11 @@ test('distillRegistry: clusters rows by symbol+layer into ONE hot-layer row with
     { canonicalName: 'BugRatioPercentBoundary', layer: 'domain-calc', disposition: 'carried', symbol: 'BugRatioAnalyzer.ComputeMultiSprint' },
     { canonicalName: 'AlertActiveFlag', layer: 'domain-calc', disposition: 'add', symbol: 'BugRatioAnalyzer.ComputeSingleSprint' },
   ];
-  const { hotRows } = distillRegistry({ className: 'BugRatioAnalyzer', rows, ledgerPath: 'docs/kb/golden/BugRatioAnalyzer.md' });
+  const { hotRows } = distillRegistry({ className: 'BugRatioAnalyzer', rows, ledgerPath: 'docs/business-rules/BugRatioAnalyzer.md' });
   // Two clusters: (BugRatioAnalyzer.ComputeMultiSprint, domain-calc) and (BugRatioAnalyzer.ComputeSingleSprint, domain-calc).
   assert.equal(hotRows.length, 2, 'two distinct symbol+layer clusters → two hot rows, not three');
   for (const row of hotRows) {
-    assert.equal(row.pointer, 'docs/kb/golden/BugRatioAnalyzer.md', 'every hot row resolves back to the cold-layer ledger');
+    assert.equal(row.pointer, 'docs/business-rules/BugRatioAnalyzer.md', 'every hot row resolves back to the cold-layer ledger');
   }
 });
 
@@ -33,7 +35,7 @@ test('distillRegistry: a hot row is a ONE-LINE summary — never carries the ful
   const rows = [
     { canonicalName: 'BugRatioPercent', layer: 'domain-calc', disposition: 'add', symbol: 'BugRatioAnalyzer.ComputeMultiSprint', statement: 'A long multi-line rule statement text that must never leak into the hot layer.\nSecond line of the rule body.' },
   ];
-  const { hotRows } = distillRegistry({ className: 'BugRatioAnalyzer', rows, ledgerPath: 'docs/kb/golden/BugRatioAnalyzer.md' });
+  const { hotRows } = distillRegistry({ className: 'BugRatioAnalyzer', rows, ledgerPath: 'docs/business-rules/BugRatioAnalyzer.md' });
   assert.equal(hotRows.length, 1);
   assert.equal(hotRows[0].line.includes('\n'), false, 'the rendered hot-layer line is single-line');
   assert.ok(!hotRows[0].line.includes('Second line of the rule body'), 'the full multi-line statement never appears in the hot-layer line');
@@ -52,7 +54,7 @@ test('distillRegistry: symbol-less rows collapse to ONE cluster per layer (item 
     for (let i = 0; i < n; i++) rows.push({ canonicalName: `${layer}-BR-${i}`, layer, disposition: 'add' });
   }
   assert.equal(rows.length, 41);
-  const { hotRows } = distillRegistry({ className: 'X', rows, ledgerPath: 'docs/kb/golden/X.md' });
+  const { hotRows } = distillRegistry({ className: 'X', rows, ledgerPath: 'docs/business-rules/X.md' });
   assert.equal(hotRows.length, 3, 'one hot row per LAYER when no symbol is present — not 41 degenerate one-rule clusters');
   const byLayer = Object.fromEntries(hotRows.map((r) => [r.layer, r.ruleCount]));
   assert.equal(byLayer['domain-calc'], 20);
@@ -65,11 +67,11 @@ test('distillRegistry: a symbol-less cluster renders a LAYER-only line — no ca
     { canonicalName: 'FirstRuleName', layer: 'domain-calc', disposition: 'add' },
     { canonicalName: 'SecondRuleName', layer: 'domain-calc', disposition: 'add' },
   ];
-  const { hotRows } = distillRegistry({ className: 'X', rows, ledgerPath: 'docs/kb/golden/X.md' });
+  const { hotRows } = distillRegistry({ className: 'X', rows, ledgerPath: 'docs/business-rules/X.md' });
   assert.equal(hotRows.length, 1);
   const line = hotRows[0].line;
   assert.ok(!line.includes('FirstRuleName') && !line.includes('SecondRuleName'), 'no canonicalName leaks as a pseudo-symbol cluster label');
-  assert.match(line, /^- \[domain-calc\]: 2 rules — see docs\/kb\/golden\/X\.md$/, 'symbol-less line is layer-only');
+  assert.match(line, /^- \[domain-calc\]: 2 rules — see docs\/business-rules\/X\.md$/, 'symbol-less line is layer-only');
   assert.equal(line.includes('\n'), false, 'still one line');
 });
 
@@ -103,7 +105,7 @@ test('distillRegistry: the rendered distillate text contains NO multi-line rule 
   const rows = [
     { canonicalName: 'DefaultSpPerBug', layer: 'settings', disposition: 'add', symbol: 'SprintSettings.SpPerBug', statement: 'Line one of a long rule body.\nLine two.\nLine three with embedded detail that must not leak.' },
   ];
-  const { renderedDistillate } = distillRegistry({ className: 'SprintSettings', rows, ledgerPath: 'docs/kb/golden/SprintSettings.md' });
+  const { renderedDistillate } = distillRegistry({ className: 'SprintSettings', rows, ledgerPath: 'docs/business-rules/SprintSettings.md' });
   assert.ok(!renderedDistillate.includes('Line two.'), 'no multi-line rule body content leaks into the rendered distillate');
   assert.ok(!renderedDistillate.includes('embedded detail'), 'no multi-line rule body content leaks into the rendered distillate');
 });

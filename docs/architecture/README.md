@@ -67,6 +67,7 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-49 — Tech-debt triage registries are their own species: `docs/tech-debt/<area>.md`, ADR-43/45 invariants carried, refresh keeps them current *(Accepted — adhoc-MineVerifyRepo, 2026-07-04)*
 - ADR-50 — mine-reference-model is the fourth mine: unit = one reference repo, output = a portability-graded virtues registry consumed at C5 triage *(Accepted — adhoc-MineReferenceModel, 2026-07-05)*
 - ADR-51 — nexus-dotnet skills are pattern-first and exemplar-cited: teach the pattern, cite the reference app as the worked example *(PROPOSED — owner ratifies)*
+- ADR-52 — The consumer-repo grounding contract: three thin indexes + a script-synced KB copy ground every agent session *(Accepted — adhoc-AgentGrounding, 2026-07-09)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -1286,6 +1287,22 @@ reference repo* — measures pain, not judgment.
 **Tradeoffs.** The case-insensitive `article` description grep is only a **smoke test**, not the rule — a skill can be repo-exact without the literal token (service names, `UserRoleType`), and can legitimately name the reference app inside an exemplar clause. The binding gate is the register rule (repo vocabulary only inside a named-exemplar clause), which is a judgment check, not a deterministic one; it rides the `evaluate-skill` rubric's Layer-1 register review rather than a lint.
 
 **Rejected.** *Keeping project-local skills as the estate* — they are a mining instrument, never an end state (D2); they drift behind every plugin release. *Renaming the two already-replaced skills to drop domain flavor* — names are stable public surface; the register lives in the description and body, not the folder name. *A deterministic `article`-token lint as the gate* — both stricter and weaker than the rule (false-flags a named exemplar clause, misses `UserRoleType`/service-name framing); demoted to a smoke test.
+
+---
+
+## ADR-52 — The consumer-repo grounding contract: three thin indexes + a script-synced KB copy ground every agent session — ACCEPTED
+
+> **Status: Accepted — adhoc-AgentGrounding, owner-ratified 2026-07-09.** Extracts the consumer-repo grounding-contract decision from `docs/proposals/agent-grounding-memory-wiring.md` (Ratified 2026-07-09, Resolutions 3–4); implementation vehicle: the `adhoc-AgentGrounding` slice (`docs/specs/adhoc-AgentGrounding/definition/tech-spec.md`).
+
+**Context.** Nexus agents auto-load a fixed grounding set in every consuming repo — `docs/architecture/index.md` (architect), `docs/conventions/coding-conventions.md` (architect/developer/solo), `docs/product/index.md` (po, architect on-demand), `docs/kb/index.md` (solo + the kb-navigation rule). Consumer repos that lack these files start every session blind: the omnivision SDK has a rich doc estate and none of the three indexes, so each session rediscovers the docs; the estate KB travels to consumer repos as an untracked manual copy — byte-identical the day it's copied, silently stale after. The knowledge-gateway MCP (pgvector+FTS hybrid RAG over the docs hub + meeting notes) exists as a runtime memory but nothing tells agents when a repo can rely on it. (Ratified: `docs/proposals/agent-grounding-memory-wiring.md`, 2026-07-09.)
+
+**Decision.** A consumer repo satisfies the **grounding contract** when it provides: (1) the **three thin indexes** — `docs/architecture/index.md`, `docs/conventions/coding-conventions.md`, `docs/product/index.md` — each an index over the repo's *existing* docs, not a rewrite; and (2) **KB access on both layers** — a **tracked, script-synced copy** of the estate KB (never a manual untracked copy), plus the knowledge-gateway MCP as the runtime layer *once the gateway consultation rule ships* (that rule is spike-gated and not part of this contract's mandate). The shipped surface is a compact `## Repo grounding contract` section in the `kb-navigation` rule: agents surface a missing grounding file **once per session** — note it and offer to create the index — never nagging, never blocking. Scaffolding automation (`ground-repo`) is deliberately deferred; the documented contract alone unblocks consumers.
+
+**Why.** Grounding-at-session-start is the property that makes any estate repo agent-ready without per-repo prompt engineering — the contract names the exact files agents already auto-load, so satisfying it is mechanical and verifiable per repo. A tracked, scripted KB copy makes staleness visible in diffs instead of silent; the gateway clause keeps runtime memory named without coupling the contract to an unproven consumption pattern.
+
+**Tradeoffs.** Thin indexes are one more artifact to maintain per repo (mitigated: they are indexes, cheap to refresh, and agents flag their absence). A script-synced copy can still lag between syncs — tracked-and-diffable, not fresh-by-construction. The once-per-session surfacing adds a small prompt obligation to every agent session in non-compliant repos — the intended pressure, kept to one note.
+
+**Rejected.** *Baking grounding into each consumer repo's CLAUDE.md* — duplicates per repo and drifts; the plugin owns the navigation rules. *Gateway-only KB access* — agents go blind when the MCP is absent, and the gateway indexes only the docs hub today. *A plugin-owned embedding/KG memory layer* — the gateway already provides runtime memory; file-based registries and KB stay the reviewable source of truth; corpus size keeps grep competitive. *A standalone always-on rule file for the contract* — a per-session context cost (ADR-25) for what fits as one section of the existing navigation rule.
 
 ---
 

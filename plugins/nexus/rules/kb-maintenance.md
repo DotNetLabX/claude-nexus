@@ -68,3 +68,7 @@ When the user asks to update the KB for a concept (e.g., "update KB for Xray"):
 5. Apply the "What NOT to Capture" rules — keep it to ~60 lines of what's non-obvious
 
 Any agent can perform this (solo, developer, or the main session directly). No pipeline or plan required.
+
+## Species Boundary — Registries Are Not KB Entries
+
+This file governs `docs/kb/` only. Registries under `docs/business-rules/` are their own species (ADR-45) with their own lifecycle — **never hand-edit** them; changes flow through a re-mine or the post-edit skeptic re-verify. None of this file's update/lint rules apply to them.
