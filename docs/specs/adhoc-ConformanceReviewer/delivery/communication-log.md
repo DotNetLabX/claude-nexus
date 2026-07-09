@@ -1,8 +1,8 @@
 # adhoc-ConformanceReviewer — Communication Log
 
 **Branch:** main
-**Step:** reviewer:review cycle 2/3 (reviewer-only; Codex was round-1 only)
-**Cycle:** 2/3 (round 1: reviewer APPROVED, Codex NO-GO → REQUEST CHANGES; 4 fixes applied, re-review in progress)
+**Step:** done (summary.md written; committed 301d8c0 nexus + 78f40ca omni)
+**Cycle:** 2/3 — CLOSED APPROVED (round 1: reviewer APPROVED + Codex NO-GO → 4 fixes; round 2: reviewer APPROVED)
 **Team Mode:** standard+codex
 **Review Mode:** n/a (plan pre-existing — pipeline enters at developer)
 **Architect / Developer / Reviewer ID:** a547dd4c433e136f3 (Step-1 done check + Graduation done) / aece6d43369c32004 (fix cycle; Phase2 a97bd48a4fd5ffcad; Phase1 a621f816b1b677d4d) / a91fade7316f56bf4 (Step-2 review, cycle 1)
@@ -32,8 +32,12 @@
 | 15 | team-lead → developer | developer:implement | Fresh opus re-spawn, fix-list of 4 (1 HIGH + 3 MEDIUM) + reviewer's advisory LOW. HIGH resolution grounded in spec AC-D.3; escape-to-architect if genuinely ambiguous. | — |
 | 16 | developer → team-lead | developer:implement | All 4 fixes + advisory applied; :397 reconciled to off-by-default (no escalation — AC-D.3 unambiguous); commands regenerated; gates green; no re-bump, no commit. TL verified fixes landed against live source. | — |
 | 17 | team-lead → reviewer | reviewer:review | Resume for cycle-2 re-review (reviewer-only). Summary of 4 fixes + advisory passed; verify each holds + no regression. | — |
+| 18 | reviewer → team-lead | reviewer:review | Cycle 2 APPROVED: all 4 fixes verified against live source + advisory; no new defects; gates green (selfcheck only omni-drift, since cleared). | — |
+| 19 | team-lead (closure) | done | omni-twin synced (selfcheck 5/5 green), summary.md written, committed nexus 301d8c0 + omni 78f40ca. Push + lessons pending user. | — |
 
 ## Runtime / Plugin Issues Log
 
 - **RUNTIME caveat handled (model-does-not-survive-resume):** developer frontmatter model is `sonnet`; a `SendMessage` resume of Phase-1 agent `a621f816b1b677d4d` would have run Phase 2 on sonnet instead of the configured opus. Mitigation: re-spawned a fresh developer on opus with an explicit context handoff (Phase 1 already cleared, implement Steps 1–6). Not a defect — documented platform limitation.
-- **Verify-gate `blocking_failed` at impl checkpoint — investigated, expected, NOT a defect.** `verify-verdict.json` (token `developer:implement`, agent `a97bd48a4fd5ffcad`) = `fail` because `node scripts/selfcheck.mjs` reported `ok:false`. Root cause on inspection: the *only* failing sub-check is `[FAIL] gen-omni --check — omni twin drifted`; all real gates pass (tests lint+unit 0 failing, gen-commands in sync, bump present, spec-diff in sync). The omni drift is the expected post-bump state and is a team-lead/owner-owed closure step (ADR-6 `gen-omni.mjs`), correctly left undone by the developer. Disposition (attended → verdict informs): NOT bounced to developer; omni sync deferred to closure. The developer's self-report claimed gates green without running selfcheck — carried to the reviewer as a note.
+- **Verify-gate `blocking_failed` at impl checkpoint — investigated, expected, NOT a defect.** `verify-verdict.json` (token `developer:implement`, agent `a97bd48a4fd5ffcad`) = `fail` because `node scripts/selfcheck.mjs` reported `ok:false`. Root cause on inspection: the *only* failing sub-check is `[FAIL] gen-omni --check — omni twin drifted`; all real gates pass (tests lint+unit 0 failing, gen-commands in sync, bump present, spec-diff in sync). The omni drift is the expected post-bump state and is a team-lead/owner-owed closure step (ADR-6 `gen-omni.mjs`), correctly left undone by the developer. Disposition (attended → verdict informs): NOT bounced to developer; omni sync deferred to closure. The developer's self-report claimed gates green without running selfcheck — carried to the reviewer as a note. **RESOLVED at closure:** `gen-omni.mjs` run, selfcheck now 5/5 green.
+- **Codex read-only sandbox could not write `review-codex.md`.** Codex ran with `-s read-only` (correct for a review); its GO/NO-GO + findings were recovered from its completion output and persisted to `review-codex.md` by the team lead per the Relay Contract. Not a defect — expected behavior for a read-only cross-check.
+- **Round-1 verdict conflict handled correctly:** nexus reviewer APPROVED vs Codex NO-GO → reconciled finding-by-finding (all 4 Codex findings confirmed against live source), merged to a single REQUEST CHANGES fix-list. Standard+Codex mode earned its keep (caught a HIGH the single pass missed).
