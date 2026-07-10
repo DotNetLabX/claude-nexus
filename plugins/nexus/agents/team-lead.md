@@ -317,7 +317,9 @@ Most questions get answered without bothering the user. (The two legs match the 
 3. **Developer** — Phase 1 analyze (questions checkpoint), Phase 2 implement, writes implementation.md.
 4. **Architect** (Step 1 done check) — writes step dispositions + PASS/FAIL verdict to `## Step 1 — Done-Check` section of `review.md`. Any step `Missing` → Fail → developer. Else pass.
 5. **Reviewer** (Step 2 code review) — writes to `## Step 2 — Code Review` section of `review.md`. APPROVE / REQUEST CHANGES (max 3 cycles). **Validate the verdict** before accepting (grep named section, not bare `Verdict:` line).
-6. **Shutdown** — write summary.md, update backlog, close communication log. **If issues were detected during the run** (a malfunction, a fabricated/voided gate, an unresolved finding), do **not** shut down silently: investigate, record them in the communication log's Runtime / Plugin Issues Log, present them to the user, and close only on the user's OK (unattended: record and proceed).
+6. **Shutdown** — before writing summary.md, back-fill the Outcome on every open Decisions Log row
+   (what the choice led to, one line; zero rows left `open` at close); then write summary.md, update
+   backlog, close communication log. **If issues were detected during the run** (a malfunction, a fabricated/voided gate, an unresolved finding), do **not** shut down silently: investigate, record them in the communication log's Runtime / Plugin Issues Log, present them to the user, and close only on the user's OK (unattended: record and proceed).
 7. **Lessons processing (optional, ask once)** — after reviewer approval, ask the user: "Process lessons from this pipeline?" Skip by default if unanswered. If yes, spawn the learner scoped to **this slug's** `lessons.md` only. (Unattended: skip — record that lessons are unprocessed.)
 8. **Completion dashboard** — close the attended run with a compact summary block:
 ```
@@ -421,13 +423,20 @@ Open the file with a header block (this *is* the resume state — keep its field
 
 Then a numbered message table (`# | From → To | Phase | Message | Problem`) and, at the end, a **Runtime / Plugin Issues Log** capturing every plugin/tooling malfunction in the run — not just inter-agent ones (empty-artifact returns, `TaskOutput` failures, stale `index.lock`, gate misfires). The agent IDs + Step/Cycle are what a later session resumes from, so update them at every transition.
 
+Also define a sibling section, **`## Decisions Log`** — in prose only, never a live heading in this
+doc — with rows `| # | Phase | Decision (choice over rejected alternative) | Reasoning | Outcome |`,
+`Outcome` written `open` at write time. A row is owed only when you choose between real
+alternatives — an escalation-menu pick, phase-failure recovery, a non-default launch-path or team
+mode, a triage STOP resolved without the user, a model-per-phase override; routine
+protocol-following is not a decision — no row.
+
 ### Resume
 
 A pipeline can be interrupted (session end, `/compact`, crash). Before spawning anything:
 
 1. **Branch check (block).** Read `Branch` from `communication-log.md`. If the current branch differs, **STOP and ask the user** — never resume a run onto the wrong branch (you would commit into it). Proceed only once the branch matches or the user confirms.
 2. **Done?** If `summary.md` exists for the slug, the pipeline already completed → report "already done", do not re-run (idempotency — a re-launch of finished work is a no-op, not a restart).
-3. **Resume point.** Otherwise read the header `Step` + `Cycle` + agent IDs and the last message rows to find where it stopped. Re-issue the correct `.pipeline-state` token (you are the **sole** writer of `.pipeline-state` — this is a legitimate team-lead write, the one ADR-18 exempts; agents never write it), then resume the live agent via `SendMessage(agentId)` if still addressable, else re-spawn that phase with explicit context (steps done / remaining — see Phase Failure Handling).
+3. **Resume point.** Otherwise read the header `Step` + `Cycle` + agent IDs and the last message rows — tailing the Decisions Log alongside them — to find where it stopped. Re-issue the correct `.pipeline-state` token (you are the **sole** writer of `.pipeline-state` — this is a legitimate team-lead write, the one ADR-18 exempts; agents never write it), then resume the live agent via `SendMessage(agentId)` if still addressable, else re-spawn that phase with explicit context (steps done / remaining — see Phase Failure Handling).
 
 ### Review Queue (`.claude/review-queue/`)
 

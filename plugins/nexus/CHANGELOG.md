@@ -1,6 +1,14 @@
 # nexus — Changelog
 
 
+## [1.28.0] — 2026-07-10
+- **Decision Log with Outcome Back-links — A5 pilot (adhoc-DecisionLog).** decisions log pilot in
+  communication-log.md (team-lead writer, shutdown outcome back-fill, learner reader,
+  kill-if-unused criterion).
+  - agent instruction/behavior change (team-lead.md, learner.md)
+  - shipped command changed (commands/team-lead.md, commands/learner.md regenerated)
+  - owner-escalated to minor (new pipeline capability)
+
 ## [1.27.0] — 2026-07-10
 - **Learner cadence nudge (adhoc-LearnerCadenceNudge).** New PostToolUse hook `learner-cadence.js`
   rides the `summary.md` close write: counts pipeline summaries newer than the learner's
