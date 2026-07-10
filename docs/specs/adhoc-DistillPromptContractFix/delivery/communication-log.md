@@ -1,7 +1,7 @@
 # adhoc-DistillPromptContractFix — Communication Log
 
 **Branch:** adhoc-DistillPromptContractFix
-**Step:** awaiting owner Step-6 smoke test — all agent gates done: done-check PASS, Step-2 APPROVED, MEDIUM fixes applied + team-lead-verified (grep + verify-gate PASS). Then team-lead closure (summary + commit).
+**Step:** done — Step-6 smoke test waived by owner (2026-07-11); summary.md written, pipeline closed.
 **Cycle:** 0/3
 **Team Mode:** standard
 **Review Mode:** critic (plan reviewed code-grounded; Step-2 reviewer mandated code-grounded)
@@ -37,6 +37,8 @@
 | 20 | team-lead → developer | developer:implement | Fresh spawn (opus): fix the 2 MEDIUMs + grep-sweep docs/ for other stale phantom-1.17.0 refs (legit PR-review-tail 1.17.0 refs untouched); docs-only, no bump, no commit | — |
 | 21 | developer → team-lead | developer:implement | Both MEDIUMs fixed (3 files exactly: skill-backlog.md, architecture/README.md, implementation.md addendum); sweep found no other stale refs; lesson strengthened not twinned | — |
 | 22 | team-lead (validate) | — | Grep-verified both stale claims gone; verify-gate verdict **pass** (lint + selfcheck blocking, both ok). No re-review — MEDIUMs after APPROVED are follow-ups, not a fix cycle. Pipeline now blocked on owner Step-6 | benign audit noise noted below |
+| 23 | user → team-lead | closure | Owner **waived Step-6** (2026-07-11, status-sweep session): field evidence (shipped ~1.16.1, in use through 1.30.x, no recorded complaints) accepted in place of the bench smoke test | user-confirmed waiver, not a proceed-default |
+| 24 | team-lead → repo | closure | summary.md written (Status: COMPLETE, waiver recorded); pipeline closed | — |
 
 ## Runtime / Plugin Issues Log
 
