@@ -1,0 +1,20 @@
+{
+  "name": "nexus-analytics",
+  "version": "0.1.0",
+  "description": "Nexus Analytics (thin) — a domain extension for the `nexus` core pipeline. Ships the data-analyst persona (batched-interview intake, model-first navigation, answer-contract discipline) plus its three method skills: semantic-model-query (the resolution ladder — grain, metric, dimension — with mandatory pre-query obligations), data-investigation (delegates unknown-column/flag meaning to the mine-semantic-model skill), and answer-qa (the shipped-answer contract). All model access is mediated by the consuming project's docs/semantic-model/profile.md — representation-agnostic (JSON bundle or CSV trio). Requires nexus core installed — install ALONGSIDE nexus, not instead of it.",
+  "author": {
+    "name": "ldumit"
+  },
+  "keywords": [
+    "agents",
+    "analytics",
+    "data-analyst",
+    "semantic-model",
+    "bi",
+    "skills",
+    "extension"
+  ],
+  "dependencies": [
+    "nexus"
+  ]
+}

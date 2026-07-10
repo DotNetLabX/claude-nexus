@@ -40,6 +40,7 @@ Nexus ships as **two plugins** in the `claude-nexus` marketplace — a stack-agn
 |--------|-------|--------|------------|----------------|
 | **nexus** | Stack-agnostic core (pipeline agents, rules, process skills, security guard) | 14 (9 process + 5 artifact-format) | `nexus@claude-nexus` | Standalone |
 | **nexus-dotnet** | .NET / Vue stack extension | 29 stack | `nexus-dotnet@claude-nexus` | `dependencies: ["nexus"]` — installing it **auto-installs `nexus`** |
+| **nexus-analytics** | Data-analyst domain extension (analyst persona + semantic-model-first query method) | 4 (3 method + 1 mined) | `nexus-analytics@claude-nexus` | `dependencies: ["nexus"]` — installing it **auto-installs `nexus`** |
 
 - **Generic / non-.NET stacks** → install **`nexus`** alone. Its code-touching agents read the project's `docs/conventions/` if present (Read-Index), so the pipeline adapts to any stack.
 - **.NET / Vue stacks** → install **`nexus-dotnet`**. It declares `dependencies: ["nexus"]`, so Claude Code pulls and enables `nexus` automatically and layers the 29 .NET / ASP.NET Core / EF Core / CQRS / DDD / FastEndpoints / Vue / Pinia / Tailwind code-pattern skills plus the stack convention files on top.

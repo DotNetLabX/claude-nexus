@@ -15,7 +15,7 @@
 //   4. bump-plugin --check                   — a shipped-surface change carries a version bump
 //   5. salience report                       — INFORMATIONAL: printed, never fails the run (Q1)
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -61,12 +61,26 @@ const checks = [
       // Snapshot CONTENT (`git diff`), not status flags: a `git status --porcelain` snapshot is
       // byte-identical before/after when an already-dirty command's content changes but its ` M` flag
       // doesn't — which would false-pass genuine drift. `git diff` is content-sensitive.
-      const snap = () => exec('git', ['diff', '--', 'plugins/nexus/commands']).output;
-      const before = snap();
-      const regen = exec(node, ['scripts/gen-commands.mjs', 'nexus']);
-      if (regen.status !== 0) return { ok: false, detail: 'gen-commands failed to run' };
-      const ok = snap() === before;
-      return { ok, detail: ok ? 'in sync' : 'commands/ differ from agents/ — run gen-commands' };
+      //
+      // Plugin set is DISCOVERED (adhoc-AnalystExtension Step 1 — was nexus-only), extended to every
+      // agent-bearing plugin found under marketplace.json's plugins array.
+      const marketplace = JSON.parse(readFileSync(join(ROOT, '.claude-plugin', 'marketplace.json'), 'utf8'));
+      const agentBearing = marketplace.plugins
+        .map((p) => p.name)
+        .filter((name) => existsSync(join(ROOT, 'plugins', name, 'agents')));
+      if (agentBearing.length === 0) return { ok: false, detail: 'no agent-bearing plugin found — check is inert' };
+      const details = [];
+      let allOk = true;
+      for (const plugin of agentBearing) {
+        const snap = () => exec('git', ['diff', '--', `plugins/${plugin}/commands`]).output;
+        const before = snap();
+        const regen = exec(node, ['scripts/gen-commands.mjs', plugin]);
+        if (regen.status !== 0) { allOk = false; details.push(`${plugin}: gen-commands failed to run`); continue; }
+        const ok = snap() === before;
+        if (!ok) allOk = false;
+        details.push(`${plugin}: ${ok ? 'in sync' : 'commands/ differ from agents/ — run gen-commands'}`);
+      }
+      return { ok: allOk, detail: details.join('; ') };
     },
   },
   {

@@ -27,6 +27,10 @@
     {
       "name": "nexus-php",
       "source": "./plugins/nexus-php"
+    },
+    {
+      "name": "nexus-analytics",
+      "source": "./plugins/nexus-analytics"
     }
   ]
 }

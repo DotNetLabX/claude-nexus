@@ -1,4 +1,4 @@
-// Generates the 8 persona commands from the agent files.
+// Generates one persona command per agent file, for any plugin that ships an agents/ dir.
 // Single source of truth = the agent .md; command = activation wrapper + inlined body.
 // Run: node scripts/gen-commands.mjs [pluginName]   (default: nexus)
 // Paths resolve relative to this file — location-independent.
@@ -8,8 +8,15 @@
 // interactive session and must inherit THAT session's model — carrying `model:` into the command
 // would silently switch the user's session. Per-agent consumer overrides happen at spawn time via
 // `.claude/nexus-agents.json` (read by the team lead), not here.
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+//
+// Agent set = readdirSync(AGENTS_DIR) (adhoc-AnalystExtension Step 1 — was a hard-coded 8-role MAP
+// that crashed ENOENT on any plugin whose agents don't match that exact set). MAP now stays as an
+// OVERRIDE table only: nexus's founding 8 agents are in it, and using it keeps their commands
+// byte-identical (the binding regression contract, guarded by selfcheck's gen-commands drift
+// check). An agent with no MAP entry (any plugin, including a future 9th nexus agent) gets its
+// `proper`/`desc` DERIVED from its own doc — see deriveEntry().
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
+import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const PLUGIN_NAME = process.argv[2] || 'nexus';
@@ -38,8 +45,39 @@ function stripFrontmatter(md) {
   return md.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').trim();
 }
 
-for (const [name, { proper, desc }] of Object.entries(MAP)) {
+// Flat single-line frontmatter parser — same shape tests/helpers.mjs uses (key: value lines
+// between --- fences; no nesting, no multi-line values — matches how this repo's agent docs are
+// actually authored).
+function parseFrontmatter(md) {
+  const m = md.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+  if (!m) return {};
+  const data = {};
+  for (const line of m[1].split(/\r?\n/)) {
+    const kv = line.match(/^([A-Za-z_][\w-]*):\s*(.*)$/);
+    if (kv) data[kv[1]] = kv[2].trim();
+  }
+  return data;
+}
+
+// Derive { proper, desc } for an agent with no MAP entry. proper = the first H1 heading with a
+// trailing " Agent" stripped ("# Data Analyst Agent" -> "Data Analyst"); desc = the frontmatter
+// description's first sentence, in the same "Become the X — ..." shape the MAP entries use.
+function deriveEntry(name, agentMd, data) {
+  const h1 = agentMd.match(/^#\s+(.+)$/m);
+  const proper = h1 ? h1[1].trim().replace(/\s+Agent$/i, '') : name;
+  const description = data.description || '';
+  const firstSentence = (description.split(/(?<=\.)\s/)[0] || description).trim();
+  return { proper, desc: `Become the ${proper} — ${firstSentence}` };
+}
+
+const agentNames = readdirSync(AGENTS_DIR)
+  .filter((f) => f.endsWith('.md'))
+  .map((f) => basename(f, '.md'))
+  .sort();
+
+for (const name of agentNames) {
   const agentMd = readFileSync(join(AGENTS_DIR, `${name}.md`), 'utf8');
+  const { proper, desc } = MAP[name] || deriveEntry(name, agentMd, parseFrontmatter(agentMd));
   const body = stripFrontmatter(agentMd);
   const cmd = `---
 description: ${desc}

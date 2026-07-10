@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { listAgents, listSkills, agentName, pluginRoot } from '../helpers.mjs';
+import { listAgents, listSkills, agentName, pluginRoot, REPO } from '../helpers.mjs';
 
 // ── 1. No duplicate (event, matcher) hook registrations ──────────────────────
 test('no two hook entries under the same event share a matcher', () => {
@@ -77,16 +77,24 @@ test('hooks.json ${user_config.*} placeholders resolve to declared plugin.json u
 const PLATFORM_SUBAGENT_TYPES = new Set(['Explore', 'general-purpose']);
 
 test('subagent_type and nexus: agent references resolve to shipped agents', () => {
+  // Discovery generalized (adhoc-AnalystExtension Step 1): scan EVERY marketplace plugin's
+  // agents/rules/skills surfaces (a non-core plugin's doc can legally mention a nexus: X
+  // reference too — nothing scanned that before), guarding plugins missing a given dir. The
+  // RESOLUTION target stays nexus's own agents/skills — `nexus:X` always means "the nexus
+  // plugin's X" regardless of which plugin's file the reference appears in.
+  const marketplace = JSON.parse(readFileSync(join(REPO, '.claude-plugin', 'marketplace.json'), 'utf8'));
   const agents = new Set(listAgents('nexus').map(agentName));
   // A /nexus:X reference is valid if X is a shipped agent (persona command) OR a shipped
   // skill — the platform auto-discovers skills/*/SKILL.md and invokes them as /nexus:{name}
   // too, so the resolver must accept both (skill name = its folder name).
   const skills = new Set(listSkills('nexus').map((f) => f.replace(/[\\/]SKILL\.md$/, '').split(/[\\/]/).pop()));
   const surfaces = [];
-  for (const dir of ['agents', 'rules', 'skills']) {
-    const base = join(pluginRoot('nexus'), dir);
-    if (!existsSync(base)) continue;
-    walk(base, surfaces);
+  for (const { name: plugin } of marketplace.plugins) {
+    for (const dir of ['agents', 'rules', 'skills']) {
+      const base = join(pluginRoot(plugin), dir);
+      if (!existsSync(base)) continue;
+      walk(base, surfaces);
+    }
   }
   for (const file of surfaces) {
     const text = readFileSync(file, 'utf8');
