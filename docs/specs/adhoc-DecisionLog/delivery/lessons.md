@@ -30,6 +30,23 @@
   after the full release sequence (bump + omni sync) completes, not after each intermediate step,
   to avoid mis-reading an expected transient FAIL as a break.
 
+## Reviewer Lessons
+
+- **A retroactive Step-2 review (code already committed/released) is still fully verifiable when
+  the plan's ACs are grep-shaped.** [adhoc-DecisionLog] With git read-only and no diff to review
+  (tree clean at HEAD, well past the feature commit), every AC re-executed cleanly against the
+  current file state — `grep -c`/`grep -n` re-derive the same evidence a pre-commit review would
+  have gotten, plus a `gen-commands.mjs` re-run and `git show <sha> --stat` substitute for a live
+  diff. **How to apply:** when handed "review the committed changes, git is read-only," don't
+  treat the missing diff as a blocker — pull the commit's file list via `git show --stat`/`git show
+  -- <path>` and verify against the current tree; it's equivalent evidence for a prose/grep-gated
+  feature.
+- **Critic-fixed findings (M1/M2 here) are exactly where a reviewer's fresh-evidence check earns
+  its keep** — both fixes were paraphrase/representation risks with zero gate coverage on their
+  own (the critic said as much: "the greps pass either way" for M2). Re-verifying that a
+  critic-adopted fix actually landed byte-for-byte (not just referenced as "adopted" in plan prose)
+  is cheap and catches the class of defect gates can't.
+
 ## Skill Gaps
 
 None. `release-plugin` (Step 4) and the plan's prose-only steps (1–3, Skill Mapping `(none)`)
