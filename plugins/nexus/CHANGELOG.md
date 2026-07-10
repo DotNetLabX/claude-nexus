@@ -1,6 +1,18 @@
 # nexus — Changelog
 
 
+## [1.29.0] — 2026-07-10
+- **Branch Strategy Ask — Branch Pre-Flight v2 (adhoc-BranchStrategyAsk).** Amended the canonical
+  Branch Pre-Flight & Default-Branch Resolution rule: attended asks now offer the full
+  branch-strategy option set (continue here / new branch from the default / stacked branch when
+  current ≠ default / new worktree, first-class) and every ask carries one recommended option +
+  confidence + a one-line why, keyed on work shape × tree dirtiness. Team-lead Pre-Flight #1 and
+  solo Workflow step 1 updated to reference the option set instead of restating a two-option list.
+  - agent instruction/behavior change (team-lead.md, solo.md)
+  - rule amendment (agents-workflow.md — injected every session)
+  - shipped command changed (commands/team-lead.md, commands/solo.md regenerated)
+  - owner-escalated to minor (new capability: first-class worktree option + recommendation duty)
+
 ## [1.28.0] — 2026-07-10
 - **Decision Log with Outcome Back-links — A5 pilot (adhoc-DecisionLog).** decisions log pilot in
   communication-log.md (team-lead writer, shutdown outcome back-fill, learner reader,

@@ -33,7 +33,7 @@ Ad-hoc work has no `definition/` folder — only `delivery/`.
 
 ## Branch Pre-Flight & Default-Branch Resolution
 
-The **launch-time** branch guard, defined once here because both the team lead (Pre-Flight) and solo (Workflow) load this always-on rule and both reference it. It runs **only on a fresh launch** (a clean start, after the team lead's idempotency fork routes an interrupted run to **Resume** instead). It is git-only and host-agnostic — no `gh`/PR coupling. **This is distinct from the team-lead Resume branch-check** (which guards against *resuming* onto the wrong branch, team-lead.md → Resume); the two never double-fire because the guard sits on the clean-start path only.
+The **launch-time** branch guard, defined once here because both the team lead (Pre-Flight) and solo (Workflow) load this always-on rule and both reference it. It runs **only on a fresh launch** (a clean start, after the team lead's idempotency fork routes an interrupted run to **Resume** instead). It is git-only and host-agnostic — no `gh`/PR coupling. **Timing contract:** the checkpoint runs **before the first write of any kind — artifact or code —** on the clean-start path. **This is distinct from the team-lead Resume branch-check** (which guards against *resuming* onto the wrong branch, team-lead.md → Resume); the two never double-fire because the guard sits on the clean-start path only.
 
 **Default-branch resolution order (best-effort, never blocks):**
 1. `git symbolic-ref --quiet refs/remotes/origin/HEAD` → strip the `refs/remotes/origin/` prefix (the repo's actual default branch).
@@ -46,16 +46,36 @@ Resolution is best-effort: a detached or remote-less repo simply falls through (
 
 | State | Attended | Unattended |
 |---|---|---|
-| On the default branch | Ask: new branch (named `{slug}`) or continue here | Auto-create `{slug}` from the default, proceed |
+| On the default branch | Ask: the branch-strategy option set below, with a recommendation | Auto-create `{slug}` from the default, proceed |
 | Branch matches the slug | Proceed silently ("Working on `{branch}`") | Proceed silently |
-| Unrelated branch | Ask: continue here, or new branch `{slug}` from the default | Auto-create `{slug}` from the default, proceed |
+| Unrelated branch | Ask: the branch-strategy option set below, with a recommendation | Auto-create `{slug}` from the default, proceed |
 | Detached HEAD / no slug | Ask to create a branch | **Abort** (can't safely auto-branch) |
 
 **New-branch name = the slug.**
 
+**Branch-strategy option set (attended ask).** The options an attended ask draws from — up to four, per each option's own condition below; the detached-HEAD row keeps its narrower ask from the matrix above instead of this set:
+1. **Continue here** — work on the current branch (covers "just use main" when on the default).
+2. **New branch from the default** — name = `{slug}` (existing naming rule stands).
+3. **New branch from the current branch (stacked)** — offered **only when current ≠ default**; right when the new work builds on unmerged in-flight work.
+4. **New worktree** — `git worktree add -b {slug} ../{repo-dir-name}-{slug} {defaultBranch}`; right for parallel/long-running work or a dirty tree that must stay untouched. Remove it after merge (`git worktree remove`) — don't leave stale worktrees around.
+
+The 4-option shape deliberately fits the `AskUserQuestion` option cap; agents may present it with that tool or plain text — the rule stays mechanism-agnostic.
+
+**Recommendation duty (attended ask).** Every ask **carries exactly one recommended option + `confidence: high|medium|low` + a one-line why**, derived from work shape × tree state:
+- Dirty tree, dirt belongs to **this same work** (fix-cycle) → recommend **continue here**.
+- Dirty tree, dirt is **unrelated / another feature's in-flight work** → recommend **worktree** (isolate the new work; never build on a tree you can't commit cleanly). Stash-then-branch is fallback guidance only — when a worktree is impractical — never a first-class option (stashes get forgotten; a worktree isolates without moving the in-flight work).
+- Clean tree, small single-commit change → recommend **continue here**.
+- Clean tree, multi-commit / PR-bound feature → recommend **new `{slug}` branch from the default**.
+- New work **builds on** the current unmerged branch → recommend **stacked branch**.
+- Work will run **in parallel** with other active work in this checkout (another session/agent) → recommend **worktree**.
+
+The agent judges "same work vs unrelated" from available signals — slug/branch-name match, the dirty files' overlap with the new work's surface, an uncommitted bump/CHANGELOG entry naming another slug — and when unsure says so (that lowers the recommendation's confidence label; it never silently classifies).
+
 **Overlays (apply on top of the matrix):**
-- **Dirty tree:** warn and offer to isolate (new branch or worktree) before proceeding (attended); abort if it can't be cleanly isolated (unattended). This is the team lead's existing dirty-tree behavior stated here as the shared rule — its meaning is unchanged.
+- **Dirty tree:** applies **on top of every row, including a silent slug-match proceed** — a dirty/unrelated tree still gets a named warning even when the branch choice itself asks nothing. Where an ask is in play, the dirty state feeds the recommendation (per the Recommendation duty above); either way, the warning names *which files are dirty and whose work they appear to be* (attended). Abort if it can't be cleanly isolated (unattended). This is the team lead's existing dirty-tree behavior stated here as the shared rule — its meaning is unchanged.
 - **Stale default:** when creating a branch *from* the default, `git fetch` the default and warn if local is behind `origin` before branching — never base new work on a stale default silently. The fetch is **unconditionally best-effort**: if it fails or errors for *any* reason (offline, no remote, a guard policy, a detached/remote-less repo), **warn-and-skip — never block or error**. (Unlike the closure push gate, this is *not* a hardened-mode deferral — hardened mode does **not** block `git fetch`, and an agent has no runtime signal for the active guard mode anyway; the best-effort posture covers the fetch failing for any reason, which subsumes the policy case.)
+
+**Unattended note:** a worktree is **never auto-selected** — unattended keeps auto-branch per the matrix and the abort overlay (an unattended run switching its working directory mid-run is a harness risk no one can approve).
 
 ## Host Adapter & PR Tail
 
