@@ -231,7 +231,7 @@ For a small feature, the standalone architect (main session persona — **never*
 - the plan path;
 - a hard no-git-writes rule — the developer runs no git write of any kind; the commit happens at lane close, in the main session (the detector's subagent git tripwire, `boundary-detector.js:112-136`, flags any subagent git write — that's the why);
 - an unrelated-dirt exclusion list built from `git status` at dispatch time;
-- a first-round code review baked into the dispatch — invoke the `code-review` skill on the working diff at the end of implementation (effort medium), fold real findings, dismiss false positives with a one-line reason each; fallback when the skill is unavailable in the subagent context = a disclosed self-review against the `review-format` checklist;
+- a first-round code review baked into the dispatch — invoke the built-in `/code-review` skill on the working diff at the end of implementation (effort medium), fold real findings, dismiss false positives with a one-line reason each; fallback when the skill is unavailable in the subagent context = a disclosed self-review against the `review-format` checklist;
 - `implementation.md` per `implementation-format`, **including a `## Self-Review` section** (verdict + evidence) — reuse the existing Fast-Mode `## Self-Review` artifact contract verbatim (`team-lead.md` Fast Mode Dispatch), don't invent a new artifact.
 
 **Done-check:** the **Step 1: Done Check** rules below apply verbatim (no restatement here), plus two lane-specific additions:

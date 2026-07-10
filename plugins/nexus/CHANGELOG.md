@@ -1,6 +1,11 @@
 # nexus — Changelog
 
 
+## [1.30.2] — 2026-07-10
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+
 ## [1.30.1] — 2026-07-10
 - PATCH bump.
   - skill change (mine-reference-model)
