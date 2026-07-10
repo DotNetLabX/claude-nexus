@@ -376,9 +376,9 @@ Default: **2 commits** per feature. The user can override at launch ("single com
 | 1 commit | a single `feat({slug}): implement {description}` at pipeline end | User opts in |
 | 4 commits | plan / implementation / review / shutdown — one at each phase boundary | User opts in |
 
-Even under the 4-commit override **you** make every commit — pipeline agents never commit (their agent files forbid it). The seam ADR-20 closes is a *subagent* self-commit, not a team-lead post-implementation commit; the 4-commit option is safe because the post-impl commit is still yours.
+Even under the 4-commit override **you** make every commit — spawned pipeline agents never commit (their agent files forbid it). The seam ADR-20 closes is a *subagent* self-commit, not a team-lead post-implementation commit; the 4-commit option is safe because the post-impl commit is still yours.
 
-**Why 2 is the default:** the plan commit preserves the design if the implementation must be reverted; everything after (code + review fixes + docs) reverts as a unit, so intermediate states aren't independently useful. It also means the **only** commits happen at team-lead-owned boundaries (plan approved, pipeline done) — there is **no post-implementation commit step for a subagent to perform**. You own every commit; pipeline agents never commit (their agent files forbid it).
+**Why 2 is the default:** the plan commit preserves the design if the implementation must be reverted; everything after (code + review fixes + docs) reverts as a unit, so intermediate states aren't independently useful. It also means the **only** commits happen at team-lead-owned boundaries (plan approved, pipeline done) — there is **no post-implementation commit step for a subagent to perform**. You own every commit; spawned pipeline agents never commit (their agent files forbid it).
 
 Auto-commit at each checkpoint of the chosen strategy — no confirmation needed. If the tree was dirty with unrelated changes and could not be isolated, **scope the commit** (stage only pipeline files) and flag it to the user. Never sweep unrelated changes into a `feat()` commit, and never `git add -A`.
 

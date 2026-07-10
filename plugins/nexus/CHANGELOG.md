@@ -1,6 +1,24 @@
 # nexus — Changelog
 
 
+## [1.30.0] — 2026-07-10
+- **Architect-Led Fast Lane (adhoc-ArchitectFastLane).** New standalone-only mode: the architect
+  (main session persona, never a spawned subagent) can run a compact architect-develop-review loop
+  for a small feature instead of handing off to the full team pipeline — one developer dispatch
+  with a first-round `code-review` skill invocation baked in, the existing Step 1 done-check
+  (scoped by agent + main-session id + dispatch timestamp, since standalone has no
+  `.claude/.pipeline-state` token), fix rounds capped at 3, and a mode-scoped exception letting the
+  standalone architect write `summary.md` and commit at lane close. Two ownership-consistency
+  carve-outs keep the always-on hard rules from contradicting the new exception
+  (`agents-workflow.md`'s "team lead writes summary.md and owns commits" rule, and
+  `team-lead.md`'s "pipeline agents never commit" restated as "spawned pipeline agents never
+  commit"). `summary-format`'s producer note and frontmatter description now name both producers.
+  - agent instruction/behavior change (architect.md, team-lead.md)
+  - shipped command changed (commands/architect.md, commands/team-lead.md — regenerated)
+  - rule amendment (agents-workflow.md — injected every session)
+  - skill change (summary-format)
+  - owner-escalated to minor (new capability: a new standalone operating mode)
+
 ## [1.29.0] — 2026-07-10
 - **Branch Strategy Ask — Branch Pre-Flight v2 (adhoc-BranchStrategyAsk).** Amended the canonical
   Branch Pre-Flight & Default-Branch Resolution rule: attended asks now offer the full
