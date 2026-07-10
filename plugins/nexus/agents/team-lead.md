@@ -123,8 +123,8 @@ Spec-side mirror of the Architect Questions Checkpoint — never let the spec fl
 On `Status: Ready` with a recorded **yes** (PO Spec-Review Checkpoint above): orchestrate the mode's
 stages as background agents **alongside** dispatching the architect for Phase 1 — the same
 parallel-dispatch shape as Standard+Codex ("Dispatch both, in parallel", below) — **never** delegate the
-whole run to one background agent (a single agent cannot preserve miner/skeptic independence;
-`mine-verify-cover`'s Execution topology).
+whole run to one background agent (a single agent cannot preserve miner/skeptic independence; see
+`mine-verify-cover references/mine-family-core.md` §Execution topology).
 
 1. **Stage 1 — miners, in parallel:** spawn the clean-room miners as background `general-purpose` agents
    carrying the `mine-from-spec` mode's miner prompt (manifest = the slug's `spec.md`/`tech-spec.md`,

@@ -18,5 +18,10 @@
 
 ## Notes
 - **OPERATOR ACTION REQUIRED — the open production gate:** a PASS here proves the skill ships and gates green; it does **not** prove the method works on a real reference repo. AC-5 (flattery-survival-rate measurement) lands only at the Step-4 pilot run.
+- **Pilot addendum (2026-07-10, adhoc-MineFamilyCore P0 record hygiene):** pilot executed 2026-07-05
+  (self-reference on `dotnet-microservices`, runs 1–3) — superseded the originally-planned
+  omnishelf-consumer parameters documented under Deviations above; artifact `docs/reference-model.md`;
+  refresh owner = operator; `last_verified: 2026-07-05`. The OPERATOR ACTION REQUIRED note above is
+  kept as the original record, not rewritten.
 - Two Low follow-ups travel forward: F1 (model policy — owner decision) and `improve-skills/references/skill-recipe.md:79` lint-coverage overstatement (learner-routed; provenance 3 sightings). Lessons processing was **skipped** at closure — lessons.md is unprocessed.
 - Runtime issues (all triaged, non-blocking): verify-gate `blocking_failed` was a gen-omni-drift false positive (twin sync is a closure step); two `agent:"unknown"` verify-skip lines from helper sub-spawns; Codex verdict conflict reconciled as above.

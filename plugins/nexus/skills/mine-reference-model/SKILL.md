@@ -22,24 +22,16 @@ It **reverse-engineers** the deliberate pattern choices a repo makes — it docu
 exhibits, not virtues one wishes it had. It never edits either repo, and a pattern that cannot be
 phrased as a reproducible check never reaches the registry as a fact.
 
-This is the **fourth mine**. `mine-verify-cover` scans ONE class (ground truth: code; gate:
-mutants); `mine-from-spec` scans ONE spec (ground truth: spec text; gate: skeptic-vs-text);
-`mine-verify-repo` scans ONE repo for what is *wrong* (ground truth: git metrics + code; gate:
-hotspot rank + re-execution). This skill scans ONE reference repo for what is *right* (ground truth:
-reference source; gate: skeptic re-execution — the invented-virtue kill).
+This is the **fourth mine** — the reference-repo sibling of the mine family, scanning ONE reference
+repo for what is *right* (ground truth: reference source; gate: skeptic re-execution — the
+invented-virtue kill). Read `../mine-verify-cover/references/mine-family-core.md` §The mine family
+for the full 4-row family table and the shared invariant (bounded unit → clean-room extraction →
+consolidate → skeptic verify → graded registry) all four members follow.
 
-| Mine | Unit | Ground truth | Gate | Output |
-|------|------|-------------|------|--------|
-| `mine-verify-cover` | one class | code | mutants | rules KB + gated suite |
-| `mine-from-spec` (mode) | one spec | spec text | skeptic-vs-text | spec-rules |
-| `mine-verify-repo` | one repo (debts) | git metrics + code | hotspot rank + re-execution | `docs/tech-debt/{area}.md` |
-| **`mine-reference-model`** | **one reference repo (virtues)** | **reference source** | **skeptic re-execution (invented-virtue kill)** | **`docs/reference-model.md` in the consuming repo** |
-
-The family invariant is unchanged: bounded unit → clean-room extraction → consolidate → skeptic
-verify → graded registry. What changes is the failure mode the gate kills. The debt mine kills
-*false positives* — findings the model imagines. This mine kills **flattery** — virtues the model
-projects onto a repo it has been told is exemplary. An unverified virtue in the adjudication
-reference is worse than a false debt finding: it silently legitimizes `by-design` dispositions.
+What changes here is the failure mode the gate kills. The debt mine kills *false positives* —
+findings the model imagines. This mine kills **flattery** — virtues the model projects onto a repo
+it has been told is exemplary. An unverified virtue in the adjudication reference is worse than a
+false debt finding: it silently legitimizes `by-design` dispositions.
 
 ## The pipeline
 
@@ -59,24 +51,17 @@ Refresh     run 2+ re-verifies existing rows against the reference repo's git de
 
 ### Execution topology (who runs what)
 
-This method inherits the **semantics** of `mine-verify-cover`'s "Execution topology (who runs what)"
-run-in heading: it is **multi-agent by design** (parallel clean-room extractors, then a fresh
-skeptic) and **a subagent cannot orchestrate it** — subagents have no spawn/parallel primitives, and
-a subagent spawning further agents is the ADR-21 breach vector. So:
+Read `../mine-verify-cover/references/mine-family-core.md` §Execution topology before orchestrating
+— the canonical shape (multi-agent by design, orchestrator-owns-spawning, staged background
+`general-purpose` agents, "launch = orchestrate stages") is defined there. The orchestrator has no
+filesystem — agents do all I/O, including running the extractors' and skeptic's evidence commands.
 
-- The **orchestrator is the session that owns spawning** — the team lead in team mode; the main
-  session (architect persona) in standalone mode.
-- It runs the stages as **staged background `general-purpose` agents**: the dimension extractors in
-  parallel (default five), then on their completion ONE consolidate+skeptic agent — these are method
-  stages, not pipeline roles (no pipeline `subagent_type`, no custom names).
-- The **orchestrator has no filesystem** — agents do all I/O, including running the extractors' and
-  skeptic's evidence commands. "Launch the run" always means "orchestrate its stages", never "hand
-  the whole run to one background agent": a single agent cannot preserve extractor/skeptic
-  independence.
+This skill's own sizing: **five dimension extractors in parallel (default), then ONE
+consolidate+skeptic agent.** The pilot-sibling's Entry-6 scale datapoint — one consolidate+skeptic
+holding at roughly 145 findings — bounds this comfortably; a virtues run yields far fewer rows.
 
-Default sizing is **small**: five extractors + one consolidate+skeptic. The pilot-sibling's Entry-6
-scale datapoint — one consolidate+skeptic holding at roughly 145 findings — bounds this comfortably;
-a virtues run yields far fewer rows.
+**On a NEW target, walk the core §kickoff checklist first** (tool preflight, expected survival rate,
+stop-budget, run-report location) before launching a run.
 
 ## Contracts
 
@@ -106,9 +91,9 @@ RULE-IT-REVEALS** prose — what the reference repo does, and the judgment it en
 (`portable | adapt | not-portable`) + translation note, provenance (reference repo + commit sha +
 run id), `last_verified`.
 
-- **Pattern existence is the FACT** — skeptic-gated, must-reproduce (R3). A pattern whose claim
-  cannot be phrased as a reproducible command is a judgment, not a fact, and never earns a CONFIRMED
-  verdict.
+- **Pattern existence is the FACT** — skeptic-gated, must-reproduce (R3). Read
+  `../mine-verify-cover/references/mine-family-core.md` §Fact/judgment doctrine for the shared
+  fact/judgment split this schema applies.
 - **Portability is a JUDGMENT** (ADR-47): agent-drafted, marked advisory, and human-confirmed at the
   point of *use* — when a triage decision or roadmap step cites the row — not by a new adjudication
   gate inside this skill. This preserves the ADR-47 fact/judgment split without adding a human
@@ -120,10 +105,8 @@ run id), `last_verified`.
 
 ### R3 — Verify gate (invented-virtue kill)
 
-- The skeptic **RUNS** each pattern's evidence command against the reference source — reasoning-only
-  verdicts are forbidden in the stage prompt AND structurally enforced: a verdict row without its
-  re-execution output excerpt is **dropped by the orchestrator** (inherited unchanged from
-  `mine-verify-repo` C3).
+- Read `../mine-verify-cover/references/mine-family-core.md` §Skeptic protocol for the must-RUN /
+  drop-without-excerpt enforcement this gate uses unchanged.
 - Verdict grammar: **CONFIRMED / WRONG / IMPRECISE**. **WRONG here means invented virtue** — the
   flattery failure mode this gate exists for; the run report logs each with the refuting output.
   IMPRECISE = the pattern exists but the stated scope is off (e.g. "all services skip the App layer"
@@ -143,17 +126,18 @@ run id), `last_verified`.
 designated reference repo; a `docs/reference-model/{repo}.md` split is the named seam if a second
 reference repo ever arrives — not built now).
 
-Registry invariants carried unchanged from ADR-43/45/49: per-row provenance + `last_verified`, rows
-**never deleted** (verdict/portability flips, the record stays), an append-only changelog,
-idempotent re-runs. Sections, in order: per-dimension pattern tables → the **translation
-dictionary** (reference-stack mechanism → consuming-stack mechanism, built **only from CONFIRMED
-rows**) → files-read evidence list → run report block (patterns mined/confirmed/killed — the
-survival rate).
+Registry invariants: read `../mine-verify-cover/references/mine-family-core.md` §Registry
+invariants + refresh outcome grammar (provenance, `last_verified`, never-deleted, append-only
+changelog, idempotent re-runs). Sections, in order: per-dimension pattern tables → the
+**translation dictionary** (reference-stack mechanism → consuming-stack mechanism, built **only
+from CONFIRMED rows**) → files-read evidence list → run report block (patterns
+mined/confirmed/killed — the survival rate).
 
 **Refresh (run 2+):** re-verify each row against the reference repo's git delta since
-`last_verified` — same outcome grammar as the sibling. Still-active = re-stamp `last_verified`; a
-pattern the reference repo abandoned = verdict flip recorded, row kept; restructuring = a fresh row
-citing the old id in its provenance. Rows are never deleted.
+`last_verified` — same outcome grammar as the sibling (core §Registry invariants + refresh outcome
+grammar). This skill's mapping: still-active = re-stamp `last_verified`; a pattern the reference
+repo abandoned = verdict flip recorded, row kept; restructuring = a fresh row citing the old id in
+its provenance. Rows are never deleted.
 
 ### R5 — Consumption seam
 
@@ -176,9 +160,9 @@ citing the old id in its provenance. Rows are never deleted.
   *shows*. Prioritization comes from the dimension list + the per-dimension cap instead. (If a future
   slice wants "is this pattern load-bearing or vestigial?", change-frequency of the pattern's files
   is the named seam — not built now.)
-- **Budget cap on marginal session spend** (same rule as the sibling C6: gate on the delta, never
-  the shared-pool absolute — a run fired late in a long session trips on the session's prior spend
-  otherwise). **Report on halt; never silently green.**
+- **Budget cap + report on halt:** read `../mine-verify-cover/references/mine-family-core.md`
+  §Marginal-budget rail (same rule as the sibling C6: gate on the delta, never the shared-pool
+  absolute).
 - **Forbidden:** skeptic reasoning-only verdicts; deleting rows; patterns without a reproducible
   evidence command; telling extractors the repo is exemplary.
 
@@ -233,9 +217,10 @@ overrides it. The load-bearing invariants at a glance:
 
 ## Relationship to other skills
 
+See `../mine-verify-cover/references/mine-family-core.md` §The mine family for the full family
+table (`mine-verify-cover`, `mine-from-spec`, `mine-verify-repo`) and R5 above for how this skill's
+output composes with `mine-verify-repo`'s C5 triage.
+
 | Skill | Relationship |
 |-------|-------------|
-| `mine-verify-repo` | the debt sibling — it finds what is *wrong* (debts) and, at **C5 triage**, a `by-design` disposition cites this skill's `reference-model.md` rows as its adjudication reference (an additional formal source alongside the repo's own ADRs/conventions). This skill is the "what to copy" arm; that one is the "what to fix" arm. |
-| `mine-verify-cover` | the single-class sibling — mines and mutation-gates the rules ONE class enforces (virtues at class scope, tested). This skill mines pattern *choices* across a whole reference repo and grades their portability; no Cover arm, no mutation gate — its gate is skeptic re-execution. |
-| `mine-from-spec` (a mode of `mine-verify-cover`) | the spec arm of the mine family — same clean-room extractor + skeptic shape, spec text as ground truth instead of reference source. |
 | `improve-skills` | **NOT a consumer** — the "generate project skills from patterns" stage 2 (pilot Entry 8) is out of scope for v1. `improve-skills` owns skill scaffolding; if the pilot proves the demand, wiring this skill's patterns into it is a separate proposal. |

@@ -2,6 +2,10 @@
 
 **Status:** Complete (pipeline). Operator follow-up owed (KG pilot — see below).
 **Date:** 2026-07-04
+
+**Pilot addendum (2026-07-10, adhoc-MineFamilyCore P0 record hygiene):** pilot executed 2026-07-04/05
+on `omnishelf_flutter_app` — not a KG pilot as originally scoped below; artifact path
+`docs/tech-debt/` (6 areas); refresh owner = operator; `last_verified: 2026-07-05`.
 **Team mode:** Standard+Codex · **Branch:** main · **Commits:** 2 (team-lead-owned)
 
 ## What shipped
@@ -51,6 +55,10 @@ deterministic copy-paste runbook.
 **KG pilot on `d:\src\knowledge-gateway`** proves AC-2/4/5/6 (metric layer, run report, registry
 survives unchanged re-run). Precondition: metric-layer preflight (Code Maat JVM + lizard) passes, or
 the documented degrade is consciously accepted. Not proven by this pipeline.
+
+**Superseded (2026-07-10):** the pilot that actually ran targeted `omnishelf_flutter_app`, not
+`knowledge-gateway` — see the addendum at the top of this file. This section's text is kept as the
+original record, not rewritten.
 
 ## Non-blocking / slice-2
 

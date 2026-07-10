@@ -94,19 +94,15 @@ agree). A later join recomputes per-file with the same normalization and compare
 triggers a **delta re-check** — re-verify each citation against the current spec and scan changed sections
 for uncovered commitments — never a full re-run.
 
-**Execution topology (who runs what).** This method is **multi-agent by design** (parallel clean-room
-miners, then a fresh skeptic) and **a subagent cannot orchestrate it** — subagents have no
-Workflow/agent/parallel primitives, and a subagent spawning further agents is the ADR-21 breach vector. So:
+**Execution topology (who runs what).** Read `references/mine-family-core.md` §Execution topology
+before orchestrating — the canonical shape (multi-agent by design, orchestrator-owns-spawning,
+staged background `general-purpose` agents, "launch = orchestrate stages") is defined there. This
+mode's own staging: the clean-room miners run in parallel (background), then on their completion a
+consolidate+skeptic agent (background); stages interleave with plan-authoring — planning never
+blocks on the run.
 
-- The **orchestrator is the session that owns spawning** — the team lead in team mode; the main session
-  (PO or architect persona) in standalone mode.
-- The orchestrator runs the mode as **staged background agents**, exactly like pipeline stages: the
-  clean-room miners in parallel (background), then on their completion a consolidate+skeptic agent
-  (background). Stages interleave with plan-authoring — planning never blocks on the run.
-- Miner and skeptic stages spawn as **`general-purpose` agents** carrying the mode's stage prompts — they
-  are method stages, not pipeline roles (no pipeline `subagent_type`, no custom names).
-- "Launch the run" always means "orchestrate its stages" — never "delegate the whole run to one background
-  agent": a single agent cannot preserve miner/skeptic independence.
+**On a NEW target, walk the core §kickoff checklist first** (tool preflight, expected survival rate,
+stop-budget, run-report location) before launching this mode's run.
 
 ## The gate battery (never fake green)
 
@@ -235,9 +231,9 @@ The scoring this stage reports is guarded by the anti-fake-green invariant above
 
 ## Safety rails
 
-- **Budget cap** — halt when the run's **marginal** spend exceeds the ceiling. `budget.spent()` is the shared session pool, NOT the run's cost; capture the start spend and gate on the delta, or a run fired late in a long session trips on the session's prior spend.
+- **Budget cap + report on halt** — read `references/mine-family-core.md` §Marginal-budget rail
+  (capture-the-start delta gating, never silently exit green).
 - **Mutation ratchet** — a kill-rate regression between iterations means the harness is broken: halt.
-- **Report on halt** — every stop writes a report naming the stop reason. Never silently exit green.
 - **Forbidden to the Cover agent** — editing the production class, the mutation config, the gate infra, or the KB. A test that is RED on current code is KEPT and flagged as a candidate bug, never deleted.
 - **Generation guard (Cover)** — the Cover agent must not emit categorically-dead tests: no log-output assertions (the adapter's existing test-style policy) and one representative per mutation-equivalence class. This is volume reduction, not enforcement — a prompt instruction is a request, not a guarantee that it is followed. The Minimize stage's confirm re-gate is the actual enforcement.
 
@@ -381,9 +377,9 @@ whether its matched code/spec pair agrees or diverges, and the condition-boundar
 **corroborating hint** — consulted when the operator declared nothing. `ambiguous`-verdicted spec rules are **excluded from
 generation-eligible buckets** and routed to a spec-repair list. Merge writes/updates the canonical rule
 registry (SddLifecycle C1; default path `docs/business-rules/<area>/<unit>.md`) — `source:`/`last_verified`
-mandatory on every row, existing rows **never deleted** (disposition flips to `retire`/`supersede`,
-the record is kept), every write appends a changelog entry, a re-run against unchanged input is
-idempotent. For M3, the registry's prior rows drive the `add`/`carried`/`supersede`/`retire`
+mandatory on every row; read `references/mine-family-core.md` §Registry invariants for the
+never-deleted / append-only-changelog / idempotent-re-run rules this registry follows. For M3, the
+registry's prior rows drive the `add`/`carried`/`supersede`/`retire`
 dispositions; the `re-open` disposition (new evidence contradicts a *recorded verdict*) needs the C2
 attestation record's verdict-line grammar, which is **deferred** to the next arc alongside the merged ONE
 test set (C3/C4) — see `docs/specs/adhoc-SddLifecycle/definition/tech-spec.md`.
@@ -408,13 +404,16 @@ arm's rule set does — and that combination is shipped now, for the scope above
 
 ## Relationship to other skills
 
+This skill is the **family head** — the class-scoped mine (ground truth: code; gate: mutants), and
+`references/mine-family-core.md` (owned by this skill folder) is the shared reference the whole
+mine family points to. See that file's §The mine family for the full 4-row family table (including
+`mine-verify-repo` and `mine-reference-model`).
+
 | Skill | Relationship |
 |-------|-------------|
 | `mine-verify-cover-dotnet` | the .NET stack adapter — fills the 5 capabilities (Stryker, dotnet test, xUnit + FsCheck, the test-project scaffold) |
 | `mine-verify-cover-flutter` | the Dart/Flutter stack adapter — fills the 5 capabilities (mutation_test driving flutter test, flutter_test + mocktail, kiri_check, the build_runner + HTTPS-rewrite bringup) |
 | `mine-verify-cover-cpp` | the C/C++ stack adapter — fills the 5 capabilities (mull-15 driving GoogleTest/CTest, libclang, GoogleTest + RapidCheck, the Docker image + exit()-wrap bringup) |
 | `mine-verify-cover-php` | the PHP stack adapter — fills the 5 capabilities (Infection 0.34 driving PHPUnit 12, workspace-copy isolation, eris property tests, the Docker + PCOV native-fs bringup, the Infection-json → Stryker-schema translation) |
-| `mine-verify-repo` | the repo-scoped sibling mine — this skill scans ONE class; that one scans ONE repo (graphify areas + a global structure pass) to find WHERE to refactor. It composes back via **M2**: before an accepted repo-scale refactor executes, run this skill on the affected classes as the behavior-preserving safety net (M1 first if the class is uncovered). |
-| `mine-reference-model` | the reference-repo sibling of the mine family — mines ONE designated reference repo's **virtues** (deliberate pattern choices worth copying) into `docs/reference-model.md`, graded for portability to the consuming stack. It has **no Cover arm**: its gate is skeptic re-execution (the invented-virtue kill), not a mutation gate. |
 | `kb-entry-schema` | the registry's non-row context sections (row grammar lives in `## The rule registry`) |
 | `tdd` | the test discipline the Cover agent follows (boundary cases, kill the mutant) |

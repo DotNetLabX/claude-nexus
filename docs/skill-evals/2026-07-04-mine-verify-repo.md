@@ -11,6 +11,10 @@ sections receive; their behavior is first exercised at AC-6").
 **Channel:** dev-repo source skill (not a version-keyed cache copy) → findings fixed directly in
 source, not routed to a feedback file. Plan Step 1 directs "fix findings before proceeding."
 
+**Pilot addendum (2026-07-10):** pilot executed 2026-07-04/05 → `docs/tech-debt/` (6 areas) in
+`omnishelf_flutter_app`; refresh owner = operator, `last_verified: 2026-07-05`. The eval text below
+reflects the pre-pilot state and is not rewritten (adhoc-MineFamilyCore P0 record hygiene).
+
 ## Layer 0 — Mechanical (skill-lint.mjs)
 
 `node plugins/nexus/skills/improve-skills/scripts/skill-lint.mjs plugins/nexus/skills/mine-verify-repo`

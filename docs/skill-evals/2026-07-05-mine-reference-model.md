@@ -11,6 +11,11 @@ This evaluation therefore judges the **spec-as-written** against the rubric, not
 survival-rate / flattery-kill evidence lands only with the pilot (AC-5).
 **Layer 0 (lint):** `skill-lint.mjs` → `OK  mine-reference-model` (exit 0).
 
+**Pilot addendum (2026-07-10):** pilot executed 2026-07-05 (self-reference on
+`dotnet-microservices`, runs 1–3) → `docs/reference-model.md`; refresh owner = operator,
+`last_verified: 2026-07-05`. The eval text below reflects the pre-pilot state and is not rewritten
+(adhoc-MineFamilyCore P0 record hygiene).
+
 ## F1: Fan-out overlay omits an explicit model policy
 
 **Severity:** Low

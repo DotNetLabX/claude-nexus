@@ -1,6 +1,10 @@
 # nexus — Changelog
 
 
+## [1.26.1] — 2026-07-10
+- Mine-family core reference extracted (topology/budget/skeptic/registry invariants consolidated) +
+  pilot-lesson harvest + kickoff checklist; records annotated.
+
 ## [1.26.0] — 2026-07-09
 - **The Conformance Reviewer — a corpus-grounded advisory lens for the PR tail (adhoc-ConformanceReviewer,
   ADR-53/54).** New opt-in capability: reviews a diff against the repo's **own corpus** (conventions,
