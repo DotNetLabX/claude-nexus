@@ -35,6 +35,7 @@
 | 10 | reviewer → team-lead | reviewer:review | Verdict: APPROVED. Zero findings at any severity. Independently re-ran diff read, AC greps, tests (509/509), selfcheck, scope check, consumer-vocabulary greps — all match self-reports. Both carry-over findings confirmed non-blocking. | — |
 | 11 | team-lead (closure) | done | Verdict validated in review.md (## Step 2 → APPROVED). Bump executed: 1.26.1 → 1.26.2, CHANGELOG curated to this feature only (classifier had swept concurrent feature's files). tech-spec Status → Implemented. summary.md written. Scoped implementation commit follows. | — |
 | 12 | team-lead (open gate) | done | Omni-twin sync (gen-omni, ADR-6) deferred until adhoc-LearnerCadenceNudge lands — CLAUDE.md concurrent-features rule. selfcheck stays 4/5 (gen-omni --check) until then; expected. | tracked |
+| 13 | team-lead (gate closed) | done | LearnerCadenceNudge landed (284de3e, 1.27.0). Found stale uncommitted 1.26.1 twin files in ../omni (MineFamilyCore sync generated but never committed) — subsumed by fresh gen-omni regen from HEAD. Omni committed 0c1ee04 (bundled 1.26.1+1.26.2+1.27.0) + pushed. selfcheck 5/5. Nexus already on origin/main (concurrent session's push carried this slug's commits). | resolved |
 
 ## Runtime / Plugin Issues Log
 

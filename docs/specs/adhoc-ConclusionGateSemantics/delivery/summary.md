@@ -20,10 +20,9 @@
   could pick the correct patch number). Sanctioned deviation, disposition "Deviated (valid reason)".
 
 ## Notes
-- **Open production gate:** the omni-twin sync (`node scripts/gen-omni.mjs`, ADR-6) is deferred
-  until the concurrent `adhoc-LearnerCadenceNudge` feature also lands (CLAUDE.md
-  concurrent-features rule). Until then `scripts/selfcheck.mjs` stays 4/5 (`gen-omni --check`
-  twin drift — expected, not a defect). Run gen-omni + commit the twin in `../omni` after both
-  features are on HEAD.
+- **Production gate CLOSED (2026-07-10):** after adhoc-LearnerCadenceNudge landed (nexus 1.27.0,
+  `284de3e`), the omni twin was regenerated from HEAD, committed (`omni 0c1ee04`, bundled sync of
+  1.26.1 + 1.26.2 + 1.27.0), and pushed. `scripts/selfcheck.mjs` is 5/5 (`gen-omni --check` green).
+  The stale uncommitted 1.26.1 twin files found in `../omni` were subsumed by the fresh regen.
 - Pipeline ran concurrently with adhoc-LearnerCadenceNudge in the same working tree on `main`
   (user-approved); all commits scoped, no file overlap. Details in communication-log.md.
