@@ -1,6 +1,19 @@
 # nexus — Changelog
 
 
+## [1.27.0] — 2026-07-10
+- **Learner cadence nudge (adhoc-LearnerCadenceNudge).** New PostToolUse hook `learner-cadence.js`
+  rides the `summary.md` close write: counts pipeline summaries newer than the learner's
+  `.claude/audit/learner-last-run` stamp and emits a silent-when-clean `systemMessage` nudge
+  ("consider 'be learner'") when lessons accumulate. Wired into the existing `(PostToolUse,
+  Write|Edit)` group (`async: true`, timeout 10). Learner workflow gains step 8 — stamp the
+  last-run marker, apply-only-on-promotion, mtime-driven; command regenerated. Unit-tested
+  (AC-1 four cases) + dry-fire verified.
+  - agent instruction/behavior change (learner stamp obligation)
+  - shipped command changed (commands/learner.md regenerated)
+  - hook added (learner-cadence.js) + hooks.json wiring
+  - owner-escalated to minor (new capability)
+
 ## [1.26.2] — 2026-07-10
 - Conclusion-gate verdict semantics in diagnose + review-format (causal verdicts name their
   variable; kills need falsifying evidence).

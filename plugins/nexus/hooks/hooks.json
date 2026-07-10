@@ -31,7 +31,8 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/register-persona.js\"", "timeout": 10, "async": true }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/register-persona.js\"", "timeout": 10, "async": true },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/learner-cadence.js\"", "timeout": 10, "async": true }
         ]
       },
       {
