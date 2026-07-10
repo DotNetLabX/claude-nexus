@@ -60,6 +60,26 @@
   CHANGELOG line to ship, that text replaces the tool's default after the bump runs — the bump and
   the changelog wording are two separate concerns the tool bundles by convenience, not by contract.
 
+## Reviewer Lessons
+
+- **A retroactive Step 2 (implementation already committed/released) still earns full independent
+  re-execution, not a re-read of implementation.md's evidence table.** [adhoc-MineFamilyCore] The
+  pipeline stopped after the architect's Step 1 done-check with no Step 2/summary; by the time
+  review ran, the change was already on `main` at nexus 1.26.1. Re-running all 8 AC greps, the
+  test suite, and `selfcheck.mjs` live (rather than trusting the recorded output) was the only way
+  to confirm the "zero behavior change" and dedup guarantees actually held at HEAD — and it was
+  cheap, since the AC battery this feature shipped with is itself fully re-executable. **How to
+  apply:** treat "already committed" as a reason to verify against the live tree, not a reason to
+  skip verification — a stale or drifted claim in implementation.md is exactly as possible after
+  commit as before it.
+- **When a plan step repoints a citation to a removed heading (critic F6-class), sweep the *whole*
+  live doc tree for the same dangling text, not just the one file the critic already named.**
+  [adhoc-MineFamilyCore] The plan fixed the one consumer the critic found (`team-lead.md`); this
+  review's gap analysis additionally grepped `plugins/` and `docs/architecture/README.md` for the
+  same removed-heading text and confirmed no second dangling citation existed. Confirming the
+  critic's fix was complete (not just correctly applied where already spotted) is a distinct check
+  worth the extra minute on any heading-removal pass.
+
 ## Skill Gaps
 
 None — `evaluate-skill` and `release-plugin` both covered this pass's needs as invoked; no missing
