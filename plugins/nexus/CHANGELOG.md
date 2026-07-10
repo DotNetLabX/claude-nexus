@@ -1,6 +1,10 @@
 # nexus — Changelog
 
 
+## [1.26.2] — 2026-07-10
+- Conclusion-gate verdict semantics in diagnose + review-format (causal verdicts name their
+  variable; kills need falsifying evidence).
+
 ## [1.26.1] — 2026-07-10
 - Mine-family core reference extracted (topology/budget/skeptic/registry invariants consolidated) +
   pilot-lesson harvest + kickoff checklist; records annotated.

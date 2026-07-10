@@ -39,6 +39,7 @@ The team lead greps **named sections**, not bare `Verdict:` lines, to avoid stac
 - Negative-assertion gates traced: a "X is never called" / "no regression" / `CallCount == 0` assertion is a real gate **only** if a reachable path exists from the exercised entry point to X in the test wiring. Trace the spy / captured dependency before trusting the negative — a spy on a dependency the path never invokes asserts nothing (a vacuous test that passes for the wrong reason)
 - Skill mapping verified: any "None" disposition in the Skill Mapping was warranted (no existing skill actually covers the step)
 - `Satisfies:` traceability (where present): for any plan step carrying a `Satisfies:` annotation (an `AC-n` or an ADR unit), verify the implemented code actually traces to that target — the defense against intent drift (code that runs but does the wrong thing). This is a **where-present** check, not a mandate: a step without `Satisfies:` is not a finding (the annotation is optional and existing plans predate it)
+- Causal-finding grammar: a finding asserting *causation* (a diagnosed defect mechanism — "X causes Y") names the mechanism — the variable/path that produces the failure — or its causal attribution is tagged **`correlation-only`** and capped at MEDIUM. Carve-out: a **directly-observed** CRITICAL/HIGH impact (data loss, security, silent incorrect output) keeps its severity floor even when the mechanism is unproven — file the impact at full severity and route the unproven attribution to Open Questions; never collapse both into a non-blocking MEDIUM
 
 ## Severity Ratings
 - **CRITICAL**: Security vulnerability, data loss risk, fundamentally wrong approach. Blocks merge.
@@ -82,6 +83,8 @@ Nexus's existing self-audit (which already routes non-HIGH CRITICAL/HIGH finding
 Questions) — the threshold is now a number. The point is to keep a genuine-but-uncertain CRITICAL
 (say a security risk you're only 70% sure of) visible as an Open Question rather than asserting it
 at full severity or losing it.
+
+**Causal-attribution grammar (not a second threshold).** A finding asserting *causation* names its mechanism — the variable/path producing the failure — or the causal attribution is tagged **`correlation-only`** and capped at MEDIUM; a **directly-observed** CRITICAL/HIGH impact (data loss, security, silent incorrect output) keeps its severity floor (impact filed at full severity, unproven attribution routed to Open Questions). This is a *grammar* requirement, not a number: the ≥80 cutoff above remains the **sole** thin-evidence threshold.
 
 ## Verdict
 - **APPROVED**: No CRITICAL or HIGH issues.

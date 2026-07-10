@@ -1,6 +1,6 @@
 # Tech-Spec — Conclusion-Gate Verdict Semantics (B1)
 
-**Status:** Ready
+**Status:** Implemented (2026-07-10, nexus 1.26.2)
 **Branch:** technical (ADR-27 — architect-owned definition)
 **Provenance:** `docs/proposals/mine-family-next-wave-2026-07.md` — consolidated backlog item B1
 (new candidate from the VWH evaluation, `docs/research/2026-07-10-mine-suite-vs-vwh.md` §4c).

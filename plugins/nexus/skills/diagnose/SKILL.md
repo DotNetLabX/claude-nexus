@@ -68,10 +68,10 @@ Use your language's logging or print facility. Every debug line must include the
 
 After each probe:
 - Run the feedback loop
-- Record: which hypothesis confirmed/eliminated, what new evidence
+- Record: which hypothesis confirmed/eliminated, what new evidence — a hypothesis is *eliminated* only by recorded falsifying evidence (its "would show X if true" observed absent or contradicted); a probe that neither confirms nor falsifies leaves it **`inconclusive`** (the resting verdict) — alive and testable. One ambiguous probe never kills a ranked hypothesis
 - Narrow or pivot
 
-**Gate:** Root cause identified with evidence.
+**Gate:** Root cause identified with evidence — the causal verdict names (a) the ONE variable whose change **flips the outcome**, (b) the confirming probe, and (c) what falsified the ranked alternatives. If more than one variable changed (last-known-good → failure, or during probing), the verdict carries an explicit **`confounded`** tag: keep bisecting, or override with a logged reason. (This governs the *verdict*; the one-variable-at-a-time guardrail governs the *probing*.)
 
 ### Phase 5: Fix + Regression Guard
 
@@ -103,6 +103,8 @@ The developer/solo circuit breaker triggers after 3 failed attempts. This skill 
 - If root cause found → Phase 5–6 (fix)
 - If 3 hypotheses exhausted without root cause → escalate to architect with your evidence log
 
+**Pre-escalation kill rule.** An "approach is unworkable / unfixable" conclusion requires ≥2 distinct falsifying probes in the evidence log, or an explicit override with a logged reason — it composes with, never replaces, the 3-attempt breaker (that bounds *fix attempts*; this bounds premature *conclusions*). **Escalation is a handoff, not a kill:** escalating to the architect with the evidence log is never gated by the elimination rule. "3 hypotheses exhausted" means each top hypothesis has been probed at least once (confirmed / falsified / **inconclusive**) — an inconclusive-alive hypothesis still counts toward the escalation trigger, it never defers it.
+
 ## Guardrails
 
 - **Never skip phases** — especially Phase 3 (hypothesize before testing)
@@ -110,6 +112,7 @@ The developer/solo circuit breaker triggers after 3 failed attempts. This skill 
 - **Tag everything** — untagged debug output becomes production noise
 - **Minimal fix** — don't refactor during a fix. Fix the bug, verify, then propose refactoring separately
 - **No permanent logging for debugging** — if the insight is valuable long-term, it's observability (different concern, different PR)
+- **Conclusion grammar** — a causal verdict names its cause-variable or carries the `confounded` tag; `inconclusive` is the resting verdict — one ambiguous probe never kills a hypothesis
 
 ## Required Reading
 
