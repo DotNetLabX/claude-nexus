@@ -1,6 +1,12 @@
 # nexus — Changelog
 
 
+## [1.30.1] — 2026-07-10
+- PATCH bump.
+  - skill change (mine-reference-model)
+  - skill change (mine-verify-cover)
+  - skill change (mine-verify-repo)
+
 ## [1.30.0] — 2026-07-10
 - **Architect-Led Fast Lane (adhoc-ArchitectFastLane).** New standalone-only mode: the architect
   (main session persona, never a spawned subagent) can run a compact architect-develop-review loop

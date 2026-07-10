@@ -1,7 +1,7 @@
 # Mine-family core reference
 
-Shared content for the four-member mine family (`mine-verify-cover` incl. its `mine-from-spec`
-mode, `mine-verify-repo`, `mine-reference-model`). Each sibling SKILL.md replaces its restated copy
+Shared content for the five-member mine family (`mine-verify-cover` incl. its `mine-from-spec`
+mode, `mine-verify-repo`, `mine-reference-model`, `mine-semantic-model`). Each sibling SKILL.md replaces its restated copy
 of the sections below with a short load-bearing pointer to this file, plus ONLY its own per-skill
 deltas. This file has no frontmatter — it is a reference, not a skill, and is never Skill-tool
 loaded directly.
@@ -14,8 +14,9 @@ loaded directly.
 | `mine-from-spec` (mode) | one spec | spec text | skeptic-vs-text | spec-rules |
 | `mine-verify-repo` | one repo (debts) | git metrics + code | hotspot rank + re-execution | `docs/tech-debt/{area}.md` |
 | `mine-reference-model` | one reference repo (virtues) | reference source | skeptic re-execution (invented-virtue kill) | `docs/reference-model.md` in the consuming repo |
+| `mine-semantic-model` (ships in nexus-analytics) | one datasource area | live schema + read-only data probes | probe re-execution + KB grounding + operator interview | semantic-model bundle + provenance ledger |
 
-The family invariant is unchanged across all four: bounded unit -> clean-room miners -> consolidate
+The family invariant is unchanged across all five: bounded unit -> clean-room miners -> consolidate
 -> skeptic verify -> graded/verified registry. What changes per member is the unit, the ground
 truth, and the failure mode the gate kills.
 
@@ -43,6 +44,10 @@ subagent spawning further agents is the ADR-21 breach vector. So:
 - `mine-reference-model` — five dimension extractors in parallel (default), then ONE
   consolidate+skeptic (Entry-6 sizing note: one consolidate+skeptic held at roughly 145 findings on
   the debt-mine pilot; a virtues run yields far fewer rows, so this is comfortably bounded).
+- `mine-semantic-model` (ships in nexus-analytics) — phases run sequentially in the main session;
+  the Phase-4 interview is **operator-in-loop** (the family's one in-loop human gate — never
+  delegable as one background run); probe batches (Phase 2) may background between interview
+  points.
 
 ## Marginal-budget rail + report-on-halt
 
@@ -73,6 +78,9 @@ glance list) — this rail is the shared mechanism, not the full safety-rails se
 `mine-verify-cover`'s code-arm Verify stage is a **different mechanism** (mutation-gated code
 re-check, not this must-RUN protocol) and is not a consumer of this section; `mine-from-spec`'s
 distinct `verified | ambiguous` grammar likewise stays in `mine-verify-cover` untouched.
+`mine-semantic-model`'s gate is likewise a different mechanism (probe re-execution + Audit-mode
+refutation legs + interview provenance — its origin enum is its verdict grammar) and is not a
+consumer of this must-RUN protocol section.
 
 ## Fact/judgment doctrine
 

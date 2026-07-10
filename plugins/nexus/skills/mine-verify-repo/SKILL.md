@@ -24,7 +24,7 @@ graphify areas (ground truth: deterministic git/complexity metrics + must-reprod
 hotspot ranking) to find WHERE a repo hurts. Read
 `../mine-verify-cover/references/mine-family-core.md` §The mine family for the full family table and
 the shared invariant (bounded unit → clean-room miners → consensus → skeptic verify → graded
-registry) all four members follow.
+registry) all five members follow.
 
 **First slice = Metric→Mine→Verify→Registry only.** Cover/mutation at repo scale, auto-generated
 refactoring plans, the security lens, and cross-model critic execution are out of scope — see
