@@ -1,6 +1,11 @@
 # nexus — Changelog
 
 
+## [1.30.3] — 2026-07-11
+- PATCH bump.
+  - rule (injected every session)
+  - skill change (research)
+
 ## [1.30.2] — 2026-07-10
 - PATCH bump.
   - agent instruction/behavior change
