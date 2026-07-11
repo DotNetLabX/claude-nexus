@@ -1,5 +1,7 @@
 # SDD Golden-Set Lifecycle — Lessons
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] YAML colon-space frontmatter pre-flight → skill-lint.mjs E9 (with adhoc-NexusResearch NR-L-1). [APPLIED] bump-plugin CHANGELOG stub stale date across day-rollover → scripts/bump-plugin.mjs local-date stamp.
+
 ## Architect Lessons
 
 - **A technical feature gated on a *sibling* pilot's live verdict decomposes along the gate — surface the gate

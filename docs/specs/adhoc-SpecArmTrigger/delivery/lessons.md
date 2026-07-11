@@ -1,5 +1,7 @@
 # Lessons — adhoc-SpecArmTrigger
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] grep-the-anchor-before-citing-it (4 logged instances across the SDD family) → architect.md tech-spec anchor grounding. [TRACKED] mechanism+limitation as two separate sentences convention (1 occurrence).
+
 ## Architect Lessons
 
 - **The vocabulary-not-shapes failure now has four logged instances in one spec family** (SddCoverageLoop

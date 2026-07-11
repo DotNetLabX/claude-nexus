@@ -1,5 +1,7 @@
 # Architect-Led Fast Lane — Lessons
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] prose-diff code-review variant, 2nd occurrence with adhoc-BranchStrategyAsk (+ general-purpose-not-Explore correction) → architect.md fast-lane dispatch. [APPLIED] bump dry-run reasons-list contamination, 2nd occurrence → CLAUDE.md release section. Structure-independent acceptance phrasing → create-implementation-plan bundle.
+
 ## Architect Lessons
 
 - **The plan's central scope thesis ("single file suffices") was wrong, and only a code-grounded

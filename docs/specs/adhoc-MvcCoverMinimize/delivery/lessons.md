@@ -1,5 +1,7 @@
 # Lessons — adhoc-MvcCoverMinimize
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] bump-from-committed-HEAD-not-dirty-tree under concurrency → team-lead.md Pre-Flight 2 evidence (Commit Protocol already carried the per-commit re-check).
+
 ## Architect Lessons
 
 - **In the MVC harness the orchestrator has no filesystem — confirm / apply / restore are agent ops, never orchestrator ops.** Rev 1 put the confirm re-mutation and the test-file edits on the "pure/deterministic" orchestrator. That is structurally impossible (`mine-verify-cover/SKILL.md:30` — agents do all I/O) and produced a fake-green confirm (a pure recompute over the stale kill-map can never regress). **Apply:** in any MVC/harness plan, mark every I/O step's owning agent explicitly (minimize agent reasons; write-agent edits; runner re-runs; orchestrator only routes + decides) — mirror the live classify-survivors split, don't reinvent it.

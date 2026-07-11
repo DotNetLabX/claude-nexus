@@ -1,5 +1,7 @@
 # Lessons — adhoc-ResearchKB
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] node --test glob-form-only convention → tests/README.md Conventions (with adhoc-VwhSelfcheckAndPrinciple et al.).
+
 ## Architect Lessons
 
 - **Standalone checkpoints belong in `AskUserQuestion`, not prose.** The architect's standalone-mode

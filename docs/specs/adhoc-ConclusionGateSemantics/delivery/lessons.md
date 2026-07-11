@@ -1,5 +1,7 @@
 # Lessons — adhoc-ConclusionGateSemantics
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] concurrent-feature worktree/serialize launch policy + developer-stops-team-lead-bumps (Improvement Proposal, with adhoc-LearnerCadenceNudge) → team-lead.md Pre-Flight 2 (Concurrent-run guard). Executed-true AC greps → confirming data point for the create-implementation-plan bundle (strengthened this pass). Shared .pipeline-state attribution → docs/proposals/session-scoped-pipeline-state-2026-07.md.
+
 ## Architect Lessons
 
 - **Never cap severity on an epistemic property — cap the attribution, not the impact.**

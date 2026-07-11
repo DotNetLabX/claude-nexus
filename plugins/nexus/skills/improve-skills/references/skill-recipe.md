@@ -83,11 +83,13 @@ folder for the executable that checks it.
 - **"What this skill does NOT do"** — a scope fence, already load-bearing across the estate (see
   `improve-skills`' own section of that name).
 
-**Loader safety (mechanical, not a restated prose rule):** no XML-tag-shaped tokens anywhere in a
+**Loader safety:** no XML-tag-shaped tokens anywhere in a
 `SKILL.md` — write `{placeholder}`, never an angle-bracket placeholder; rephrase math comparisons
-as "under/over/at most." This is enforced by the shipped `skill-lint.mjs` gate (checks E7/E8), not
-left to a prose reminder — see `improve-skills`' own "Write Discipline (encoding)" and
-"Deterministic Gate" sections for the full write standard and the exact command to run.
+as "under/over/at most." The shipped `skill-lint.mjs` gate enforces the *token* half mechanically
+(E7 catches XML-tag-shaped tokens in prose; E8 catches mojibake) — but a bare comparison glyph is
+**not** lint-caught, so the comparator rephrasing stays a prose rule you apply while writing — see
+`improve-skills`' own "Write Discipline (encoding)" and "Deterministic Gate" sections for the full
+write standard and the exact command to run.
 
 ---
 

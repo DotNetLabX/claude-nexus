@@ -1,5 +1,7 @@
 # VWH Adoptions (Allocation Principle + Selfcheck) — Lessons
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] node --test bare-dir Node≥22 regression pinned as a testing convention (5-run recurrence) → tests/README.md Conventions.
+
 ## Architect Lessons
 
 - **A "verified" claim was nearly shipped unverified.** The Q1 recommendation initially said

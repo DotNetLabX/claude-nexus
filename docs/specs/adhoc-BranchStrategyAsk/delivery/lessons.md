@@ -1,5 +1,7 @@
 # Branch Strategy Ask — Lessons
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] prose-diff code-review variant (skill gap, 1st occurrence; threshold met with adhoc-ArchitectFastLane) → architect.md fast-lane dispatch. [APPLIED] bump dry-run reasons-list check (CLAUDE.md addition proposal) → CLAUDE.md release section.
+
 ## Architect Lessons
 
 - **Verify-current-state-first reframed the whole request.** The ask read as green-field

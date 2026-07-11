@@ -1,5 +1,7 @@
 # Distill-Prompt Contract Fix — Lessons
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [TRACKED] auto-mode permission classifier vs plan-sanctioned owner-decided bump (coordination-note phrasing collides with a sanctioned edit; owner-decided MINOR invisible to the classifier) — 1 occurrence.
+
 ## Developer Lessons
 - **Phase 1 analysis (2026-06-20):** plan is fully code-grounded — every referenced file, script,
   ADR, and test floor verified against live source on first read; zero blocking questions. Notably

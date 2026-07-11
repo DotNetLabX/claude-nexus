@@ -33,6 +33,17 @@ const TIER_NAME = ['none', 'patch', 'minor', 'major'];
 const args = process.argv.slice(2);
 const has = (f) => args.includes(f);
 const valOf = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : undefined; };
+// Unknown-flag guard: an unrecognized flag must never fall through to the default mode — the
+// default MUTATES files, and a probe like `--help` once applied a real bump. Exit 2 with usage.
+const KNOWN_FLAGS = new Set(['--check', '--dry-run', '--staged', '--minor', '--major', '--base', '--note']);
+const VALUE_FLAGS = new Set(['--base', '--note']);
+for (let i = 0; i < args.length; i++) {
+  const a = args[i];
+  if (KNOWN_FLAGS.has(a)) { if (VALUE_FLAGS.has(a)) i++; continue; }
+  console.error(`bump-plugin: unrecognized argument "${a}" — refusing to run (the default mode mutates files).`);
+  console.error('usage: node scripts/bump-plugin.mjs [--check|--dry-run] [--staged] [--minor|--major] [--base <ref>] [--note <text>]');
+  process.exit(2);
+}
 const MODE = has('--check') ? 'check' : has('--dry-run') ? 'dry-run' : 'apply';
 const STAGED_ONLY = has('--staged');
 const BASE = valOf('--base');
@@ -193,12 +204,21 @@ function nextVersion(v, tier) {
 
 // ── report ────────────────────────────────────────────────────────────────────
 const bumped = [];
+const newPlugins = [];
 for (const [name, { tier, reasons }] of perPlugin) {
   if (tier === TIER.NONE) continue;
+  // A brand-new plugin (absent at HEAD) ships at its AUTHORED version — bumping it would turn
+  // 0.1.0 into 0.1.1 and stub over its hand-written CHANGELOG. First release = no bump; the
+  // authored manifest + CHANGELOG are the release. (--check keeps its own base-aware null skip.)
+  if (MODE !== 'check' && readVersion(name, 'HEAD') === null && readVersion(name) !== null) {
+    newPlugins.push(name);
+    continue;
+  }
   bumped.push({ name, tier, reasons: [...reasons] });
 }
 
 function printPlan() {
+  for (const n of newPlugins) console.log(`  ${n}: new plugin (absent at HEAD) — first release ships at its authored version; no bump.`);
   if (bumped.length === 0) {
     console.log('bump-plugin: no plugin behavior-surface changes detected — no bump needed.');
     if (nonPluginPaths.length) console.log(`  (non-plugin paths, no bump: ${nonPluginPaths.length} file(s) under docs/, scripts/, etc.)`);
@@ -236,7 +256,9 @@ if (MODE === 'check') {
 printPlan();
 if (MODE === 'dry-run' || bumped.length === 0) process.exit(0);
 
-const today = new Date().toISOString().slice(0, 10);
+// Local date, not toISOString (UTC) — in a UTC-ahead timezone an evening bump stamped yesterday.
+const now = new Date();
+const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 for (const b of bumped) {
   const mp = manifestPath(b.name);
   if (!existsSync(mp)) { console.log(`  ${b.name}: plugin dir removed — skipping bump.`); continue; }
@@ -257,10 +279,16 @@ for (const b of bumped) {
     const txt = readFileSync(clPath, 'utf8');
     const lines = txt.split('\n');
     const titleIdx = lines.findIndex((l) => l.startsWith('# '));
-    const insertAt = titleIdx >= 0 ? titleIdx + 1 : 0;
-    // skip a blank line right after the title
-    const after = (lines[insertAt] ?? '').trim() === '' ? insertAt + 1 : insertAt;
-    lines.splice(after, 0, '', entry.trimEnd());
+    // Insert above the FIRST existing `## ` entry — never right under the title: a descriptive
+    // intro paragraph between the H1 and the first entry would otherwise be orphaned beneath
+    // the freshly inserted block.
+    const firstEntry = lines.findIndex((l, i) => i > titleIdx && l.startsWith('## '));
+    if (firstEntry >= 0) {
+      lines.splice(firstEntry, 0, entry.trimEnd(), '');
+    } else {
+      while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+      lines.push('', entry.trimEnd(), '');
+    }
     cl = lines.join('\n');
   } else {
     cl = `${title}\n\n${entry}`;

@@ -87,7 +87,19 @@ const checks = [
     name: 'gen-omni --check',
     run: () => {
       const r = exec(node, ['scripts/gen-omni.mjs', '--check']);
-      return { ok: r.status === 0, detail: r.status === 0 ? 'twin in sync' : 'omni twin drifted — run gen-omni' };
+      if (r.status === 0) return { ok: true, detail: 'twin in sync' };
+      // Distinguish genuine drift from the DOCUMENTED mid-feature state: with uncommitted
+      // plugins/** changes in the tree, the twin legitimately lags until the closure step
+      // regenerates it AFTER the impl commit (the twin's footer pins that commit's sha — ADR-6).
+      // Nearly every pipeline run re-triaged this FAIL at the developer's verify stop; the label
+      // answers it in place. Exit semantics unchanged (CI parity — CI only sees committed trees).
+      const dirty = exec('git', ['status', '--porcelain', '--', 'plugins']).output.trim() !== '';
+      return {
+        ok: false,
+        detail: dirty
+          ? 'omni twin drifted — EXPECTED mid-feature (uncommitted plugins/** changes; twin sync is a post-commit closure step, ADR-6). Genuine drift only if this persists after the closure commit.'
+          : 'omni twin drifted — run gen-omni',
+      };
     },
   },
   {

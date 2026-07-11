@@ -14,6 +14,8 @@
 //       scripts/ and assets/ paths; resolved skill-relative OR at the .git-anchored repo root
 //   E7  no XML-tag-shaped tokens in prose (use {placeholder}, never <placeholder>) — code blocks exempt
 //   E8  no mojibake markers (U+FFFD, UTF-8-as-1252 sequences) — the bad-save signature
+//   E9  no colon-space in an unquoted frontmatter value — strict YAML parsers (claude plugin
+//       validate --strict) read it as a nested mapping and reject the skill; quote or reword
 //   W1  description shorter than 40 chars — too vague for auto-invocation
 //   W2  description longer than 1024 chars — bloats every auto-invocation scan
 //   W3  SKILL.md body over 500 lines — suggest a progressive-disclosure references/ split
@@ -75,7 +77,18 @@ for (const arg of args) {
       const data = {};
       for (const line of fm[1].split(/\r?\n/)) {
         const kv = line.match(/^([A-Za-z_][\w-]*):\s*(.*)$/);
-        if (kv) data[kv[1]] = kv[2].trim();
+        if (kv) {
+          data[kv[1]] = kv[2].trim();
+          // E9 — an unquoted plain scalar containing ": " is invalid strict YAML (it parses as a
+          // nested mapping), so this lint would accept what `claude plugin validate --strict`
+          // rejects. Quoted values and block scalars (|, >) are exempt — the colon is literal there.
+          const v = kv[2].trim();
+          const isQuoted = /^(['"])[\s\S]*\1$/.test(v);
+          const isBlock = /^[|>]/.test(v);
+          if (v && !isQuoted && !isBlock && /:\s/.test(v)) {
+            errors.push(`frontmatter ${kv[1]}: contains a colon-space in an unquoted value — strict YAML reads it as a nested mapping; wrap the whole value in double quotes or reword (use " - " or commas)`);
+          }
+        }
       }
       if (!data.name) errors.push('frontmatter has no name:');
       else if (data.name !== name) errors.push(`frontmatter name "${data.name}" does not match the folder name "${name}"`);

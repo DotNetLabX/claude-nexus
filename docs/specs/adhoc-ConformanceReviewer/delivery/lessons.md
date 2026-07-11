@@ -1,5 +1,7 @@
 # Lessons — adhoc-ConformanceReviewer
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] platform-capability claims cite the ADR/CHANGELOG line, never memory → architect.md tech-spec anchor grounding. node --test trailing-slash spurious-fail → tests/README.md glob-form convention.
+
 ## Architect Lessons
 
 - **ADR numbers race under concurrent sessions — re-check the register at the moment of use, not at

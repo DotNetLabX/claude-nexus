@@ -1,5 +1,7 @@
 # Lessons — adhoc-DecisionLog
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] acceptance-and-step-text-are-the-same-query, 2nd occurrence → create-implementation-plan executed-acceptance bundle. [TRACKED] retroactive Step-2 review pattern (with adhoc-MineFamilyCore).
+
 ## Architect Lessons
 
 - **When a plan says "define section X" in a doc that DOCUMENTS an artifact's structure, pin the

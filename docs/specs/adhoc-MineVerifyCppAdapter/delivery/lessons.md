@@ -1,5 +1,7 @@
 # Lessons — adhoc-MineVerifyCppAdapter
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [ROUTED-TO-PROPOSAL] CPA-11 per-worktree/per-session pipeline-state — threshold met (2nd occurrence via adhoc-MineVerifyPhpAdapter, plus ConclusionGateSemantics/LearnerCadenceNudge collisions) → docs/proposals/session-scoped-pipeline-state-2026-07.md.
+
 > **Learner disposition (2026-06-29 → nexus 1.18.7):** **[TRACKED]** per-worktree `.pipeline-state` (CPA-11) — a concurrent session's shared main-tree state false-tripped the source-write gate in a worktree; held as a high-blast-radius gate edit on 1 occurrence (see memory `recheck-branch-under-concurrent-run`). The C++ adapter/cover-prompt lessons are skill-internal to nexus-cpp (shipped 1.18.3), not cross-cutting.
 
 ## Architect / Execution Lessons

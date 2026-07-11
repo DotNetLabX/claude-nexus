@@ -110,6 +110,23 @@ only `nexus/` bumps only `nexus`. When a `nexus` **major** ships and `nexus-dotn
 note this; if `nexus-dotnet` ever pins a constraint (`{ "name": "nexus", "version": "^N" }`),
 crossing it forces a `nexus-dotnet` bump too (dependency-change = MAJOR).
 
+## New-plugin ship checklist
+
+A **brand-new** plugin (first release, `0.1.0`) trips four wiring surfaces the per-file bump flow
+doesn't cover — treat them as one unit, verified before the release commit:
+
+1. **Don't re-bump the authored version.** `bump-plugin.mjs` sees the whole new folder as changed
+   and proposes `0.1.0 → 0.1.1` plus a CHANGELOG stub — revert to the authored `0.1.0` and keep the
+   hand-written CHANGELOG; `--check` does not catch this.
+2. **Both `gen-omni.mjs` sites** — the mirror-dir mapping AND the marketplace `wantPlugins` array;
+   one without the other ships a half-wired twin.
+3. **Both `tests/unit/gen-omni.test.mjs` sites** — the synthetic sandbox's `before()` seed AND the
+   `deepEqual` expectation; a new plugin crashes the fixture (ENOENT) if unseeded. Same class:
+   any hard-coded registry a shared script carries (e.g. `gen-commands.mjs`'s role map) — run the
+   script against the new plugin at authoring time, don't assume the pattern generalizes.
+4. **Shipped toolchain assets reference the SKILL.md**, never dev-repo `delivery/` paths —
+   neutralize comment references when copying templates/Dockerfiles into the plugin folder.
+
 ## What this skill does NOT do
 
 - Commit for you — it leaves the edits staged-ready; you commit them with the change.

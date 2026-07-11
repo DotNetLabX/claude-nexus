@@ -1,5 +1,7 @@
 # Lessons — adhoc-UtilitySkillsHardening
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] bump-plugin unknown-flag guard (silent mutation on --help) → scripts/bump-plugin.mjs. [APPLIED] Measure-Object -Line trap (2nd occurrence) → create-implementation-plan bundle. [APPLIED] selfcheck gen-omni expected-RED mid-feature label → scripts/selfcheck.mjs (exit semantics unchanged).
+
 ## Architect Lessons
 
 - **`Measure-Object -Line` silently skips blank lines** — a line-count claim in a plan must come from

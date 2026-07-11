@@ -1,5 +1,7 @@
 # Lessons — adhoc-MineFamilyCore
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] execute-acceptance-greps-at-plan-time (root cause of all three HIGHs) → create-implementation-plan executed-acceptance bundle; heading-consumer sweep → architect.md tech-spec anchor grounding. [TRACKED] retroactive Step-2 full-re-execution pattern (with adhoc-DecisionLog — both successes; promote if a failure shape appears).
+
 ## Architect Lessons
 
 - **Execute acceptance greps against disk at plan-authoring time — never assert them from the

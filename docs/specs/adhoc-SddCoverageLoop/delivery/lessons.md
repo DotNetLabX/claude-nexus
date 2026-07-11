@@ -1,5 +1,7 @@
 # Lessons — adhoc-SddCoverageLoop
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [ROUTED-TO-PROPOSAL] resumed-agent absent-agent_type verify-skip gap → docs/proposals/session-scoped-pipeline-state-2026-07.md. [TRACKED] harness-inline-helper skill candidate (2 instances, borderline — held below threshold).
+
 ## Architect Lessons
 
 - **Don't build composition/reuse claims from a harness's self-description.** The first tech-spec drew its

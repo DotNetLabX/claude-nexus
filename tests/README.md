@@ -60,6 +60,10 @@ non-blocking CI step. Never add a red test for speculation — only for decided 
 
 ## Conventions
 
+- Always invoke the runner in **glob form** (`node --test tests/lint/*.test.mjs tests/unit/*.test.mjs`).
+  The bare-directory form (`node --test tests/` or a trailing-slash dir arg) regressed on Node ≥22 —
+  it resolves the directory as a module (MODULE_NOT_FOUND / a spurious fail) — so never write the
+  bare-dir form into new scripts, CI steps, or plan acceptance lines.
 - Tests never touch the real working tree or the private omni twin: hook tests run in
   per-test temp sandboxes (`CLAUDE_PROJECT_DIR` override), script tests run in throwaway
   git repos / tree copies under the system temp dir.

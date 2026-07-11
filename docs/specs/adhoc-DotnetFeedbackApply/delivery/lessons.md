@@ -1,5 +1,7 @@
 # Dotnet Feedback Apply — Lessons
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] literal-token `0 hits` acceptance phrasing (Improvement Proposal) → folded into the create-implementation-plan executed-acceptance bundle. Concurrent-session interference expectation + scoped verification → team-lead.md Pre-Flight 2 evidence (with adhoc-ConclusionGateSemantics et al.).
+
 ## Developer Lessons
 - **Grep glob `{a,b}/**` false-negatives top-level files.** During Phase-1 pattern verification,
   `Grep(pattern, path=…/skills, glob="{service-registration,persistence-patterns}/**")` returned

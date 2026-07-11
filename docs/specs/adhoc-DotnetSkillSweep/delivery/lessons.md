@@ -1,5 +1,7 @@
 # Lessons — adhoc-DotnetSkillSweep
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] Measure-Object -Line line-count trap, 2nd occurrence with adhoc-UtilitySkillsHardening → create-implementation-plan executed-acceptance bundle.
+
 ## Architect Lessons
 
 ### 2026-06-12 — Plan phase

@@ -1,5 +1,7 @@
 # Lessons — adhoc-MineSemanticModel
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] class-regex-not-token-list sweep ACs + per-context scoping of a critic's fix-grep → create-implementation-plan executed-acceptance bundle; re-verify-gate-immediately-before-gated-action → team-lead.md Pre-Flight 2 evidence. [ROUTED-TO-PROPOSAL] skill-authoring gap (2nd consecutive) → docs/proposals/estate-authoring-skill-2026-07.md.
+
 ## Architect Lessons
 
 - **A fixed token list under-covers a coupling SURFACE — derive sweep ACs from the coupling

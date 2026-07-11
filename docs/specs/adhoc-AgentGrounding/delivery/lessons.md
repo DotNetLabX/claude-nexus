@@ -1,5 +1,7 @@
 # adhoc-AgentGrounding — Lessons
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] executed-acceptance extended to ALL pinned commands + pair separator-hardening (joint proposal with adhoc-RulesRegistry) → create-implementation-plan Plan Grounding. [APPLIED] bump-plugin CHANGELOG-stub mis-insert, 2nd occurrence → scripts/bump-plugin.mjs. [TRACKED] clean-HEAD reproduction instrument = temporary git worktree, never stash (1 occurrence).
+
 ## Architect Lessons
 
 - **Run every pinned acceptance COMMAND at plan time — not only the greps.** The predecessor lesson

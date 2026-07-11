@@ -1,5 +1,7 @@
 # Lessons — adhoc-RecipeEstateAudit
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [ROUTED-TO-PROPOSAL] boundary-detector implementation.md-owner false positive (recurs across runs) → docs/proposals/session-scoped-pipeline-state-2026-07.md.
+
 > **Learner disposition (2026-06-29 → nexus 1.18.7):** **[APPLIED]** custom-spawn-name breaks role hooks (RA-C-1/C-3, with BranchPreflightGuard) → team-lead spawn-by-`subagent_type`-only rule. Explore-sweeps-are-candidates (RA-L-3) and skill-conformance-via-log (RA-L-5/7) confirm already-shipped architect rules — not re-promoted.
 
 ## Architect Lessons

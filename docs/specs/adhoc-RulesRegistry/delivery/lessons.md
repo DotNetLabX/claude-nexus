@@ -1,5 +1,7 @@
 # adhoc-RulesRegistry — Lessons
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] grep-gate executed-acceptance + whitelist/sibling-carve-out reconciliation + shipped-text self-containment (Improvement Proposal, with adhoc-AgentGrounding et al.) → create-implementation-plan Plan Grounding. [APPLIED] bump-plugin CHANGELOG stub mis-insert (with adhoc-AgentGrounding, 2 occurrences) → scripts/bump-plugin.mjs insertion fix.
+
 ## Architect Lessons
 
 - **Grep-gate acceptance must be reconciled against actual grep output at plan time.** All five

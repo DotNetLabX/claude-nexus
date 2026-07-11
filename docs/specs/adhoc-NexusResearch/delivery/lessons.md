@@ -1,5 +1,7 @@
 # Nexus /research skill — rename + depth-route + capture — Lessons
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] NR-L-1 skill-lint colon-space detection — 2nd occurrence reached (adhoc-SddLifecycle + estate-wide --strict failures) → skill-lint.mjs E9 (round-trip strictness on unquoted frontmatter values).
+
 > **Learner disposition (2026-06-29 → nexus 1.18.7):** **[APPLIED]** Codex liveness/no-show (NR-C-3, with SectionAddressableReads + PRReviewTail) → team-lead Codex liveness & recovery. **[TRACKED]** skill-lint colon-space detection (NR-L-1) — 1 occurrence, route at 2nd. Fleet `resolveRoot` bug (NR-C-4) already in memory `fleet-heartbeat-payload-bug`.
 
 ## Developer Lessons

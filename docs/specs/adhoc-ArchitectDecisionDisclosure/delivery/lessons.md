@@ -1,5 +1,7 @@
 # Lessons — adhoc-ArchitectDecisionDisclosure
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] externally-sourced-recommendation vocabulary grounding (grep the structure's usage in the live file first) → architect.md tech-spec anchor grounding. Concurrent staging/scoped-bump practice → team-lead.md Pre-Flight 2 evidence.
+
 ## Architect Lessons
 
 - **An externally-sourced recommendation names a concept, not this repo's structure — transplanting

@@ -1,5 +1,7 @@
 # Lessons — adhoc-LearnerCadenceNudge
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] whole-tree bump is team-lead-owned under concurrency (dry-run first, STOP on foreign reason lines) → team-lead.md Pre-Flight 2. [ROUTED-TO-PROPOSAL] hook-authoring skill gap → docs/proposals/estate-authoring-skill-2026-07.md; commit-mutex/worktree-per-run → docs/proposals/session-scoped-pipeline-state-2026-07.md.
+
 ## Architect Lessons
 
 - **Integration surfaces need their own verification pass — "the pattern exists" is not "adding a

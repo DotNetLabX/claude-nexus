@@ -1,5 +1,7 @@
 # Unattended Autonomy (v1) — Lessons
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [ROUTED-TO-PROPOSAL] R6/R9 boundary-detector -N-suffix normalization + session scoping → docs/proposals/session-scoped-pipeline-state-2026-07.md.
+
 ## Architect Lessons
 
 - **A hook cannot read a launch-prompt token — that's an architectural constraint, not a detail.**

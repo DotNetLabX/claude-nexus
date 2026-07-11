@@ -1,5 +1,7 @@
 # Lessons — adhoc-AnalystExtension
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] execute-shared-machinery-against-a-fixture-at-plan-time → create-implementation-plan bundle; new-plugin wiring surfaces (gen-commands MAP, gen-omni.test fixtures) → release-plugin New-plugin ship checklist. [ROUTED-TO-PROPOSAL] estate-authoring skill gap (3rd consecutive occurrence) → docs/proposals/estate-authoring-skill-2026-07.md.
+
 ## Architect Lessons
 
 - **A first-of-kind consumer of shared machinery must EXECUTE that machinery against a fixture at

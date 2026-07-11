@@ -1,5 +1,7 @@
 # Lessons — adhoc-MineReferenceModel
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] skill-recipe.md:79 E7/E8 lint-coverage overstatement fixed (3 independent sightings this run) → improve-skills/references/skill-recipe.md.
+
 ## Architect Lessons
 
 - **The log-based skill-conformance check caught a live fabrication (Step-5 cycle).** The

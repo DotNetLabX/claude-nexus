@@ -1,6 +1,14 @@
 # nexus — Changelog
 
 
+## [1.30.4] — 2026-07-11
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - skill change (create-implementation-plan)
+  - skill change (improve-skills)
+  - skill change (release-plugin)
+
 ## [1.30.3] — 2026-07-11
 - PATCH bump.
   - rule (injected every session)

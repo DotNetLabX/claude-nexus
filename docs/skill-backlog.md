@@ -74,6 +74,22 @@ Tracks every skill created or fixed by the learner/developer pipeline. One entry
 
 ## Skills Fixed
 
+### Learner consolidation 2026-07-11 (multi-skill)
+- **Status:** Fixed
+- **Type:** Fix
+- **Source:** adhoc-LearnerConsolidation2 (cross-run lessons sweep, 49 runs)
+- **Description:** `create-implementation-plan` — executed-acceptance rule bundle (execute every pinned
+  acceptance command at plan time, whitelist from real output, sibling-carve-out reconciliation,
+  pair-hardening, structure-independent phrasing) + shipped-text self-containment.
+  `release-plugin` — New-plugin ship checklist (no re-bump of authored 0.1.0, both gen-omni sites,
+  both gen-omni.test sites, toolchain assets cite SKILL.md). `improve-skills` — skill-lint E9
+  (colon-space in unquoted frontmatter value = error, aligns with `claude plugin validate --strict`)
+  and `references/skill-recipe.md` E7/E8 lint-coverage claim corrected (comparator rephrasing is
+  prose-only, not lint-enforced). Agent files: architect (tech-spec anchor grounding; fast-lane
+  prose-diff review variant), team-lead (Pre-Flight concurrent-run guard). Deferred-to-proposal:
+  estate-authoring skill (`docs/proposals/estate-authoring-skill-2026-07.md`, 3-occurrence gap).
+- **Date:** 2026-07-11
+
 ### nexus-dotnet 1.3.1 feedback — 13-skill application (consolidated)
 - **Status:** Fixed
 - **Type:** Fix

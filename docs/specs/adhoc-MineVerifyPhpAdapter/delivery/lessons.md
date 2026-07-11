@@ -1,5 +1,7 @@
 # Lessons — adhoc-MineVerifyPhpAdapter
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] new-stack-plugin ship checklist (Improvement Proposal, 2nd occurrence with adhoc-MineVerifyCppAdapter) → release-plugin/SKILL.md; bump-plugin new-plugin over-bump → scripts/bump-plugin.mjs absent-at-HEAD skip. [ROUTED-TO-PROPOSAL] CPA-11 recurrence (2nd) → docs/proposals/session-scoped-pipeline-state-2026-07.md. [TRACKED] native-fs Docker bind-mount rule for vendor-heavy interpreted stacks (1 occurrence, medium priority — promote to mine-verify-cover on the 2nd); Codex CWD hazard: explicit cd before external dispatch, wholesale-missing-files NO-GO = wrong-workspace signal (1 occurrence).
+
 ## Architect Lessons
 
 - **A hardcoded list's TEST FIXTURE is a wiring surface too — grep for the list, then grep for the list's test.**

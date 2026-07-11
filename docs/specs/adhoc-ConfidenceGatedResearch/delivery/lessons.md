@@ -1,5 +1,7 @@
 # adhoc-ConfidenceGatedResearch — Lessons
 
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] the TRACKED plan/acceptance grep-string mismatch (1st occurrence, 2026-06) folded into the create-implementation-plan executed-acceptance bundle.
+
 ## Architect Lessons
 
 - **[TRACKED — 1st proposal for lint guard; prose rule already ships in architect.md]** **"Edit the canonical rule" is not done — the inlined agent copies are the load-bearing surface
