@@ -256,7 +256,8 @@ if (MODE === 'check') {
 printPlan();
 if (MODE === 'dry-run' || bumped.length === 0) process.exit(0);
 
-// Local date, not toISOString (UTC) — in a UTC-ahead timezone an evening bump stamped yesterday.
+// Local date, not toISOString (UTC) — the UTC calendar date can lag the local one (UTC-ahead
+// timezone, early-morning run), which once stamped a CHANGELOG entry with yesterday's date.
 const now = new Date();
 const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 for (const b of bumped) {
