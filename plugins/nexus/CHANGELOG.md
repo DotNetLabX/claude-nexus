@@ -1,6 +1,13 @@
 # nexus — Changelog
 
 
+## [1.31.1] — 2026-07-12
+- PATCH — fix `guard.js` + `audit-logger.js` hooks silently failing on Claude Code >= 2.1.207.
+  - Shell-form hook commands referencing `${user_config.*}` are rejected since v2.1.207
+    (shell-injection fix), so the security guard and audit logger never ran. Both entries in
+    `hooks.json` converted to exec form (`"command": "node"` + `args` array); scripts unchanged
+    (still read `argv[2]`).
+
 ## [1.31.0] — 2026-07-12
 - MINOR — two new mine-family skills graduate from their ratified proposals (adhoc-MineSkillAuthoring).
   - **NEW skill `mine-algorithm`** (the seventh mine) — recognizes a hand-rolled algorithm as a canonical
