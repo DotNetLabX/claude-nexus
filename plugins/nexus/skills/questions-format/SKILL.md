@@ -27,6 +27,10 @@ Written by any agent when blocked or needing clarification. The recipient answer
 
 **Recommendation:** [Your recommended answer]
 **Confidence:** high | medium | low — [one-line why: the basis for the recommendation]
+**Research offer:** [optional — {named target} (~{rough cost}); present only when the asking agent
+judges this question boostable per research-before-asking.md. After a research round runs, the asking
+agent rewrites this line to `consumed ({ISO date}) — {one-line what the round found}` so a re-relay
+never re-renders the option.]
 
 ### Answer
 [Recipient fills this in, sets Status → Answered]
@@ -47,6 +51,7 @@ step to be rebuilt when the real interview reversed it.
 - Questions are numbered sequentially across the entire file (Q1, Q2, Q3...) regardless of sender.
 - **To field routing:** Set `To: PO` for spec/product questions (the team lead routes through the PO escalation chain: PO answers from spec → user only if PO can't cite a section). Set `To: architect` for technical/plan questions from the developer. Set `To: user` only for pure preference questions with no spec or technical basis.
 - **Every `To: user` question carries a Recommendation + Confidence.** **high** = clear basis (spec/ADR/existing pattern/evidence), safe to proceed if unanswered; **medium** = reasonable lean with a real trade-off; **low** = weak basis or toss-up — wants the human's call. The label tells the user which defaults to rubber-stamp and which need real thought. Agent-to-agent questions (`To: PO`/`architect`) still carry the Recommendation; the Confidence label matters most on user-facing ones.
+- **Research offer (relayed path — research-before-asking.md).** The field is written **only by the asking agent** — boostability is the asker's own judgment (spec BR10), never the team lead's. The team lead renders it verbatim as the clickable research option and **never re-judges, re-prices, or researches on the asker's behalf**. A user click travels back as a normal message-handoff to the asking agent ("research requested on Q{n}"); the asking agent runs the round, updates the Recommendation and Confidence fields in the same Q section, rewrites `Research offer` to `consumed (...)`, and the team lead re-surfaces the boosted question.
 
 ## Anti-patterns
 
@@ -58,7 +63,7 @@ step to be rebuilt when the real interview reversed it.
 
 | Agent | Role | Routing chain |
 |-------|------|--------------|
-| Team Lead | Reads questions.md to triage routing | Routes to PO (product), architect (technical), or user (preference) |
+| Team Lead | Reads questions.md to triage routing | Routes to PO (product), architect (technical), or user (preference); renders a `Research offer` field verbatim as the clickable research option and routes a click back to the asking agent |
 | Architect | Answers technical/plan questions | Updates plan if answer changes it, sets Status → Answered |
 | PO | Answers spec/product questions | Cites spec section; escalates to user if no citation exists |
 | Developer | Reads answers before resuming | Resumes from the first unanswered step |

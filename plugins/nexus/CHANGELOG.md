@@ -1,6 +1,14 @@
 # nexus — Changelog
 
 
+## [1.33.0] — 2026-07-12
+- clickable research option on boostable asks (rules + questions-format + agents), one-round cap, relayed-path carrier
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (injected every session)
+  - skill change (questions-format)
+  - owner-escalated to minor
+
 ## [1.32.0] — 2026-07-12
 - MINOR — the lane rule (ADR-58, F2-AdhocIsSoloOnly): `adhoc-*` is now explicitly the **solo-only**
   slug lane; any unit of work shaped with the PO or designed with the architect — regardless of
