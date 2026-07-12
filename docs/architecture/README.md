@@ -1388,6 +1388,126 @@ decision table) and different oracle (BR conformance vs census citations). *Rest
 boundary per skill* — AP3 drift. *Pool-pointer the frozen research instead of freezing it* — consuming
 repos never see the dev-repo pool; shipped text must be self-contained.
 
+## ADR-56 — nexus-notes is the notes-pipeline extension plugin: full suite, two waves, omni-notes as the generated clone — Accepted
+
+> **Status: Accepted — F1-NotesPlugin, owner-ratified 2026-07-12.** Extracted (not re-authored) from
+> the ratified proposal `omnishelf-docs docs/proposals/2026-07-12-omni-notes-plugin.md` (ADR-28
+> graduation), with one owner supersede recorded at F1 shaping: the proposal's consumer-only scope
+> ("producer side out of scope") was expanded by the owner to the **full notes suite**. Register
+> re-checked immediately before extraction — highest was ADR-55; 56 free, no renumber. Tech-spec:
+> `docs/specs/F1-NotesPlugin/definition/spec.md`.
+
+**Context.** The hub split (omnishelf, Phase 1, 2026-07-12) left the notes pipeline's skills as
+per-repo copies: producers (fetch-transcripts, fetch-slack, meeting-to-notes, slack-to-notes + three
+extraction agents) in omnishelf-pipeline, consumers (search-notes + the adapter-rule claim flow) in
+omnishelf-docs, with hardcoded sibling paths between them. Per-repo copies are documented to drift
+(the F33 search-notes fork; the slack-voice extraction lesson), and the planned Phase-2 workspace
+repos add a third consumer.
+
+**Decision.** Ship the whole surface as **`nexus-notes`**, a new extension plugin in this marketplace
+(same dependency-extension model as nexus-dotnet, ADR-3), delivered in **two waves within one
+feature**: wave 1 the consumer surface (search-notes, claim-notes, the config mechanism of ADR-57,
+the note frontmatter schema as a shipped reference), wave 2 the producer surface (the four
+fetch/extract skills and three agents, re-homed with model *tiers* — never pinned model IDs).
+**`omni-notes` is generated from `nexus-notes` by `gen-omni.mjs`** (one `mirrorPlugin` line + a
+marketplace entry), never hand-edited — the ADR-6 twin discipline extends to this plugin. Routines
+stay repo-local (account/schedule-bound); the plugin ships what they invoke.
+
+**Why.** One versioned source of truth ends the documented drift class; consumer onboarding becomes
+"install + configure." Two waves because the producers' live wiring (routine registration, tokens)
+was stood up the day before — wave 2 re-grounds against live source instead of packaging a moving
+surface. Cloud viability is research-confirmed (repo-committed `.claude/settings.json` installs
+plugins in cloud sessions; 2026-07-12).
+
+**Tradeoffs.** The plugin hard-depends on the note frontmatter schema as a cross-repo contract — it
+ships in the plugin and consumers cite it; drift there is now a plugin release, not a repo edit.
+Producer skills packaged in wave 2 lag any hub-side fixes until the consuming repos rewire (a
+coordinated follow-up, out of this feature's scope).
+
+**Rejected.** *Consumer-only plugin (as first ratified)* — superseded by the owner at shaping; the
+producer copies would keep drifting. *Fold into a future omni-product extension* — resolved at
+ratification: family pattern, nexus-notes first. *Git submodule/subtree sharing* — an anti-goal of
+the hub split. *Routines in the plugin* — account-bound configuration, not shareable capability.
+
+## ADR-57 — Notes configuration = a per-source config file read by skills + a thin behavioral adapter rule — Accepted
+
+> **Status: Accepted — F1-NotesPlugin, owner-ratified 2026-07-12.** Settles the ratified proposal's
+> Unresolved #4 (and #3's mechanism half). Register re-checked — 57 free after ADR-56. Tech-spec:
+> `docs/specs/F1-NotesPlugin/definition/spec.md`.
+
+**Context.** nexus-notes skills need per-consumer-repo facts: which note *sources* exist (meetings,
+slack, future teams…), each source's staging location, the notes inbox root, source registries
+(e.g. the Slack channel registry), and optional agent model-tier overrides. Today these are
+hardcoded paths inside skill bodies and pinned model IDs inside agent frontmatter. The family had no
+config-file precedent: plugin `userConfig` is hook-visible only (skills can't read it), and the
+omni-project-adapter precedent is a prose rule — fine for behavior, wrong for structured per-source
+data.
+
+**Decision.** Split by nature. **Structured facts live in a per-repo notes config file** that every
+plugin skill resolves at runtime — one entry per source (id, kind, staging path, inbox root,
+registry ref, enabled) plus optional model-tier overrides; unknown source kinds are representable
+without a plugin change; when no config exists, the single documented default
+(`../omnishelf-pipeline/docs/meeting-notes/`) preserves today's consumers. **Behavior lives in a
+thin adapter rule** the consumer copies from a shipped template ("search the inbox before shaping a
+spec") — extension plugins ship no always-on rules (only base nexus has injection machinery), so the
+rule is a documented template, not an injected artifact. Exact file name and schema are plan-level
+decisions; this ADR fixes the mechanism and the split.
+
+**Why.** Skills read files — a config file is the only mechanism all plugin skills (and agents) can
+resolve without new machinery. Per-source structure anticipates the third source kind without a
+plugin release. The rule/config split keeps prose rules behavioral (the established family posture)
+instead of smuggling path tables into always-loaded context.
+
+**Tradeoffs.** First config-file precedent in the plugin family — future extensions will copy it, so
+the wave-1 schema sets a convention. A consumer must maintain one more file (mitigated by the
+documented default and an onboarding template).
+
+**Rejected.** *Plugin `userConfig`* — hook-visible only; would need injection machinery for what a
+file read does natively. *Adapter rule only* — structured per-source data in prose drifts and bloats
+always-on context. *Well-known magic path with no file* — a default is kept, but sources beyond the
+default inbox (slack staging, registries) can't be expressed pathlessly.
+
+## ADR-58 — The lane rule: PO-shaped and architect-designed work is a feature; `adhoc-*` is the solo-only lane — Accepted
+
+> **Status: Accepted — F2-AdhocIsSoloOnly, owner-directed 2026-07-12** (no proposal; direct owner
+> policy set during the F1-NotesPlugin session, itself triggered by the owner rejecting an
+> `adhoc-NexusNotes` slug for architect-designed work). Register re-checked — highest was ADR-57;
+> 58 free, no renumber. This ADR is the feature's collapsed definition (ADR-25: two-way-door policy
+> change → one ADR, no tech-spec); the delivery record is `docs/specs/F2-AdhocIsSoloOnly/delivery/`.
+
+**Context.** The slug conventions allowed `adhoc-{Name}` for any unit of work, and dev-repo practice
+drifted to adhoc-everything: architect-planned, multi-artifact, ADR-bearing passes ran under ad-hoc
+slugs with no backlog visibility. ADR-29 tied backlog rows to *ratified proposals* only, leaving
+owner-directed and discussion-shaped work unrecorded. The owner's correction at F1 shaping made the
+policy explicit.
+
+**Decision.** Any unit of work **shaped with the PO or designed with the architect — regardless of
+source** (fresh idea, external or ratified proposal, tracker item, owner directive) — is a
+**feature**: it takes an `F{N}` (or tracker-key) slug and is **recorded as a row in
+`docs/backlog.md`** when that file exists. `adhoc-{Name}` is the **solo-only** lane: it remains
+valid exactly for work solo owns end-to-end (small scoped fixes, 1–3 files, no plan/spec). The
+moment work outgrows solo — it needs a PO shaping pass or an architect plan — it is re-slugged as a
+feature and the backlog row is added before the pipeline proceeds. `BUG-{N}` / `GAP-{N}` slugs are
+unaffected. The technical branch keeps its ADR-collapsed definition option (ADR-25/27) — "feature"
+governs the *slug and recording*, not the weight of the definition artifact.
+
+**Why.** The slug is the unit of visibility: backlog rows, spec paths, and pipeline artifacts all key
+on it. Architect-designed work hidden under ad-hoc slugs escapes triage ("what's next" reads the
+backlog) and erodes the ADR-29 lifecycle. One clean line — *discussed/designed ⇒ feature; solo ⇒
+adhoc* — is enforceable by every role without judgment calls about size or source.
+
+**Tradeoffs.** Feature numbering accrues faster (F-numbers are cheap; the counter is per-repo).
+Existing `adhoc-*` history is grandfathered — no retro-renaming; older ADRs and skills that mention
+"the ad-hoc lane" for architect-planned passes (e.g. ADR-46/49's refactoring-lane wording) are read
+under this rule — such passes now take F-slugs — and their wording is superseded opportunistically
+when those files next open, not in this pass.
+
+**Rejected.** *Slug follows the executor, not the designer* (adhoc when solo executes an
+architect-planned pass) — blurs the line the rule exists to draw. *Keep adhoc for
+refactoring/debt passes* — a day-one exception that re-opens the drift. *Record features without
+re-slugging (backlog rows for adhoc slugs)* — leaves two names for one lifecycle and breaks the
+F-number sequence as the feature index.
+
 ---
 
 ## Inherited pipeline decisions

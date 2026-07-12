@@ -30,7 +30,7 @@ You are the single point of coordination. All agent messages route through you. 
 Pipeline coordination — always in effect. (For universal rules — slug, paths, communication model, cycle caps — see the always-on agents-workflow rules.)
 
 **Slug / paths / caps (compact reference; canonical in agents-workflow):**
-- **Slug** — assigned by the team lead or PO and passed down; never derive it. Forms: `F{N}-{Name}`, `{KEY}-{2-3-words}` (tracker item), `adhoc-{Name}`, `BUG-{N}-{name}`, `GAP-{N}-{name}`.
+- **Slug** — assigned by the team lead or PO and passed down; never derive it. Forms: `F{N}-{Name}`, `{KEY}-{2-3-words}` (tracker item), `adhoc-{Name}` (solo-only — Lane rule, agents-workflow), `BUG-{N}-{name}`, `GAP-{N}-{name}`.
 - **Paths** — `docs/specs/{slug}/definition/` (spec.md | epic.md | bug.md, help.tooltips.md) and `docs/specs/{slug}/delivery/` (plan.md, implementation.md, review.md, questions.md, lessons.md, summary.md, communication-log.md). Nested issue: `docs/specs/{epic-slug}/{issue-slug}/…`. Ad-hoc: `delivery/` only.
 - **Cycle caps** — reviewer↔developer fix cycles max **3** → architect; developer questions on the same area max **3** → human; architect escalation **1** → human. After a human escalation: STOP and wait.
 
@@ -270,15 +270,14 @@ User request
   │     │     └── No → STOP: "No spec. Run `be po` first."
   │     └── (spec gate mandatory for backlog features)
   │
-  ├── Ad-hoc with existing plan
-  │     └── Start at Developer (Phase 1: Analyze; architect available for questions/review)
-  │
-  └── Ad-hoc without plan
-        ├── spec already exists → start at Architect (Phase 1: Analyze) — do NOT spawn the PO
-        └── no spec + genuinely new behavior to define → PO first (shape spec); otherwise start at Architect
+  └── Non-backlog work (no backlog row yet)
+        ├── needs PO shaping or an architect plan → assign F{N} + backlog row
+        │     (re-slug if it arrived as adhoc-*), then route per the Entry-point rule
+        │     (plan exists → Developer; spec Ready → Architect; else → PO)
+        └── solo-scoped (small fix, 1–3 files, no plan/spec) → adhoc-{Name}, route to solo
 ```
 
-**Entry-point rule (mirrors the idempotency gate):** the furthest existing artifact sets the start — **plan exists → Developer; else spec (`Status: Ready`) exists → Architect; else → PO**. The PO runs *only* when the work needs a written definition (new behavior) and no spec exists yet. **Never spawn the PO when a spec already exists** — exactly as you never re-plan when a plan already exists.
+**Entry-point rule (mirrors the idempotency gate):** the furthest existing artifact sets the start — **plan exists → Developer; else spec (`Status: Ready`) exists → Architect; else → PO**. The PO runs *only* when the work needs a written definition (new behavior) and no spec exists yet. **Never spawn the PO when a spec already exists** — exactly as you never re-plan when a plan already exists. Non-backlog work follows the Lane rule (ADR-58, agents-workflow): PO-shaped or architect-designed work is a feature (`F{N}` + backlog row), never `adhoc-*`.
 
 ### Status Check ("what's next?")
 

@@ -8,11 +8,13 @@ The `{slug}` identifies a unit of work and follows these conventions:
 - Internal feature: `F{N}-{Name}` — e.g., `F5-SprintSummaryCard`
 - Jira epic: `{KEY}-{2-3-words}` — e.g., `PD-5234-shelf-compliance-kpis`
 - Jira issue: `{KEY}-{2-3-words}` — e.g., `PD-5226-split-config`
-- Ad-hoc: `adhoc-{Name}` — e.g., `adhoc-SyncRefactoring`
+- Ad-hoc: `adhoc-{Name}` — e.g., `adhoc-SyncRefactoring` (**solo-only** — see the Lane rule below)
 - Bug: `BUG-{N}-{name}` — e.g., `BUG-1-bug-count-zero`
 - Gap: `GAP-{N}-{name}` — e.g., `GAP-3-sub-team-management-ui`
 
 The team lead or PO assigns the slug at the start of each pipeline run and passes it to all downstream agents. Agents never derive the slug — they use exactly what was passed.
+
+**Lane rule (ADR-58).** Any unit of work **shaped with the PO or designed with the architect — regardless of source** (fresh idea, external or ratified proposal, tracker item, owner directive) — is a **feature**: it takes an `F{N}` (or tracker-key) slug and is **recorded as a row in `docs/backlog.md`** when that file exists. `adhoc-{Name}` is **solo-only**. The moment work outgrows solo — it needs a PO shaping pass or an architect plan — re-slug it as a feature and add the backlog row before the pipeline proceeds. `BUG-{N}` / `GAP-{N}` are unaffected. A feature slug does not force a heavy definition — the technical branch's ADR-collapsed definition (ADR-25/27) still applies.
 
 Standard paths:
 ```
@@ -27,7 +29,7 @@ For a Jira issue nested under an epic:
 docs/specs/{epic-slug}/{issue-slug}/definition/
 docs/specs/{epic-slug}/{issue-slug}/delivery/
 ```
-Ad-hoc work has no `definition/` folder — only `delivery/`.
+Ad-hoc work has no `definition/` folder — only `delivery/`. (solo-only lane — Lane rule above).
 
 `communication-log.md` is the **canonical filename** for the inter-agent message log. A consumer project preferring another name is their concern — the plugin always uses this name.
 
@@ -234,7 +236,7 @@ The pipeline is not a rigid sequence — ceremony scales with uncertainty. Multi
 | Entry Point | First Agent | What's Skipped | Use Case |
 |-------------|------------|----------------|----------|
 | `be solo` | solo | Everything — no pipeline, no plan/review | Bug fixes, 1-3 file changes |
-| `be architect` | architect | PO, spec, team orchestration | Refactoring plans, tech debt, ad-hoc analysis |
+| `be architect` | architect | PO, spec, team orchestration | Refactoring plans, tech debt, one-off analysis |
 | Team lead (existing plan) | developer | PO + architect planning | Plan already written via `be architect` |
 | Team lead (full pipeline) | PO or architect | Nothing | Complex features needing discovery and alignment |
 

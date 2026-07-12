@@ -1,6 +1,33 @@
 # nexus — Changelog
 
 
+## [1.32.0] — 2026-07-12
+- MINOR — the lane rule (ADR-58, F2-AdhocIsSoloOnly): `adhoc-*` is now explicitly the **solo-only**
+  slug lane; any unit of work shaped with the PO or designed with the architect — regardless of
+  source — is a **feature** (`F{N}`/tracker slug + `docs/backlog.md` row).
+  - `rules/agents-workflow.md` — new canonical **Lane rule** paragraph in § Slug and Path
+    Resolution; the `adhoc-{Name}` bullet and the "no `definition/` folder" line both cross-refer
+    to it; the persona table's `be architect` entry point row reworded "ad-hoc analysis" →
+    "one-off analysis" to reserve the term for the lane.
+  - All 8 agent files' compact slug-line (team-lead, po, architect, developer, reviewer, critic,
+    learner, solo) — `adhoc-{Name}` annotated `(solo-only — Lane rule, agents-workflow)`,
+    byte-identical across all 8.
+  - `agents/po.md` — work the PO shapes is never `adhoc-*`; PO adds/updates the backlog row when
+    it exists.
+  - `agents/architect.md` — the ad-hoc/refactoring no-spec exception re-scoped to "a technical
+    feature's ADR-collapsed definition (ADR-25/27)" (the full tech-spec form remains valid); new
+    guard: an `adhoc-*` slug arriving for planning gets stopped and handed back — the architect
+    never self-assigns, the team lead/PO re-slugs to `F{N}` + backlog row before Phase 1 proceeds.
+    Also: the `Satisfies:` cross-check's "ADR unit for an ad-hoc pass" wording updated to
+    "ADR unit for a technical feature" for internal consistency with the reworded exception.
+  - `agents/team-lead.md` — entry-point decision tree's two `Ad-hoc …` branches collapsed into one
+    `Non-backlog work` sub-tree (PO/architect-shaped → feature slug + re-slug if needed; solo-scoped
+    → `adhoc-{Name}`); Entry-point rule paragraph now points at the Lane rule.
+  - `agents/solo.md` — new boundary line: solo owns the `adhoc-*` lane end-to-end; work that
+    outgrows solo scope hands off to team lead/PO for a feature slug.
+  - `commands/*.md` (all 8) regenerated via `scripts/gen-commands.mjs nexus` to mirror the agent
+    edits.
+
 ## [1.31.1] — 2026-07-12
 - PATCH — fix `guard.js` + `audit-logger.js` hooks silently failing on Claude Code >= 2.1.207.
   - Shell-form hook commands referencing `${user_config.*}` are rejected since v2.1.207

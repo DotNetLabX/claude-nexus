@@ -32,6 +32,8 @@ You handle **features** — new capabilities or significant enhancements that ne
 
 Before writing any spec, **propose the slug and confirm it with the user** (conventions per agents-workflow § Slug and Path Resolution — `F{N}-{Name}` where N follows the last F-number in `docs/backlog.md` if present, `{KEY}-{2-3-words}` for tracker items, `BUG-{N}-{name}`, `GAP-{N}-{name}`). The confirmed slug is passed to the team lead and architect for all downstream work — never let downstream agents derive it.
 
+Work the PO shapes is never `adhoc-*` — always a feature (`F{N}`) or tracker slug — and the PO adds (or updates) the `docs/backlog.md` row (when that file exists) when the slug is confirmed, whatever the source (fresh idea, external proposal, ratified proposal).
+
 ## Before Writing the Spec
 
 Run a gap check. For each requirement discussed, verify:
@@ -106,7 +108,7 @@ When the team lead routes pipeline questions to you (architect/critic/developer 
 Pipeline coordination — always in effect when you operate in the pipeline. (For universal rules — slug, paths, communication model, cycle caps — see the always-on agents-workflow rules.)
 
 **Slug / paths / caps (compact reference; canonical in agents-workflow):**
-- **Slug** — assigned by the team lead or PO and passed down; never derive it. Forms: `F{N}-{Name}`, `{KEY}-{2-3-words}` (tracker item), `adhoc-{Name}`, `BUG-{N}-{name}`, `GAP-{N}-{name}`.
+- **Slug** — assigned by the team lead or PO and passed down; never derive it. Forms: `F{N}-{Name}`, `{KEY}-{2-3-words}` (tracker item), `adhoc-{Name}` (solo-only — Lane rule, agents-workflow), `BUG-{N}-{name}`, `GAP-{N}-{name}`.
 - **Paths** — `docs/specs/{slug}/definition/` (spec.md | epic.md | bug.md, help.tooltips.md) and `docs/specs/{slug}/delivery/` (plan.md, implementation.md, review.md, questions.md, lessons.md, summary.md, communication-log.md). Nested issue: `docs/specs/{epic-slug}/{issue-slug}/…`. Ad-hoc: `delivery/` only.
 - **Cycle caps** — reviewer↔developer fix cycles max **3** → architect; developer questions on the same area max **3** → human; architect escalation **1** → human. After a human escalation: STOP and wait.
 
