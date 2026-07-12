@@ -32,6 +32,7 @@ before(() => {
   writeAt(nexus, 'plugins/nexus-cpp/skills/c/SKILL.md', '---\nname: c\ndescription: a nexus-cpp skill\n---\nbody\n');
   writeAt(nexus, 'plugins/nexus-php/skills/mine-verify-cover-php/SKILL.md', '---\nname: mine-verify-cover-php\ndescription: a nexus-php skill\n---\nbody\n');
   writeAt(nexus, 'plugins/nexus-analytics/skills/semantic-model-query/SKILL.md', '---\nname: semantic-model-query\ndescription: a nexus-analytics skill\n---\nbody\n');
+  writeAt(nexus, 'plugins/nexus-notes/skills/search-notes/SKILL.md', '---\nname: search-notes\ndescription: a nexus-notes skill\n---\nbody\n');
   // README needs the override anchors; the MIT link must be the ONLY MIT mention (the swap removes it).
   writeAt(nexus, 'README.md', [
     '# Nexus',
@@ -55,7 +56,7 @@ test('apply: mirrors plugins with token swap, rewrites marketplace, preserves LI
 
   const mp = JSON.parse(readFileSync(join(omni, '.claude-plugin/marketplace.json'), 'utf8'));
   assert.equal(mp.name, 'claude-omni', 'marketplace identity preserved');
-  assert.deepEqual(mp.plugins.map((p) => p.name), ['omni', 'omni-dotnet', 'omni-flutter', 'omni-cpp', 'omni-php', 'omni-analytics']);
+  assert.deepEqual(mp.plugins.map((p) => p.name), ['omni', 'omni-dotnet', 'omni-flutter', 'omni-cpp', 'omni-php', 'omni-analytics', 'omni-notes']);
 
   assert.equal(readFileSync(join(omni, 'LICENSE'), 'utf8'), 'Proprietary. All rights reserved.\n', 'LICENSE never touched');
   const readme = readFileSync(join(omni, 'README.md'), 'utf8');

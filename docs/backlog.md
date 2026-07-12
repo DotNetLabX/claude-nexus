@@ -19,7 +19,7 @@ the spec path in the `Spec` column when a row goes to `Spec Ready`.
 |--------------|-----------------|---------------|--------|-----------------|------|--------|
 | adhoc-SddMergeGen — SDD merge machinery + diff-driven Cover-from-spec | `docs/proposals/sdd-generate-merge-2026-07.md` | 8 | high | 2.7 | docs/specs/adhoc-SddMergeGen/delivery/plan.md (ad-hoc: plan is the definition) | Done |
 | adhoc-SkillAuthoringRecipe — ship the skill-authoring recipe reference | `docs/proposals/skill-authoring-recipe.md` | — (no front-matter rank; pre-format proposal) | low | — | docs/specs/adhoc-SkillAuthoringRecipe/delivery/plan.md (ad-hoc: plan is the definition) | Done |
-| F1-NotesPlugin — nexus-notes: the notes-pipeline extension plugin (full suite, two waves; omni-notes clone) | `omnishelf-docs docs/proposals/2026-07-12-omni-notes-plugin.md` (ratified 2026-07-12; scope superseded by owner at F1 shaping: consumer-only → full suite) | 5 | high | 1.7 | docs/specs/F1-NotesPlugin/definition/spec.md | In Progress |
+| F1-NotesPlugin — nexus-notes: the notes-pipeline extension plugin (full suite, two waves; omni-notes clone) — wave 1 shipped (nexus-notes 0.1.0) | `omnishelf-docs docs/proposals/2026-07-12-omni-notes-plugin.md` (ratified 2026-07-12; scope superseded by owner at F1 shaping: consumer-only → full suite) | 5 | high | 1.7 | docs/specs/F1-NotesPlugin/definition/spec.md | In Progress |
 | F2-AdhocIsSoloOnly — lane rule: PO/architect-shaped work is always a feature; adhoc is solo-only | Owner directive 2026-07-12 (no proposal; definition = ADR-58) | 6 | low | 6.0 | ADR-58 (collapsed definition, ADR-25) | Done |
 
 - **Status** values: `Ready` (ratified, not yet started) · `Spec Ready` (spec written — put its path

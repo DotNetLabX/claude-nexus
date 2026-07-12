@@ -1,0 +1,20 @@
+{
+  "name": "nexus-notes",
+  "version": "0.1.0",
+  "description": "nexus-notes — the meeting-notes pipeline surface as a domain extension for the `nexus` core pipeline. Wave 1 ships the consumer surface: `search-notes` (read-only search/rank of the unclaimed-notes inbox) and `claim-notes` (confirmation-gated claim into a feature's definition/notes/ folder), plus three shared references — the per-source notes config contract (ADR-57), the consumer note-frontmatter field-set contract, and the thin adapter-rule template a consumer copies into its own rules. Every path resolves via the consumer repo's .claude/notes.config.yaml with one documented default; no hardcoded consumer paths ship. Wave 2 (producer skills + extractor agents) lands as a later MINOR bump. Requires nexus core installed — install ALONGSIDE nexus, not instead of it.",
+  "author": {
+    "name": "ldumit"
+  },
+  "keywords": [
+    "notes",
+    "meeting-notes",
+    "search-notes",
+    "claim-notes",
+    "pipeline",
+    "skills",
+    "extension"
+  ],
+  "dependencies": [
+    "nexus"
+  ]
+}

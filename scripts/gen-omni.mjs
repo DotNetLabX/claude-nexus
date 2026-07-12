@@ -101,6 +101,7 @@ mirrorPlugin('nexus-flutter', 'omni-flutter');
 mirrorPlugin('nexus-cpp', 'omni-cpp');
 mirrorPlugin('nexus-php', 'omni-php');
 mirrorPlugin('nexus-analytics', 'omni-analytics');
+mirrorPlugin('nexus-notes', 'omni-notes');
 assertAbsent(join(OMNI, 'plugins', 'omni-net'));
 
 // 2) scripts: only the command generator (token-swapped). Drop obsolete/source-only scripts.
@@ -119,6 +120,7 @@ const wantPlugins = [
   { name: 'omni-cpp', source: './plugins/omni-cpp' },
   { name: 'omni-php', source: './plugins/omni-php' },
   { name: 'omni-analytics', source: './plugins/omni-analytics' },
+  { name: 'omni-notes', source: './plugins/omni-notes' },
 ];
 if (CHECK) {
   if (JSON.stringify(mp.plugins) !== JSON.stringify(wantPlugins))

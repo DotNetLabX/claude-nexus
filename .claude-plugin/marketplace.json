@@ -31,6 +31,10 @@
     {
       "name": "nexus-analytics",
       "source": "./plugins/nexus-analytics"
+    },
+    {
+      "name": "nexus-notes",
+      "source": "./plugins/nexus-notes"
     }
   ]
 }
