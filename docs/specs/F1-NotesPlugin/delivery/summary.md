@@ -15,7 +15,7 @@ Wave 1 of the **`nexus-notes`** extension plugin (0.1.0): the notes-pipeline con
 
 ## Deviations from Plan
 
-- **AC6 split-open, plan-sanctioned:** gen-omni wiring + fixture landed and green; the **live `gen-omni` run + omni twin commit are operator-owed** (`OPERATOR ACTION REQUIRED` in implementation.md) — the tree carried concurrent F3/F4 docs dirt through closure, and the twin sync is a clean-tree post-commit step (ADR-6). On a clean tree: `node scripts/gen-omni.mjs`, then `--check` (exit 0), then commit the twin per the omni commit convention.
+- **AC6 split, then closed at closure:** gen-omni wiring + fixture landed and green; the live `gen-omni` run + omni twin commit were deferred mid-feature (uncommitted `plugins/**`, ADR-6) and **completed by the closing session after commit `b935a24`** — twin regenerated, `--check` exit 0, committed as omni `7e9031d` (`feat(F1-NotesPlugin): sync nexus-notes wave 1 (omni-notes 0.1.0)`). No operator action remains.
 - `evaluate-skill` Judgment Gate not run on Steps 3/4 (plan scopes their done-condition to skill-lint; running it would also be a disallowed pipeline-agent spawn).
 
 ## Notes
