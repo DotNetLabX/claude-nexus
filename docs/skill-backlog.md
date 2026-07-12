@@ -70,6 +70,20 @@ Tracks every skill created or fixed by the learner/developer pipeline. One entry
 - **Description:** nexus-dotnet skill, pattern-first port of the local `service-infra-conventions` (recorded divergence from Phase B pairing #9 — ported as a new skill, not folded into `service-registration`). Ten cross-cutting-infra sections: segregated claims/route providers, scoped `RequestContext` + correlation chain, fail-fast options binding, default-interface derivations, MediatR pipeline order, JSON casing, GlobalUsings, private-field naming, framework-split validators. CPM section slimmed to a convention + pointer (mechanics owned by `central-package-management`, AP3). skill-lint exit 0; inline rubric ACCEPT.
 - **Date:** 2026-07-07
 
+### mine-algorithm
+- **Status:** Created
+- **Type:** Gap
+- **Source:** adhoc-MineSkillAuthoring
+- **Description:** The seventh mine — recognizes a hand-rolled algorithm as a canonical one and adjudicates a BR-conformance-gated replacement. Heavy archetype (thin SKILL.md orchestrator + `references/canonical-catalog.md` (frozen R2 catalog, CV/C++-instantiated availability field) + `references/equivalence-net.md` (frozen R1 route-by-output-type comparator recipe)). 3-stage method: clean-room problem characterization under a canonical-naming ban → 2-3 clean-room matchers (problem statement + catalog only, never source) → adversarial conformance adjudication with the deviation-triggered row re-grounding rule. Stage-0 HARD BLOCK: never self-mine the oracle (a missing/stale BR registry halts the run for a separate mine-verify-cover pass). Dependency-tier ranking (tier 0/1/2) so "not linked" is a tier assignment, never a rejection. Model tiers: sonnet lanes, opus gate. Graduated from the ratified `mine-algorithm-2026-07` proposal (2 validated pilots). skill-lint exit 0; evaluate-skill Judgment Gate ACCEPT, no Critical/High.
+- **Date:** 2026-07-12
+
+### mine-design
+- **Status:** Created
+- **Type:** Gap
+- **Source:** adhoc-MineSkillAuthoring
+- **Description:** The sixth mine — produces an evidence-cited design brief for one class/function. Heavy archetype (thin SKILL.md orchestrator + `references/decision-table.md` (decision table v2: 11 rows + deferred state-row + anti-moves + the three obligations, row-9 revised to "verify exception posture from build files") + `references/judge-protocol.md` (two-tier judge, authority-zero rule, geometric-median escalation ladder, distilled rejection exemplars)). 3-stage method: mechanical complexity census (9 fixed causes + flow-shape/mutation-fusion anchors) → 2-3 decision-table-constrained clean-room designers (no pattern without cited census rows) → blind, provenance-stripped, higher-tier reject-by-default judge (tier-1 grounding kill then tier-2 pairwise). Model tiers: sonnet lanes, opus gate. Graduated from the ratified `mine-design-2026-07` proposal (calibration pair + held-out pilot). skill-lint exit 0; evaluate-skill Judgment Gate found + folded one MEDIUM (a reserved `D5` contract placeholder → removed, net complexity down), re-lint exit 0, ACCEPT, no Critical/High.
+- **Date:** 2026-07-12
+
 ---
 
 ## Skills Fixed

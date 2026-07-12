@@ -25,8 +25,8 @@ phrased as a reproducible check never reaches the registry as a fact.
 This is the **fourth mine** — the reference-repo sibling of the mine family, scanning ONE reference
 repo for what is *right* (ground truth: reference source; gate: skeptic re-execution — the
 invented-virtue kill). Read `../mine-verify-cover/references/mine-family-core.md` §The mine family
-for the full 5-row family table and the shared invariant (bounded unit → clean-room extraction →
-consolidate → skeptic verify → graded registry) all five members follow.
+for the full 7-row family table and the shared invariant (bounded unit → clean-room extraction →
+consolidate → skeptic verify → graded registry) all seven members follow.
 
 What changes here is the failure mode the gate kills. The debt mine kills *false positives* —
 findings the model imagines. This mine kills **flattery** — virtues the model projects onto a repo
@@ -218,8 +218,8 @@ overrides it. The load-bearing invariants at a glance:
 ## Relationship to other skills
 
 See `../mine-verify-cover/references/mine-family-core.md` §The mine family for the full family
-table (`mine-verify-cover`, `mine-from-spec`, `mine-verify-repo`) and R5 above for how this skill's
-output composes with `mine-verify-repo`'s C5 triage.
+table (all seven members) and R5 above for how this skill's output composes with
+`mine-verify-repo`'s C5 triage.
 
 | Skill | Relationship |
 |-------|-------------|

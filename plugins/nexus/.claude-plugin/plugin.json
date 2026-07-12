@@ -1,6 +1,6 @@
 {
   "name": "nexus",
-  "version": "1.30.4",
+  "version": "1.31.0",
   "description": "Nexus core — a stack-agnostic multi-agent team pipeline (architect, developer, reviewer, PO, critic, learner, team-lead, solo) with always-on rules, persona commands, process skills, and a security guard.",
   "author": {
     "name": "ldumit"

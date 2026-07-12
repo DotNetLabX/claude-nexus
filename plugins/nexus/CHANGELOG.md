@@ -1,6 +1,21 @@
 # nexus — Changelog
 
 
+## [1.31.0] — 2026-07-12
+- MINOR — two new mine-family skills graduate from their ratified proposals (adhoc-MineSkillAuthoring).
+  - **NEW skill `mine-algorithm`** (the seventh mine) — recognizes a hand-rolled algorithm as a canonical
+    one and adjudicates a BR-conformance-gated replacement (clean-room characterization → 2-3 clean-room
+    matchers → adversarial conformance with deviation-triggered row re-grounding; stage-0 never-self-mine
+    HARD BLOCK; dependency-tier ranking). Ships a frozen canonical-algorithm catalog + an equivalence-net
+    comparator recipe (`references/`).
+  - **NEW skill `mine-design`** (the sixth mine) — produces an evidence-cited design brief for one
+    class/function (mechanical complexity census → decision-table-constrained designers → a blind,
+    higher-tier two-tier judge). Ships the decision table v2 + the judge protocol (`references/`).
+  - `mine-verify-cover/references/mine-family-core.md` — family table grown 5→7 rows and a once-authored
+    routing boundary (algorithm-shaped vs rule/mapping-shaped) added; member-count pointers synced in
+    `mine-verify-cover`, `mine-reference-model`, and `mine-verify-repo` SKILL.md.
+  - owner-escalated to MINOR (two new user-facing capabilities).
+
 ## [1.30.4] — 2026-07-11
 - PATCH bump.
   - agent instruction/behavior change

@@ -70,6 +70,7 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-52 — The consumer-repo grounding contract: three thin indexes + a script-synced KB copy ground every agent session *(Accepted — adhoc-AgentGrounding, 2026-07-09)*
 - ADR-53 — The Conformance Reviewer: a corpus-grounded advisory lens outside the pipeline; cite-or-drop; never correctness, never the deterministic tier, never a gate *(Accepted — adhoc-ConformanceReviewer, 2026-07-09)*
 - ADR-54 — Precision-first runtime: rules-grounded generation + fail-closed skeptic filter + capped advisory output, gated by human-graded calibration before any live PR *(Accepted — adhoc-ConformanceReviewer, 2026-07-09)*
+- ADR-55 — mine-design (sixth) + mine-algorithm (seventh) ship as family members; the algorithm-shaped vs rule/mapping-shaped routing boundary lives once in the family core *(Accepted — adhoc-MineSkillAuthoring, 2026-07-12)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -1337,6 +1338,55 @@ reference repo* — measures pain, not judgment.
 **Tradeoffs.** Two stages double per-review cost — accepted; precision is the deployment bottleneck, not cost. Calibration delays first live use by one grading session — accepted; an ungraded reviewer posting noise to a real PR is the failure mode this ADR exists to prevent.
 
 **Rejected.** *Single-pass review* (the <10%-precision baseline). *Whole-repo RAG/context* (measurably degrades). *A fixed precision threshold in the spec* (the bar is repo- and owner-relative; inventing a number here would be false precision).
+
+---
+
+## ADR-55 — mine-design (sixth) + mine-algorithm (seventh) ship as family members; the routing boundary lives once in the family core — Accepted
+
+> **Status: Accepted — adhoc-MineSkillAuthoring, owner-ratified 2026-07-12.** Extracted (not
+> re-authored) from the two ratified proposals as the tech-spec record — `docs/proposals/mine-design-2026-07.md`
+> (fully adopt-ratified 2026-07-12 after a calibration-pair + held-out pilot) and
+> `docs/proposals/mine-algorithm-2026-07.md` (ratified 2026-07-12 after two pilots). Register
+> re-checked immediately before extraction — highest was ADR-54; 55 free, no renumber. Ordinals per
+> the proposals: `mine-semantic-model` (nexus-analytics) is the fifth mine and holds no row in this
+> register; `mine-design` is the sixth, `mine-algorithm` the seventh.
+
+**Context.** Two prescription siblings graduated together: `mine-design` prescribes *structure*
+(patterns/principles for a rule/mapping-shaped unit) and `mine-algorithm` prescribes *computation*
+(canonical-algorithm recognition + BR-conformance-gated replacement for an algorithm-shaped unit).
+Both were method-validated by pilots (mine-design: calibration pair + held-out; mine-algorithm: two
+pilots across a registry-ready and a registry-pull unit) but lived only in ratified proposals. They
+share the mine family's three-stage shape but split one unit population along a single boundary.
+
+**Decision.** Ship both as shipped nexus plugin skills, joining the family as its sixth and seventh
+members (the family table grows 5→7 rows). The shared **routing boundary** — algorithm-shaped (a
+computational problem abstractable from the code) routes to `mine-algorithm`; rule/mapping-shaped
+(braided business rules, type/config forks, format mapping, defensive plumbing) stays with
+`mine-design` — is authored **once, in the mine-family core reference**, and both skills cite it
+rather than restating it (on drift, supersede the core section, never fork it). Each carries its own
+ground truth and failure mode: `mine-algorithm`'s oracle is the unit's BR registry and its gate
+kills the **reckless replacement** (row-by-row conformance with deviation-triggered row re-grounding,
+plus a stage-0 HARD BLOCK that never self-mines the oracle); `mine-design`'s ground truth is a
+mechanical complexity census and its gate kills **pattern cosplay** (a blind, provenance-stripped,
+higher-tier two-tier judge — a grounding kill, then pairwise). The research each depends on is frozen
+into shipped `references/` files (the algorithm catalog + the equivalence net; the decision table +
+the judge protocol) because consuming repos cannot read the dev-repo research pool.
+
+**Why.** Graduation per ADR-28 is extraction, not re-authoring — the proposals are the ratified
+tech-spec record and the pilots validated the *methods*. The routing boundary is a single fact with a
+single owner (the family core), avoiding the AP3 drift a per-skill copy would create. The BR
+registries gain their third consumer species (conformance oracles) after the edit-time guardrail and
+mine-design's rule catalogs.
+
+**Tradeoffs.** No separate per-stack adapter skill ships yet — both methods ran stack-neutral with
+inline stack notes; an adapter is extracted when a second stack consumes (deferred, not built). The
+`mine-semantic-model` member-count pointers in nexus-analytics stay unsynced — a separate plugin with
+its own release cadence — recorded as a deferral, not silence.
+
+**Rejected.** *Fold the two into one skill* — different taxonomy (algorithm catalog vs pattern
+decision table) and different oracle (BR conformance vs census citations). *Restate the routing
+boundary per skill* — AP3 drift. *Pool-pointer the frozen research instead of freezing it* — consuming
+repos never see the dev-repo pool; shipped text must be self-contained.
 
 ---
 
