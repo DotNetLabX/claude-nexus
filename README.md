@@ -34,16 +34,21 @@ User → PO (spec) → Architect (plan) → Developer (implement)
 
 ## Plugins
 
-Nexus ships as **two plugins** in the `claude-nexus` marketplace — a stack-agnostic core and a thin stack extension that **depends on** it:
+Nexus ships as **seven plugins** in the `claude-nexus` marketplace — a stack-agnostic core plus thin stack and domain extensions that **depend on** it. Every extension declares `dependencies: ["nexus"]`, so installing one **auto-installs `nexus`**:
 
-| Plugin | Scope | Skills | Install id | How to install |
-|--------|-------|--------|------------|----------------|
-| **nexus** | Stack-agnostic core (pipeline agents, rules, process skills, security guard) | 14 (9 process + 5 artifact-format) | `nexus@claude-nexus` | Standalone |
-| **nexus-dotnet** | .NET / Vue stack extension | 29 stack | `nexus-dotnet@claude-nexus` | `dependencies: ["nexus"]` — installing it **auto-installs `nexus`** |
-| **nexus-analytics** | Data-analyst domain extension (analyst persona + semantic-model-first query method) | 4 (3 method + 1 mined) | `nexus-analytics@claude-nexus` | `dependencies: ["nexus"]` — installing it **auto-installs `nexus`** |
+| Plugin | Scope | Skills | Install id |
+|--------|-------|--------|------------|
+| **nexus** | Stack-agnostic core (pipeline agents, rules, process skills, security guard) | 28 (20 process + 8 artifact-format) | `nexus@claude-nexus` |
+| **nexus-dotnet** | .NET / Vue stack extension | 37 stack | `nexus-dotnet@claude-nexus` |
+| **nexus-flutter** | Dart / Flutter stack extension (mine-verify-cover adapter + figma-to-flutter design fidelity) | 2 | `nexus-flutter@claude-nexus` |
+| **nexus-cpp** | C/C++ stack extension (mine-verify-cover adapter: mull + GoogleTest in Docker) | 1 | `nexus-cpp@claude-nexus` |
+| **nexus-php** | PHP stack extension (mine-verify-cover adapter: Infection + PHPUnit in Docker) | 1 | `nexus-php@claude-nexus` |
+| **nexus-analytics** | Data-analyst domain extension (analyst persona + semantic-model-first query method) | 4 (3 method + 1 mined) | `nexus-analytics@claude-nexus` |
+| **nexus-notes** | Meeting-notes domain extension (search + claim the unclaimed-notes inbox) | 2 | `nexus-notes@claude-nexus` |
 
 - **Generic / non-.NET stacks** → install **`nexus`** alone. Its code-touching agents read the project's `docs/conventions/` if present (Read-Index), so the pipeline adapts to any stack.
-- **.NET / Vue stacks** → install **`nexus-dotnet`**. It declares `dependencies: ["nexus"]`, so Claude Code pulls and enables `nexus` automatically and layers the 29 .NET / ASP.NET Core / EF Core / CQRS / DDD / FastEndpoints / Vue / Pinia / Tailwind code-pattern skills plus the stack convention files on top.
+- **.NET / Vue stacks** → install **`nexus-dotnet`**. It declares `dependencies: ["nexus"]`, so Claude Code pulls and enables `nexus` automatically and layers the 37 .NET / ASP.NET Core / EF Core / CQRS / DDD / FastEndpoints / Vue / Pinia / Tailwind code-pattern skills plus the stack convention files on top.
+- **Flutter / C++ / PHP stacks** → install the matching thin extension; each ships that stack's toolchain adapter for the `mine-verify-cover` method on top of the core pipeline.
 
 > **Why a dependency, not a superset?** Plugin dependencies auto-install, auto-enable, and layer their components, so a thin extension reuses the core's agents/rules/hooks at runtime instead of shipping a hand-composed copy. This removes the most error-prone build step.
 
@@ -122,10 +127,10 @@ A plugin can't auto-load `rules/` or `@`-import bundled files into subagents, so
 |-------|-----------|---------|
 | **Rules** (11) | Injected every session by the `inject-rules` hook | Universal behavioral constraints — guardrails, KB navigation, pipeline rules, engineering discipline |
 | **Agent conventions** | Inlined into each agent file at build time | Coordination protocol + per-agent boundaries travel *with* the subagent |
-| **Skills** (14 core + 29 stack) | Auto-discovered (model-invoked by `description` + task context; none disable model invocation), and also pinned by name — and preloaded via each agent's `skills:` frontmatter — where the pipeline wants determinism | Reusable recipes — planning, specs, reviews, lessons, TDD, artifact-format schemas, plus stack scaffolding in `nexus-dotnet` |
+| **Skills** (28 core + 47 across the six extensions) | Auto-discovered (model-invoked by `description` + task context; none disable model invocation), and also pinned by name — and preloaded via each agent's `skills:` frontmatter — where the pipeline wants determinism | Reusable recipes — planning, specs, reviews, lessons, TDD, artifact-format schemas, plus stack scaffolding in the stack extensions |
 | **Project docs** | Read at start *if present* (`docs/architecture/`, `docs/conventions/`, `docs/kb/`) | Stack-agnostic by design; absent files are skipped |
 
-The stack extension (`nexus-dotnet`) layers on at runtime via `dependencies: ["nexus"]` — no build-time agent composition. The only generated artifacts are the persona commands (`gen-commands.mjs`, agents → commands) and the `nexus-dotnet` payload (`gen-nexus-dotnet.mjs`, skills + conventions).
+The extensions layer on at runtime via `dependencies: ["nexus"]` — no build-time agent composition. The only generated artifacts are the persona commands (`gen-commands.mjs`, agents → commands) and the private `omni` twin (`gen-omni.mjs`).
 
 ## Security
 
@@ -155,7 +160,7 @@ Intentional tradeoffs that reviewers frequently flag — not oversights.
 
 - [Architecture & Decision Record](docs/architecture/README.md) — why Nexus is built the way it is: source of truth, dependency model, knowledge delivery, pipeline enforcement, build & release
 - [nexus core README](plugins/nexus/README.md) — components, persona vs subagent, where conventions live, full security table
-- [nexus-dotnet README](plugins/nexus-dotnet/README.md) — the 29 stack skills, the dependency model, project template
+- [nexus-dotnet README](plugins/nexus-dotnet/README.md) — the 37 stack skills, the dependency model, project template
 
 ## License
 
