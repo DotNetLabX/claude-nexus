@@ -1,6 +1,46 @@
 # nexus — Changelog
 
 
+## [1.34.2] — 2026-07-14
+**`mine-verify-cover` now owns three things the pilot had to re-derive per run: what happens when a
+mutant hangs or crashes, whether tag emission is actually checked, and where mined tests live.**
+Four findings from the `mvr-pilot-1-2026-07-04` campaign on omnishelf_flutter_app, all landed as
+method-level contract rather than adapter folklore.
+
+- **Abnormal mutant exits are part of the adapter contract** (`## The adapter contract`). A mutant
+  does not only fail an assertion — it can non-terminate (infinite recursion) or crash the runtime
+  (stack overflow). Three requirements the Test-runner and Mutation-tool capability fills must state
+  together: a timeout kill must reach the whole process **tree** (killing the top process alone can
+  leave a descendant holding the output pipe open, so the run never returns — which makes
+  `mutation_floor`'s "Timeout counts as a kill" a dead letter); a non-zero, non-clean-fail return code
+  paired with a not-all-green suite scores **KILLED-by-crash**, never `SUSPECT`; and `char_pin` must be
+  **re-verified after ANY abnormal exit**, because a hard kill bypasses a restore-on-exit `finally` and
+  can leave a mutant applied to production source. A pointer from `## The gate battery` puts it in
+  front of the reader at the `mutation_floor`/`char_pin` rows.
+- **Tag emission is a verified assertion, not prose** (`## Fact tagging & test tiers`). Measured
+  adherence in the pilot was **1 of 13** code-arm suites — including suites generated *after*
+  fact-tagging shipped, so this was an adherence gap, not a capability gap. The fix deliberately
+  mirrors the skill's own `## Safety rails` generation guard, which already names the principle
+  (*"a prompt instruction is a request, not a guarantee that it is followed"*) and already answers it
+  with a re-gate: a post-Cover assertion comparing tag-carrying occurrences to the test count, checked
+  again at Report, with the same agent-counts / orchestrator-compares split as the Minimize confirm.
+  The skill knew both the principle and the shape of the fix; it had never applied either here.
+- **Mined-test location is now specified** (new `## Mined-test location`). The rule registry
+  consolidates *rules* and said nothing about where generated *tests* go — silence a team reasonably
+  reads as "the tests merged too." Both arms now land under a single root, told apart by a new
+  stack-neutral `arm: code | spec` fact rather than by folder, and every adapter must state its
+  default-path consequence explicitly: a root off the stack's default discovery path runs in CI only
+  if the pipeline names it.
+- **"Poll, don't wait"** — the `mine-from-spec` mode's execution topology now mirrors
+  `mine-verify-repo`'s lesson: run measurements in the foreground, never end a turn waiting on a
+  background-completion notification that repeatedly failed to re-invoke the waiting agent.
+
+`arm` is modeled as a stack-neutral fact (matching `layer`/`criticality`) so mapping it to a stack's
+tag syntax stays the adapter's job.
+
+Reported in `docs/plugin-feedback/omni-1.22.0-2026-07-05.md` Entries 5/10 and
+`docs/plugin-feedback/omni-1.23.1-2026-07-07.md` Entries 1/2.
+
 ## [1.34.1] — 2026-07-14
 **`resolveRole` now maps the fast lane's `dev-*` spawn abbreviation — fixing a false-violation class
 and a silently-skipped verify gate.** `resolve-role.js` peels a suffixed spawn name (`developer-2`,

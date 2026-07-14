@@ -80,14 +80,50 @@ The Cover agent writes the test file; a distinct runner agent executes the toolc
    Use the XML `<undetected-mutations>` ONLY to enumerate survivors (line + original→modified) for the survivor report — never to count kills.
 4. Clean up the config + `mutation_test_out/` from the app tree.
 
+## Hung and crashing mutants — the abnormal-exit contract
+
+`mine-verify-cover`'s `## The adapter contract` requires the Test runner and Mutation tool fills to state
+their concrete hang/crash/re-verify mechanism, not re-derive it per run. The Windows/Dart form, hardened
+after three abnormal-exit incidents in one mutation campaign:
+
+- **Timeout must kill the process TREE, not the process.** A hanging `flutter test` leaves a grandchild
+  Dart VM holding the stdout pipe open, so a naive `subprocess.run(timeout=...)` NEVER returns on Windows
+  — the parent's timeout fires but the child keeps the pipe open and the call blocks forever. The harness
+  must (a) redirect output to a FILE, never a captured pipe, and (b) kill the whole tree on timeout —
+  `taskkill /F /T /PID {pid}` on Windows (`/T` = tree). Only then does "Timeout counts as a kill"
+  (`mine-verify-cover` → `mutation_floor`) actually return a result instead of hanging the harness itself.
+- **A crash return code is a kill, not a SUSPECT.** A crashing mutant can hand back a platform crash code
+  (Windows `0xC0000409`, a stack-overflow security-cookie fault) paired with an empty or not-all-green
+  suite. Treat `rc ∉ {0, clean-fail}` AND not-all-green as **KILLED-by-crash** — never leave it `SUSPECT`
+  pending a manual look.
+- **Re-verify `char_pin` after every abnormal exit, before scoring the next mutant.** A hard external
+  kill or the run's own time limit bypasses a restore-on-exit `finally` and can leave the mutant still
+  applied to `lib/` source. Re-run the `git diff -- lib/` scoping (this adapter's capability-5 fill) and
+  restore before proceeding — this happened 3× in one campaign; it is not theoretical.
+
 ## Equivalent-mutant filter (regex's one weakness — reason about it)
 
-A regex mutator produces **equivalent mutants** a behaviour-asserting test can never kill. Two seen in practice:
+A regex mutator produces **equivalent mutants** a behaviour-asserting test can never kill. Three seen in practice:
 
 - **No-output statements** — removing a `log`/`info(...)` void call (`removeVoidCall`) does not change the return value, so no output assertion kills it.
 - **Consistent internal-format changes** — mutating a key-builder used for BOTH map construction and lookup (e.g. `'$a|$b|$c'`) changes the format on both sides identically, so matching is unaffected.
+- **`@JsonKey(name: '...')` annotation mutants on json_serializable models — codegen-inert, not just
+  equivalent.** Mutating a `@JsonKey(name: '...')` string has NO effect at test time: the generated
+  `*.g.dart` holds the actual `_$FromJson`/`_$ToJson` key strings and is not regenerated between applying
+  the mutant and running the suite, so no test can observe the change. Worse, even a per-mutant
+  `build_runner` regen defeats a *symmetric* `fromJson(toJson())` round-trip test — both directions use
+  the renamed key, so the round-trip still passes; only a wire-key-string assertion
+  (`toJson()['2d_x_position']` present) paired with the regen would catch it. Default: exclude
+  `@JsonKey(name:` annotation lines from the mutated set via `expectedSurvivorLines` (same denominator
+  mechanism as the two classes above) — do not chase them with per-mutant `build_runner` regens unless a
+  specific wire-format rule is worth the cost, and if so pair it with a wire-key assertion, not a
+  round-trip test.
 
 These are NOT test gaps. Identify them by **reasoning** (the regex tool can't), then exclude their line numbers via the method's `expectedSurvivorLines` so they leave the reachable denominator — exactly the .NET dead-line mechanism. The mined KB often flags them already (a rule noting "the log call is a pure side-effect"). The mutation floor (default 75) usually tolerates a couple of them; raise the floor and exclude the equivalents only when a clean 100% is wanted.
+
+For codegen'd stacks generally: a source mutation whose effect is mediated by a build step is inert
+unless the build step runs inside the gate loop — own that boundary explicitly rather than rediscovering
+it per target.
 
 ### Survivor tags — Dart cues (the method's Report-stage taxonomy, filled for Dart)
 
@@ -120,7 +156,8 @@ The method's fact-tagging + tier vocabulary (`mine-verify-cover` → "Fact taggi
 generated *tests* — extend the vocabulary here, don't collide with `equivalent-logging`/`dead-code`/etc.):
 
 - **Facts → flutter `test()` tags** — `tags: ['layer-domain-calc', 'criticality-golden', 'mutation-gated',
-  'runtime-cost-fast']` on the `test(...)` call (flutter_test's native `tags` parameter).
+  'runtime-cost-fast', 'arm-code']` (`'arm-spec'` for the spec arm — `mine-verify-cover` → "Mined-test
+  location") on the `test(...)` call (flutter_test's native `tags` parameter).
 - **Tiers → `--tags` filter expressions** — `smoke` = `flutter test --tags "criticality-golden && runtime-cost-fast"`;
   `full` = `flutter test` (no filter); `gate` = `flutter test --tags "mutation-gated"`, run on target-class
   change.
@@ -135,6 +172,13 @@ generated *tests* — extend the vocabulary here, don't collide with `equivalent
   here by analogy — that is where the colon form came from.
 - **Declare the tags** used by generated tests in the repo-root `dart_test.yaml` to avoid unknown-tag
   warnings.
+- **Mined-test root — place under `test/`, never a top-level sibling.** `flutter test` (bare invocation)
+  discovers `test/` by default; a top-level sibling like `test_mine/` is off that path and runs in CI only
+  if the pipeline names it explicitly (`mine-verify-cover` → "Mined-test location"). Put both arms under
+  `test/mine/`, told apart by the `arm-code` / `arm-spec` tag above, not by folder. One pilot placed the
+  code arm in `test_mine/` and the spec arm in `test_mine/spec/`; the project's bare `flutter test`
+  invocation (`build_all.sh:93`) discovered the spec arm's 11 tests but never the code arm's 132 — the
+  entire mutation-gated code-arm suite was silently absent from CI.
 - **The parked-red idiom** — a generated red documenting a genuine spec-code divergence (Cover-from-spec's
   output convention, `mine-verify-cover` → SDD lifecycle) is KEPT, never deleted, and marked:
   ```dart

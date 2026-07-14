@@ -99,7 +99,10 @@ before orchestrating — the canonical shape (multi-agent by design, orchestrato
 staged background `general-purpose` agents, "launch = orchestrate stages") is defined there. This
 mode's own staging: the clean-room miners run in parallel (background), then on their completion a
 consolidate+skeptic agent (background); stages interleave with plan-authoring — planning never
-blocks on the run.
+blocks on the run. **Poll, don't wait:** stage prompts must have agents run measurements in the
+foreground (bounded poll loops if long) and never end their turn waiting on a background-command
+completion notification — mirrors `mine-verify-repo`'s Execution topology lesson (the notification
+repeatedly failed to re-invoke a waiting agent in practice).
 
 **On a NEW target, walk the core §kickoff checklist first** (tool preflight, expected survival rate,
 stop-budget, run-report location) before launching this mode's run.
@@ -120,6 +123,10 @@ Every gate is computed by the orchestrator from the adapter's raw output — no 
 `mutation_floor` measures **reachable** kill: mutants in known-dead lines are excluded only when the KB pre-documents them (default: exclude none). A sub-100% honest kill is a pass when it clears the floor — report the residual survivors, never hide them.
 
 **Anti-fake-green invariant:** before scoring `mutation_floor`, cross-check the agent-reported mutant TOTAL against the tool summary's `Found N`. If they differ, halt and flag — a mismatch indicates the gate is scoring on a partial mutant set (e.g. a survivor-only XML output read as the full set). The stack adapter's summary parse is the authoritative total; the gate must not proceed on an unverified count.
+
+A mutant can also hang or crash the runner instead of failing cleanly — see `## The adapter contract`'s
+"Abnormal mutant exits" paragraph for how that keeps `mutation_floor` and `char_pin` honest under a hard
+kill.
 
 ## The Minimize stage
 
@@ -274,9 +281,23 @@ rule:
   class) — target selection needs the tag.
 - `criticality` — `golden | core | edge`.
 
-Cover's test-writer emits the facts on the generated test, plus two test-only facts:
+Cover's test-writer emits the facts on the generated test, plus three test-only facts:
 - `mutation-gated` — boolean; set once the test has cleared the gate battery.
 - `runtime-cost` — `fast | slow`.
+- `arm` — `code | spec`; which mine arm produced this test (`## Mined-test location` below) — the
+  mechanism that lets both arms colocate under one test root and be told apart by filter, not by folder.
+
+**Tag emission is a verified assertion, not prose.** The sentence above ("Cover's test-writer emits the
+facts on the generated test") is, left alone, the same kind of unenforced prompt instruction the Safety
+rails' generation guard already names for categorically-dead tests (`## Safety rails` → "Generation guard
+(Cover)": "a prompt instruction is a request, not a guarantee that it is followed"). Measured: 1 of 13
+code-arm suites in one pilot carried per-test tags — including suites generated after fact-tagging
+shipped. Mirror the guard's own fix rather than a stronger prompt: a **post-Cover assertion**, checked
+again at Report — count the tag-carrying occurrences in the generated test file (e.g. `tags: [` per the
+Flutter mapping below) and compare to the test count. Equal → pass silently. Mismatch → the Report stage
+flags it (fail or warn, adapter's choice) instead of silently shipping an untagged suite. Same actor split
+as the Minimize confirm above: an agent (Cover, or a Report-stage checker) counts and reports; the
+orchestrator only compares and records — it still has no filesystem of its own.
 
 **Named tiers — filter expressions over facts, not a new taxonomy.** The initial set (extensible — a
 tier is just a predicate over the facts above, adding one never touches this list):
@@ -298,6 +319,25 @@ unlimited tier flexibility without a fake number; do not re-propose the scalar i
 | `mine-verify-cover-cpp` | **deferred** — the fact/tier vocabulary is not yet mapped for the C++ adapter (proposal §B names dotnet+flutter only); a follow-up gives it the same tag mapping |
 | `mine-verify-cover-php` | **deferred** — the fact/tier vocabulary is not yet mapped for the PHP adapter (proposal §B names dotnet+flutter only); a follow-up gives it the same tag mapping (PHPUnit `#[Group(…)]` + `--group`/`--exclude-group`) |
 
+## Mined-test location
+
+`## The rule registry` above consolidates RULES into one file per unit — it says nothing about where the
+GENERATED TESTS live, and that silence is a bug, not a gap that self-resolves: a team merges the rule
+registry and reasonably assumes the tests merged too. One pilot found otherwise — the code arm landed in
+`test_mine/` and the spec arm in `test_mine/spec/`, no skill guidance drove either name, and the project's
+bare test-runner invocation discovered the spec arm's tests but never the code arm's — the entire
+mutation-gated code-arm suite was silently absent from CI.
+
+Two arm-agnostic requirements:
+- **A single mined-test root for both arms.** Code-arm and spec-arm output land under the SAME root;
+  the arms are told apart by the `arm` fact (`arm-code` / `arm-spec`, `## Fact tagging & test tiers`
+  above), filterable, never by separate folders.
+- **State the default-path consequence explicitly, per adapter.** A mined-test root that is not on the
+  stack's default test-discovery path runs in CI only if the pipeline names it explicitly. The adapter
+  must say which is true for its stack and, if the chosen root is off-path, tell the orchestrator to
+  either move the root onto the default path or wire the extra path into the project's test command —
+  see the stack adapter for the concrete convention (e.g. the Flutter adapter's `test/` placement rule).
+
 ## The adapter contract (what a stack skill provides)
 
 The method names FIVE capabilities; the stack adapter fills them. Do not extract this seam from a single language — abstract it only once a second stack is live (premature extraction bakes in a one-language-shaped contract).
@@ -309,6 +349,25 @@ The method names FIVE capabilities; the stack adapter fills them. Do not extract
 5. **Prod-source-diff scoping** — the scoped diff of the production source for `char_pin`.
 
 When a stack's mutation tool is **regex-based** (e.g. Dart's `mutation_test`) it emits equivalent mutants the adapter must exclude by reasoning (a removed log call, a consistent internal-format change) — not chase. When a stack lacks a mutation tool **entirely**, the adapter declares a documented fallback (coverage + an assertion-density floor + a raised skeptic cadence) — a weaker gate, stated honestly, not a silent downgrade.
+
+**Abnormal mutant exits are part of the contract, not an afterthought.** A mutant does not only fail an
+assertion — it can make the target NON-TERMINATE (infinite recursion) or CRASH the runtime (stack
+overflow). The Test runner (capability 2) and Mutation tool (capability 3) fills must document, together,
+not re-derive per run:
+- **Timeout kill must reach the whole process tree.** If the runner spawns child processes, killing only
+  the top-level process can leave a descendant alive holding the output pipe open, so the run never
+  returns — "Timeout counts as a kill" (`## The gate battery` → `mutation_floor`) is a dead letter until
+  the adapter's kill mechanism terminates the tree, not one process.
+- **A crashing mutant is KILLED-by-crash, not SUSPECT.** A non-zero, non-clean-fail return code paired
+  with an incomplete/not-all-green suite scores as a kill — never left pending a manual look.
+- **Re-verify `char_pin` after ANY abnormal exit, before proceeding to the next mutant.** A hard external
+  kill or the run's own time limit can bypass a restore-on-exit `finally` and leave a mutant still applied
+  to production source; the orchestrator must re-check `char_pin` (capability 5) and restore before
+  scoring the next mutation — a prompt-level "restore in finally" is not a guarantee against SIGKILL.
+
+State the concrete mechanism for each — process-tree kill command, crash return-code set, restore
+re-check trigger — in the adapter's own capability fill; see the Flutter adapter for the Windows/Dart
+form.
 
 ## Substrate
 

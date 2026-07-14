@@ -19,16 +19,16 @@ Last verified: **2026-07-14** against nexus 1.34.1 / nexus-flutter 0.4.1.
 
 | File | Source | Entries | Applied | Tracked | Open |
 |---|---|---|---|---|---|
-| `omni-1.22.0-2026-07-05.md` | omnishelf_flutter_app | 11 | 2 | 1 | 8 |
-| `omni-1.23.1-2026-07-07.md` | omnishelf_flutter_app | 3 | 1 | 0 | 2 |
+| `omni-1.22.0-2026-07-05.md` | omnishelf_flutter_app | 11 | 4 | 1 | 6 |
+| `omni-1.23.1-2026-07-07.md` | omnishelf_flutter_app | 3 | **3** ✅ | 0 | 0 |
 | `omni-1.25.1-2026-07-12.md` | omnishelf_flutter_app | 10 | 6 | 0 | 4 |
 | `omni-1.32.0-2026-07-14.md` | omnishelf_flutter_app | 1 | **1** ✅ | 0 | 0 |
 | `omni-flutter-0.3.0-2026-07-04.md` | omnishelf_flutter_app | 1 | **1** ✅ | 0 | 0 |
 | `omni-flutter-0.3.0-2026-07-12.md` | omnishelf_flutter_app | 4 | **4** ✅ | 0 | 0 |
-| **Total** | | **30** | **15** | **1** | **14** |
+| **Total** | | **30** | **19** | **1** | **10** |
 
-Three files are fully closed. The remaining 14 open are in `omni-1.22.0` (8), `omni-1.25.1` Part A (4),
-and `omni-1.23.1` (2). `omni-1.22.0` E11 is `Tracked` — decided, not open (see below).
+Four files are fully closed. The remaining 10 open are in `omni-1.22.0` (6 — the `mine-verify-repo`
+half) and `omni-1.25.1` Part A (4). `omni-1.22.0` E11 is `Tracked` — decided, not open (see below).
 
 Older `nexus-1.9.0` / `nexus-1.9.1` / `nexus-1.13.0` / `nexus-cpp-0.1.0` files predate this index and
 retain their in-header status notes; they are not re-triaged here.
@@ -57,6 +57,33 @@ The port improved on the feedback in three places: E10's dead-code by-products r
 report as candidate `mine-verify-repo` rows rather than straight into `docs/tech-debt/`; the adapter
 adds the non-recursive-pubspec-assets trap; and exclusion-is-deliberate-blindness is called out.
 
+### `omni-1.22.0` E9, E10 + `omni-1.23.1` E1, E2 — **Applied, nexus 1.34.2 / nexus-flutter 0.4.2** (`adhoc-MineCoverArmHardening`)
+The Cover-arm half of the pilot cluster. All four in `mine-verify-cover/SKILL.md` +
+`mine-verify-cover-flutter/SKILL.md`:
+
+- **E10** (hanging/crashing mutants) — stack-neutral "Abnormal mutant exits are part of the contract"
+  in the method's `## The adapter contract` (process-tree kill, crash-rc = KILLED-by-crash,
+  re-verify `char_pin` after any abnormal exit), pointer from `## The gate battery`; the Windows/Dart
+  concretes (`taskkill /F /T /PID`, file-not-pipe output, `0xC0000409`, `git diff -- lib/` re-check)
+  in the adapter's new `## Hung and crashing mutants` section.
+- **E9** (`@JsonKey` codegen-inert) — third entry in the adapter's equivalent-mutant filter
+  ("Two seen" → "Three seen"); default is exclude via `expectedSurvivorLines`, with the reason a
+  symmetric round-trip can't catch a key rename even *with* a regen.
+- **E1** (1.23.1, tag emission) — the fix mirrors the skill's own `## Safety rails` generation guard
+  and cites its *"a prompt instruction is a request"* line: a post-Cover assertion counting `tags: [`
+  against the test count, re-checked at Report, same agent-counts/orchestrator-compares actor split
+  as the Minimize confirm. The index flagged this as the entry's own best argument; it is now the
+  edit's stated rationale.
+- **E2** (1.23.1, mined-test location) — new `## Mined-test location` section (single root for both
+  arms; adapters must state their default-path consequence) + a new stack-neutral `arm: code | spec`
+  fact, which the adapter maps to flat `arm-code`/`arm-spec` tags and pairs with a `test/mine/`
+  placement rule citing the 132-test CI blind spot.
+
+Two judgment calls worth recording: `arm` is modeled as a stack-neutral **fact** in the method
+(matching `layer`/`criticality`) rather than a flat-tag-only convention, so the adapter's hyphen
+mapping stays the adapter's job. And the pilot's `test_mine/` vs `test_mine/spec/` discovery asymmetry
+is reported **as observed** — the source evidence doesn't explain the mechanism, so none was invented.
+
 ### `omni-1.22.0` Entry 8 — **Applied**
 `mine-reference-model` skill built; ratified as **ADR-50** (`docs/architecture/README.md:1233`).
 Entry 8's optional stage-2 is explicitly declined on record (`mine-reference-model/SKILL.md:151`).
@@ -82,12 +109,15 @@ not collapse. Tests cover the new case plus the `team-lead` landmine and "unknow
 Both applied `omni-1.22.0` entries were consumed as **inputs to building `mine-reference-model`**,
 not from a pass over the file. No sweep of these files has ever run — which is what the 18 below are.
 
-### `omni-1.23.1` E1, E2 — Cover tag emission + mined-test location
-E1: tag emission is prose (`mine-verify-cover/SKILL.md:277`), not a gate — measured adherence 1-in-13.
-The skill already argues this exact principle at `:238` (*"a prompt instruction is a request, not a
-guarantee that it is followed"*) but doesn't apply it to tag emission. E2: no guidance on a single
-mined-test root, no `arm-code`/`arm-spec` tag, no note that a `test_mine/` sibling of `test/` is
-invisible to bare `flutter test` — which silently kept 132 code-arm tests out of CI.
+### `omni-1.22.0` E1–E5, E7 — the mine-verify-repo half
+Five-and-a-half entries still Open, each needing an edit to `mine-verify-repo`: E1 lizard has no
+native Dart reader (`lizard <dir>` silently returns 0 Dart files; `-f <filelist>` works) · E2
+area-expansion rule for singleton-collapsed communities · E3 test-coverage lens granularity cap ·
+E4 evidence-command traps (generated-file exclusion, formatter-split lines, awk-not-`grep -A` for
+lcov) · E7 author-identity consolidation before ownership.
+
+**E5 is half-applied.** Its `mine-verify-cover` topology mirror shipped (below); its primary target —
+`mine-verify-repo`'s Execution topology — has not. It closes when that lands.
 
 ### `omni-1.25.1` Part A, E1–E4
 - **E1** (a relayed/consensus/remembered fact is a claim to re-verify) — Open. The narrow
@@ -107,14 +137,6 @@ invisible to bare `flutter test` — which silently kept 132 code-arm tests out 
   across `plugins/` and `docs/architecture/`. The consuming project applied its local half; the
   plugin-side half (ADR-18 clause + `ARTIFACT_OWNERS` mapping) never landed.
 
-### `omni-1.22.0` E1–E5, E7, E9, E10 — the mine-verify-repo/cover cluster
-Eight entries, all Open, each needing an edit to an existing skill: E1 lizard has no
-native Dart reader (`lizard <dir>` silently returns 0 Dart files; `-f <filelist>` works) · E2
-area-expansion rule for singleton-collapsed communities · E3 test-coverage lens granularity cap ·
-E4 evidence-command traps (generated-file exclusion, formatter-split lines, awk-not-`grep -A` for
-lcov) · E5 mandate foreground completion ("poll, don't wait") · E7 author-identity consolidation
-before ownership · E9 `@JsonKey`-name mutants are codegen-inert · E10 hanging/crashing mutants +
-process-tree kill + re-assert `char_pin` after abnormal exit.
 
 ## Tracked — decided, not built
 

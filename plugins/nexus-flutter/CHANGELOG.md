@@ -1,6 +1,42 @@
 # Changelog — nexus-flutter
 
 
+## [0.4.2] — 2026-07-14
+**The Dart/Flutter fills for `mine-verify-cover`'s new abnormal-exit contract, plus a codegen-inert
+mutant class and a mined-test placement rule that keeps generated suites in CI.** Hardened against
+the `mvr-pilot-1-2026-07-04` campaign, where each of these cost real operator time.
+
+- **`## Hung and crashing mutants — the abnormal-exit contract`** (new). A hanging `flutter test`
+  leaves a **grandchild Dart VM** holding the stdout pipe open, so a naive `subprocess.run(timeout=)`
+  **never returns on Windows** — the parent's timeout fires but the call blocks forever. The harness
+  must redirect output to a **file**, never a captured pipe, and kill the whole tree
+  (`taskkill /F /T /PID {pid}`). Only then does "Timeout counts as a kill" return a result instead of
+  hanging the harness itself (the pilot's infinite-401-retry mutant then scored KILLED at 75s). A
+  crashing mutant hands back a platform crash code (`0xC0000409`, a stack-overflow security-cookie
+  fault) with a green-less suite — that is **KILLED-by-crash**, not `SUSPECT`. And `char_pin` gets
+  re-run (`git diff -- lib/`) after **every** abnormal exit: a hard kill bypasses the restore
+  `finally` and leaves the mutant on `lib/` source — this happened **3× in one campaign**, so it is
+  not theoretical.
+- **`@JsonKey(name: '...')` mutants are codegen-inert** — a third entry in the equivalent-mutant
+  filter ("Two seen" → "Three seen"). Mutating the annotation has no effect at test time: the
+  generated `*.g.dart` holds the real `_$FromJson`/`_$ToJson` key strings and is not regenerated
+  between applying the mutant and running the suite. Worse, even a per-mutant `build_runner` regen
+  defeats a *symmetric* `fromJson(toJson())` round-trip — both directions use the renamed key, so it
+  still passes; only a wire-key-string assertion would catch it. Default is to exclude them via
+  `expectedSurvivorLines` (the same denominator mechanism as the other two classes). Generalized: on a
+  codegen'd stack, a mutation whose effect is mediated by a build step is inert unless that build step
+  runs **inside** the gate loop.
+- **Mined-test root — `test/mine/`, never a top-level sibling.** Bare `flutter test` discovers `test/`
+  by default; a sibling like `test_mine/` is off that path and runs in CI only if the pipeline names
+  it. The pilot put the code arm in `test_mine/` and the spec arm in `test_mine/spec/`; its bare
+  `flutter test` (`build_all.sh:93`) picked up the spec arm's 11 tests but **never the code arm's
+  132** — the entire mutation-gated code-arm suite was absent from CI and nothing alerted. Both arms
+  now go under `test/mine/`, told apart by the new `arm-code` / `arm-spec` tags (added to the `tags:`
+  mapping) rather than by folder.
+
+Reported in `docs/plugin-feedback/omni-1.22.0-2026-07-05.md` Entries 9/10 and
+`docs/plugin-feedback/omni-1.23.1-2026-07-07.md` Entry 2.
+
 ## [0.4.1] — 2026-07-14
 **Fix `mine-verify-cover-flutter`'s fact tags: colon form is unparseable in `package:test`.** The
 adapter's "Fact tags & test tiers" mapping shipped `tags: ['layer:domain-calc', 'criticality:golden',
