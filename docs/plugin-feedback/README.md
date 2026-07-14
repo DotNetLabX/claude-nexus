@@ -12,19 +12,22 @@ were never confirmed-applied."* One table beats status scattered across six prea
 the source, not inferred from a changelog) · `Open` (absent from shipped text) · `Owner-decision`
 (needs a call before it can be applied).
 
-Last verified: **2026-07-14** against nexus 1.34.0 / nexus-flutter 0.4.0.
+Last verified: **2026-07-14** against nexus 1.34.1 / nexus-flutter 0.4.1.
 
 ## Summary
 
 | File | Source | Entries | Applied | Open |
 |---|---|---|---|---|
 | `omni-1.22.0-2026-07-05.md` | omnishelf_flutter_app | 11 | 2 | 9 |
-| `omni-1.23.1-2026-07-07.md` | omnishelf_flutter_app | 3 | 0 | 3 |
+| `omni-1.23.1-2026-07-07.md` | omnishelf_flutter_app | 3 | 1 | 2 |
 | `omni-1.25.1-2026-07-12.md` | omnishelf_flutter_app | 10 | 6 | 4 |
-| `omni-1.32.0-2026-07-14.md` | omnishelf_flutter_app | 1 | 0 | 1 |
-| `omni-flutter-0.3.0-2026-07-04.md` | omnishelf_flutter_app | 1 | 0 | 1 |
-| `omni-flutter-0.3.0-2026-07-12.md` | omnishelf_flutter_app | 4 | **4** | 0 |
-| **Total** | | **30** | **12** | **18** |
+| `omni-1.32.0-2026-07-14.md` | omnishelf_flutter_app | 1 | **1** ✅ | 0 |
+| `omni-flutter-0.3.0-2026-07-04.md` | omnishelf_flutter_app | 1 | **1** ✅ | 0 |
+| `omni-flutter-0.3.0-2026-07-12.md` | omnishelf_flutter_app | 4 | **4** ✅ | 0 |
+| **Total** | | **30** | **15** | **15** |
+
+Three files are fully closed. The remaining 15 are all in `omni-1.22.0` (9), `omni-1.25.1` Part A (4),
+and `omni-1.23.1` (2).
 
 Older `nexus-1.9.0` / `nexus-1.9.1` / `nexus-1.13.0` / `nexus-cpp-0.1.0` files predate this index and
 retain their in-header status notes; they are not re-triaged here.
@@ -61,18 +64,22 @@ Entry 8's optional stage-2 is explicitly declined on record (`mine-reference-mod
 Scale datapoint landed at `mine-verify-cover/references/mine-family-core.md:75`. The 301k-token /
 52-tool-call figures and the "revisit sharding for wider runs" line did not survive the condense.
 
+### `omni-flutter-0.3.0-2026-07-04` E1 + `omni-1.23.1` E3 — **Applied, nexus-flutter 0.4.1** (`eb5e638`)
+Colon-form fact tags switched to hyphen composition in `mine-verify-cover-flutter/SKILL.md:122-124`,
+plus the `boolean_selector` grammar note (so the .NET key-value analogy isn't re-derived) and the
+`dart_test.yaml` declaration reminder.
+
+### `omni-1.32.0` E1 — **Applied, nexus 1.34.1** (`f292c2e`)
+`resolve-role.js` gained an exact-token `ROLE_ABBREVS` map (`dev` → `developer`) consulted at the same
+two points as `KNOWN_ROLES`. Fixes both consumers: the boundary detector's false ADR-18 violations
+**and** the verify gate's `verdict:"skipped"` fall-through (the latter was not in the report — an
+unrun gate is more serious than log noise). Map is exact-token, never a prefix match, so `devops` does
+not collapse. Tests cover the new case plus the `team-lead` landmine and "unknown stays unknown".
+
 ## Open
 
 Both applied `omni-1.22.0` entries were consumed as **inputs to building `mine-reference-model`**,
 not from a pass over the file. No sweep of these files has ever run — which is what the 18 below are.
-
-### `omni-flutter-0.3.0-2026-07-04` E1 + `omni-1.23.1` E3 — colon-form test tags (one issue, twice flagged)
-`mine-verify-cover-flutter/SKILL.md:122,124` still ship `tags: ['layer:domain-calc', ...]` and
-`--tags "criticality:golden&&runtime-cost:fast"`. Colons are a **hard parse failure** in
-`package:test` (`boolean_selector` lexes `:` as the ternary operator), not a warning — a colon-form
-`dart_test.yaml` fails to load, blocking every test in the file. The nexus-flutter 0.4.0 bump did not
-touch this file (`git show --stat 988075b`); its last change was `82200b3`. Fix is mechanical: hyphen
-composition preserves the full vocabulary. Needs its own nexus-flutter patch bump.
 
 ### `omni-1.23.1` E1, E2 — Cover tag emission + mined-test location
 E1: tag emission is prose (`mine-verify-cover/SKILL.md:277`), not a gate — measured adherence 1-in-13.
@@ -80,22 +87,6 @@ The skill already argues this exact principle at `:238` (*"a prompt instruction 
 guarantee that it is followed"*) but doesn't apply it to tag emission. E2: no guidance on a single
 mined-test root, no `arm-code`/`arm-spec` tag, no note that a `test_mine/` sibling of `test/` is
 invisible to bare `flutter test` — which silently kept 132 code-arm tests out of CI.
-
-### `omni-1.32.0` E1 — `resolveRole` doesn't map the `dev-*` abbreviation
-**Diagnosis verified correct against source.** `KNOWN_ROLES` (`hooks/scripts/lib/resolve-role.js:18`)
-has `developer`, not `dev`; `resolveRole('dev-wave0')` peels to candidate `dev`, misses, returns
-unchanged → absent from `ARTIFACT_OWNERS[implementation.md]` (`boundary-detector.js:51`) → false
-ADR-18 violation on every touch. The entry's correction of the original lessons' `.current-agent`
-hypothesis is also right — the detector never reads it.
-
-**Blast radius is larger than the entry reports:** `resolve-role.js` is shared with
-`verify-gate.js`, where an unresolved name hits Branch 3 (`:134`) and writes `verdict:"skipped"` —
-so a `dev-*` fast-lane developer's verify gate **never runs**. It is recorded as skipped rather than
-silently swallowed (deliberate, per the HIGH-2 comment), so it is detectable in the log — but the
-developer is unverified. This favors fix (a) teach `resolveRole` the abbreviation over (b) require
-canonical spawn names, since prose can't defend the verify gate. Caveat for (a): use an exact-token
-map consulted at the same two points as `KNOWN_ROLES`, never a prefix match — the `team-lead`
-landmine (`:33-38`) and "unknown stays unknown" (`:41`) must both survive.
 
 ### `omni-1.25.1` Part A, E1–E4
 - **E1** (a relayed/consensus/remembered fact is a claim to re-verify) — Open. The narrow
@@ -126,8 +117,9 @@ process-tree kill + re-assert `char_pin` after abnormal exit · **E11** golden/U
 untracked in all registries, and *not* covered by `mine-verify-flows` (that is JSON flow goldens;
 E11 is widget-render goldens).
 
-## Residual
+## Residual — closed
 
-`docs/proposals/agent-grounding-memory-wiring.md:27` still carries the superseded *"OQ-1 transfers as
-the tolerance default"* claim. It didn't contaminate the skill, but the proposal is now stale against
-shipped doctrine — correct it or mark item 4 graduated.
+`docs/proposals/agent-grounding-memory-wiring.md` item 4 carried the superseded *"OQ-1 transfers as
+the tolerance default"* claim. It never contaminated the skill, but the proposal was the only tracking
+record still holding the old answer. Item 4 is now marked shipped with the claim retracted (`19044bf`).
+The C++ flows adapter named there remains unbuilt.
