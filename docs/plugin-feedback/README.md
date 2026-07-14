@@ -13,7 +13,9 @@ the source, not inferred from a changelog) · `Open` (absent from shipped text) 
 (needs a call before it can be applied) · `Tracked` (owner decided **not** to build it now; the idea
 is recorded in `docs/proposals/` — the ADR-29 idea inbox — so it is resolved here, not pending).
 
-Last verified: **2026-07-14** against nexus 1.34.1 / nexus-flutter 0.4.1.
+Last verified: **2026-07-14** against nexus 1.34.5 / nexus-flutter 0.4.2 (post-sweep). Every `Applied`
+verdict below was checked by reading shipped source with file:line evidence, not inferred from a
+changelog.
 
 ## Summary
 
@@ -21,14 +23,15 @@ Last verified: **2026-07-14** against nexus 1.34.1 / nexus-flutter 0.4.1.
 |---|---|---|---|---|---|
 | `omni-1.22.0-2026-07-05.md` | omnishelf_flutter_app | 11 | **10** ✅ | 1 | 0 |
 | `omni-1.23.1-2026-07-07.md` | omnishelf_flutter_app | 3 | **3** ✅ | 0 | 0 |
-| `omni-1.25.1-2026-07-12.md` | omnishelf_flutter_app | 10 | 8 | 0 | 2 |
+| `omni-1.25.1-2026-07-12.md` | omnishelf_flutter_app | 10 | **10** ✅ | 0 | 0 |
 | `omni-1.32.0-2026-07-14.md` | omnishelf_flutter_app | 1 | **1** ✅ | 0 | 0 |
 | `omni-flutter-0.3.0-2026-07-04.md` | omnishelf_flutter_app | 1 | **1** ✅ | 0 | 0 |
 | `omni-flutter-0.3.0-2026-07-12.md` | omnishelf_flutter_app | 4 | **4** ✅ | 0 | 0 |
-| **Total** | | **30** | **27** | **1** | **2** |
+| **Total** | | **30** | **29** ✅ | **1** ✅ | **0** ✅ |
 
-Five of the six files are fully closed. **The only open entries are `omni-1.25.1` Part A E2 and E4**
-— both owner-decided and in flight. `omni-1.22.0` E11 is `Tracked` — decided, not open (see below).
+**All six files are fully closed** — 29 Applied, 1 Tracked (`omni-1.22.0` E11, decided not-built), 0
+Open. Closed by `adhoc-PluginFeedbackSweep` (2026-07-14), the first pass ever run over these files:
+nexus 1.34.2 → 1.34.5 and nexus-flutter 0.4.2 across four slugs, plus one proposal.
 
 Older `nexus-1.9.0` / `nexus-1.9.1` / `nexus-1.13.0` / `nexus-cpp-0.1.0` files predate this index and
 retain their in-header status notes; they are not re-triaged here.
@@ -56,6 +59,32 @@ class-wide `**.`-suffix exclusions + the single `**.sfr` ε 0.005 tolerance).
 The port improved on the feedback in three places: E10's dead-code by-products route to the run
 report as candidate `mine-verify-repo` rows rather than straight into `docs/tech-debt/`; the adapter
 adds the non-recursive-pubspec-assets trap; and exclusion-is-deliberate-blindness is called out.
+
+### `omni-1.25.1` Part A E2, E4 — **Applied, nexus 1.34.5** (`adhoc-AdrAmendments`)
+Both were owner decisions, not mechanical adds.
+
+**E2 — split by log-window test** (owner, 2026-07-14). The index called this an Owner-decision because
+`architect.md:315` mandated **Fail** for exactly the case E2 argued was Deviated-with-reason. It was
+also bigger than a line edit: `:315` descends from **ADR-24**, whose Decision text reads *"make the
+gate Fail on the logged fact"* — so the fix had to land in both, and they now agree. Shipped rule:
+absent from the log **and** the whole scoped window → **Fail** (true non-invocation); absent for the
+step but **present elsewhere in the window** → **Deviated-with-reason** (invoked, mis-recorded); a
+missing `## Skills Used` section → **Fail**, unchanged. The test is a grep, not a judgment, so ADR-24's
+determinism survives intact. The crash-resume edge case is now named at the scoping paragraph
+(token-keying already spans the run set — the text just never said so).
+**ADR-24 is still `PROPOSED`** — verified after the edit; the amendment is an input to ratification,
+not the ratification, and the "not settled architecture" banner is untouched.
+
+**E4 — ADR-18 clause ships; the detector half deliberately does not** (owner, 2026-07-14). The clause
+(non-developer implementers write `test-implementation.md`, never `implementation.md`; done-checks read
+both) is in ADR-18. The detector change was **declined on evidence**: the entry's rationale was false —
+`ARTIFACT_OWNERS` only flags **listed** regexes, `test-implementation.md` matches none, so nothing can
+fire and the 11 hits stop on the filename change alone. Adding an entry would create enforcement
+against a role nexus doesn't ship (`resolveRole` returns the raw unresolved token for a consumer-local
+`integration-tester`, which `!owners.has(role)` would then flag for writing its **own** artifact — the
+false-violation class 1.34.1 just retired). Recorded as
+`docs/proposals/boundary-detector-test-implementation-ownership.md` (Draft), mirroring
+`boundary-detector-solo-ownership.md`, which settled the identical question the same way.
 
 ### `omni-1.25.1` Part A E1, E3 — **Applied, nexus 1.34.4** (`adhoc-PipelineTrustRules`)
 - **E1** (relayed/consensus/remembered fact) → `agents-workflow.md` `## All Agents` (new bullet,
@@ -156,40 +185,11 @@ not collapse. Tests cover the new case plus the `team-lead` landmine and "unknow
 
 ## Open
 
-The first real sweep of these files is `adhoc-PluginFeedbackSweep` (2026-07-14) — before it, the two
-applied `omni-1.22.0` entries had been consumed as **inputs to building `mine-reference-model`**, not
-from a pass over the file. The sweep closed `omni-1.22.0` and `omni-1.23.1`; the two below are what
-remain, both owner-decided and in flight as `adhoc-AdrAmendments`.
+**None.** All 30 entries across the six inbound files are dispositioned — 29 Applied, 1 Tracked.
 
-### `omni-1.25.1` Part A, E2 and E4 — both decided, awaiting the edit
-- **E2** (skill-invocation truth) — **Owner-decided 2026-07-14: split by log-window test.** The
-  entry's collision is real: `architect.md:315` mandates **Fail** for exactly the case E2 argues is
-  *Deviated-with-reason*. It is also **not just a line edit** — `:315` descends from **ADR-24**
-  (`docs/architecture/README.md:42`), still `PROPOSED — owner ratifies`, whose decision text reads
-  *"make the gate Fail on the logged fact."* The decision: absent from the log **and** from the whole
-  scoped run window → **Fail** (true non-invocation, ADR-24's unrecoverable breach #2); absent from
-  the log but **present elsewhere in the window** → **Deviated-with-reason** (invoked, mis-recorded);
-  a missing `## Skills Used` section → **Fail**, unchanged. This stays log-checkable rather than
-  restoring architect discretion, and it covers the observed case (`tdd` legitimately invoked at Step
-  4, then applied from memory at Step 6). The amendment **does not ratify ADR-24** — it stays
-  PROPOSED. The crash-resume edge case (token-keying dodges it structurally but never names it) gets
-  named: scope the check to the step's whole run set, not a single run id.
-- **E4** (ADR-18: non-developer implementers write `test-implementation.md`) — **Owner-decided
-  option (a) on 2026-07-12; the plugin half never landed.** `test-implementation` has **zero hits**
-  across `plugins/` and `docs/architecture/`; the consuming project applied its local half. The ADR-18
-  clause ships. **The detector half does not — owner-decided 2026-07-14: leave
-  `boundary-detector.js` untouched and record the question.** The entry's rationale (*"so the
-  legitimate write stops logging as a violation"*) does not hold: `ARTIFACT_OWNERS` only flags files
-  matching a **listed** regex (`boundary-detector.js:59-63`), and `test-implementation.md` matches
-  none — so no violation can fire. The 11 logged hits were the integration-tester writing
-  **`implementation.md`**, and they stop the moment it writes the new filename, with no detector
-  change at all. Adding an entry would **create** enforcement, not remove a false positive — and
-  nexus ships **no test-author role** to name as owner (`NONCODE_ROLES` at `:43`; the
-  integration-tester is consumer-local), so it would risk flagging the very agent it should permit —
-  the same false-violation class 1.34.1 just fixed. Recorded as a deferred proposal instead,
-  mirroring `docs/proposals/boundary-detector-solo-ownership.md`, which resolved the identical
-  `ARTIFACT_OWNERS` question the same way.
-
+`adhoc-PluginFeedbackSweep` (2026-07-14) was the first pass ever run over these files. Before it, the
+two applied `omni-1.22.0` entries had been consumed as **inputs to building `mine-reference-model`**,
+not from a pass over the file — which is why 15 entries sat open across files up to 9 days old.
 
 ## Tracked — decided, not built
 

@@ -1,6 +1,54 @@
 # nexus — Changelog
 
 
+## [1.34.5] — 2026-07-14
+**The skill-conformance gate stops calling a mis-recorded real invocation a fabrication — without
+giving back an inch of discretion. Plus ADR-18 gains the test-implementation.md clause.**
+
+- **Skill conformance splits by a log-window test** (`architect.md` done-check + **ADR-24** Gate A).
+  The gate previously Failed any self-reported invocation absent from the log, full stop. It now
+  distinguishes two genuinely different things: a skill absent from the log **and** from the whole
+  scoped run window is **true non-invocation → Fail** (ADR-24's unrecoverable breach #2, unchanged in
+  spirit); a skill absent for that step **but present elsewhere in the window** was **really invoked
+  and merely mis-recorded → Deviated-with-reason**. The observed case: `tdd` legitimately invoked at
+  Step 4, applied from memory at Step 6 and self-reported there — bad bookkeeping, not a fabricated
+  gate. A **missing `## Skills Used` section is still a hard Fail**, unchanged.
+
+  The split is deliberately **mechanical** — "is the skill anywhere in the scoped window?" is a grep,
+  not a judgment — so it does **not** restore the architect discretion ADR-24 removed on purpose.
+
+- **The crash-resume edge case is now named** (`architect.md`, at the scoping paragraph). A crash can
+  log a step's invocation under the run that *started* it rather than the one that finished it.
+  Token-keying already dodges this — the window is keyed by `.pipeline-state` token, so it spans every
+  run sharing that token — but the text never said so, leaving a reader free to narrow the query to the
+  current session and reintroduce the bug. It now says so.
+
+- **ADR-18 gains the `test-implementation.md` clause.** Non-developer implementer agents (a
+  test-authoring agent such as an integration-tester) write
+  `docs/specs/{slug}/delivery/test-implementation.md`, **never** `implementation.md`, which stays
+  developer-owned; done-checks read both where both exist. This closes a standing collision — a
+  test-authoring agent had no artifact of its own and wrote the developer's file every round (11
+  logged ownership hits).
+
+- **The actor-side rule** (`developer.md` → `## Anti-patterns`): invoke the Skill tool **every** time a
+  step maps to a skill, even one used minutes earlier in the same session. The log is the only thing
+  distinguishing "invoked" from "remembered" — and *"I already know this method"* is precisely the
+  situation the skill-first protocol exists to catch.
+
+**ADR-24 remains `PROPOSED`.** This amends its Decision text as an input to the owner's eventual
+ratification; it does not ratify it, and the "not settled architecture" banner stands untouched.
+
+**The detector half of ADR-18 deliberately did not ship.** The source entry asked for
+`test-implementation.md` in `ARTIFACT_OWNERS` *"so the legitimate write stops logging as a violation"* —
+but that map only flags files matching a **listed** regex, and `test-implementation.md` matches none, so
+no violation can fire; the 11 hits stop on the filename change alone. Adding it would create new
+enforcement against a role nexus does not ship. Recorded as a deferred question in
+`docs/proposals/boundary-detector-test-implementation-ownership.md`, mirroring the identical
+`boundary-detector-solo-ownership.md` precedent.
+
+Reported in `docs/plugin-feedback/omni-1.25.1-2026-07-12.md` Part A Entries 2 and 4. **This closes the
+last open entry across all six inbound feedback files.**
+
 ## [1.34.4] — 2026-07-14
 **Two recurring pipeline failures become standing rules: trusting a fact you didn't verify, and
 trusting a file a killed agent left behind.**

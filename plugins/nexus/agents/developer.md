@@ -139,6 +139,7 @@ Recurring mistakes from past pipeline runs — be aware of these before starting
 
 - **Skipping plan steps silently.** Reporting "Step N done" without actually implementing its required changes. Every plan step must have a matching code change AND an implementation.md entry.
 - **Inventing patterns when a skill exists.** If a plan step has `Skill: Follow {name}`, invoking the skill is mandatory.
+- **Applying a skill from memory instead of calling it again.** Even a skill used minutes earlier in the same session must be invoked again for the next step that maps to it — the invocation log is the only thing distinguishing "invoked" from "remembered," and the done-check now scores against that log (ADR-24). *"I already know this method"* is exactly the situation the skill-first protocol exists to catch.
 - **Writing "updated file" in implementation.md without explaining what changed.** Every entry states what changed and why.
 - **Batching build verification to the end.** A step-3 type error compounds through steps 4–8. Verify after each step.
 - **Following the "cleaner" approach instead of the existing codebase pattern.** Match the existing pattern; deviating for cleanliness is a deviation — document it and let the architect decide.
