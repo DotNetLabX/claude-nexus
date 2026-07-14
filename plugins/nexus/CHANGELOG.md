@@ -1,6 +1,33 @@
 # nexus — Changelog
 
 
+## [1.34.1] — 2026-07-14
+**`resolveRole` now maps the fast lane's `dev-*` spawn abbreviation — fixing a false-violation class
+and a silently-skipped verify gate.** `resolve-role.js` peels a suffixed spawn name (`developer-2`,
+`developer-f6`) back to its base role, but did not know `dev` abbreviates `developer`. Tracing
+`resolveRole('dev-wave0')`: split on `-` → candidate `dev` is not in `KNOWN_ROLES` → the name returns
+unresolved. Both name-keyed hooks then misbehave:
+- **boundary-detector** — the unresolved name is absent from `ARTIFACT_OWNERS[implementation.md]`
+  (`{developer, solo}`), so a fast-lane developer editing its OWN `implementation.md` logged an ADR-18
+  cross-role write on every touch: 18 hits (`adhoc-lint-leancode-swap`, spawn `dev-wave0`), 8
+  (`adhoc-Refactor-W1-barrel-scc`, `dev-w1`), 7 (`adhoc-MineVerifyFlows`, `dev-json-golden-2`).
+- **verify-gate** — the same name misses `IMPL_ROLES` and falls to Branch 3, writing
+  `verdict:"skipped"` (`reason: unrecognized agent_type: dev-wave0`). Recorded rather than silent, but
+  the developer's verify set never ran. This half was not in the report and is the more serious of the
+  two — log noise is visible; an unrun gate is not.
+
+Fixed at the shared resolver so both hooks are covered for every spawn path (the alternative — requiring
+canonical `developer-*` spawn names in fast-lane dispatch — is prose, unenforceable, and would leave the
+verify gate exposed to any `dev-*` spawn from any other path). The map is **exact-token, never a prefix
+match**: a `startsWith` rule would collapse `devops` and re-open the `team-lead`-collapses-to-`team` class
+of bug. Both standing contracts are covered by new tests — the team-lead landmine and "a genuinely unknown
+role stays unknown" — alongside `devops`/`deviation-check` negative cases and an invariant that every
+abbreviation maps to a real role and shadows none.
+
+Reported in `docs/plugin-feedback/omni-1.32.0-2026-07-14.md` Entry 1, whose code-grounded diagnosis
+(including its correction of the source lessons' `.current-agent` hypothesis — the detector never reads
+it) verified exact against source.
+
 ## [1.34.0] — 2026-07-14
 **Add the `mine-verify-flows` skill — the flow-scoped mine (eighth family member).** Graduates the
 method proven end-to-end in the OmniShelf pilot (19 flows mined & code-verified, 3 flows

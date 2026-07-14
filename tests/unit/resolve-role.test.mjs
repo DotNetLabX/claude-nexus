@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { pluginRoot } from '../helpers.mjs';
 
 const require = createRequire(import.meta.url);
-const { resolveRole, KNOWN_ROLES } = require(join(pluginRoot('nexus'), 'hooks', 'scripts', 'lib', 'resolve-role.js'));
+const { resolveRole, KNOWN_ROLES, ROLE_ABBREVS } = require(join(pluginRoot('nexus'), 'hooks', 'scripts', 'lib', 'resolve-role.js'));
 
 test('exact base roles pass through unchanged (incl. the hyphenated team-lead)', () => {
   for (const r of KNOWN_ROLES) assert.equal(resolveRole(r), r);
@@ -42,4 +42,27 @@ test('a genuinely unknown role stays unknown (no false base-role match)', () => 
   assert.equal(resolveRole('team'), 'team');
   assert.equal(resolveRole(''), '');
   assert.equal(resolveRole(undefined), '');
+});
+
+// omni-1.32.0 Entry 1: the fast lane names spawns `dev-*`. The suffix-peel alone yields candidate
+// `dev`, which is not a KNOWN_ROLE -> unresolved -> false ADR-18 violations + a skipped verify gate.
+test('a fast-lane abbreviation resolves to its canonical role (dev-wave0 -> developer)', () => {
+  assert.equal(resolveRole('dev-wave0'), 'developer');
+  assert.equal(resolveRole('dev-w1'), 'developer');
+  assert.equal(resolveRole('dev-json-golden-2'), 'developer');
+  assert.equal(resolveRole('dev'), 'developer');
+  assert.equal(resolveRole('nexus:dev-wave0'), 'developer');
+});
+
+test('the abbreviation map is EXACT-TOKEN, never a prefix match', () => {
+  assert.equal(resolveRole('devops'), 'devops');        // not developer
+  assert.equal(resolveRole('devops-2'), 'devops-2');    // peel yields `devops`, still not a role
+  assert.equal(resolveRole('deviation-check'), 'deviation-check');
+});
+
+test('every abbreviation maps to a real role, and none shadows a base role', () => {
+  for (const [abbrev, role] of ROLE_ABBREVS) {
+    assert.ok(KNOWN_ROLES.has(role), `${abbrev} -> ${role} is not a known role`);
+    assert.ok(!KNOWN_ROLES.has(abbrev), `${abbrev} shadows a base role`);
+  }
 });
