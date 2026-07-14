@@ -119,11 +119,22 @@ The method's fact-tagging + tier vocabulary (`mine-verify-cover` → "Fact taggi
 **different taxonomy from the survivor tags above** (those classify residual *mutants*; these classify
 generated *tests* — extend the vocabulary here, don't collide with `equivalent-logging`/`dead-code`/etc.):
 
-- **Facts → flutter `test()` tags** — `tags: ['layer:domain-calc', 'criticality:golden', 'mutation-gated',
-  'runtime-cost:fast']` on the `test(...)` call (flutter_test's native `tags` parameter).
-- **Tiers → `--tags` filter expressions** — `smoke` = `flutter test --tags "criticality:golden&&runtime-cost:fast"`;
+- **Facts → flutter `test()` tags** — `tags: ['layer-domain-calc', 'criticality-golden', 'mutation-gated',
+  'runtime-cost-fast']` on the `test(...)` call (flutter_test's native `tags` parameter).
+- **Tiers → `--tags` filter expressions** — `smoke` = `flutter test --tags "criticality-golden && runtime-cost-fast"`;
   `full` = `flutter test` (no filter); `gate` = `flutter test --tags "mutation-gated"`, run on target-class
   change.
+- **Hyphen composition is mandatory — colon form is a hard failure, not a style nit.** `package:test` tags
+  are **flat identifiers with no key-value syntax**: they match `[a-zA-Z_-][a-zA-Z0-9_-]*`
+  (`boolean_selector`'s hyphenated-identifier token), and `:` lexes as the **ternary-conditional
+  operator**. So `layer:domain-calc` is syntactically invalid in *both* `dart_test.yaml`'s `tags:`
+  declarations and `--tags` selector expressions — a colon-form `dart_test.yaml` fails to load outright
+  (`Invalid tags key: Expected end of input.`), blocking **every** test in the file. Compose the separator
+  as a legal identifier character instead (`layer-domain-calc`): the full fact vocabulary and every tier
+  expression survive with no loss. Do not port the .NET adapter's key-value `[Trait("layer", "…")]` shape
+  here by analogy — that is where the colon form came from.
+- **Declare the tags** used by generated tests in the repo-root `dart_test.yaml` to avoid unknown-tag
+  warnings.
 - **The parked-red idiom** — a generated red documenting a genuine spec-code divergence (Cover-from-spec's
   output convention, `mine-verify-cover` → SDD lifecycle) is KEPT, never deleted, and marked:
   ```dart

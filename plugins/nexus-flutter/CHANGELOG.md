@@ -1,6 +1,27 @@
 # Changelog — nexus-flutter
 
 
+## [0.4.1] — 2026-07-14
+**Fix `mine-verify-cover-flutter`'s fact tags: colon form is unparseable in `package:test`.** The
+adapter's "Fact tags & test tiers" mapping shipped `tags: ['layer:domain-calc', 'criticality:golden',
+'runtime-cost:fast']` and `--tags "criticality:golden&&runtime-cost:fast"` — written by analogy to
+the .NET adapter's key-value `[Trait("layer", "…")]` shape. But `package:test` tags are flat
+identifiers (`[a-zA-Z_-][a-zA-Z0-9_-]*`, `boolean_selector`'s hyphenated-identifier token) with no
+key-value syntax, and `:` lexes as the ternary-conditional operator — so the documented form is
+syntactically invalid in both `dart_test.yaml` `tags:` declarations and `--tags` selectors. A
+colon-form `dart_test.yaml` fails to load outright (`Invalid tags key: Expected end of input.`),
+blocking every test in the file.
+- Switched the examples and tier filters to hyphen composition (`layer-domain-calc`,
+  `criticality-golden && runtime-cost-fast`) — the full fact vocabulary and every tier expression
+  survive with no loss.
+- Added the grammar note explaining *why* (so the .NET analogy isn't re-derived), and a reminder to
+  declare generated tests' tags in the repo-root `dart_test.yaml` to avoid unknown-tag warnings.
+
+Reported twice and unapplied for 10 days: `docs/plugin-feedback/omni-flutter-0.3.0-2026-07-04.md`
+Entry 1 (reproduced load failure + `boolean_selector-2.1.2` source inspection), re-flagged as still
+open by `omni-1.23.1-2026-07-07.md` Entry 3 — where a correctly-tagged suite in the consuming repo
+had independently re-derived the hyphen workaround, evidence the example was actively misleading.
+
 ## [0.4.0] — 2026-07-14
 **Add the `mine-verify-flows-flutter` adapter — the Dart/Flutter fill for the new flow-scoped
 `mine-verify-flows` method (nexus 1.34.0).** Fills the method's 5 device-toolchain capabilities:
