@@ -1,6 +1,15 @@
 # nexus — Changelog
 
 
+## [1.33.1] — 2026-07-14
+- Architect-Led Fast Lane close now commits reliably: rewrote the `Close (pass)` as three ordered,
+  non-optional steps (summary → self-commit → report) with the team-lead commit mechanics inlined
+  (so the lane no longer depends on `team-lead.md` being in context), the version bump decoupled as
+  dev-repo-only, and the report moved last as a report *of* the landed commit. Aligned the
+  never-commit hard-rule exception to point at the ordered close.
+  - agent instruction/behavior change
+  - shipped command changed
+
 ## [1.33.0] — 2026-07-12
 - clickable research option on boostable asks (rules + questions-format + agents), one-round cap, relayed-path carrier
   - agent instruction/behavior change
