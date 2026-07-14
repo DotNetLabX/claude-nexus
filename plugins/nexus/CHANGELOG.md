@@ -1,6 +1,37 @@
 # nexus — Changelog
 
 
+## [1.34.4] — 2026-07-14
+**Two recurring pipeline failures become standing rules: trusting a fact you didn't verify, and
+trusting a file a killed agent left behind.**
+
+- **A relayed, consensus-backed, or remembered fact is a claim to re-verify, not evidence**
+  (`agents-workflow.md` → `## All Agents`). A fact relayed from another agent, backed by a consensus
+  of citing sources, or recalled from memory must be **re-executed against live source** before a
+  decision depends on it — re-executed evidence, not citation count, is ground truth. It bites hardest
+  when the fact licenses *skipping* a step ("no need to seed X"), because **that error direction is
+  invisible at authoring time: the test still passes.** The check is usually cheap and mechanical — a
+  parity/"mirrors X" claim is byte-checkable (grep the cited body, diff the arithmetic), a cited path
+  is `ls`-checkable. **Recurrence 3×:** a skeptic killed 2-of-3 confident, citing miners' "off-shelf
+  flow is live" (dead code); a relayed research fact licensed skipping a `tasks.json` seed that would
+  have silently tested against no planogram; and a "mirror function X" parity claim plus a
+  from-memory golden path that `ls` disproved.
+
+  Placed in `## All Agents` rather than the per-agent `## Anti-patterns` the source suggested —
+  `architect.md` and `critic.md` have no such section, and a cross-cutting rule needs to reach every
+  role. It **folds** the mine-family skeptic stage in as the finding-verification instance of the same
+  principle instead of double-stating it.
+
+- **The 600s no-output watchdog kills subagents mid-long-op — one root cause, two facets**
+  (`developer.md` → `## Anti-patterns`). (A) *Untrusted draft after a kill:* on resume, treat files a
+  killed predecessor left on disk as an **untrusted draft** — run the build/analyzer before assuming
+  they compile or are complete (killed instances have left files with missing/unused imports).
+  (B) *Prefer the main session for long ops:* run full test suites, on-device drives and long builds
+  from the main session where possible, and write evidence to the artifact **incrementally as
+  decisions land**, so a mid-run kill loses the least.
+
+Reported in `docs/plugin-feedback/omni-1.25.1-2026-07-12.md` Part A Entries 1 and 3.
+
 ## [1.34.3] — 2026-07-14
 **`mine-verify-repo` absorbs six findings from its own first end-to-end pilot — the run that mined 143
 findings into 83 registry rows with 0 WRONG and 0 dropped, and had to improvise around the skill's
