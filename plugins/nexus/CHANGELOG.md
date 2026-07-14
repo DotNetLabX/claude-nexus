@@ -1,6 +1,51 @@
 # nexus — Changelog
 
 
+## [1.34.3] — 2026-07-14
+**`mine-verify-repo` absorbs six findings from its own first end-to-end pilot — the run that mined 143
+findings into 83 registry rows with 0 WRONG and 0 dropped, and had to improvise around the skill's
+gaps to get there.** Every fix is a place the pilot re-derived something the method should have owned.
+
+- **The preflight now proves the tool reads your language, not just that it runs**
+  (`metric-layer.md` §0/§4). lizard has no native Dart reader: `lizard <dir>` returns **0 files**,
+  because the directory walk filters by known-reader extension *before* the generic `CLikeReader`
+  fallback can apply — so "lizard present" passed and the complexity table came back **silently
+  empty**. `lizard -f <filelist>` bypasses the filter (0 → 1,887 rows). The generalizable rule lands
+  in the preflight section where it is stack-neutral — **add a one-file parse probe per stack** — with
+  the Dart specifics kept in §4 as the evidence case.
+- **The Scope stage owns the degenerate case** (new `### Scope stage — area-expansion rule`). On a
+  flat-package repo the community decomposition collapses: the pilot saw **735 communities across 951
+  files, 86.5% singletons**, with 4 of the top-5 areas being single files. The rule the pilot
+  improvised and validated across all 20 area-miner prompts is now codified — area = anchor file(s) +
+  direct imports/importers + change-coupled files at support ≥5 — so scopes are consistent across runs
+  instead of re-invented per orchestrator.
+- **The test-coverage lens has a granularity floor** (`## The four lenses`). One row per uncovered
+  method/region, uncovered branches as sub-bullets — never one row per branch. The pilot's TC miners
+  produced 44 rows that consolidation merged to 8, the largest merge class in the 143→83 pass: lcov
+  makes branch-level facts cheap to mine and expensive to verify. Cap granularity at the unit a
+  refactoring wave would actually act on.
+- **Evidence-command robustness is baked into the C2 schema.** Anchored single-line greps break when
+  the formatter splits an expression across lines; structural greps **must** exclude generated files
+  (`*.g.dart`, `*.config.dart`, `*.freezed.dart`) or counts inflate by an order of magnitude — raw
+  re-execution gave 116/60/167 upward core edges vs **45/7/4** after exclusion; and `grep -A N`
+  truncates long lcov records (use awk record extraction — this caused the pilot's one refuted
+  side-number). The skeptic gate is only as good as its evidence commands' determinism.
+- **"Poll, don't wait" is now the canonical statement** (`## Execution topology`). Background-run
+  completion notifications are unreliable — a stage prompt must have its agent run measurements in the
+  foreground (bounded poll loop if long) and never end a turn waiting on a completion callback. A
+  Step-6 developer stranded **twice** on this before an explicit instruction fixed it; with all 23
+  pilot-stage prompts carrying it, **no stage stranded**. `mine-verify-cover`'s topology paragraph
+  (1.34.2) mirrors this and points here.
+- **Author identities merge before ownership is computed** (`metric-layer.md` §1/§3). The pilot had
+  **3 people holding 9 of 13 identities**; unmerged, the ownership signal fragments and
+  minor-contributor flags fire falsely. A repo-root `.mailmap` does it for free — §3's numstat log
+  already formats the author via `%aN`, which honors mailmap automatically — recorded in the run
+  report. Ownership is the strongest validated signal; identity noise must not corrupt it.
+
+Reported in `docs/plugin-feedback/omni-1.22.0-2026-07-05.md` Entries 1, 2, 3, 4, 5 and 7. With
+1.34.2's Entries 9/10, this closes `omni-1.22.0` — its remaining Entry 11 (a golden/UI miner sibling)
+is tracked as a parked proposal, not built.
+
 ## [1.34.2] — 2026-07-14
 **`mine-verify-cover` now owns three things the pilot had to re-derive per run: what happens when a
 mutant hangs or crashes, whether tag emission is actually checked, and where mined tests live.**

@@ -28,6 +28,13 @@ Record the result in the run report. Outcomes:
   numstat log with the **git-only fallback** method in Section 3 (the "git-only fallback" paragraph),
   and state the degrade in the run report.
 
+**Binary-runs ≠ reads-your-language.** `--version`/`--help` proves the tool executes, not that it
+parses the target stack — lizard has no native reader for every language (e.g. Dart; see Section 4)
+and a directory-wide invocation can silently return 0 files while still exiting 0. Add a **one-file
+parse probe** per stack to the preflight: run the complexity tool against ONE known file of the
+target language and confirm it returns a nonzero row count before trusting the directory-wide
+invocation. A preflight that only checks the binary runs is not sufficient.
+
 The preflight is a **precondition of the whole run** (plan Step 4): either both tools pass, or the
 documented fallback is consciously accepted for this run and recorded in the report. Never proceed as
 if a missing tool produced a zero.
@@ -55,6 +62,14 @@ git log --perl-regexp --author='^(?!.*(\[bot\]|dependabot|renovate|autoroll))' .
 
 Extend the alternation with the concrete bot identities found in step 1. The run report **logs how
 many commits the filter excluded** (C1 / C6).
+
+4. **Consolidate duplicate human identities** (before Section 3's `entity-ownership` runs) — the same
+   person often holds multiple git identities (work/personal email, name variants; one pilot found 3
+   people holding 9 of 13 raw identities). From the same `git shortlog -sne --all` output, build a
+   `.mailmap` file at the repo root mapping each duplicate to one canonical `Name <email>` — git's
+   `%aN` / `shortlog -sne` honor it automatically, so Section 3's numstat log (which formats author
+   via `%aN`) picks up the merge for free. Record the mailmap in the run report. Skipping this step
+   fragments the ownership signal and fires false minor-contributor flags.
 
 ## 2. Hotspot log (MSR 2026 method)
 
@@ -94,6 +109,10 @@ java -jar code-maat.jar -l repo.log -c git2 -a authors            # author / con
 java -jar code-maat.jar -l repo.log -c git2 -a age                # code age
 ```
 
+`entity-ownership` consumes the identity map from Section 1 step 4 — merge duplicate author
+identities (the `.mailmap`) BEFORE this line runs, not after; an unmerged identity list fragments
+ownership share across the same human's accounts.
+
 **git-only fallback** (Code Maat absent): from the same `repo.log`, compute revisions as the per-file
 line count of numstat entries, coupling as files co-occurring in the same commit block, and ownership
 as each author's share of a file's changed lines. Weaker but free; state the degrade in the report.
@@ -106,6 +125,15 @@ lizard {path} --csv > complexity.csv    # cyclomatic complexity (CCN) + NLOC per
 
 Aggregate to file level (sum or max CCN per file) to form the churn×complexity product with the
 Section 2 modification counts.
+
+**Dart / no-native-reader stacks.** lizard has no native Dart reader. Two verified consequences: (a)
+Dart still parses via the generic `CLikeReader` fallback — usable CCN, but not a native-grammar
+parse; (b) `lizard {dir} --csv` returns **0 files for Dart** because the directory walk filters by
+known-reader extension BEFORE the fallback applies — silently, with exit 0. The working invocation is
+`lizard -f {filelist} --csv` (explicit file names bypass the directory-walk filter). On the pilot:
+`lizard lib --csv` → 0 files; `lizard -f {filelist} --csv` → 1,887 rows. This is exactly the case the
+§0 one-file parse probe exists to catch — run it before trusting a directory walk on any
+lizard-unsupported language.
 
 ## 5. Signals (validated lineage, strongest first)
 

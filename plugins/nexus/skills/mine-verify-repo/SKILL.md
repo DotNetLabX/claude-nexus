@@ -51,6 +51,22 @@ invocations, the hotspot filter, the within-repo calibration note, and the tool-
 preflight — lives in `references/metric-layer.md`. Miners receive its OUTPUT tables; they never
 recompute a metric (see `## Binding prompt obligations`).
 
+### Scope stage — area-expansion rule (degenerate community structure)
+
+graphify's community decomposition can collapse to near file-granular on flat-package repos — one
+pilot saw 735 communities / 951 files, **86.5% singletons**, with 4 of the top-5 hotspot areas each a
+single file. A singleton "area" starves a miner of the surrounding context a real finding needs, so
+this skill owns the expansion, not each orchestrator:
+
+**area = anchor file(s) + direct imports/importers + change-coupled files at support ≥5** (from the
+C1 coupling table). Apply this expansion whenever a hotspot-ranked area resolves to a
+singleton-or-near-singleton community; all 20 area-miner prompts in the pilot used it and produced
+verifiable scopes.
+
+Condensed lesson: community structure is repo-shape-dependent — a flat-package repo degenerates
+differently than a layered one, and the skill must define the degenerate case once rather than let
+each run improvise it.
+
 ### The four lenses
 
 Each per-area miner runs four lenses, one clean-room pass each:
@@ -60,7 +76,12 @@ Each per-area miner runs four lenses, one clean-room pass each:
   (source-semantic; the graph-visible subset is the global pass below).
 - **performance** — N+1 access, unbounded loads, needless allocation on hot paths.
 - **test-coverage** — untested branches on high-churn code, assertion-free tests, missing boundary
-  cases.
+  cases. **Granularity floor: one row per uncovered method/region, uncovered branches as sub-bullets
+  — never one row per branch.** lcov makes branch-level facts cheap to mine and expensive to verify;
+  one pilot's TC miners produced 44 branch-level rows that consolidation merged down to 8 — the
+  largest single merge class in that run's 143→83 consolidation, costing skeptic re-execution time
+  without adding registry value. Cap granularity at the unit a refactoring wave would actually act
+  on.
 
 Everything a lens finds must be **fact-shaped** (C2): a SYMBOL + CONDITION statement backed by a
 reproducible command. A lens observation that cannot be re-executed rides only as a `lens-note`
@@ -90,6 +111,15 @@ commands*.
 
 **On a NEW target, walk the core §kickoff checklist first** (tool preflight, expected survival rate,
 stop-budget, run-report location) before launching a run.
+
+**Poll, don't wait (canonical statement — `mine-verify-cover`'s topology paragraph mirrors this).**
+Subagent background-run completion notifications are unreliable: a stage prompt must instruct its
+agent to run measurements in the FOREGROUND (a bounded poll loop if the command runs long) and never
+end its turn waiting on a background-command completion notification. On the pilot's platform the
+notification repeatedly failed to re-invoke the waiting agent — a Step-6 developer stranded TWICE on
+this exact pattern before an explicit "poll, don't wait" instruction fixed it; once all 23
+pilot-stage prompts carried the instruction, no stage stranded. Treat background-completion callbacks
+as best-effort — completion discipline belongs in the stage prompt, not in hoping the callback fires.
 
 ## Contracts
 
@@ -124,6 +154,22 @@ commit sha; a row spawned by a `superseded` predecessor cites the old row's id h
 
 Read `../mine-verify-cover/references/mine-family-core.md` §Fact/judgment doctrine — an unreproducible
 claim is a judgment, not a fact, and may ride along only as a `lens-note` attached to a fact here.
+
+**Evidence-command robustness (harvested pilot lessons — bake these traps into every evidence
+command, don't rediscover them per run):**
+- **Formatter-split lines.** A single-line anchored grep breaks when a language formatter (e.g.
+  `dart format`) splits an expression across lines — prefer a file-level unanchored pattern or a
+  multiline-tolerant check over a single-line anchor.
+- **Generated files inflate structural counts.** A structural grep MUST exclude generated files
+  (`*.g.dart`, `*.config.dart`, `*.freezed.dart` and stack equivalents) or layer-edge counts inflate
+  by an order of magnitude — one pilot's raw re-execution gave 116/60/167 upward core edges; after
+  excluding generated files, 45/7/4, matching the graph.
+- **`grep -A N` truncates long records.** Extracting a multi-line record (e.g. an lcov entry) with
+  `grep -A N` silently truncates past N lines — use awk record extraction instead. This caused the
+  pilot's one refuted side-number.
+
+Condensed lesson: the skeptic gate is only as good as the evidence commands' determinism — these are
+known traps, not edge cases.
 
 ### C3 — Verify gate (empirical must-reproduce)
 

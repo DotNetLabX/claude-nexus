@@ -19,16 +19,16 @@ Last verified: **2026-07-14** against nexus 1.34.1 / nexus-flutter 0.4.1.
 
 | File | Source | Entries | Applied | Tracked | Open |
 |---|---|---|---|---|---|
-| `omni-1.22.0-2026-07-05.md` | omnishelf_flutter_app | 11 | 4 | 1 | 6 |
+| `omni-1.22.0-2026-07-05.md` | omnishelf_flutter_app | 11 | **10** ✅ | 1 | 0 |
 | `omni-1.23.1-2026-07-07.md` | omnishelf_flutter_app | 3 | **3** ✅ | 0 | 0 |
 | `omni-1.25.1-2026-07-12.md` | omnishelf_flutter_app | 10 | 6 | 0 | 4 |
 | `omni-1.32.0-2026-07-14.md` | omnishelf_flutter_app | 1 | **1** ✅ | 0 | 0 |
 | `omni-flutter-0.3.0-2026-07-04.md` | omnishelf_flutter_app | 1 | **1** ✅ | 0 | 0 |
 | `omni-flutter-0.3.0-2026-07-12.md` | omnishelf_flutter_app | 4 | **4** ✅ | 0 | 0 |
-| **Total** | | **30** | **19** | **1** | **10** |
+| **Total** | | **30** | **25** | **1** | **4** |
 
-Four files are fully closed. The remaining 10 open are in `omni-1.22.0` (6 — the `mine-verify-repo`
-half) and `omni-1.25.1` Part A (4). `omni-1.22.0` E11 is `Tracked` — decided, not open (see below).
+Five of the six files are fully closed. **The only open entries are `omni-1.25.1` Part A E1–E4** (4).
+`omni-1.22.0` E11 is `Tracked` — decided, not open (see below).
 
 Older `nexus-1.9.0` / `nexus-1.9.1` / `nexus-1.13.0` / `nexus-cpp-0.1.0` files predate this index and
 retain their in-header status notes; they are not re-triaged here.
@@ -56,6 +56,37 @@ class-wide `**.`-suffix exclusions + the single `**.sfr` ε 0.005 tolerance).
 The port improved on the feedback in three places: E10's dead-code by-products route to the run
 report as candidate `mine-verify-repo` rows rather than straight into `docs/tech-debt/`; the adapter
 adds the non-recursive-pubspec-assets trap; and exclusion-is-deliberate-blindness is called out.
+
+### `omni-1.22.0` E1–E5, E7 — **Applied, nexus 1.34.3** (`adhoc-MineRepoPilotHardening`)
+The `mine-verify-repo` half of the pilot cluster — six findings from the run that produced 143 mined →
+83 rows, each a place the pilot improvised around a gap the method should have owned:
+
+- **E1** → `metric-layer.md` §0 + §4. Landed generalized: the stack-neutral rule (**the preflight
+  proves the binary runs, not that it reads your language — add a one-file parse probe per stack**)
+  sits in §0; the Dart specifics (`CLikeReader` fallback, the directory-walk 0-files bug,
+  `lizard -f <filelist>`, 0 → 1,887 rows) stay in §4 as the evidence case.
+- **E2** → new `### Scope stage — area-expansion rule`. Codifies area = anchor file(s) + direct
+  imports/importers + change-coupled files at support ≥5, with the 735-communities/951-files/86.5%-
+  singleton stat and the 20-of-20 miner validation.
+- **E3** → `## The four lenses`, test-coverage bullet. One row per uncovered method/region, branches
+  as sub-bullets; cites the 44 → 8 merge.
+- **E4** → C2, new evidence-command robustness block: formatter-split greps, generated-file exclusion
+  (116/60/167 → 45/7/4), `grep -A N` truncation → awk.
+- **E5** → `## Execution topology`, now the **canonical** "poll, don't wait" statement that 1.34.2's
+  `mine-verify-cover` mirror points at. Verified bidirectional: `mine-verify-cover/SKILL.md:104` →
+  "mirrors `mine-verify-repo`'s Execution topology lesson"; `mine-verify-repo/SKILL.md:115` →
+  "canonical statement — `mine-verify-cover`'s topology paragraph mirrors this". One lesson, stated
+  once.
+- **E7** → `metric-layer.md` §1 (new step 4) + §3. `.mailmap`-based identity consolidation before
+  ownership; 3 people / 9 of 13 identities.
+
+Two judgment calls recorded: E7's mechanism was made concrete as a repo-root `.mailmap` **because the
+file's own §3 numstat log already formats the author via `%aN`**, which honors mailmap automatically —
+derived from the file, not invented. And E7's condensed lesson ("ownership is the strongest signal")
+was deliberately paraphrased rather than restated, since §5 Signals already says it — a conscious
+dedup, not an omission.
+
+**This closes `omni-1.22.0`** (10 Applied + E11 Tracked).
 
 ### `omni-1.22.0` E9, E10 + `omni-1.23.1` E1, E2 — **Applied, nexus 1.34.2 / nexus-flutter 0.4.2** (`adhoc-MineCoverArmHardening`)
 The Cover-arm half of the pilot cluster. All four in `mine-verify-cover/SKILL.md` +
@@ -106,18 +137,10 @@ not collapse. Tests cover the new case plus the `team-lead` landmine and "unknow
 
 ## Open
 
-Both applied `omni-1.22.0` entries were consumed as **inputs to building `mine-reference-model`**,
-not from a pass over the file. No sweep of these files has ever run — which is what the 18 below are.
-
-### `omni-1.22.0` E1–E5, E7 — the mine-verify-repo half
-Five-and-a-half entries still Open, each needing an edit to `mine-verify-repo`: E1 lizard has no
-native Dart reader (`lizard <dir>` silently returns 0 Dart files; `-f <filelist>` works) · E2
-area-expansion rule for singleton-collapsed communities · E3 test-coverage lens granularity cap ·
-E4 evidence-command traps (generated-file exclusion, formatter-split lines, awk-not-`grep -A` for
-lcov) · E7 author-identity consolidation before ownership.
-
-**E5 is half-applied.** Its `mine-verify-cover` topology mirror shipped (below); its primary target —
-`mine-verify-repo`'s Execution topology — has not. It closes when that lands.
+The first real sweep of these files is `adhoc-PluginFeedbackSweep` (2026-07-14) — before it, the two
+applied `omni-1.22.0` entries had been consumed as **inputs to building `mine-reference-model`**, not
+from a pass over the file. The sweep closed `omni-1.22.0` and `omni-1.23.1`; the four below are what
+remain.
 
 ### `omni-1.25.1` Part A, E1–E4
 - **E1** (a relayed/consensus/remembered fact is a claim to re-verify) — Open. The narrow
