@@ -1,6 +1,21 @@
 # Changelog — nexus-flutter
 
 
+## [0.4.0] — 2026-07-14
+**Add the `mine-verify-flows-flutter` adapter — the Dart/Flutter fill for the new flow-scoped
+`mine-verify-flows` method (nexus 1.34.0).** Fills the method's 5 device-toolchain capabilities:
+`flutter drive --keep-app-running` on-device runs (bare `flutter test` uninstalls the app at
+teardown and destroys the outputs before they can be pulled), the two-hop golden bless (device
+docs-dir write + printed pull path → human `adb exec-out run-as … tar` pull, review, pubspec-asset
+commit — no path exists from on-device Dart back to the host repo), app-documents-dir pre/post
+output capture, a pure-Dart host-testable canonicalize→scrub→compare golden module (three
+verdicts — exact / FieldTolerance / FieldExclusion — with the `**.` suffix wildcard and the
+calibrated two-tier worked example), and the fixture-soundness greps (FFI re-entry + `firstWhere`
+entity-id joins, the per-method `checkInit` gate trap, the `compute()` isolate-local-statics
+trap). Goldens are hardware-pinned (worked example: Pixel 7 Pro API 30 arm64 AVD). Proven in the
+OmniShelf pilot (FL-8/FL-10 golden-gated on-device through the real FFI SDK).
+(adhoc-MineVerifyFlows)
+
 ## [0.3.0] — 2026-07-03
 - **`mine-verify-cover-flutter` — fact tags & test tiers mapping (`adhoc-SddMergeGen`).** New capability:
   maps the core method's fact-tagging vocabulary (`mine-verify-cover` → "Fact tagging & test tiers") to

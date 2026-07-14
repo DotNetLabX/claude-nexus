@@ -1,7 +1,7 @@
 # Mine-family core reference
 
-Shared content for the seven-member mine family (`mine-verify-cover` incl. its `mine-from-spec`
-mode, `mine-verify-repo`, `mine-reference-model`, `mine-semantic-model`, `mine-design`, `mine-algorithm`). Each sibling SKILL.md replaces its restated copy
+Shared content for the eight-member mine family (`mine-verify-cover` incl. its `mine-from-spec`
+mode, `mine-verify-repo`, `mine-reference-model`, `mine-semantic-model`, `mine-design`, `mine-algorithm`, `mine-verify-flows`). Each sibling SKILL.md replaces its restated copy
 of the sections below with a short load-bearing pointer to this file, plus ONLY its own per-skill
 deltas. This file has no frontmatter — it is a reference, not a skill, and is never Skill-tool
 loaded directly.
@@ -17,8 +17,9 @@ loaded directly.
 | `mine-semantic-model` (ships in nexus-analytics) | one datasource area | live schema + read-only data probes | probe re-execution + KB grounding + operator interview | semantic-model bundle + provenance ledger |
 | `mine-design` | one class/function | complexity census (cause-classified branches) | two-tier judge (grounding kill, then pairwise) | design-brief |
 | `mine-algorithm` | one algorithm-shaped unit | BR registry (conformance oracle) | row-by-row deviation classification + deviation-triggered row re-grounding | algorithm-brief |
+| `mine-verify-flows` | one app's user flows | routes/screens/blocs + on-device output documents | sabotage check + twice-green golden gate | flow registry + golden-gated flow tests |
 
-The family invariant is unchanged across all seven: bounded unit -> clean-room miners -> consolidate
+The family invariant is unchanged across all eight: bounded unit -> clean-room miners -> consolidate
 -> skeptic verify -> graded/verified registry. What changes per member is the unit, the ground
 truth, and the failure mode the gate kills.
 
@@ -78,6 +79,9 @@ filesystem it cannot re-assemble a truncated write — so the writing agent owns
   the Phase-4 interview is **operator-in-loop** (the family's one in-loop human gate — never
   delegable as one background run); probe batches (Phase 2) may background between interview
   points.
+- `mine-verify-flows` — 3 clean-room flow miners in parallel, then consolidate+skeptic, then the
+  Cover agent per selected flow; the orchestrator computes the sabotage gate from raw runner
+  output (the golden-bless hop is the flow family's human-in-loop point).
 
 ## Marginal-budget rail + report-on-halt
 
@@ -110,7 +114,11 @@ re-check, not this must-RUN protocol) and is not a consumer of this section; `mi
 distinct `verified | ambiguous` grammar likewise stays in `mine-verify-cover` untouched.
 `mine-semantic-model`'s gate is likewise a different mechanism (probe re-execution + Audit-mode
 refutation legs + interview provenance — its origin enum is its verdict grammar) and is not a
-consumer of this must-RUN protocol section.
+consumer of this must-RUN protocol section. `mine-verify-flows`' Verify stage is a **code
+re-trace for reachability** — it reuses the CONFIRMED/WRONG/IMPRECISE verdict grammar but a
+reachability verdict is a code-reading claim, not a runnable evidence command, so it is not a
+consumer of the command-re-execution must-RUN enforcement either (the same treatment the code-arm
+gets).
 
 ## Fact/judgment doctrine
 

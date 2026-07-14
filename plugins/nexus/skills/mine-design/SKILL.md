@@ -22,9 +22,9 @@ alternatives with reasons.
 
 This is the **sixth mine** — the structure-prescribing sibling of the mine family (ground truth: the
 mechanical complexity census; gate: the two-tier judge — a grounding kill, then pairwise ranking).
-Read `../mine-verify-cover/references/mine-family-core.md` §The mine family for the full 7-row family
+Read `../mine-verify-cover/references/mine-family-core.md` §The mine family for the full 8-row family
 table and the shared invariant (bounded unit -> clean-room miners -> consolidate -> skeptic verify
--> graded registry) all seven members follow, and §Routing boundary for the line that decides a
+-> graded registry) all eight members follow, and §Routing boundary for the line that decides a
 rule/mapping-shaped unit belongs here versus an algorithm-shaped unit that belongs to `mine-algorithm`.
 
 What changes here is the ground truth and the failure mode the gate kills: the gate kills **pattern

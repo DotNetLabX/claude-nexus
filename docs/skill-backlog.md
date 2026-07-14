@@ -226,6 +226,20 @@ Tracks every skill created or fixed by the learner/developer pipeline. One entry
 - **Description:** **Step 5 (D3 re-registration):** `authorization-patterns` description + framing made pattern-first ("a role-based domain", was "the article lifecycle"); a top-level reference-app exemplar clause now attributes all `UserRoleType`/`Article*`/ArticleHub identifiers; content facts unchanged. `create-domain-event-handler` sweep = no-op (its only `article` token is `ArticleHub` inside a "Reference-app resolution" table). **Step 6 (fold-upstream of 9+1 overlapping locals):** the 1.4.0 fold held — overwhelmingly `already-upstream`. Seven fold-groups landed (targets: `add-integration-event` exclusive-publish-site rule + Verify greps; `create-feature/workflows/EndpointCarter.md` resource-check-location fix; `create-domain-event-handler` cross-cutting `EventHandlers/` exception + wiring verify-greps; `create-grpc-contract` handler-usage patterns + ProtoMember-permanence; `persistence-patterns` `EnumEntityConfiguration`/`MetadataConfiguration` ladder rungs + `MaxLength.C*` rule). Two contradictions (VO-ctor absolute; promote-in-place EF-config; UpsertAsync framing) resolve as shipped-is-correct — local stale wording superseded, not re-folded. Full disposition table in `docs/specs/adhoc-SkillEstateConsolidation/delivery/implementation.md`. All touched skills re-lint exit 0.
 - **Date:** 2026-07-07
 
+### mine-verify-flows
+- **Status:** Created
+- **Type:** Gap
+- **Source:** adhoc-MineVerifyFlows graduation (OmniShelf pilot — 19 flows mined & code-verified, 3 flows golden-gated on-device through a real FFI SDK)
+- **Description:** The flow-scoped mine (8th family member) — clean-room flow miners + skeptic re-trace + on-device Cover with a JSON golden gate and a per-flow sabotage check. Ships in `plugins/nexus/skills/mine-verify-flows/` (nexus 1.34.0) with family-core integration (8th table row, staging bullet, skeptic-protocol carve-out, member-count sweep seven → eight). Authored in the `omni` twin and ported back (`adhoc-MineVerifyFlowsPort`).
+- **Date:** 2026-07-14
+
+### mine-verify-flows-flutter
+- **Status:** Created
+- **Type:** Gap
+- **Source:** adhoc-MineVerifyFlows graduation (same pilot)
+- **Description:** The Dart/Flutter adapter filling the method's 5 device-toolchain capabilities — `flutter drive --keep-app-running`, the two-hop adb golden bless, docs-dir pre/post capture, the pure-Dart golden module, harness bringup + fixture-soundness greps. Ships in `plugins/nexus-flutter/skills/mine-verify-flows-flutter/` (nexus-flutter 0.4.0). Authored in the `omni` twin and ported back (`adhoc-MineVerifyFlowsPort`).
+- **Date:** 2026-07-14
+
 ---
 
 ## Deferred

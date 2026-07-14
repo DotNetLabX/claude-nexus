@@ -1,6 +1,24 @@
 # nexus — Changelog
 
 
+## [1.34.0] — 2026-07-14
+**Add the `mine-verify-flows` skill — the flow-scoped mine (eighth family member).** Graduates the
+method proven end-to-end in the OmniShelf pilot (19 flows mined & code-verified, 3 flows
+golden-gated on-device through a real FFI SDK): clean-room miners extract user flows from
+routes/screens/blocs, a skeptic re-traces reachability, a Cover agent writes on-device flow tests
+asserting golden-master comparison of the flow's output JSONs, and a per-flow **sabotage check**
+(perturb one asserted golden field → the test must go red) replaces the mutation floor at flow
+scope — stated honestly as weaker. Carries the pilot's calibration doctrine: gates over FFI/ML
+output converge by **class excision, not tolerance tuning** (class-wide `**.`-suffix exclusions;
+the single `**.sfr` ε 0.005 tolerance as the worked example), ~4 verify pairs per new output
+document, determinism verdicts scoped to the files actually produced, the self-consistent-fixture
+greps (FFI re-entry + entity-id joins), hardware-pinned goldens, and the pilot-proven stage
+recipes (real-corpus scrubber smoke, catalog-overlap fixture triage, dead-code by-product routing
+to `docs/tech-debt/`). Family integration: `mine-family-core.md` gains the 8th table row, a
+per-skill staging bullet, and the flow-Verify skeptic-protocol carve-out (code re-trace, verdict
+grammar only); all sibling member-count mentions updated seven → eight. Pairs with the new
+`nexus-flutter` `mine-verify-flows-flutter` adapter (0.4.0). (adhoc-MineVerifyFlows)
+
 ## [1.33.1] — 2026-07-14
 - Architect-Led Fast Lane close now commits reliably: rewrote the `Close (pass)` as three ordered,
   non-optional steps (summary → self-commit → report) with the team-lead commit mechanics inlined
