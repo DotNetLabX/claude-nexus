@@ -286,4 +286,4 @@ Nexus skills are the authoritative source for patterns.
 
 - **Skill exists, project has what it needs:** Follow the skill.
 - **Skill exists, project missing something it references:** Build it. Escalate to architect only if scope seems too large.
-- **No matching skill:** Architect may inline snippets. Log the missing skill in lessons.md.
+- **No matching skill:** Architect may inline snippets. Log the missing skill in lessons.md, under `## Skill Gaps` — see `lessons-format`.

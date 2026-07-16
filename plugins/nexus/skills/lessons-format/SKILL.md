@@ -42,6 +42,26 @@ All pipeline agents append under their own heading: `docs/specs/{slug}/delivery/
 - Recurring patterns that should become skills
 ```
 
+For a skill gap, add the fielded entry template below inside `## Skill Gaps` — the section that feeds
+`improve-skills`, which had no field template until now:
+
+```markdown
+### {Suggested skill name}
+- **Kind:** missing | ill-fitting
+- **Searched for:** {what you needed a skill to do}
+- **Why it would help:** {what it would cover; what you did instead}
+- **References:** {file paths the pattern lives in / was extracted from}
+- **Evidence:** [{slug}, ...]
+```
+
+**Field rationale.**
+- `Kind` is `improve-skills`' first branch — a "skill fix" and a "skill gap" route to different homes
+  (its `## Two Channels`). Carries forward the missing-vs-ill-fitting distinction.
+- `References` is a structural dependency, not decoration: `improve-skills` step 1 checks those files
+  still exist, and step 5 extracts the real pattern from them — never invents abstract instructions.
+- `Evidence` is the provenance tag (below), extended to gap entries — a recurring gap **strengthens**
+  one entry instead of spawning a twin.
+
 For systemic issues that recur across features, append an improvement proposal inside the relevant heading:
 
 ```
@@ -53,8 +73,9 @@ For systemic issues that recur across features, append an improvement proposal i
 ```
 
 **Provenance & strengthen-don't-duplicate.** A lesson earns promotion by *recurring*, not by a single
-sighting — so treat the improvement proposal's `**Evidence:**` line as a **provenance tag**: the set of
-runs/features the lesson has appeared in (e.g. `**Evidence:** [adhoc-Foo, F5-Bar]`).
+sighting — so treat the improvement proposal's and skill-gap entry's `**Evidence:**` line as a
+**provenance tag**: the set of runs/features the lesson has appeared in (e.g. `**Evidence:**
+[adhoc-Foo, F5-Bar]`).
 - **Maturity = provenance count.** The number of runs in the tag *is* the recurrence — it surfaces the
   2-occurrence promotion threshold (learner step 3) **in the lesson itself**, not re-derived from learner
   bookkeeping each pass.

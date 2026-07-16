@@ -155,7 +155,7 @@ After completing a round of implementation or corrections:
 - **Update `implementation.md`** — for each file created or modified: one line summarizing what was done, with key decisions and deviations + reasons.
 - **Operator-owed fallbacks:** if a step fired a plan-sanctioned fallback (live connection/credential unavailable at build time), record it in implementation.md with the `OPERATOR ACTION REQUIRED` note and the helper script path the plan named — the fallback is a valid deviation only WITH that documentation.
 - **Update `lessons.md`** under `## Developer Lessons` — anything learned that isn't already in CLAUDE.md, convention files, skills, or agent files.
-- **Log skill gaps** in lessons.md under `## Skill Gaps`: missing skill (what you needed, suggested name, coverage, references used) or ill-fitting skill (which, what didn't fit, what you did instead).
+- **Log skill gaps** in lessons.md under `## Skill Gaps`: missing skill or ill-fitting skill, using the fielded template `lessons-format` owns — don't restate the fields here.
 
 Also update both before `/compact` or `/clear`.
 

@@ -1,6 +1,43 @@
 # nexus — Changelog
 
 
+## [1.34.6] — 2026-07-15
+**A detected skill gap's binding record is now `lessons.md` `## Skill Gaps`, in a fielded form one
+skill owns — every producer surface references it, none restates it, and the plan's `Gap?` column
+gets the vocabulary that makes "marker, not the record" true instead of nominal (ADR-59).**
+
+- **`lessons-format` gains the fielded `## Skill Gaps` entry template** — `{Suggested skill name}` /
+  `Kind` (missing | ill-fitting) / `Searched for` / `Why it would help` / `References` / `Evidence` — as
+  a new fenced block mirroring the existing `### Improvement Proposal` precedent. The
+  Provenance-&-strengthen-don't-duplicate rule now also covers a gap entry's `Evidence:` line, so a
+  recurring gap strengthens one entry instead of spawning a twin.
+- **`architect.md`'s after-review-cycle trigger now names `## Skill Gaps` explicitly.** A step whose
+  Skill Mapping disposition is `None` after the "Skill verification before setting None" sub-protocol is
+  a *verified* gap — the architect logs it in the same lessons.md pass the plan's `Gap?` column is a
+  plan-local marker only, never the binding record.
+- **`solo.md` gains a lessons mandate it never had** — `skills: lessons-format` frontmatter plus a new
+  `## Lessons` section obligating `## Solo Lessons` and `## Skill Gaps` before finishing. Solo owns the
+  highest-volume lane in this repo (ADR-58) and previously carried no lessons obligation at all.
+  Forward-looking: the 1-of-54 historical `## Solo Lessons` corpus predates ADR-58's `adhoc-*`
+  solo-only rule by construction.
+- **`developer.md`'s duplicate field list is slimmed to a reference** — `lessons-format` is now the
+  one owner of the fields; the `**Log skill gaps**` trigger survives, and the missing-vs-ill-fitting
+  split survives as the template's `Kind` flag (the two cases' distinct diagnostic sub-fields from the
+  old inline list do not carry over 1:1 — see the feature's carry-over finding).
+- **The four scattered routing phrasings collapse to one reference** — `create-implementation-plan`'s
+  `None`-disposition bullet, `plan-template.md`'s Disposition rules, and `agents-workflow.md`'s
+  "no matching skill" sentence all now point at `lessons.md` `## Skill Gaps` per `lessons-format`
+  instead of four different half-sentences.
+- **The `Gap?` column gets a fixed two-value vocabulary** — `gap: {what's missing}` or `—`. An
+  enumeration of 33 plans found five incompatible uses in the column (gap declarations, non-gap
+  dispositions, confidence ratings, owner assignments, bare booleans); this is why two independent
+  attempts to count the leak this feature fixes each produced a different wrong number before the
+  vocabulary existed.
+- **ADR-59** records the decision and the measured leak: 4 of 11 plans that explicitly directed a
+  skill-gap log shipped no `## Skill Gaps` section, plus ≥6 more that declared a gap and directed no
+  log at all (`adhoc-PipelineHardening`: 9 gap cells, 0 captured).
+- Regenerated commands: `architect.md`, `developer.md`, `solo.md`.
+
 ## [1.34.5] — 2026-07-14
 **The skill-conformance gate stops calling a mis-recorded real invocation a fabrication — without
 giving back an inch of discretion. Plus ADR-18 gains the test-implementation.md clause.**

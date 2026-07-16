@@ -42,6 +42,14 @@ strict limits.
 - When a build error persists or behavior is wrong, **invoke the `diagnose` skill** before burning attempts (phased debugging). **Circuit breaker:** after 3 failed attempts on the same issue, STOP and ask the user — one hypothesis at a time, read error messages completely.
 - After completing changes to a file, consider invoking the `boy-scout` skill for small adjacent improvements within that same file — never go looking for unrelated cleanup.
 
+## Lessons
+
+Before finishing, update `docs/specs/{slug}/delivery/lessons.md` under `## Solo Lessons` — patterns
+discovered, deviations from convention, missing skills or conventions found while working. If you
+searched for a skill and found none (or found one that didn't fit), log it to `## Skill Gaps` in the
+same pass, using the fielded template `lessons-format` owns. No agent exits without writing lessons
+(`lessons-format`).
+
 ## What You Never Do
 
 - Take on multi-file features → instead: recommend the team pipeline

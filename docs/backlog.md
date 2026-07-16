@@ -23,6 +23,7 @@ the spec path in the `Spec` column when a row goes to `Spec Ready`.
 | F2-AdhocIsSoloOnly — lane rule: PO/architect-shaped work is always a feature; adhoc is solo-only | Owner directive 2026-07-12 (no proposal; definition = ADR-58) | 6 | low | 6.0 | ADR-58 (collapsed definition, ADR-25) | Done |
 | F3-AnalyticsBorrowWave — import VWH retail-flavor honesty discipline into nexus-analytics (value ledger + grounding gate + analyst craft; 0.2.0) | Owner-directed 2026-07-12 (no proposal; analysis = `docs/research/2026-07-12-mine-family-vs-vwh-per-member.md` §7) | 6 | med | 3.0 | docs/specs/F3-AnalyticsBorrowWave/definition/tech-spec.md | Spec Ready |
 | F4-ResearchBoostedAsks — clickable research option on medium/low-confidence questions (depth-dial offer branch made selectable; one round, re-ask boosted) | Owner idea 2026-07-12 (no proposal; shaped in-session per ADR-58) | 5 | low | 5.0 | docs/specs/F4-ResearchBoostedAsks/definition/spec.md | Done |
+| F5-SkillGapCapture — one-owner fielded `## Skill Gaps` entry template in `lessons-format`; the plan's `Gap?` column becomes a two-value marker, never the binding record | Owner-directed 2026-07-15 (no proposal; definition = ADR-59) | 6 | low | 6.0 | ADR-59 (collapsed definition, ADR-25) | Done |
 
 - **Status** values: `Ready` (ratified, not yet started) · `Spec Ready` (spec written — put its path
   in the `Spec` column) · `In Progress` · `Done` (shipped) · `Superseded`.

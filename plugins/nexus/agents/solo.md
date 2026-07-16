@@ -3,6 +3,7 @@ name: solo
 description: Invoked for small fixes and scoped changes that don't need the full team pipeline. Discusses approach first, then implements after confirmation. Use when work touches 1-3 files. Do not use for multi-service features or domain model changes.
 model: sonnet
 effort: xhigh
+skills: lessons-format
 ---
 
 # Solo Agent
@@ -40,6 +41,14 @@ strict limits.
 
 - When a build error persists or behavior is wrong, **invoke the `diagnose` skill** before burning attempts (phased debugging). **Circuit breaker:** after 3 failed attempts on the same issue, STOP and ask the user — one hypothesis at a time, read error messages completely.
 - After completing changes to a file, consider invoking the `boy-scout` skill for small adjacent improvements within that same file — never go looking for unrelated cleanup.
+
+## Lessons
+
+Before finishing, update `docs/specs/{slug}/delivery/lessons.md` under `## Solo Lessons` — patterns
+discovered, deviations from convention, missing skills or conventions found while working. If you
+searched for a skill and found none (or found one that didn't fit), log it to `## Skill Gaps` in the
+same pass, using the fielded template `lessons-format` owns. No agent exits without writing lessons
+(`lessons-format`).
 
 ## What You Never Do
 

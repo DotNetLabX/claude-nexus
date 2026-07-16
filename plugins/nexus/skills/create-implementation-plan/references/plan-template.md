@@ -23,14 +23,18 @@ In scope. Explicitly out of scope.
 |------|-------|-------------|-----|------------------------|------|
 | 1 | {skill-name} | Follow | yes | {only what's unique: entity names, paths, types} | |
 | 2 | {skill-name} | Build | no | {what to build locally + feature inputs} | |
-| 3 | (none) | — | yes | (full inline detail in step) | Log to lessons.md |
+| 3 | (none) | — | yes | (full inline detail in step) | gap: {what's missing} |
 
 **Disposition rules:**
 - **Follow** — apply the skill pattern. Adapt implementation specifics (e.g., SQLite instead of SQL Server) but never skip the pattern.
 - **Build** — skill references infrastructure that doesn't exist locally. Build it first, then follow the skill.
-- **None** — no skill covers this step. Describe what to accomplish + acceptance criteria. Do NOT write method-body logic flows. The developer decides internal decomposition. Log the gap.
+- **None** — no skill covers this step. Describe what to accomplish + acceptance criteria. Do NOT write method-body logic flows. The developer decides internal decomposition. Log the gap to `lessons.md` `## Skill Gaps` per `lessons-format`.
 - **Never "Adapt"** — if you're about to write "adapted for this project's needs," you're skipping the skill. Either Follow (the pattern applies, specifics may differ) or Build (the infrastructure is missing).
 - **TDD column (process skill — every plan has it, even all-`None` plans).** The architect marks each step at plan time: `yes` = testable behavior (domain logic, endpoint request/response, business rules) — the developer invokes the `tdd` skill on it; `no` = pure wiring (DI, config, migrations). `Skill: None` means no *pattern* skill — it never waives TDD. (Measured failure: an all-`None` plan read as "no skills at all" and 34+ tests shipped test-after.)
+- **`Gap?` column vocabulary (exactly two legal values).** `gap: {what's missing}` — a real gap; the
+  binding record is the `## Skill Gaps` entry in `lessons.md` (`lessons-format`), not this cell. `—` — no
+  gap; an explicit "expected, not a gap" note stays welcome. Confidence ratings, owner assignments, and
+  TDD values do not belong in this column — each has its own home.
 
 **Anti-patterns (if any of these appear, revise before proceeding):**
 - A skill dismissed as "simple" or "not needed" — Skills ensure consistency, not just complexity.

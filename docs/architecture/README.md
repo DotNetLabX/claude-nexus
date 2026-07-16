@@ -1518,6 +1518,62 @@ refactoring/debt passes* — a day-one exception that re-opens the drift. *Recor
 re-slugging (backlog rows for adhoc slugs)* — leaves two names for one lifecycle and breaks the
 F-number sequence as the feature index.
 
+## ADR-59 — The Skill Gaps record: `lessons.md` `## Skill Gaps` is the binding capture; the plan's `Gap?` column is a two-value marker, never the record — Accepted
+
+> **Status: Accepted — F5-SkillGapCapture, owner-directed 2026-07-15** (no proposal; the owner directed
+> a pipeline-reliability fix in-session per ADR-58, after an audit of shipped `lessons.md` files found
+> the capture mechanism leaking). Register re-checked — highest was ADR-58; 59 free, no renumber. This
+> ADR is the feature's collapsed definition (ADR-25: two-way-door change → one ADR, no tech-spec); the
+> delivery record is `docs/specs/F5-SkillGapCapture/delivery/`.
+
+**Context.** The pipeline **detects** skill gaps well and **captures** them unreliably. `## Skill Gaps`
+is a fixed heading in `lessons-format`, but only `developer.md` named both the heading and its fields.
+Everywhere else the instruction was scattered across four *other* documents in four different phrasings
+(`create-implementation-plan/SKILL.md`, `plan-template.md` twice, `agents-workflow.md`), none of them
+naming the heading or a field, and the architect's own after-review-cycle trigger named only
+`## Architect Lessons`. Counting
+only plans whose `Gap?` cell explicitly directed a skill-gap log, **4 of 11** shipped `lessons.md` with
+no `## Skill Gaps` section (`F1-NotesPlugin`, `adhoc-DotnetSkillSweep`, `adhoc-ResearchKB`,
+`adhoc-SddLifecycle`). Underneath that, **≥6** more plans declared a real gap in the `Gap?` column and
+directed no log at all — `adhoc-PipelineHardening` alone has 9 gap cells and no `## Skill Gaps` section.
+A gap that stops at the column is never consolidated: the learner reads only `lessons.md` and
+`communication-log.md`. And the column itself could not be reliably counted — it had no vocabulary,
+carrying five incompatible uses across 33 plans (gap declarations, explicit non-gap dispositions,
+confidence ratings, owner assignments, bare booleans), which is why two independent attempts to measure
+this leak each produced a different wrong number.
+
+**Decision.** A detected skill gap's binding record is `lessons.md` `## Skill Gaps`, in the fielded form
+`lessons-format` owns (`{Suggested skill name}` / `Kind` / `Searched for` / `Why it would help` /
+`References` / `Evidence`). Every other surface — `architect.md`, `solo.md`, `developer.md`,
+`create-implementation-plan/SKILL.md`, `plan-template.md`, `agents-workflow.md` — references that one
+template; none restates its fields. The plan's `Gap?` column keeps its place as a plan-read-time marker,
+now with a fixed two-value vocabulary: `gap: {what's missing}` (binding record is the lessons.md entry,
+not the cell) or `—` (no gap; an explicit "expected, not a gap" note stays welcome).
+
+**Why.** The architect's `None` disposition is a *verified* gap — it follows the Skill Mapping's "Skill
+verification before setting None" sub-protocol — making it the highest-signal detector in the system.
+That signal is wasted if it terminates in a column the learner never reads. One owner for the fielded
+template (`lessons-format`) means a fix or a field addition lands once instead of drifting across the
+four phrasings this ADR collapses. A column with a defined vocabulary is also what makes the leak
+honestly measurable going forward — the post-ship check becomes a single `gap: ` grep instead of a
+hand-judged enumeration.
+
+**Tradeoffs.** Five files gain a cross-reference to `lessons-format` instead of inline prose (a small
+read-cost at each site, offset by never drifting again). `developer.md`'s field list is slimmed to a
+reference — the one shipped surface that already worked loses its own copy of the fields, trading local
+completeness for one owner. The fix is prose-only and forward-looking: no retro-fill of the leaked
+historical runs (`F1-NotesPlugin` is still in progress and can recover its own gap; the rest are left as
+the measured baseline). The behavioral proof is deferred by construction — a PASS here does not prove
+agents will now log gaps; that only shows up in the next few runs' `lessons.md`, checked against the
+4-of-11 (+≥6 undirected) baseline this ADR records.
+
+**Rejected.** *Ship prose only, no ADR* — ADR-25's collapse path makes the ADR *be* the definition;
+without it F5 has none. *Delete the `Gap?` column as redundant* — the owner's selected shape keeps it as
+a plan-read-time marker; a marker needs a vocabulary, not deletion. *Extend the mandate to `reviewer.md` /
+`po.md`* — owner scope choice; neither has a demonstrated skill-search trigger. *Leave the column
+undefined as today* — "marker" stays nominal and the leak stays unmeasurable, which is precisely why both
+early leak counts in this feature's own plan were wrong before the vocabulary was added.
+
 ---
 
 ## Inherited pipeline decisions

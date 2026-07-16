@@ -355,7 +355,13 @@ Before claiming what the codebase is or isn't, verify first — `ls` or `Glob`. 
 
 ## After Every Review Cycle
 
-Update `docs/specs/{slug}/delivery/lessons.md` under `## Architect Lessons`. Also update before `/compact` or `/clear`.
+Update `docs/specs/{slug}/delivery/lessons.md` under `## Architect Lessons`. A step whose Skill Mapping
+disposition is `None` after the "Skill verification before setting None" sub-protocol
+(`create-implementation-plan`) is a *verified* skill gap, not a maybe — log it to `## Skill Gaps` in the
+same pass, using the fielded template `lessons-format` owns (never restate the fields here). The plan's
+`Gap?` column is a plan-local marker only; this lessons.md write is the binding record — a gap that stops
+at the column is never consolidated (the learner reads lessons.md, not plan.md). Also update before
+`/compact` or `/clear`.
 
 ## Persisting Instructions
 
