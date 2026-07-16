@@ -226,6 +226,35 @@ test('mine-verify sandbox return has consensusRules array with expected shape', 
 });
 
 // ==================================================================================================
+// Slice 3b (F6-MineMachineryHardening R2): the consensusRules map CARRIES the skeptic's verdict
+// evidence through onto the interpretive rule it verifies, instead of stripping it into a separate
+// interpretiveVerdicts-only field the KB-write serializer never reads. A transcribed rule (no verdict
+// path at all) must NOT gain a spurious evidence field.
+// ==================================================================================================
+test('mine-verify carries the matching verdict evidence onto its consensusRule (R2)', async () => {
+  const src = readWorkflow(MINE_VERIFY_PATH);
+  const minerResult = { rules: [{ statement: 'rule A', quote: 'code()', lines: '10-12' }] };
+  const consolidateResult = {
+    consistencyScore: '1 rule in all 3',
+    contradictions: [],
+    consensusRules: [
+      { id: 'BR-1', statement: 'rule A', quote: 'code()', lines: '10-12', agreement: 3, kind: 'interpretive' },
+      { id: 'BR-2', statement: 'rule B = X + Y', quote: 'B = X + Y', lines: '20-21', agreement: 3, kind: 'transcribed' },
+    ],
+  };
+  const slicerResult = { slices: [{ id: 'BR-1', slice: 'slice text' }] };
+  const batchVerifierResult = { verdicts: [{ id: 'BR-1', verdict: 'CONFIRMED', evidence: 'the guard at the check returns 0 when X is false' }] };
+  const transcribedResult = { failures: [] };
+  const fixtures = [minerResult, minerResult, minerResult, consolidateResult, slicerResult, batchVerifierResult, transcribedResult];
+
+  const { result } = await runInSandbox(src, fixtures);
+  const br1 = result.consensusRules.find((r) => r.id === 'BR-1');
+  const br2 = result.consensusRules.find((r) => r.id === 'BR-2');
+  assert.equal(br1.evidence, 'the guard at the check returns 0 when X is false', 'interpretive rule carries its verdict evidence');
+  assert.equal(br2.evidence, undefined, 'transcribed rule (no verdict path) gains no evidence field');
+});
+
+// ==================================================================================================
 // Slice 4: args arrive in TWO shapes — the workflow must handle both (Step-8 Run 2 regression)
 // ==================================================================================================
 // The Workflow TOOL ({scriptPath}, args) injects `args` as a JSON STRING; workflow() composition
@@ -573,6 +602,60 @@ test('loop.workflow.js runs in mock-globals sandbox without ReferenceError (MONO
 });
 
 // ==================================================================================================
+// Slice 9a-2 (F6-MineMachineryHardening R2): the controller's INLINE buildRulesSection mirror emits
+// the `  - verify: {excerpt}` sub-bullet for a rule carrying evidence, and none for a rule without —
+// same D2 contract as harness/lib/kb-write.mjs. This exercises the loop.workflow.js copy directly (it
+// cannot import the lib), via the KB text embedded in the kb-write-file agent's captured prompt.
+// ==================================================================================================
+test('loop controller inline buildRulesSection mirror emits the verify-excerpt sub-bullet (R2)', async () => {
+  const src = readWorkflow(LOOP_PATH);
+  const agentCalls = [];
+  const agentFixtures = [
+    { date: '2026-06-22' },                                                                   // date-stamp
+    { content: '# KB\n\n## Rules\n\n- BR-old: old.\n\n---\n<!-- mutation-gated: false -->\n' }, // kb-read
+    { written: true },                                                                         // kb-write-file
+    { written: true },                                                                         // kb-flip
+    { written: true },                                                                         // report-write
+  ];
+  const workflowReturns = [
+    {
+      consensusRules: [
+        { id: 'BR-1', kind: 'interpretive', agreement: 3, lines: '10-20', statement: 'rule A', evidence: 'the guard returns 0 when X is false' },
+        { id: 'BR-2', kind: 'transcribed', agreement: 3, lines: '25-30', statement: 'rule B = X + Y' },
+      ],
+      counts: { consensusRules: 2 }, outputTokensThisTurn: 5000,
+    },
+    { stopped: 'all-gates-green', iter: 1, achievedScore: 100, gates: { suite_green: { pass: true, detail: {} }, mutation_floor: { pass: true, detail: { scorePct: 100, reachableSurvivors: [] } } }, redOnCurrent: [] },
+  ];
+  function thr() { throw new ReferenceError('Date unavailable in workflow scripts'); }
+  thr.now = () => { throw new ReferenceError('Date unavailable in workflow scripts'); };
+  let wfIdx = 0, agentIdx = 0;
+  const sandbox = {
+    agent: async (prompt, opts) => { agentCalls.push({ promptFull: typeof prompt === 'string' ? prompt : '', opts }); return agentFixtures[agentIdx++] ?? null; },
+    parallel: async (fns) => { const r = []; for (const fn of fns) r.push(await fn()); return r; },
+    phase: () => {}, log: () => {},
+    budget: { spent: () => 50000 },
+    workflow: async () => workflowReturns[wfIdx++] ?? null,
+    args: null,
+    Date: thr,
+    Math: { random: () => { throw new ReferenceError('Math.random() unavailable'); } },
+  };
+  const patched = src.replace(/^export\s+const\s+meta\s*=/m, 'const meta =');
+  const ctx = createContext(sandbox);
+  await new Script(`(async () => { ${patched} })()`, { filename: 'loop-r2-excerpt.js' }).runInContext(ctx);
+
+  const kbWrite = agentCalls.find((c) => c.opts?.label === 'kb-write-file');
+  assert.ok(kbWrite, 'kb-write-file agent call captured');
+  assert.ok(
+    kbWrite.promptFull.includes('  - verify: the guard returns 0 when X is false'),
+    'kb-write-file prompt carries the BR-1 verify-excerpt sub-bullet',
+  );
+  const br2LineIdx = kbWrite.promptFull.split('\n').findIndex((l) => l.startsWith('- BR-2'));
+  const br2NextLine = kbWrite.promptFull.split('\n')[br2LineIdx + 1] ?? '';
+  assert.ok(!br2NextLine.trim().startsWith('- verify:'), 'BR-2 (no evidence) gets no sub-bullet');
+});
+
+// ==================================================================================================
 // Slice 9b: the controller FORWARDS the cross-repo params to the cover sub-workflow.
 // Regression guard: dropping testProjectDir/mutateGlob/patternTests from the composition args would
 // silently re-point the toolchain at Fokus. Capture the workflow() call args and assert they carry through.
@@ -902,6 +985,59 @@ test('loop-flutter composes mine-verify + cover-flutter, writes KB + flips on gr
   const report = agentCalls.find((c) => c.opts?.label === 'report-write');
   assert.ok(report && /Cover run \(Flutter\) — GetNextCycleCountTargetUsecase \(2026-06-24\)/.test(report.promptFull), 'report header uses target + runDate');
   assert.ok(report && /Run cost \(marginal\)/.test(report.promptFull), 'report carries a marginal cost line');
+});
+
+// ==================================================================================================
+// Slice 9e-8 (F6-MineMachineryHardening R2): the FLUTTER controller's INLINE serializeKb mirror emits
+// the `  - verify: {excerpt}` sub-bullet for a rule carrying evidence, and none for a rule without —
+// same D2 contract as harness/lib/serialize-kb.mjs (which loop-flutter.workflow.js cannot import).
+// ==================================================================================================
+test('loop-flutter inline serializeKb mirror emits the verify-excerpt sub-bullet (R2)', async () => {
+  const src = readWorkflow(LOOP_FLUTTER_PATH);
+  const agentFixtures = [{ written: true }, { written: true }, { written: true }];
+  const workflowReturns = [
+    {
+      consensusRules: [
+        { id: 'BR-1', kind: 'interpretive', agreement: 3, lines: '10', statement: 'rule A', evidence: 'the guard returns 0 when X is false' },
+        { id: 'BR-2', kind: 'transcribed', agreement: 3, lines: '20', statement: 'rule B = X + Y' },
+      ],
+      interpretiveVerdicts: [{ id: 'BR-1', verdict: 'CONFIRMED', evidence: 'the guard returns 0 when X is false' }],
+      counts: { consensusRules: 2 },
+    },
+    {
+      variant: 'inc4-cover-flutter', stopped: 'all-gates-green', iter: 1, achievedScore: 100,
+      gates: { suite_green: { pass: true, detail: {} }, mutation_floor: { pass: true, detail: { scorePct: 100, reachableSurvivors: [] } } },
+      redOnCurrent: [],
+    },
+  ];
+  const agentCalls = [];
+  function thr() { throw new ReferenceError('Date unavailable in workflow scripts'); }
+  thr.now = () => { throw new ReferenceError('Date unavailable'); };
+  let aIdx = 0, wIdx = 0;
+  const sandbox = {
+    agent: async (prompt, opts) => { agentCalls.push({ promptFull: typeof prompt === 'string' ? prompt : '', opts }); return agentFixtures[aIdx++] ?? null; },
+    parallel: async (fns) => { const r = []; for (const fn of fns) r.push(await fn()); return r; },
+    phase: () => {}, log: () => {},
+    budget: { spent: () => 50000 },
+    workflow: async () => workflowReturns[wIdx++] ?? null,
+    args: JSON.stringify({ targetClass: 'GetNextCycleCountTargetUsecase', runDate: '2026-06-24' }),
+    Date: thr,
+    Math: { random: () => { throw new ReferenceError('Math.random() unavailable'); } },
+  };
+  const patched = src.replace(/^export\s+const\s+meta\s*=/m, 'const meta =');
+  const ctx = createContext(sandbox);
+  await new Script(`(async () => { ${patched} })()`, { filename: 'loop-flutter-r2.js' }).runInContext(ctx);
+
+  const kbWrite = agentCalls.find((c) => c.opts?.label === 'kb-write-file');
+  assert.ok(kbWrite, 'kb-write-file agent call captured');
+  assert.ok(
+    kbWrite.promptFull.includes('  - verify: the guard returns 0 when X is false'),
+    'BR-1 verify-excerpt sub-bullet present in the KB-write-file prompt',
+  );
+  const lines = kbWrite.promptFull.split('\n');
+  const br2Idx = lines.findIndex((l) => l.startsWith('- BR-2'));
+  assert.ok(br2Idx !== -1, 'BR-2 bullet present');
+  assert.ok(!(lines[br2Idx + 1] ?? '').trim().startsWith('- verify:'), 'BR-2 (no evidence) gets no sub-bullet');
 });
 
 // ==================================================================================================

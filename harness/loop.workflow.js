@@ -242,11 +242,35 @@ function mutationRatchet(priorScore, currentScore) {
 // agent (the orchestrator has no fs access). The same functions are in kb-write.mjs for unit tests.
 // SOURCE OF TRUTH: harness/lib/kb-write.mjs. Inlined here because Workflow scripts cannot import.
 
+function stripLineRefs(statement) {
+  if (!statement) return statement;
+  let s = statement;
+  s = s.replace(/\s*\bL\d+\b/g, '');
+  s = s.replace(/\s*\blines?\s+\d+(?:\s*[,/&-]\s*\d+)*/gi, '');
+  s = s.replace(/\(\s*[,;]\s*/g, '(');
+  s = s.replace(/\s*,\s*,/g, ',');
+  s = s.replace(/,\s*\)/g, ')');
+  s = s.replace(/\(\s*\)/g, '');
+  s = s.replace(/\s+([.,;)])/g, '$1');
+  s = s.replace(/\(\s+/g, '(');
+  s = s.replace(/\s{2,}/g, ' ');
+  return s.trim();
+}
+function buildVerifyExcerpt(evidence) {
+  if (!evidence) return null;
+  const collapsed = stripLineRefs(String(evidence).replace(/\s+/g, ' ').trim());
+  if (!collapsed) return null;
+  return collapsed.length > 200 ? collapsed.slice(0, 200) : collapsed;
+}
 function buildRulesSection(rules, year) {
   // year must be passed by the caller — new Date() throws in the Workflow runtime (breaks resume).
   const preamble = `Rules below are **verified** via the Mine→Verify pass (automated harness, ${year} — ${rules.length} rule${rules.length !== 1 ? 's' : ''} confirmed).`;
   if (!rules.length) return `## Rules\n\n${preamble}`;
-  const bullets = rules.map((r) => `- ${r.id}: ${r.statement}`).join('\n');
+  const bullets = rules.map((r) => {
+    const line = `- ${r.id}: ${stripLineRefs(r.statement)}`;
+    const excerpt = buildVerifyExcerpt(r.evidence);
+    return excerpt ? `${line}\n  - verify: ${excerpt}` : line;
+  }).join('\n');
   return `## Rules\n\n${preamble}\n\n${bullets}`;
 }
 function buildStatusFooter({ mutationGated, date, runNote }) {
@@ -385,7 +409,7 @@ if (!MONOLITH_FALLBACK) {
 
   const interpretive = consensus.consensusRules.filter((r) => r.kind === 'interpretive')
   const SLICE_SCHEMA = { type: 'object', properties: { slices: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, slice: { type: 'string' } }, required: ['id', 'slice'] } } }, required: ['slices'] }
-  const BATCH_VERDICT_SCHEMA = { type: 'object', properties: { verdicts: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, verdict: { type: 'string', enum: ['CONFIRMED', 'WRONG', 'IMPRECISE'] }, evidence: { type: 'string' } }, required: ['id', 'verdict', 'evidence'] } } }, required: ['verdicts'] }
+  const BATCH_VERDICT_SCHEMA = { type: 'object', properties: { verdicts: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, verdict: { type: 'string', enum: ['CONFIRMED', 'WRONG', 'IMPRECISE'] }, evidence: { type: 'string', minLength: 1 } }, required: ['id', 'verdict', 'evidence'] } } }, required: ['verdicts'] }
   const TRANSCRIBED_SCHEMA = { type: 'object', properties: { failures: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, reason: { type: 'string' } }, required: ['id', 'reason'] } } }, required: ['failures'] }
   const transcribed = consensus.consensusRules.filter((r) => r.kind === 'transcribed')
 
@@ -408,7 +432,13 @@ if (!MONOLITH_FALLBACK) {
   )) ?? { failures: [] }) : { failures: [] }
 
   mineVerifyResult = {
-    consensusRules: consensus.consensusRules.map((r) => ({ id: r.id, kind: r.kind, agreement: r.agreement, lines: r.lines, statement: r.statement })),
+    // F6-MineMachineryHardening R2: carry the matching verdict's evidence onto the rule (mirrors the
+    // delegated mine-verify.workflow.js path's same fix) — transcribed rules have no verdict and
+    // correctly gain no evidence field.
+    consensusRules: consensus.consensusRules.map((r) => {
+      const v = verdicts.find((x) => x.id === r.id)
+      return { id: r.id, kind: r.kind, agreement: r.agreement, lines: r.lines, statement: r.statement, ...(v?.evidence ? { evidence: v.evidence } : {}) }
+    }),
     counts: { consensusRules: consensus.consensusRules.length, interpretive: interpretive.length, transcribed: transcribed.length },
     interpretiveVerdicts: verdicts,
     transcribedFailures: transcribedCheck.failures,

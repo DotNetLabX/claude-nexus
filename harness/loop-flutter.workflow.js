@@ -84,12 +84,40 @@ function toAppRel(abs, appRoot) {
   const rel = a.startsWith(root) ? a.slice(root.length).replace(/^\\+/, '') : a
   return rel.replace(/\\/g, '/')
 }
+// F6-MineMachineryHardening R2: sanitizes a skeptic's evidence string into the `  - verify: {excerpt}`
+// sub-bullet payload. SOURCE OF TRUTH: harness/lib/kb-write.mjs's buildVerifyExcerpt (+ stripLineRefs).
+// Inlined here because Workflow scripts cannot import.
+function stripLineRefs(statement) {
+  if (!statement) return statement
+  let s = statement
+  s = s.replace(/\s*\bL\d+\b/g, '')
+  s = s.replace(/\s*\blines?\s+\d+(?:\s*[,/&-]\s*\d+)*/gi, '')
+  s = s.replace(/\(\s*[,;]\s*/g, '(')
+  s = s.replace(/\s*,\s*,/g, ',')
+  s = s.replace(/,\s*\)/g, ')')
+  s = s.replace(/\(\s*\)/g, '')
+  s = s.replace(/\s+([.,;)])/g, '$1')
+  s = s.replace(/\(\s+/g, '(')
+  s = s.replace(/\s{2,}/g, ' ')
+  return s.trim()
+}
+function buildVerifyExcerpt(evidence) {
+  if (!evidence) return null
+  const collapsed = stripLineRefs(String(evidence).replace(/\s+/g, ' ').trim())
+  if (!collapsed) return null
+  return collapsed.length > 200 ? collapsed.slice(0, 200) : collapsed
+}
 // Serialize the verified rules into the consuming-app KB markdown (the build-zpl-code.md shape).
+// SOURCE OF TRUTH: harness/lib/serialize-kb.mjs. Inlined here because Workflow scripts cannot import.
 function serializeKb(rules, verdicts, opts) {
   const tally = (k) => (verdicts ?? []).filter((v) => v.verdict === k).length
   const summary = `${rules.length} rules; ${tally('CONFIRMED')} CONFIRMED, ${tally('IMPRECISE')} IMPRECISE, ${tally('WRONG')} WRONG`
   const ruleLines = rules
-    .map((r) => `- ${r.id}: ${r.statement}${r.agreement < 3 ? ` _(agreement ${r.agreement}/3)_` : ''}`)
+    .map((r) => {
+      const line = `- ${r.id}: ${r.statement}${r.agreement < 3 ? ` _(agreement ${r.agreement}/3)_` : ''}`
+      const excerpt = buildVerifyExcerpt(r.evidence)
+      return excerpt ? `${line}\n  - verify: ${excerpt}` : line
+    })
     .join('\n')
   const status = opts.mutationGated ? 'mutation-gated' : 'verified'
   const note = opts.mutationGated ? 'Cover gate PASSED.' : 'Cover not yet run.'

@@ -16,7 +16,9 @@ import {
   buildStatusFooter,
   supersedingRules,
   stripLineRefs,
+  buildVerifyExcerpt,
 } from '../../harness/lib/kb-write.mjs';
+import { serializeKb } from '../../harness/lib/serialize-kb.mjs';
 
 // --- Fixtures ------------------------------------------------------------------------------------
 const RULES_1 = [
@@ -221,4 +223,115 @@ test('buildRulesSection sanitizes line refs out of emitted statements', () => {
   const section = buildRulesSection([{ id: 'BR-1', kind: 'interpretive', agreement: 3, lines: '35', statement: REAL_BR3 }], FIXED_YEAR);
   assert.ok(!/\bL\d+\b/.test(section), 'no L<n> tokens in the rendered KB section');
   assert.ok(section.includes('team totals'), 'symbol label survives into the KB section');
+});
+
+// =================================================================================================
+// F6-MineMachineryHardening R2: buildVerifyExcerpt — sanitizes a skeptic's evidence string into the
+// `  - verify: {excerpt}` sub-bullet payload (D2: single line, <=200 chars, statement-style sanitize).
+// =================================================================================================
+test('buildVerifyExcerpt returns null for missing/empty evidence', () => {
+  assert.equal(buildVerifyExcerpt(undefined), null);
+  assert.equal(buildVerifyExcerpt(null), null);
+  assert.equal(buildVerifyExcerpt(''), null);
+  assert.equal(buildVerifyExcerpt('   '), null);
+});
+
+test('buildVerifyExcerpt passes short clean evidence through unchanged', () => {
+  assert.equal(buildVerifyExcerpt('the guard returns 0 when X is false'), 'the guard returns 0 when X is false');
+});
+
+test('buildVerifyExcerpt strips line refs the same way stripLineRefs does', () => {
+  const out = buildVerifyExcerpt('confirmed at line 76, the guard holds');
+  assert.ok(!/\bline\s+\d+/i.test(out), `no line-ref survives: ${out}`);
+});
+
+test('buildVerifyExcerpt collapses embedded newlines into a single line', () => {
+  const out = buildVerifyExcerpt('line one\nline two\nline three');
+  assert.ok(!out.includes('\n'), `no embedded newline: ${JSON.stringify(out)}`);
+});
+
+test('buildVerifyExcerpt truncates to at most 200 chars', () => {
+  const out = buildVerifyExcerpt('x'.repeat(250));
+  assert.ok(out.length <= 200, `length ${out.length} <= 200`);
+});
+
+// =================================================================================================
+// F6-MineMachineryHardening R2: buildRulesSection emits the `  - verify: {excerpt}` sub-bullet for a
+// rule carrying evidence (from the verdict), and NO sub-bullet for a rule without one (D2 row shape:
+// transcribed rules carry no verdict path, so they never get a sub-bullet).
+// =================================================================================================
+const RULE_WITH_EVIDENCE = {
+  id: 'BR-1', kind: 'interpretive', agreement: 3, lines: '10-20', statement: 'A is true when X',
+  evidence: 'The guard at the check returns 0 when X is false, confirming the rule.',
+};
+const RULE_NO_EVIDENCE = { id: 'BR-2', kind: 'transcribed', agreement: 2, lines: '25-30', statement: 'B = X + Y' };
+
+test('buildRulesSection emits a "  - verify: {excerpt}" sub-bullet for a rule with evidence', () => {
+  const section = buildRulesSection([RULE_WITH_EVIDENCE], FIXED_YEAR);
+  assert.ok(
+    section.includes('  - verify: The guard at the check returns 0 when X is false, confirming the rule.'),
+    section,
+  );
+});
+
+test('buildRulesSection emits NO sub-bullet for a rule without evidence', () => {
+  const section = buildRulesSection([RULE_NO_EVIDENCE], FIXED_YEAR);
+  assert.ok(!section.includes('  - verify:'), 'no sub-bullet for an evidence-less (transcribed) rule');
+});
+
+test('buildRulesSection sub-bullet excerpt is sanitized the same way statements are (line refs stripped)', () => {
+  const section = buildRulesSection([{ ...RULE_WITH_EVIDENCE, evidence: 'confirmed at L42, the guard holds' }], FIXED_YEAR);
+  assert.ok(!/\bL\d+\b/.test(section), 'no L<n> token in the rendered excerpt');
+});
+
+test('buildRulesSection preserves ordering and mixes rules with/without evidence correctly', () => {
+  const section = buildRulesSection([RULE_WITH_EVIDENCE, RULE_NO_EVIDENCE], FIXED_YEAR);
+  const lines = section.split('\n');
+  const br1Idx = lines.findIndex((l) => l.startsWith('- BR-1'));
+  const br2Idx = lines.findIndex((l) => l.startsWith('- BR-2'));
+  assert.ok(br1Idx !== -1 && br2Idx !== -1, 'both rule bullets present');
+  assert.equal(lines[br1Idx + 1], '  - verify: The guard at the check returns 0 when X is false, confirming the rule.');
+  // BR-2 has no evidence: the line right after its bullet must NOT be a sub-bullet.
+  assert.ok(!(lines[br2Idx + 1] ?? '').trim().startsWith('- verify:'), 'BR-2 has no sub-bullet');
+});
+
+// =================================================================================================
+// F6-MineMachineryHardening R2: serializeKb (harness/lib/serialize-kb.mjs) — the Flutter controller's
+// KB row serializer, extracted from loop-flutter.workflow.js's previously inline-only, untested
+// function. Same D2 sub-bullet contract as buildRulesSection above.
+// =================================================================================================
+const FLUTTER_RULES = [
+  { id: 'BR-1', kind: 'interpretive', agreement: 3, statement: 'Rule A holds', evidence: 'The branch returns true when the flag is set.' },
+  { id: 'BR-2', kind: 'transcribed', agreement: 3, statement: 'Rule B = X + Y' },
+];
+const FLUTTER_VERDICTS = [{ id: 'BR-1', verdict: 'CONFIRMED', evidence: 'The branch returns true when the flag is set.' }];
+const FLUTTER_OPTS = { targetClass: 'BuildZplCodeUsecase', relpath: 'lib/x.dart', date: '2026-07-16', mutationGated: false, runNote: 'Mine→Verify pass complete, Cover not yet run' };
+
+test('serializeKb emits a "  - verify: {excerpt}" sub-bullet for a rule with evidence', () => {
+  const kb = serializeKb(FLUTTER_RULES, FLUTTER_VERDICTS, FLUTTER_OPTS);
+  assert.ok(kb.includes('  - verify: The branch returns true when the flag is set.'), kb);
+});
+
+test('serializeKb emits no sub-bullet for a rule without evidence', () => {
+  const kb = serializeKb(FLUTTER_RULES, FLUTTER_VERDICTS, FLUTTER_OPTS);
+  const lines = kb.split('\n');
+  const br2Idx = lines.findIndex((l) => l.startsWith('- BR-2'));
+  assert.ok(br2Idx !== -1, 'BR-2 bullet present');
+  assert.ok(!(lines[br2Idx + 1] ?? '').trim().startsWith('- verify:'), 'no sub-bullet follows BR-2');
+});
+
+test('serializeKb preserves the existing tally + rule-line rendering', () => {
+  const kb = serializeKb(FLUTTER_RULES, FLUTTER_VERDICTS, FLUTTER_OPTS);
+  assert.ok(kb.includes('2 rules; 1 CONFIRMED, 0 IMPRECISE, 0 WRONG'), kb);
+  assert.ok(kb.includes('- BR-1: Rule A holds'), kb);
+  assert.ok(kb.includes('- BR-2: Rule B = X + Y'), kb);
+});
+
+test('serializeKb excerpt is truncated/sanitized the same way as buildRulesSection', () => {
+  const rules = [{ id: 'BR-1', kind: 'interpretive', agreement: 3, statement: 'Rule A', evidence: 'confirmed at line 76, ' + 'x'.repeat(250) }];
+  const kb = serializeKb(rules, [], FLUTTER_OPTS);
+  const m = kb.match(/  - verify: (.*)/);
+  assert.ok(m, 'sub-bullet present');
+  assert.ok(!/line\s+\d+/i.test(m[1]), 'line ref stripped');
+  assert.ok(m[1].length <= 200, `excerpt length ${m[1].length} <= 200`);
 });

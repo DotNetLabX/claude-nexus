@@ -89,6 +89,10 @@ filesystem it cannot re-assemble a truncated write — so the writing agent owns
   the shared session pool, NOT the run's cost; **capture the start** spend and gate on the delta, or
   a run fired late in a long session trips on the session's prior spend.
 - **Report on halt** — every stop writes a report naming the stop reason. Never silently exit green.
+- **Capture the `runId` at launch; resume, don't restart** — a `Workflow` launch returns a
+  `runId`; on a kill or hang, relaunch with `Workflow({scriptPath, resumeFromRunId})` — the
+  unchanged `agent()` prefix replays from cache and only live work re-runs. Same-session only: a
+  run killed today cannot be resumed tomorrow, so resume immediately or write the loss off.
 
 Each sibling keeps its own skill-specific prohibitions list (the AC-anchored "four prohibitions"
 glance list) — this rail is the shared mechanism, not the full safety-rails section.
@@ -110,8 +114,11 @@ glance list) — this rail is the shared mechanism, not the full safety-rails se
   pattern.
 
 `mine-verify-cover`'s code-arm Verify stage is a **different mechanism** (mutation-gated code
-re-check, not this must-RUN protocol) and is not a consumer of this section; `mine-from-spec`'s
-distinct `verified | ambiguous` grammar likewise stays in `mine-verify-cover` untouched.
+re-check, not this must-RUN protocol); its row obligation is separate — the code-arm rule-verify
+carries the skeptic's evidence excerpt into the registry row (`## The rule registry`), while the
+mutation gate remains the arm's *test* verification, distinct from this row obligation.
+`mine-from-spec`'s distinct `verified | ambiguous` grammar likewise stays in `mine-verify-cover`
+untouched.
 `mine-semantic-model`'s gate is likewise a different mechanism (probe re-execution + Audit-mode
 refutation legs + interview provenance — its origin enum is its verdict grammar) and is not a
 consumer of this must-RUN protocol section. `mine-verify-flows`' Verify stage is a **code

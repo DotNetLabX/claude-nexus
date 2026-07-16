@@ -9,7 +9,8 @@
 //                  bump-plugin.mjs, which itself falls back to HEAD~1 if the ref is absent).
 //
 // Checks, in order:
-//   1. node --test (lint + unit)            — the CI hard gate (T1 + T2)
+//   1. node --test (lint + unit)            — the CI hard gate (T1 + T2); includes
+//                                              tests/unit/capability-contract.test.mjs (R3/ADR-60)
 //   2. gen-commands drift                    — regen, then `git diff --exit-code` over commands/
 //   3. gen-omni --check                      — the private twin is in sync
 //   4. bump-plugin --check                   — a shipped-surface change carries a version bump

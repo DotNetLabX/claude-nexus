@@ -9,6 +9,7 @@ record and are not restated here).
 **Source evaluation:** `docs/research/2026-07-15-mine-family-vs-vwh-machinery.md` (§3.2, §4 SM/ET/XS;
 §7 correction log including the 2026-07-16 fresh-eyes rows — every factual anchor below was
 re-grounded against the live repo on 2026-07-16).
+**Plan:** `docs/specs/F6-MineMachineryHardening/delivery/plan.md`
 **ADRs:** ADR-60 (capability-contract conformance — extracted at ratification, covers R3). R4's
 delivery-vehicle ADR is extracted when the spike reports; none of R1/R2/R5 needs one (two-way-door
 plumbing, ADR-25).

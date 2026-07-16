@@ -129,7 +129,7 @@ const BATCH_VERDICT_SCHEMA = {
         properties: {
           id: { type: 'string' },
           verdict: { type: 'string', enum: ['CONFIRMED', 'WRONG', 'IMPRECISE'] },
-          evidence: { type: 'string' },
+          evidence: { type: 'string', minLength: 1 },
         },
         required: ['id', 'verdict', 'evidence'],
       },
@@ -308,13 +308,21 @@ return {
   },
   // consensusRules are returned WITHOUT the golden set anywhere — recall is scored separately,
   // orchestrator-side, by harness/lib/recall-score.mjs (design §3).
-  consensusRules: consensus.consensusRules.map((r) => ({
-    id: r.id,
-    kind: r.kind,
-    agreement: r.agreement,
-    lines: r.lines,
-    statement: r.statement,
-  })),
+  // F6-MineMachineryHardening R2: carry the matching verdict's evidence through onto the rule — the
+  // KB-write serializer (harness/lib/kb-write.mjs buildRulesSection, harness/lib/serialize-kb.mjs)
+  // reads r.evidence to emit the `  - verify: {excerpt}` row sub-bullet. Transcribed rules have no
+  // verdict at all (they skip batched verify) and correctly gain no evidence field.
+  consensusRules: consensus.consensusRules.map((r) => {
+    const v = verdicts.find((x) => x.id === r.id)
+    return {
+      id: r.id,
+      kind: r.kind,
+      agreement: r.agreement,
+      lines: r.lines,
+      statement: r.statement,
+      ...(v?.evidence ? { evidence: v.evidence } : {}),
+    }
+  }),
   interpretiveVerdicts: verdicts,
   transcribedFailures: transcribedCheck.failures,
   outputTokensThisTurn: budget.spent(),

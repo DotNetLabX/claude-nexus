@@ -80,6 +80,11 @@ node harness/lib/recall-score.mjs --pair \
   --ids GOLD-16,GOLD-17,GOLD-18
 ```
 
+**Resume, don't restart.** A `Workflow` launch returns a `runId`; on a kill or hang, relaunch with
+`Workflow({ scriptPath, resumeFromRunId })` instead of from scratch — the unchanged `agent()` prefix
+replays from cache and only live work re-runs. Same-session only (proven 2026-06-23: the
+ReviewInvitation run resumed past a fixed budget gate, replaying Mine→Verify, ~193k tokens saved).
+
 The golden path is **operator-supplied and machine-local** — it is deliberately not baked into any
 committed artifact, to keep the answer key out of this repo. See the Step-4 results section of
 `docs/specs/adhoc-MineVerifyCoverHarness/delivery/implementation.md`.

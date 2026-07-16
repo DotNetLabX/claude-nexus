@@ -1,6 +1,25 @@
 # nexus — Changelog
 
 
+## [1.34.7] — 2026-07-16
+**Closes four verified mine-family Cover-arm enforcement gaps (R1/R2/R3/R5) — resume wiring, the
+skeptic's evidence excerpt landing in the KB row, a capability-contract conformance test, and an
+honest clean-room tier disclosure (R4, shipping the gates, is spike-gated and not in this release).**
+
+- **R1 — resume wiring documented.** `mine-family-core.md`'s shared safety-rails list gains a
+  "capture the `runId` at launch; resume, don't restart" bullet: relaunch a killed/hung `Workflow`
+  with `resumeFromRunId` instead of from scratch (proven 2026-06-23, ~193k tokens saved), same-session
+  only.
+- **R2 — the skeptic's evidence now reaches the registry row.** `mine-family-core.md`'s `##
+  Skeptic protocol` scoping note is corrected: the cover code-arm's rule-verify carries the excerpt
+  into the registry row (a distinct obligation from the mutation gate's test verification), instead
+  of being exempted from the section entirely.
+- **R3 — capability-contract conformance (ADR-60).** A new CI-gated test asserts every stack adapter
+  (`mine-verify-cover-{dotnet,php,cpp,flutter}`) fills all 5 method capabilities with a named
+  executor, with an adversarial fixture proving the check can fail.
+- **R5 — clean-room tier disclosure.** `mine-verify-cover/SKILL.md` now states plainly that the
+  miner clean-room is prompt-enforced, not a mechanical guarantee, pending upstream platform support.
+
 ## [1.34.6] — 2026-07-15
 **A detected skill gap's binding record is now `lessons.md` `## Skill Gaps`, in a fielded form one
 skill owns — every producer surface references it, none restates it, and the plan's `Gap?` column

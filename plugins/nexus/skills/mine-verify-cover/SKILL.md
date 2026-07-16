@@ -33,6 +33,11 @@ Minimize    a minimize agent attributes each test to the mutant(s) it kills (by 
 Report      auto-write the run report; flip the KB entry verified → mutation-gated on all-gates-green
 ```
 
+**Tier disclosure:** the miner clean-room is **prompt-enforced** — the Workflow tool's `agent()`
+exposes no tool-restriction option, so "reads ONLY the inline slice/class" is an instruction the
+model is asked to follow, not a mechanical guarantee; weigh a run's clean-room claim accordingly.
+A mechanical seal is pending upstream platform support.
+
 One class per run. The orchestrator is deterministic and trusted; the agents do all reading/writing (the orchestrator has no filesystem). See `kb-entry-schema` for the KB shape and `tdd` for the test discipline the Cover agent follows.
 
 ## Two modes

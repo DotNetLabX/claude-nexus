@@ -54,14 +54,38 @@ export function stripLineRefs(statement) {
 }
 
 // =================================================================================================
+// buildVerifyExcerpt — sanitizes a skeptic's evidence string into the `  - verify: {excerpt}`
+// sub-bullet payload (F6-MineMachineryHardening R2 / D2 row shape).
+// =================================================================================================
+// The skeptic's re-execution `evidence` is free text (the batched-verify agent's own prose) — it can
+// carry embedded newlines, source line-number references, or run arbitrarily long. D2 pins the row
+// shape: ONE excerpt line, sanitized the SAME WAY rule statements already are (stripLineRefs), never
+// a raw transcript. Rules whose verdict path carries no evidence (transcribed rules — they have no
+// verdict at all) get null here, which buildRulesSection/serializeKb read as "no sub-bullet".
+/**
+ * Builds the single-line, sanitized, length-capped excerpt for a rule's `  - verify: {excerpt}`
+ * sub-bullet, or null when there is no evidence to render.
+ *
+ * @param {string|undefined|null} evidence  The skeptic's verdict evidence for this rule, if any.
+ * @returns {string|null}  The sanitized excerpt (<=200 chars, single line), or null.
+ */
+export function buildVerifyExcerpt(evidence) {
+  if (!evidence) return null;
+  const collapsed = stripLineRefs(String(evidence).replace(/\s+/g, ' ').trim());
+  if (!collapsed) return null;
+  return collapsed.length > 200 ? collapsed.slice(0, 200) : collapsed;
+}
+
+// =================================================================================================
 // buildRulesSection — renders the ## Rules section from a rules array
 // =================================================================================================
 /**
  * Renders the `## Rules` section of a KB entry from a verified rules array.
- * Each rule becomes a bullet: `- {id}: {statement}`.
+ * Each rule becomes a bullet: `- {id}: {statement}`, plus an indented `  - verify: {excerpt}`
+ * sub-bullet when the rule carries verifier evidence (F6-MineMachineryHardening R2 / D2).
  * The section includes a brief preamble noting the verified status.
  *
- * @param {{id:string, kind:string, agreement:number, lines:string, statement:string}[]} rules
+ * @param {{id:string, kind:string, agreement:number, lines:string, statement:string, evidence?:string}[]} rules
  *   The consensus rules from Mine→Verify, in order.
  * @returns {string}  The rendered section (including the `## Rules` heading), without a trailing newline.
  */
@@ -75,7 +99,11 @@ export function buildRulesSection(rules, year) {
     return `## Rules\n\n${preamble}`;
   }
 
-  const bullets = rules.map((r) => `- ${r.id}: ${stripLineRefs(r.statement)}`).join('\n');
+  const bullets = rules.map((r) => {
+    const line = `- ${r.id}: ${stripLineRefs(r.statement)}`;
+    const excerpt = buildVerifyExcerpt(r.evidence);
+    return excerpt ? `${line}\n  - verify: ${excerpt}` : line;
+  }).join('\n');
   return `## Rules\n\n${preamble}\n\n${bullets}`;
 }
 
