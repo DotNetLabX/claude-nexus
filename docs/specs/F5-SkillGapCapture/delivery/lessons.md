@@ -39,6 +39,32 @@
   implementation, so it cannot Fail the developer; but the verdict being binary does not make the risk
   disclosure binary. Recorded in `review.md` and surfaced to the owner as an open decision.
 
+- **`git add -A` at lane close is unsafe in a multi-agent tree — and my own dispatch-time snapshot gave
+  me false confidence.** I built the developer's unrelated-dirt exclusion list from a `git status` at
+  dispatch (clean), re-checked `git status` again before writing `summary.md` (still only F5's 15
+  entries), then ran `git add -A` — which swept in **two files that appeared in the minutes between**:
+  `docs/proposals/mine-machinery-hardening-2026-07.md` (a **Draft** awaiting owner decision) and
+  `docs/research/2026-07-15-mine-family-vs-vwh-machinery.md`, both another session's in-flight mine-family
+  work. Caught only because I read `git log -1 --stat` after committing; recovered with
+  `reset --soft` + `restore --staged` + re-commit (19 files, F5 only; the foreign files returned to
+  untracked, untouched). **The status check and the staging command must be the same act** — a snapshot
+  taken even one tool-call earlier is stale in a concurrent tree. CLAUDE.md already warns that "a
+  concurrent feature's in-flight files contaminate the classification" **for the bump**; this run shows
+  the identical hazard applies to **the commit**, where nothing checks it at all. Committing a Draft
+  proposal under another feature's slug would have misattributed someone else's un-ratified work.
+
+### Improvement Proposal
+**Target:** `plugins/nexus/agents/architect.md` — Architect-Led Fast Lane → Close; and
+`plugins/nexus/agents/team-lead.md` — Commit Protocol
+**Change:** Forbid `git add -A` / `git add .` at close. Stage the **explicit file list the plan names**
+(`git add <paths>`), or re-run `git status --porcelain` **in the same command** as the staging and abort
+on any path outside the plan's scope. CLAUDE.md's existing concurrent-tree warning covers `bump-plugin`'s
+classification but nothing guards the commit itself — the same contamination silently lands foreign files
+in a feature's commit.
+**Evidence:** [F5-SkillGapCapture]
+**Priority:** high — measured this run: a Draft proposal + a research doc from a concurrent session were
+committed under F5's slug and needed a `reset --soft` to unpick.
+
 ### Improvement Proposal
 **Target:** `plugins/nexus/skills/create-implementation-plan/SKILL.md` — Plan Grounding & Deviation Rules
 **Change:** Extend *"Every pinned acceptance command is executed at plan time… never asserted from
