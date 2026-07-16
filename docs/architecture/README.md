@@ -71,6 +71,11 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-53 — The Conformance Reviewer: a corpus-grounded advisory lens outside the pipeline; cite-or-drop; never correctness, never the deterministic tier, never a gate *(Accepted — adhoc-ConformanceReviewer, 2026-07-09)*
 - ADR-54 — Precision-first runtime: rules-grounded generation + fail-closed skeptic filter + capped advisory output, gated by human-graded calibration before any live PR *(Accepted — adhoc-ConformanceReviewer, 2026-07-09)*
 - ADR-55 — mine-design (sixth) + mine-algorithm (seventh) ship as family members; the algorithm-shaped vs rule/mapping-shaped routing boundary lives once in the family core *(Accepted — adhoc-MineSkillAuthoring, 2026-07-12)*
+- ADR-56 — nexus-notes is the notes-pipeline extension plugin: full suite, two waves, omni-notes as the generated clone *(Accepted)*
+- ADR-57 — Notes configuration = a per-source config file read by skills + a thin behavioral adapter rule *(Accepted)*
+- ADR-58 — The lane rule: PO-shaped and architect-designed work is a feature; `adhoc-*` is the solo-only lane *(Accepted)*
+- ADR-59 — The Skill Gaps record: `lessons.md` `## Skill Gaps` is the binding capture; the plan's `Gap?` column is a two-value marker, never the record *(Accepted)*
+- ADR-60 — The adapter capability contract is mechanically checked: every stack adapter fills every named capability with a named executor *(Accepted — F6-MineMachineryHardening, 2026-07-16)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -1576,6 +1581,44 @@ early leak counts in this feature's own plan were wrong before the vocabulary wa
 
 ---
 
+## ADR-60 — The adapter capability contract is mechanically checked: every stack adapter fills every named capability with a named executor — Accepted
+
+> **Status: Accepted — F6-MineMachineryHardening, ratified 2026-07-16** (extracted from
+> `docs/proposals/mine-machinery-hardening-2026-07.md` R3 per ADR-28; tech-spec
+> `docs/specs/F6-MineMachineryHardening/definition/tech-spec.md`). Register re-checked — highest was
+> ADR-59; 60 free, no renumber.
+
+**Context.** `mine-verify-cover` names FIVE capabilities and a stack adapter fills them
+(`SKILL.md:343`). Four adapters exist on disk (`nexus-dotnet`, `nexus-php`, `nexus-cpp`,
+`nexus-flutter`) — 20 promised fills, none mechanically checked. The failure class is real and bit
+twice in one incident: `mine-verify-flows`' sabotage gate had no named executor until an eval fixed
+it — the method and the Flutter adapter each named a capability with no mechanics. VWH checks the
+same seam mechanically (`selfcheck.py` cross-checks its `FLAVORS.md` registry against flavor homes on
+disk); the mine family's seam was a prose table a human eval audits late.
+
+**Decision.** The family's capability contract is a **checked** contract: a deterministic dev-repo
+gate in the CI-gated unit suite — a `tests/unit/` test run by `plugin-release-check.yml`'s existing
+`node --test` step — reads the method's capability contract (`mine-verify-cover/SKILL.md`), discovers
+the adapters on disk, asserts every adapter fills every capability with a **named executor**, and
+fails on drift; `scripts/selfcheck.mjs` mirrors it for local one-command feedback (CI does not invoke
+selfcheck — corrected at the F6 definition review, 2026-07-16). The check must be provably fallible:
+an adversarial fixture (an adapter missing an executor) demonstrates it can fail.
+
+**Why.** The allocation principle — cheapest correct locus. The contract already exists as prose and
+drifted anyway; a deterministic script converts an eval-time discovery into an authoring-time gate,
+permanently, across all four adapters and every future one.
+
+**Tradeoffs.** Dev-repo only — a consuming project never runs it (the release-machinery posture,
+ADR-9). Adapter authors must keep executor naming greppable, which constrains the adapter doc shape —
+that constraint is the point.
+
+**Rejected.** *A prose checklist in the authoring skill* — the failure class survived prose twice.
+*Per-adapter checks scattered across plugin CI* — the contract is one seam owned by the method; four
+scattered checks drift apart. *A run-time check at mine time* — too late and in the wrong place;
+consuming projects should not carry dev machinery.
+
+---
+
 ## Inherited pipeline decisions
 Pre-existing tradeoffs, retained:
 
@@ -1606,8 +1649,9 @@ Pre-existing tradeoffs, retained:
   `tests/unit/` (**T2** — every hook driven by synthetic event JSON, plus `bump-plugin`/`gen-commands`/
   `gen-omni` against fixture trees); `tests/evals/` (**T3/T4** — the real agents via headless
   `claude -p --plugin-dir` on the **subscription CLI**; owner decision 2026-06-10: no API key, CI-wiring
-  deferred with it). Run: `node --test tests/lint/*.test.mjs tests/unit/*.test.mjs` + `scripts/selfcheck.mjs`;
-  gated by `plugin-release-check.yml`. **Still owed:** promote this to a full ADR (the "promote when built"
+  deferred with it). Run: `node --test tests/lint/*.test.mjs tests/unit/*.test.mjs` (the CI gate in
+  `plugin-release-check.yml`); `scripts/selfcheck.mjs` is the local all-checks mirror — CI does not
+  invoke it (clarified 2026-07-16, F6 definition review). **Still owed:** promote this to a full ADR (the "promote when built"
   note); the only open roadmap item is owner live-validation (§A step 5).
 
 ---
