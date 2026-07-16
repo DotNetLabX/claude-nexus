@@ -1,6 +1,10 @@
 # nexus — Changelog
 
 
+## [1.34.8] — 2026-07-16
+- Agent model retier: po/architect/reviewer move to fable; developer/solo/data-analyst move to opus.
+  - agent instruction/behavior change
+
 ## [1.34.7] — 2026-07-16
 **Closes four verified mine-family Cover-arm enforcement gaps (R1/R2/R3/R5) — resume wiring, the
 skeptic's evidence excerpt landing in the KB row, a capability-contract conformance test, and an

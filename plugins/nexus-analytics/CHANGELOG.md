@@ -2,6 +2,10 @@
 
 All notable changes to the `nexus-analytics` plugin.
 
+## [0.1.1] — 2026-07-16
+- Agent model retier: po/architect/reviewer move to fable; developer/solo/data-analyst move to opus.
+  - agent instruction/behavior change
+
 ## [0.1.0] — 2026-07-10
 
 Initial release. The estate's first domain extension: the data-analyst persona plus its

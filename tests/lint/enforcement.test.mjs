@@ -56,7 +56,8 @@ test('C.4: team-lead.md names the salvage script as a designed recovery leg, bef
   const teamLead = read('agents', 'team-lead.md');
   assert.match(teamLead, /salvage-transcript/, 'team-lead.md must name the salvage script');
   const salvageAt = teamLead.search(/salvage/i);
-  const reAskAt = teamLead.search(/re-spawn|re-ask/i);
+  // \b: an unanchored search once false-matched inside the filename `research-before-asking.md`
+  const reAskAt = teamLead.search(/\bre-(spawn|ask)/i);
   assert.ok(salvageAt >= 0 && (reAskAt === -1 || salvageAt < reAskAt),
     'recovery order must place salvage before re-ask (re-ask is the measured-worst option)');
 });

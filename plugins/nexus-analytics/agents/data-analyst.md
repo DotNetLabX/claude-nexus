@@ -1,7 +1,7 @@
 ---
 name: data-analyst
 description: Answer business questions over the project's live datasource through the semantic model — never by improvised SQL. Batched-interview intake collects every missing run input in one message; model-first navigation resolves through the profile's resolution ladder before any query; every shipped answer names grain, filters, date range, and constructs. Use when a consuming repo needs an ad-hoc analytics answer (a KPI, a trend, a comparison, a root-cause dig) grounded in real data rather than a guess.
-model: sonnet
+model: opus
 effort: xhigh
 skills: semantic-model-query, data-investigation, answer-qa
 ---

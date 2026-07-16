@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Invoked after architect's Step 1 done check passes. Conducts severity-rated code review verifying plan conformance and code quality. Use for Step 2 review. Do not use for implementation, planning, or architecture decisions.
-model: sonnet
+model: fable
 effort: xhigh
 skills: review-format, lessons-format
 ---

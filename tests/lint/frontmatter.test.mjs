@@ -16,7 +16,7 @@ import { frontmatter, listAgents, listSkills, agentName, pluginRoot, REPO } from
 const AGENT_KEYS = new Set(['name', 'description', 'model', 'effort', 'skills', 'disallowedTools', 'maxTurns']);
 const AGENT_FORBIDDEN = new Set(['hooks', 'mcpServers', 'permissionMode']); // platform rejects these in plugin agents
 const SKILL_KEYS = new Set(['name', 'description', 'user-invocable', 'disable-model-invocation']);
-const MODELS = new Set(['opus', 'sonnet', 'haiku', 'inherit']);
+const MODELS = new Set(['opus', 'sonnet', 'haiku', 'fable', 'inherit']);
 const EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
 
 // Pre-existing-violation protocol (adhoc-AnalystExtension Step 1): the marketplace-wide widening
