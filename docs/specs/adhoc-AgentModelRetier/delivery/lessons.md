@@ -16,3 +16,10 @@
   collision. Never claim or renumber another feature's pending version without the owner's call.
 - `gen-commands.mjs` output does not embed the `model:` frontmatter — regenerating after a
   model-only agent edit is a byte-identical no-op (still cheap to run as CLAUDE.md prescribes).
+- **The omni twin can be AHEAD of canonical nexus** — the prior sync (omni 7e412fd) hand-carried
+  FL-2 first-consumer feedback (omni-flutter 0.4.3 + `mine-verify-flows/SKILL.md` edits) that never
+  landed in nexus, violating ADR-1's single-source-of-truth direction. A naive `gen-omni` commit
+  would have erased it. Before committing a regenerated twin, scan `git diff --numstat` for files
+  where deletions exceed insertions — that is the omni-ahead signature. Those files were excluded
+  (restored from HEAD) in omni a8cf2ed; **back-port to nexus is pending** (nexus-flutter 0.4.3 +
+  the mine-verify-flows core-skill feedback, reverse token-swap Omni→Nexus).
