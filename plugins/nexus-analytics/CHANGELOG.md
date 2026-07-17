@@ -2,6 +2,30 @@
 
 All notable changes to the `nexus-analytics` plugin.
 
+## [0.2.0] — 2026-07-17
+- **Feedback-loop layer** ported into the shipped `mine-semantic-model` skill from the KG pilot's
+  project-local evolution, generalized (F3 increment 0):
+  - Provenance **Schema v2**: optional `verified: YYYY-MM-DD` (entry- and `fields`-scalar-level,
+    truthful dates only — a `code({ref})`-primary entry never receives one), appendable
+    `confirmed-in-use: [{date, ref}]` tags (never a scalar score), `deprecated` formally
+    documented, origin enum + precedence gain `code({ref})`; single-primary-origin rule unchanged.
+  - **Model-feedback ledger**: new `references/feedback-ledger.md` + eleventh profile input
+    (proposed default `docs/model-feedback/{area}.md`) — consumed ledger-first by Phase 1 step 4,
+    Phase 3 step 0, and Audit's new leg 0; BR10 idempotence reconciled (an open entry is new
+    input).
+  - **Obligations BR-A..BR-H**: ledger placement, no second write path, mandatory per-run
+    dispositions incl. the explicit `none open` line, append-only closure, no scalar confidence,
+    truthful dates, advisory staleness posture, BOM discipline.
+  - Run-report template: `Audit` joins the mode enum; mandatory `## Feedback dispositions` and new
+    `## Findings / follow-ups` sections; Audit leg 3's refutation ordering becomes data-grounded
+    (undated-and-never-confirmed → stale-dated → sampled/pilot-only → heavily-confirmed last);
+    Phase-5 step 6 runs the profile's provenance-schema validation via the item-10 attestation
+    (project-provided; absence case disclosed, never silent).
+  - Interview answers recorded in v2 per-construct shapes (flattened pre-v2 example retired);
+    standalone defect logging repointed to the run report's `## Findings / follow-ups` (the plugin
+    cache is not a writable working tree).
+  - skill change (mine-semantic-model); owner-escalated to minor
+
 ## [0.1.1] — 2026-07-16
 - Agent model retier: po/architect/reviewer move to fable; developer/solo/data-analyst move to opus.
   - agent instruction/behavior change

@@ -72,8 +72,23 @@ synchronously within the run:
 
 ## Recording answers
 
-Every answer becomes a ledger entry (`references/output-contract.md`):
+Every answer becomes a ledger entry, in the real per-construct-object shape
+(`references/output-contract.md`): keyed by the construct's own id, `origin` set to
+`interview({date})`, and `verified` lifted from that same date (the interview date IS the
+verification date — the user answered synchronously). A whole-construct answer:
 
 ```json
-{ "origin": "interview(2026-07-08)", "question": "Q3", "answer": "…", "area": "Reports" }
+"{construct_id}": { "origin": "interview(2026-07-08)", "verified": "2026-07-08" }
+```
+
+A field-scoped answer (only one scalar of an otherwise-`carried({baseline})` construct was
+clarified):
+
+```json
+"{construct_id}": {
+  "origin": "carried({baseline})",
+  "fields": {
+    "{scalar_name}": { "origin": "interview(2026-07-08)", "verified": "2026-07-08" }
+  }
+}
 ```

@@ -31,7 +31,7 @@ Read `docs/semantic-model/profile.md` (this repo's committed project profile —
 load it and proceed to Phase 1.
 
 If it is missing, run the **first-run intake**: ONE batched message (BR4 shape — see
-`references/interview-protocol.md`) asking for the ten profile inputs listed in
+`references/interview-protocol.md`) asking for the eleven profile inputs listed in
 `references/project-profile.md`, each with its proposed default where one exists. Write the
 answered profile to `docs/semantic-model/profile.md`, then proceed to Phase 1.
 
@@ -77,7 +77,12 @@ the intake (or an already-committed profile) is a hard precondition for every ru
   data-ground it, not to hunt bugs. A zero-divergence outcome is a legitimate result: the value is
   the grounding, not the finding.
 - **Audit** — claim-verification over an already-mined area (no discovery). Run when a downstream
-  consumer is about to bake the model's claims in (e.g. an aggregated "gold" layer). Four legs:
+  consumer is about to bake the model's claims in (e.g. an aggregated "gold" layer).
+  **Leg 0 — ledger first.** Audit never routes through Phase 1/3, so this is the only path by which
+  the profile's model-feedback ledger (item 11) reaches an Audit run: before any of the four legs
+  below, read the area's ledger; every open entry there is a mandatory hypothesis for this Audit —
+  refuted, grounded, or left `still-open`, exactly like the four legs' own findings — and gets a
+  disposition in the run report's mandatory `## Feedback dispositions` section (BR-C). Four legs:
   1. **Tier + heat** — the `usage-heat` probe (`pg_stat_user_tables`) + entity-graph degree +
      measure/dimension reference counts → a data-grounded `tier` attestation per entity (core
      answer surface / supporting dimension / config-or-detail).
@@ -86,7 +91,13 @@ the intake (or an already-committed profile) is a hard precondition for every ru
      joinKeys). Live-but-unreferenced metric-shaped columns are candidate semantic drift — the
      phantom-column check run in reverse.
   3. **Refutation probes** — re-verify the WEAKEST attestations on fresh windows, framed to refute
-     not confirm: sampled (not full-population) FKs, pilot-only verifications,
+     not confirm. **Ordering is data-grounded, not structural:** undated-AND-never-confirmed
+     constructs first (no `verified` date AND zero `confirmed-in-use` tags in the provenance ledger
+     — reality has never touched these at all), then stale-dated (a `verified` date older than the
+     profile's declared staleness threshold, item 11; when undeclared, this band merges into the
+     next), then sampled/pilot-only attestations, then heavily-confirmed constructs (multiple
+     `confirmed-in-use` tags) last — genuinely the least urgent to re-verify. Within that ordering,
+     the refutation classes are: sampled (not full-population) FKs, pilot-only verifications,
      characterized-not-reconciled formulas, and every additivity/grain claim (rollup-consistency:
      does the detail SUM back to its header?). A refutation hit downgrades the construct's
      provenance and raises a finding — never silently re-confirm.
@@ -97,7 +108,9 @@ the intake (or an already-committed profile) is a hard precondition for every ru
 - **Idempotence invariant (Bootstrap/Refresh):** an immediate second Refresh run over an unchanged
   DB + bundle must ask zero questions and produce zero model-file changes. (An Audit re-run is
   idempotent too EXCEPT the heat numbers, which move with live usage — tier changes only on
-  material shifts, not stat noise.)
+  material shifts, not stat noise.) An open model-feedback ledger entry is *new input*, so consuming
+  one is not an idempotence violation; once it is closed, a repeat run over the unchanged DB +
+  bundle is again a strict no-op.
 
 ## Datasource surface + channel (binding — do not substitute)
 
@@ -142,6 +155,14 @@ extraction trigger for a stack-neutral seam; until a second engine is actually n
 | BR11 | UTF-8 without BOM on every emitted file | Phase 5's emit step writes every file via a BOM-free writer and the run report lists a first-3-bytes check per emitted file |
 | BR12 | Load floor on every aggregate probe — `LIMIT` is not a floor; `EXPLAIN` cost gate; large-table probes must carry a real bounded predicate | the project runner runs `EXPLAIN` before every aggregate probe body and refuses execution above the configured ceiling; a probe targeting one of the profile's large-table policy rows (item 9) is refused unless the `bound_predicate` parameter's SHAPE matches that row's sanctioned form — a tautology no longer passes; see `references/probe-catalog.md`'s "Large table policy" |
 | BR13 | Aggregate-only evidence — no row-level client/tenant data in any artifact | `references/output-contract.md` run-report template only has distribution/count/boundary-stamp table shapes; the aggregate-only sweep is a mandatory Phase-5 pre-emit check |
+| BR-A | Ledger placement — the profile's item-11 location, never under the bundle root or any runtime-served grounding root | `references/feedback-ledger.md` + BR9's same logic |
+| BR-B | No second write path — a ledger entry reaches the bundle only via the next run's Phase 1/3 (or Audit leg 0) → Phase 5 gate; a `confirmed-in-use` tag writes only the provenance sidecar, never a model construct | `references/output-contract.md` Schema v2; no phase below writes a bundle construct from a ledger entry directly |
+| BR-C | Mandatory disposition — a run over an area with open ledger entries is incomplete until each has a disposition; zero open entries emits an explicit `none open` line | Phase 1/3/leg-0 procedure below + the run report's mandatory `## Feedback dispositions` section |
+| BR-D | Never delete — ledger entries and `confirmed-in-use` tags are append-only; closure is a resolution append | `references/feedback-ledger.md`'s recurrence/closure rules |
+| BR-E | No scalar confidence — tags and dates only, never a numeric confidence score | the profile's provenance-validation attestation (item 10): a project-provided numeric/boolean-leaf scan, non-zero exit blocks (when the profile declares a validator; else contract-bound and disclosed — the item-10 absence case) |
+| BR-F | Truthful dates — `verified` set only from an actual run/probe/interview date; a `code({ref})`-primary entry never receives `verified` | `references/output-contract.md` Schema v2 (governs every Phase-5 emit) + the item-10 validation attestation (same absence case as BR-E) |
+| BR-G | Staleness nudge — silent when fresh, advisory only; contract-bound here, runtime implementation is the consuming project's own lane | this table row + Audit leg 3's stale band (no code in this skill enforces it — by design) |
+| BR-H | UTF-8 without BOM on every feedback-loop artifact (ledger files included) | same discipline as BR11, extended |
 
 ## Procedure
 
@@ -157,6 +178,10 @@ extraction trigger for a stack-neutral seam; until a second engine is actually n
 3. Refresh mode only: diff the live inventory against the current bundle (the profile's bundle
    root, item 1) for the area. Unchanged, already-`carried({baseline})`-and-verified items are
    skipped for Probe/Interview (BR10).
+4. Read the profile's model-feedback ledger (item 11) for the target area, if it exists. Every open
+   entry there joins this run's hypothesis set alongside whatever Mine/Probe raise — it is never
+   silently skipped. See `references/feedback-ledger.md`. (The profile's item-11 location is the
+   binding source; its proposed default is `docs/model-feedback/{area}.md`.)
 
 ### Phase 2 — Probe
 
@@ -166,15 +191,22 @@ Record every probe's cost-log line (feeds BR12) and its result set (aggregate sh
 
 ### Phase 3 — Ground
 
-For each hypothesis the probes raised (e.g. "does `status = 9` mean cancelled?"), search in this
-order before ever drafting a question:
+For each hypothesis the probes raised (e.g. "does `status = 9` mean cancelled?") **and every open
+model-feedback ledger entry carried in from Phase 1**, search in this order before ever drafting a
+question:
 
+0. **The profile's model-feedback ledger (item 11), read FIRST** — an open entry for this exact
+   construct is itself the hypothesis under investigation here; ground it the same way any
+   probe-raised hypothesis is grounded (steps 1-2 below), then record its disposition
+   (`probed | grounded | asked | still-open`, `references/feedback-ledger.md`).
 1. This project's own bundle provenance (the profile's ledger path, item 2) — was this already
    attested?
 2. The profile's KB hub(s), in the profile's stated search order (item 5).
 
 A hit at any step is recorded in the run report's KB-cited-not-asked list with its citation
-(BR3/BR9) — the hypothesis is never asked. Only a genuine miss becomes an interview question.
+(BR3/BR9) — the hypothesis is never asked. Only a genuine miss becomes an interview question. Every
+ledger entry consumed this run gets a disposition in the run report's mandatory
+`## Feedback dispositions` section (BR-C) — zero open entries emits an explicit `none open` line.
 
 ### Phase 4 — Interview
 
@@ -195,9 +227,16 @@ Phase 5 once answers land.
    recorded at the start of the run. Any *new* failure blocks the emit — the run reports and stops
    (BR6), it is never left "done" red.
 4. Write the run report to the profile's run-report directory (item 4) per
-   `references/output-contract.md`.
+   `references/output-contract.md`, including its mandatory `## Feedback dispositions` section
+   (BR-C).
 5. Draft KB entries for any *knowledge* learned (not mechanical facts) into the profile's KB hub
    (item 5) — uncommitted, for user review.
+6. Run the profile's provenance-schema validation (item 10 attestation; project-provided tooling).
+   A non-zero exit blocks the run exactly like a new validation-gate failure (BR6 extended) — the
+   run reports and stops, never left "done" with a schema violation. If the profile declares no
+   validator (the item-10 absence case), record
+   `provenance validation: none declared (BR-E/BR-F contract-bound only)` in the Gate result and
+   continue — BR-E/BR-F are then contract-bound only for this project.
 
 ## What this skill does NOT do
 
@@ -213,8 +252,10 @@ Phase 5 once answers land.
 **Discovered a defect while running this skill** (a runner bug, a missing probe class, a protocol
 gap)? Log it: inside the SDD pipeline, append to that feature's
 `docs/specs/{slug}/delivery/lessons.md` under `## Developer Lessons` or `## Skill Gaps`; running
-standalone, append an entry to this skill's own `CHANGELOG.md`. Never silently work around a
-defect in the runner/probe catalog without recording it somewhere.
+standalone, record it in the run report's `## Findings / follow-ups` section (this run's durable
+log — the shipped skill's own `CHANGELOG.md` lives in a read-only plugin cache, not a writable
+working tree). Never silently work around a defect in the runner/probe catalog without recording it
+somewhere.
 
 ## Relationship to the mine family
 
@@ -266,3 +307,5 @@ Bootstrap run.
   the runner contract.
 - `references/project-profile.md` — the per-project intake template and the KG pilot's complete
   worked example.
+- `references/feedback-ledger.md` — the model-feedback ledger: entry template, recurrence/closure
+  rules, disposition vocabulary, area-file map.

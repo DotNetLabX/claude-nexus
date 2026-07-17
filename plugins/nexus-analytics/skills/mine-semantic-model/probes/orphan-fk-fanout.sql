@@ -5,7 +5,7 @@
 --
 -- Uses scalar subqueries (not a CROSS JOIN of two CTEs) so the query ALWAYS returns exactly one
 -- summary row -- a CROSS JOIN against an empty fanout CTE silently drops the whole row when the
--- child scope has zero non-null FK values (caught live during the F52 Step 6 dry-run against the
+-- child scope has zero non-null FK values (caught live during the KG pilot's dry-run against the
 -- empty local seed container). min/max/avg fanout are NULL, not a hidden zero row, when there is
 -- no fanout data to compute from -- that is the honest signal, not a bug.
 --

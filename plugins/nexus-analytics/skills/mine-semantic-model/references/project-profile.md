@@ -2,15 +2,15 @@
 
 `mine-semantic-model` ships as a stack-agnostic **method**; every project-specific value it needs
 lives in ONE committed file — `docs/semantic-model/profile.md` in the consuming repo — resolved at
-Phase 0 of every run. This file is the **template** for that profile (ten inputs, each with
+Phase 0 of every run. This file is the **template** for that profile (eleven inputs, each with
 guidance and a proposed default where one exists) plus a **complete worked example**: the KG
 pilot's own filled profile, the run this method was extracted from.
 
 A missing profile triggers the first-run intake (SKILL.md Phase 0) — one batched message asking
-for these ten inputs, with the proposed defaults below offered as a starting point. The answered
+for these eleven inputs, with the proposed defaults below offered as a starting point. The answered
 intake becomes the committed profile; a run never starts against an unresolved or assumed profile.
 
-## The ten inputs
+## The eleven inputs
 
 1. **Bundle root + construct-file map** — where the semantic-model bundle lives, and which file
    holds which construct family (entities, relationships, measures, dimensions, compatibility
@@ -48,7 +48,22 @@ intake becomes the committed profile; a run never starts against an unresolved o
     runner, plus a one-line attestation that the runner implements `references/probe-catalog.md`'s
     "The runner contract" (BR1 refusal, BR12 EXPLAIN gate, BR12c shape check, dry-run gating, cost
     logging). No universal default — the runner is project-provided, stack-specific tooling; this
-    skill ships no runner implementation.
+    skill ships no runner implementation. The attestation additionally covers the project's
+    **provenance-schema validation** — a project-provided check that the ledger obeys the Schema v2
+    grammar (no numeric/boolean confidence leaves — BR-E; the `verified`-shape and truthful-date
+    rules — BR-F; single-primary origins). It is invoked at Phase-5 step 6; a non-zero exit blocks
+    the run (BR6 extended). The attestation is **either/or**: a profile MAY declare "no provenance
+    validator", in which case BR-E/BR-F degrade to **contract-bound and disclosed** (BR-G's
+    posture) — Phase-5 step 6 then records
+    `provenance validation: none declared (BR-E/BR-F contract-bound only)` in the run report's Gate
+    result, never a silent skip and never a silent block.
+11. **Model-feedback ledger location** — where the consumption-side model-feedback ledger lives (the
+    companion to the provenance ledger; see `references/feedback-ledger.md`). Proposed default:
+    `docs/model-feedback/{area}.md`, one file per area with area names matching the run-report
+    scoping (item 4). A sibling of the run-report directory, never under the bundle root (BR-A).
+    Optional **staleness-threshold (days)** sub-field — the age past which a `verified` date is
+    considered stale, feeding Audit leg 3's stale band; when undeclared, the stale band merges into
+    the sampled/pilot-only band (no invented default number).
 
 ## Worked example — the KG pilot profile
 
@@ -109,4 +124,10 @@ tokens are allowed to appear (every other shipped file is generic).
     execution above the configured ceiling, fail-closed on an unreadable plan (BR12); enforces the
     large-table bound-predicate SHAPE check via `IsValidReportDetailBound`/`IsValidEventsBound`/
     `IsBareTautology` (BR12c); and appends one line per invocation (pass or refused) to
-    `tools/cost-log.jsonl` (BR12).
+    `tools/cost-log.jsonl` (BR12). Provenance-schema validation: `tools/validate-provenance.cs` — a
+    v2-grammar validator with a whole-tree numeric/boolean-leaf scan (exit non-zero on any
+    confidence-number hit — BR-E), the `verified`-shape and truthful-date checks (BR-F), and the
+    single-primary-origin check; invoked at Phase-5 step 6, a non-zero exit blocks the run.
+11. **Model-feedback ledger location:** `docs/model-feedback/{area}.md` (KG uses the proposed
+    default as-is) — added by KG's F60 feature. Staleness threshold declared as
+    `SemanticModel:StalenessThresholdDays`, feeding Audit leg 3's stale band.

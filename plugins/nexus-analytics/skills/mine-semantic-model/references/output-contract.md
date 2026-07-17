@@ -44,11 +44,14 @@ countable-coverage requirement (below) without the maintenance cost of a per-sca
   the bundle defines. See the profile's worked example for a concrete, filled-in instance (a
   six-file, seven-family bundle: one file yields both the `entities` and `relationships` families
   via its edges).
-- **Origin enum (BR5, closed):** `schema-derived` | `data-derived({probe})` |
-  `kb({entry})` | `interview({date})` | `carried({baseline})`, where `{baseline}` is the profile's
-  baseline origin token (item 3) for constructs pre-existing before this skill's first run. No
-  other value is valid; a runner/emit step that would write anything else is a bug, not a new
-  origin.
+- **Origin enum (BR5, closed; Schema v2 adds `code({ref})`):** `schema-derived` |
+  `data-derived({probe})` | `kb({entry})` | `interview({date})` | `carried({baseline})` |
+  `code({ref})`, where `{baseline}` is the profile's baseline origin token (item 3) for constructs
+  pre-existing before this skill's first run. No other value is valid; a runner/emit step that
+  would write anything else is a bug, not a new origin. `code({ref})` is an intent inference read
+  directly from application source (`{ref}` names the file/class/method read, e.g.
+  `code(OrderWriter.settledAt)`) — it attests what the code *intends*, not a fact verified against
+  running data.
 - **Single PRIMARY origin per field — by design, not a fidelity gap (review cycle 1
   adjudication).** A field's content is routinely *informed* by more than one evidence type
   (Mine's schema reconciliation, Phase 2 probe percentages, a KB citation, an interview answer) —
@@ -68,7 +71,11 @@ countable-coverage requirement (below) without the maintenance cost of a per-sca
      decisive fact (e.g., a relationship's cardinality/orphan-rate, confirmed empirically) even if a
      schema reconciliation (Mine phase) first suggested the construct exists — the probe is what
      justified *trusting* it enough to model.
-  4. **`schema-derived`** — reserved for a fact establishable from `information_schema`/a
+  4. **`code({ref})`** (Schema v2) — when no KB/interview/probe was involved and a source-code read
+     supplied the decisive fact (e.g. a writer class/scheduler job that establishes what a column
+     means or when it populates). Ranks below `data-derived` (a code read is not measured reality)
+     but above `schema-derived` (a code read establishes more than a bare catalog fact).
+  5. **`schema-derived`** — reserved for a fact establishable from `information_schema`/a
      project-maintained schema-reference snapshot alone, with no data probe needed to trust it.
   - **This is explicitly single-origin by design, not a fuller multi-origin provenance graph**
     (recording every contributing evidence type per field, not just the primary one). Multi-origin
@@ -85,6 +92,47 @@ countable-coverage requirement (below) without the maintenance cost of a per-sca
 - **Ledger-coverage check:** a scripted count comparing ledger keys against bundle-extracted ids
   must be equal. Untouched fields after any run stay `carried({baseline})` — the ledger always
   covers 100% of the bundle, never a subset.
+
+### Schema v2 (structured verification dates + confirmed-in-use accretion)
+
+Additive to the v1 schema above; nothing in this section changes the single-PRIMARY-origin
+adjudication (it stays in force, unchanged, immediately above).
+
+- **`verified: YYYY-MM-DD`** (optional, per entry and per `fields` scalar where finer) — the date
+  the emitting run set from its own run date, recording *when the decisive fact behind the current
+  origin was actually verified*. Lifted only from the PRIMARY origin's own segment (never borrowed
+  from a non-primary segment inside a composed origin's prose). **A `code({ref})`-primary entry
+  never receives `verified`** — a source-reading date attests intent, not reality, and `verified`
+  feeds the reality-grounded staleness/audit machinery (BR-F). `carried({baseline})` rows stay
+  undated, always — truthfully never-verified, never a fabricated date.
+  - **Shape at entry level:** a sibling key alongside `origin`/`fields`/`deprecated`, e.g.
+    `{ "origin": "interview(2026-07-08)", "verified": "2026-07-08" }`.
+  - **Shape inside `fields`:** a bare-string `fields` value (`"{scalar}": "data-derived(probe)"`)
+    carries no `verified` date. When a scalar's own origin needs one, its value upgrades from a
+    bare string to an object: `"{scalar}": { "origin": "data-derived(probe, 2026-07-09)",
+    "verified": "2026-07-09" }`. A `fields` value is therefore either a plain origin string
+    (no `verified`) or a `{origin, verified}` object — never any other shape.
+- **`confirmed-in-use: [{date, ref}]`** (optional, appendable list) — discrete facts recording a
+  real design-time validation moment that exercised this construct (a kept/authored verified query,
+  an operator confirmation during an answer-review session), never a scalar score (BR-E, the
+  family's standing rejection of confidence numbers). Appended **design-time only** — where a
+  project's conventions place the ledger inside a runtime-served grounding root, the runtime still
+  never writes it; a tag records, it never changes a model construct, so appending one does not
+  require a full run the way a ledger-consuming Refresh/Audit does
+  (`references/feedback-ledger.md`).
+- **`deprecated: "{origin}({ref}) -- {reason}"`** (optional, formally documented here) — a
+  construct/field the application is retiring; the string carries its own origin-shaped
+  provenance for the deprecation claim itself (e.g. `"interview(2026-07-09) -- legacy status flag
+  retired next release; superseded by the lifecycle-state column"`).
+- **v2 does NOT bless `+`-composition.** The single-PRIMARY-origin adjudication above is unchanged
+  and stays load-bearing — a `+`-joined origin (two enum tokens outside any parenthetical) is never
+  a valid v2 shape, schema v1 or v2. Pre-v2 `+`-composed origins in a project's live ledger are a
+  **drift from this contract**, not a second sanctioned shape; they are normalized back to a single
+  primary (extended precedence above) by a **project-side one-time migration** (the project's own
+  tooling lane — nothing ships here), never reformalized. A legitimate intra-parenthetical `+`
+  inside an origin's own prose (e.g. `data-derived(cardinality+orphan-fk probe, ...)`) is not
+  composition and is untouched — the structural definition of composed vs. legitimate prose is the
+  profile's item-10 validation attestation.
 
 ### Who reads the ledger
 
@@ -113,7 +161,7 @@ compact, not fully factual — it carries in-flight hypotheses).
 ### Required sections (every run)
 
 ```markdown
-# Model run — {date} — {mode: Bootstrap|Refresh} — {area(s)}
+# Model run — {date} — {mode: Bootstrap|Refresh|Audit} — {area(s)}
 
 ## Endpoint
 {DSN target, posture-labeled — "real: {the profile's read-only role} / {target database}" or
@@ -127,6 +175,14 @@ compact, not fully factual — it carries in-flight hypotheses).
 ## Hypotheses (Mine + Probe)
 | # | Construct | Hypothesis | Evidence |
 |---|---|---|---|
+
+## Feedback dispositions (BR-C — mandatory, every run)
+| Ledger entry | Construct | Disposition | Resolution |
+|---|---|---|---|
+| {the profile's item-11 location #entry} | {construct id(s)} | {probed \| grounded \| asked \| still-open} | {one-line outcome, or "-" if still-open} |
+
+{"none open" if the area's ledger had zero open entries at run start — the check must
+demonstrably have run even when there was nothing to consume}
 
 ## KB-cited-not-asked (BR3)
 | Hypothesis | Citation |
@@ -155,6 +211,12 @@ compact, not fully factual — it carries in-flight hypotheses).
 ## Aggregate-only sweep attestation (BR13)
 {one line: "every table/list above is aggregate-shaped (value + count/share/boundary stamps) —
 no per-row entity identifiers present" or a named exception + remediation}
+
+## Findings / follow-ups
+{defects, gaps, and deferred items surfaced during the run — a runner bug, a missing probe class, a
+protocol gap, or any observation deferred to a later run; "none" if the run surfaced nothing. This
+is the durable defect log for a standalone run (SKILL.md's "Discovered a defect" pointer targets
+this section).}
 ```
 
 A zero-divergence Refresh audit still emits every section above — "found-count may legitimately
