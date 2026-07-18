@@ -1,6 +1,20 @@
 # nexus — Changelog
 
 
+## [1.34.10] — 2026-07-18
+**Close the learner's consolidation loop with a commit step.** The Consolidation Workflow ended at
+the run stamp (step 8), so a completed consolidation left every promoted file — conventions,
+CLAUDE.md, project-local skills, the plugin-feedback file, the `[APPLIED]`/`[TRACKED]` tag edits —
+uncommitted, stranding the promotions locally.
+- `agents/learner.md` — new step 9 **Commit the consolidation**: standalone, stage only the files
+  the run touched (never `git add -A`), one commit on the current branch, message
+  `docs(learner): consolidation {date} — {summary}`; as a team subagent, hand the staged-file list
+  back to the team lead (commits are team-lead-owned); push stays owner-owed — never push (the
+  guard hook blocks force-push always and any push in hardened mode).
+- `rules/agents-workflow.md` — the commit-ownership line's "sole exception" (standalone architect)
+  becomes "exceptions", adding the standalone learner's consolidation commit.
+- `commands/learner.md` — regenerated.
+
 ## [1.34.9] — 2026-07-18
 **Back-port the first consumer's FL-2 verification-rescan feedback into `mine-verify-flows`**
 (hand-carried in the omni twin 2026-07-15, now canonical; 17-device-run calibration). Five
