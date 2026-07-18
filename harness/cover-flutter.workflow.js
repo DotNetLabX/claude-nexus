@@ -220,7 +220,7 @@ const PATTERN_BLOCK = _args.patternTests ?? `PATTERN TO FOLLOW (in-repo, same pr
   • ${APP}\\test\\mocks.dart  (central mocktail mocks for every repo/usecase — reuse, do not re-declare)`
 
 // Runner results land nexus-side + git-ignored. NEVER in the consuming app tree.
-const RUNS_DIR = 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
+const RUNS_DIR = _args.runsDir ?? 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
 const RUNNER_RESULT = _args.runnerResult ?? `${RUNS_DIR}\\cover-flutter-${TARGET_CLASS.toLowerCase()}-run.json`
 
 const MUTATION_FLOOR = _args.mutationFloor ?? 75 // per-file REACHABLE kill floor; raise via args to ratchet toward 100

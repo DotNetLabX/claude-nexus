@@ -77,6 +77,65 @@ export function buildVerifyExcerpt(evidence) {
 }
 
 // =================================================================================================
+// F7 S1.3: structuralEvidenceOk — the registry-write structural evidence predicate (co-located here so
+// the Verify→Cover KB serializer chokepoint OWNS the gate; this lib is inlined verbatim into the loop
+// workflows, so it stays import-free — the predicate is copied, not imported).
+// SOURCE OF TRUTH: plugins/nexus/skills/mine-verify-cover/tools/evidence-gate.mjs (target-agnostic,
+// unit-tested in tests/unit/evidence-gate.test.mjs). Copied VERBATIM; keep in sync.
+// =================================================================================================
+// A JSON schema can assert non-empty; it cannot express "this is a re-execution excerpt, not a restatement
+// of the claim". The LIVE drop enforcement runs at the mine-verify verdict chokepoint (evidence a rule
+// fails the gate is never carried onto the rule, so it never reaches this serializer). Here the gate is
+// PAIRED and available: `gateRuleEvidence` strips echo/empty/no-reexecution evidence from a rules array
+// before serialization, for a caller that wants the code validator at the KB seam. The residual prose-only
+// path — a sibling KB write with no orchestrating code — is prompt-tier (mine-family-core §Registry invariants).
+const _EVIDENCE_LINE_REF_RE = /\bL\d+\b|\blines?\s+\d+|:\d+\b|@@/i;
+const _EVIDENCE_REEXEC_RE = /["'`][^"'`\n]+["'`]|=>|->|→|==|!=|>=|<=|\breturn(?:s|ed)?\b|\boutput\b|\bactual\b|\bexpected\b|\bstdout\b|\bresult(?:s|ed)?\b|\bprint(?:s|ed)?\b|\byield(?:s|ed)?\b|\bevaluate(?:s|d)?\b|\bcomputed?\b|\bran\b|\bthrew\b|\bthrows\b/i;
+function _evidenceNorm(s) { return String(s ?? '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+
+/**
+ * @param {string|null|undefined} evidence  The skeptic's verdict evidence.
+ * @param {string} [claim]  The claim it purports to re-execute (the rule statement); optional.
+ * @returns {{pass:boolean, reason:'ok'|'empty'|'claim-echo'|'no-reexecution-content', detail:object}}
+ */
+export function structuralEvidenceOk(evidence, claim = '') {
+  const raw = evidence == null ? '' : String(evidence);
+  const e = _evidenceNorm(raw);
+  if (e === '') return { pass: false, reason: 'empty', detail: { evidenceLength: 0 } };
+  const hasLineRef = _EVIDENCE_LINE_REF_RE.test(raw);
+  const hasReexecOutput = _EVIDENCE_REEXEC_RE.test(raw);
+  const hasReexec = hasLineRef || hasReexecOutput;
+  const c = _evidenceNorm(claim);
+  const _evContains = (hay, needle) => (' ' + hay + ' ').includes(' ' + needle + ' ');
+  const isEcho = c !== '' && (e === c || (!hasReexec && (_evContains(c, e) || _evContains(e, c))));
+  if (isEcho) return { pass: false, reason: 'claim-echo', detail: { hasLineRef, hasReexecOutput } };
+  if (!hasReexec) return { pass: false, reason: 'no-reexecution-content', detail: { hasLineRef, hasReexecOutput } };
+  return { pass: true, reason: 'ok', detail: { hasLineRef, hasReexecOutput } };
+}
+
+/**
+ * Gate a rules array at the KB-write chokepoint: a rule whose `evidence` fails the structural predicate
+ * (against its own `statement` as the claim) has that evidence STRIPPED before serialization, so no
+ * un-re-executed excerpt is written as a verified `- verify:` sub-bullet. Non-destructive to the rule
+ * otherwise (only the `evidence` field is dropped). Returns the gated rules + the dropped findings.
+ *
+ * @param {{id:string, statement?:string, evidence?:string}[]} rules
+ * @returns {{gatedRules:Array<object>, dropped:Array<{id:string, reason:string}>}}
+ */
+export function gateRuleEvidence(rules = []) {
+  const dropped = [];
+  const gatedRules = rules.map((r) => {
+    if (!r?.evidence) return r;
+    const gate = structuralEvidenceOk(r.evidence, r.statement ?? '');
+    if (gate.pass) return r;
+    dropped.push({ id: r.id, reason: gate.reason });
+    const { evidence, ...rest } = r;
+    return rest;
+  });
+  return { gatedRules, dropped };
+}
+
+// =================================================================================================
 // buildRulesSection — renders the ## Rules section from a rules array
 // =================================================================================================
 /**

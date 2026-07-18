@@ -332,7 +332,7 @@ None — dev-repo tooling + shipped plugin artifacts; no consuming-project `docs
 
 | Decision | Why | Rejected alternative | Status |
 |---|---|---|---|
-| Shipped executables live in `plugins/nexus/skills/mine-verify-cover/tools/` | family-core (the ADR-62 single recipe locus) already lives in this skill; mirrors F8's `mine-semantic-model/tools/` precedent | a new standalone skill dir (no consumer would invoke it directly) | decided |
+| Shipped executables live in `plugins/nexus/skills/mine-verify-cover/tools/` | family-core (the ADR-62 single recipe locus) already lives in this skill; consistent with F8's *planned* `mine-semantic-model/tools/` shape (F8-W1, gated — not yet on disk; corrected at done-check, was miscited as an existing precedent) | a new standalone skill dir (no consumer would invoke it directly) | decided |
 | Canonical battery = the shipped file; `harness/lib/cover-gates.mjs` becomes a re-export shim keeping the dev-only `EXPECTED_SURVIVOR_LINES` | ADR-62 names the plugin file as the hash-drift anchor; one canonical copy, zero test churn | two independent copies (drift) or bump-time generation (machinery not owed this wave) | decided |
 | S2 watcher protocol + battery recipe + preflight text all land in `mine-family-core.md` | the shared-mechanism home; single shipped locus per ADR-62; sibling pointers already converge there | per-sibling duplication (N-file fix on platform change) | decided |
 | S2 watcher mechanism left to the developer | spec pins capability + acceptance only (Windows/no-cron reality) | pinning a daemon shape (substrate mismatch — spec Decisions) | deferred |

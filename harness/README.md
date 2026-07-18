@@ -20,10 +20,11 @@ Design & roadmap (the binding definition for this ad-hoc work, ADR-27):
 | `targets/bugratio.json` | The pilot target config — source path, class name, **golden ids only**. | 1 |
 | `lib/recall-score.mjs` | Deterministic recall-scoring helper (pure pairing fn + thin CLI). | 1 |
 | `cover.workflow.js` | The runnable **Cover** Workflow — 3-actor (orchestrator + clean-room Cover agent + runner agent); turns verified rules into mutation-gated tests, gated on the §6 battery. | 2 |
-| `lib/cover-gates.mjs` | The §6 gate battery as deterministic pure fns (5 gates + mutation ratchet) over the runner's JSON output. | 2 |
+| `lib/cover-gates.mjs` | Dev-repo **re-export shim** of the SHIPPED §6 gate battery (`plugins/nexus/skills/mine-verify-cover/tools/cover-gates.mjs`, ADR-62 canonical); keeps only the pilot's dev-only `EXPECTED_SURVIVOR_LINES`. | 2 → shipped F7 |
 | `.runs/` | **Git-ignored.** Where the Cover runner agent writes its results — nexus-side, never in the sprint-rituals commit. | 2 |
 
-Both helpers' unit tests live under `tests/unit/` (`recall-score.test.mjs`, `cover-gates.test.mjs`) —
+Both helpers' unit tests live under `tests/unit/` (`recall-score.test.mjs`, `cover-gates.test.mjs` for the
+shim, `cover-gates-shipped.test.mjs` for the shipped canonical) —
 inside the repo CI glob `node --test tests/lint/*.test.mjs tests/unit/*.test.mjs`, not co-located here,
 so they run in CI and `scripts/selfcheck.mjs` with no wiring changes.
 
@@ -32,7 +33,7 @@ so they run in CI and `scripts/selfcheck.mjs` with no wiring changes.
 Cover separates three actors and **never collapses them** (design §1 + §6 reward-hacking defense):
 
 1. **Orchestrator** (`cover.workflow.js` JS) — reads the verified KB rules orchestrator-side, spawns the
-   agents, computes the §6 gates via `lib/cover-gates.mjs`, applies the `// Stryker disable` annotation on
+   agents, computes the §6 gates via the shipped battery (re-exported through `lib/cover-gates.mjs`), applies the `// Stryker disable` annotation on
    KB-documented dead lines, and (Step 6, operator-owed) flips the KB ledger. Holds every privilege.
 2. **Cover agent** (clean-room) — input = `BugRatioAnalyzer.cs` source + verified rules + surviving-mutant
    list + the `mutation-testing.md` API contract. **Only** writes the two test files. **No** write to the

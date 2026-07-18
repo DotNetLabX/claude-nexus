@@ -207,7 +207,8 @@ function labelOutcome(r) {
 }
 
 // =================================================================================================
-// Inlined §6 gate helpers (SOURCE OF TRUTH: harness/lib/cover-gates.mjs). Copied VERBATIM — same
+// Inlined §6 gate helpers (SOURCE OF TRUTH: plugins/nexus/skills/mine-verify-cover/tools/cover-gates.mjs,
+// the SHIPPED canonical battery — ADR-62; harness/lib/cover-gates.mjs re-exports it). Copied VERBATIM — same
 // runtime-contract reason. REUSED (AC-1) but NOT cover.workflow.js's all-gates-green stop: suiteGreen is
 // computed over the GREEN subset for the mutation-pass precondition only, NEVER applied to the spec-driven
 // reds (which are the primary output — ADR-D).
@@ -287,8 +288,8 @@ const _argsRaw = (typeof args !== 'undefined' && args) ? args : {}
 let _args = {}
 try { _args = typeof _argsRaw === 'string' ? JSON.parse(_argsRaw) : _argsRaw } catch { _args = {} }
 
-const SR = 'D:\\src\\sprint-rituals'
-const NEXUS = 'D:\\src\\claude-plugins\\nexus'
+const SR = _args.sr ?? 'D:\\src\\sprint-rituals'
+const NEXUS = _args.nexus ?? 'D:\\src\\claude-plugins\\nexus'
 // Model for every agent. Default Sonnet (owner directive — matches cover/loop/spec-cover defaults); override via _args.model.
 const MODEL = _args.model ?? 'sonnet'
 const TARGET_CLASS = _args.targetClass ?? 'BugRatioAnalyzer'
@@ -315,7 +316,7 @@ const SPEC_RULE_IDS = _args.specRuleIds ?? ['SR-1', 'SR-2', 'SR-3', 'SR-4']
 
 // Runner results + the run report land HERE — nexus-side + git-ignored (.gitignore: harness/.runs/). NEVER
 // in the SR tree (a result file in SR's working tree would strand in an SR commit).
-const RUNS_DIR = 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
+const RUNS_DIR = _args.runsDir ?? 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
 const RUNNER_RESULT = _args.runnerResult ?? `${RUNS_DIR}\\spec-cover-calc-bugratio-run.json`
 const REPORT_PATH = _args.reportPath ?? `${RUNS_DIR}\\spec-cover-calc-bugratio.md`
 

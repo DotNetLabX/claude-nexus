@@ -104,10 +104,10 @@ before orchestrating — the canonical shape (multi-agent by design, orchestrato
 staged background `general-purpose` agents, "launch = orchestrate stages") is defined there. This
 mode's own staging: the clean-room miners run in parallel (background), then on their completion a
 consolidate+skeptic agent (background); stages interleave with plan-authoring — planning never
-blocks on the run. **Poll, don't wait:** stage prompts must have agents run measurements in the
-foreground (bounded poll loops if long) and never end their turn waiting on a background-command
-completion notification — mirrors `mine-verify-repo`'s Execution topology lesson (the notification
-repeatedly failed to re-invoke a waiting agent in practice).
+blocks on the run. **Poll, don't wait + mechanized firing:** see `references/mine-family-core.md`
+§Stage-completion discipline + mechanized firing — the canonical completion discipline plus the F7 S2
+journal watcher (advances a stalled stage / fires the cadence skeptic without operator input; watcher
+implementation is dev-repo machinery).
 
 **On a NEW target, walk the core §kickoff checklist first** (tool preflight, expected survival rate,
 stop-budget, run-report location) before launching this mode's run.

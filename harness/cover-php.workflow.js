@@ -261,7 +261,7 @@ const CONTRACT = _args.contract ?? 'D:\\src\\claude-plugins\\nexus\\harness\\php
 const COVER_TEST = _args.coverTest ?? `${HOST_WS}\\tests\\${TARGET_CLASS}HarnessTest.php`
 
 // Runner results land nexus-side + git-ignored. NEVER in the consuming source tree.
-const RUNS_DIR = 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
+const RUNS_DIR = _args.runsDir ?? 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
 const RUNNER_RESULT = _args.runnerResult ?? `${RUNS_DIR}\\cover-php-${TARGET_CLASS.toLowerCase()}-run.json`
 
 const MUTATION_FLOOR = _args.mutationFloor ?? 75

@@ -160,6 +160,30 @@ function chunk(arr, size) {
   return out
 }
 
+// F7 S1.3: structural evidence gate (INLINED — the Workflow runtime cannot import).
+// SOURCE OF TRUTH: plugins/nexus/skills/mine-verify-cover/tools/evidence-gate.mjs (target-agnostic,
+// unit-tested in tests/unit/evidence-gate.test.mjs). Copied VERBATIM; keep in sync. The JSON-schema
+// `minLength: 1` (BATCH_VERDICT_SCHEMA) stays; this structural predicate — which a schema cannot express —
+// runs post-parse in code and DROPS a verdict whose evidence is empty, a claim-echo, or carries no
+// re-execution content (so it is never carried onto a rule as verified).
+const _EVIDENCE_LINE_REF_RE = /\bL\d+\b|\blines?\s+\d+|:\d+\b|@@/i
+const _EVIDENCE_REEXEC_RE = /["'`][^"'`\n]+["'`]|=>|->|→|==|!=|>=|<=|\breturn(?:s|ed)?\b|\boutput\b|\bactual\b|\bexpected\b|\bstdout\b|\bresult(?:s|ed)?\b|\bprint(?:s|ed)?\b|\byield(?:s|ed)?\b|\bevaluate(?:s|d)?\b|\bcomputed?\b|\bran\b|\bthrew\b|\bthrows\b/i
+function _evidenceNorm(s) { return String(s ?? '').toLowerCase().replace(/\s+/g, ' ').trim() }
+function structuralEvidenceOk(evidence, claim = '') {
+  const raw = evidence == null ? '' : String(evidence)
+  const e = _evidenceNorm(raw)
+  if (e === '') return { pass: false, reason: 'empty', detail: { evidenceLength: 0 } }
+  const hasLineRef = _EVIDENCE_LINE_REF_RE.test(raw)
+  const hasReexecOutput = _EVIDENCE_REEXEC_RE.test(raw)
+  const hasReexec = hasLineRef || hasReexecOutput
+  const c = _evidenceNorm(claim)
+  const _evContains = (hay, needle) => (' ' + hay + ' ').includes(' ' + needle + ' ')
+  const isEcho = c !== '' && (e === c || (!hasReexec && (_evContains(c, e) || _evContains(e, c))))
+  if (isEcho) return { pass: false, reason: 'claim-echo', detail: { hasLineRef, hasReexecOutput } }
+  if (!hasReexec) return { pass: false, reason: 'no-reexecution-content', detail: { hasLineRef, hasReexecOutput } }
+  return { pass: true, reason: 'ok', detail: { hasLineRef, hasReexecOutput } }
+}
+
 // --- Phase: Mine ----------------------------------------------------------------------------------
 // Clean-room is PROMPT-enforced this increment (Inc-1 scope; mechanical seal is Inc 3).
 const minerPrompt = `You are a clean-room business-rule miner.
@@ -280,6 +304,24 @@ if (interpretive.length > 0 && verdicts.length === 0) {
   return { stopped: 'verify-failed', reason: `all ${batches.length} interpretive verify batch(es) returned null (likely a transient API 500) — re-run`, outputTokensThisTurn: budget.spent() }
 }
 
+// --- F7 S1.3: structural evidence gate (post-parse, in code) --------------------------------------
+// A CONFIRMED verdict whose evidence fails the structural predicate is DROPPED — its evidence is not
+// carried onto the rule (so no bogus `- verify:` excerpt reaches the KB), and the drop is logged. The
+// verdict tally is left intact (the gate targets the evidence CARRY, the registry-write payload); a
+// dropped-evidence count is surfaced for observability.
+const evidenceDrops = []
+const gatedEvidenceById = new Map()
+for (const v of verdicts) {
+  if (!v?.evidence) continue
+  const claim = consensus.consensusRules.find((r) => r.id === v.id)?.statement ?? ''
+  const gate = structuralEvidenceOk(v.evidence, claim)
+  if (gate.pass) gatedEvidenceById.set(v.id, v.evidence)
+  else evidenceDrops.push({ id: v.id, reason: gate.reason })
+}
+if (evidenceDrops.length) {
+  log(`S1.3 evidence gate: dropped ${evidenceDrops.length} verdict evidence excerpt(s) — ${evidenceDrops.map((d) => `${d.id}:${d.reason}`).join(', ')}`)
+}
+
 // --- Return: consensus rules + verdicts + counts + cost signal ------------------------------------
 const tally = (k) => verdicts.filter((x) => x.verdict === k).length
 log(
@@ -313,17 +355,18 @@ return {
   // reads r.evidence to emit the `  - verify: {excerpt}` row sub-bullet. Transcribed rules have no
   // verdict at all (they skip batched verify) and correctly gain no evidence field.
   consensusRules: consensus.consensusRules.map((r) => {
-    const v = verdicts.find((x) => x.id === r.id)
+    const gatedEvidence = gatedEvidenceById.get(r.id)
     return {
       id: r.id,
       kind: r.kind,
       agreement: r.agreement,
       lines: r.lines,
       statement: r.statement,
-      ...(v?.evidence ? { evidence: v.evidence } : {}),
+      ...(gatedEvidence ? { evidence: gatedEvidence } : {}),
     }
   }),
   interpretiveVerdicts: verdicts,
+  evidenceGateDropped: evidenceDrops, // F7 S1.3: [{ id, reason }] for each dropped verdict evidence
   transcribedFailures: transcribedCheck.failures,
   outputTokensThisTurn: budget.spent(),
 }

@@ -477,8 +477,8 @@ const _argsRaw = (typeof args !== 'undefined' && args) ? args : {}
 let _args = {}
 try { _args = typeof _argsRaw === 'string' ? JSON.parse(_argsRaw) : _argsRaw } catch { _args = {} }
 
-const SR = 'D:\\src\\sprint-rituals'
-const NEXUS = 'D:\\src\\claude-plugins\\nexus'
+const SR = _args.sr ?? 'D:\\src\\sprint-rituals'
+const NEXUS = _args.nexus ?? 'D:\\src\\claude-plugins\\nexus'
 // Model for every agent. Default Sonnet (owner directive — matches every other harness front-end); override via _args.model.
 const MODEL = _args.model ?? 'sonnet'
 const TARGET_CLASS = _args.targetClass ?? 'BugRatioAnalyzer'
@@ -500,7 +500,7 @@ const REGISTRY_PATH = _args.registryPath ?? (AREA
 // a hand-maintained index is exactly the kind of destructive edit this harness avoids; the operator folds
 // the reviewed distillate in by hand (or via a future dedicated splice helper). Override via
 // _args.distillatePath to point directly at a consuming repo's docs/kb/index.md for a live run.
-const RUNS_DIR = 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
+const RUNS_DIR = _args.runsDir ?? 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
 const DISTILLATE_PATH = _args.distillatePath ?? `${RUNS_DIR}\\merge-${TARGET_CLASS}-hot-distillate.md`
 const REPORT_PATH = _args.reportPath ?? `${RUNS_DIR}\\merge-${TARGET_CLASS}.md`
 

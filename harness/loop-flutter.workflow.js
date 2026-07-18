@@ -56,14 +56,14 @@ const MAX_ITERATIONS = _args.maxIterations ?? 5
 const MINIMIZE_ACTIVATION_MARGIN = _args.minimizeActivationMargin ?? 1
 
 // Sub-workflow script paths (nexus dev repo).
-const MINE_VERIFY_SCRIPT = 'D:\\src\\claude-plugins\\nexus\\harness\\mine-verify.workflow.js'
-const COVER_FLUTTER_SCRIPT = 'D:\\src\\claude-plugins\\nexus\\harness\\cover-flutter.workflow.js'
+const MINE_VERIFY_SCRIPT = _args.mineVerifyScript ?? 'D:\\src\\claude-plugins\\nexus\\harness\\mine-verify.workflow.js'
+const COVER_FLUTTER_SCRIPT = _args.coverFlutterScript ?? 'D:\\src\\claude-plugins\\nexus\\harness\\cover-flutter.workflow.js'
 
 // Report (nexus-side delivery doc) + runner result (nexus-side, git-ignored — set by cover-flutter).
 const REPORT_PATH = _args.reportPath ?? `D:\\src\\claude-plugins\\nexus\\docs\\specs\\adhoc-MineVerifyCoverHarness\\delivery\\cover-flutter-${TARGET_CLASS.toLowerCase()}.md`
 
 // Minimize-stage confirm re-gate result (nexus-side, git-ignored — set by the minimize-confirm-run agent).
-const RUNS_DIR = 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
+const RUNS_DIR = _args.runsDir ?? 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
 const MINIMIZE_RUNNER_RESULT = _args.minimizeRunnerResult ?? `${RUNS_DIR}\\loop-flutter-${TARGET_CLASS.toLowerCase()}-minimize-run.json`
 
 // Budget ceiling (run-marginal — budget.spent() is the SHARED session pool; gate on the run's own spend).

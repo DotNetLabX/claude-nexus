@@ -1,6 +1,20 @@
 # nexus — Changelog
 
 
+## [1.35.0] — 2026-07-18
+**Mine machinery borrow wave 2 (F7-MineMachineryBorrowWave2).** The enforcement gate battery now
+ships target-agnostic inside mine-verify-cover (`tools/` — cover-gates, evidence-gate,
+kickoff-preflight) and runs in place from the version-keyed plugin cache (ADR-62 invoke-in-place);
+registry/KB writes are evidence-gated at every chokepoint (structural predicate: empty, claim-echo,
+no-reexecution-content); the kickoff checklist is now a blocking two-tier preflight ("Wired-but-
+advisory" superseded); stage completion is mechanized (run journal + stage watcher, "poll don't
+wait" consolidated to one canonical); the marginal-budget rail gains cross-session resume and the
+runway forecast; S6 evidence: BugRatio recall golden set 3/3 = 100% with independent-oracle
+curation.
+  - skill change (mine-verify-cover)
+  - skill change (mine-verify-repo)
+  - owner-escalated to minor (new capability: shipped enforcement runtime)
+
 ## [1.34.11] — 2026-07-18
 **Coordination hardening from field feedback (ADR-61 / F9-CoordinationHardening).** A wave-scale
 learner consolidation surfaced five recurring coordination failures, re-grounded against live plugin

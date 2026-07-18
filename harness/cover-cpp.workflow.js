@@ -197,7 +197,7 @@ const CONTAINER_TEST = _args.containerTest ?? `/probe/tests/${snakeCase(TARGET_C
 const TEST_BINARY = _args.testBinary ?? 'cover_tests'
 
 // Runner results land nexus-side + git-ignored. NEVER in the consuming source tree.
-const RUNS_DIR = 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
+const RUNS_DIR = _args.runsDir ?? 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
 const RUNNER_RESULT = _args.runnerResult ?? `${RUNS_DIR}\\cover-cpp-${TARGET_CLASS.toLowerCase()}-run.json`
 
 const MUTATION_FLOOR = 75

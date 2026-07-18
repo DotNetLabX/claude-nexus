@@ -75,6 +75,62 @@ function flattenTriage(triage) {
   return out;
 }
 
+// =================================================================================================
+// F7 S1.3: structuralEvidenceOk — the registry-write structural evidence predicate (co-located here so
+// the C1 canonical-registry writer chokepoint OWNS the gate; this lib is inlined verbatim into
+// merge.workflow.js, so it stays import-free — the predicate is copied, not imported).
+// SOURCE OF TRUTH: plugins/nexus/skills/mine-verify-cover/tools/evidence-gate.mjs (target-agnostic,
+// unit-tested in tests/unit/evidence-gate.test.mjs). Copied VERBATIM; keep in sync.
+// =================================================================================================
+// The registry's binding invariant is deprecate-never-delete/idempotent — the writer must NEVER mutate or
+// drop a row (that would break the no-delete + round-trip contracts). So the gate here SURFACES findings
+// (`gateRegistryEvidence`), it does not rewrite rows: a row whose code attestation fails the structural
+// predicate is FLAGGED for the orchestrator to act on, never silently altered. The LIVE drop enforcement
+// runs upstream at the mine-verify verdict chokepoint. The residual prose-only path is prompt-tier
+// (mine-family-core §Registry invariants + refresh outcome grammar).
+const _EVIDENCE_LINE_REF_RE = /\bL\d+\b|\blines?\s+\d+|:\d+\b|@@/i;
+const _EVIDENCE_REEXEC_RE = /["'`][^"'`\n]+["'`]|=>|->|→|==|!=|>=|<=|\breturn(?:s|ed)?\b|\boutput\b|\bactual\b|\bexpected\b|\bstdout\b|\bresult(?:s|ed)?\b|\bprint(?:s|ed)?\b|\byield(?:s|ed)?\b|\bevaluate(?:s|d)?\b|\bcomputed?\b|\bran\b|\bthrew\b|\bthrows\b/i;
+function _evidenceNorm(s) { return String(s ?? '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+
+/**
+ * @param {string|null|undefined} evidence  The code-side attestation / verdict evidence.
+ * @param {string} [claim]  The claim it purports to re-execute (the paired spec citation); optional.
+ * @returns {{pass:boolean, reason:'ok'|'empty'|'claim-echo'|'no-reexecution-content', detail:object}}
+ */
+export function structuralEvidenceOk(evidence, claim = '') {
+  const raw = evidence == null ? '' : String(evidence);
+  const e = _evidenceNorm(raw);
+  if (e === '') return { pass: false, reason: 'empty', detail: { evidenceLength: 0 } };
+  const hasLineRef = _EVIDENCE_LINE_REF_RE.test(raw);
+  const hasReexecOutput = _EVIDENCE_REEXEC_RE.test(raw);
+  const hasReexec = hasLineRef || hasReexecOutput;
+  const c = _evidenceNorm(claim);
+  const _evContains = (hay, needle) => (' ' + hay + ' ').includes(' ' + needle + ' ');
+  const isEcho = c !== '' && (e === c || (!hasReexec && (_evContains(c, e) || _evContains(e, c))));
+  if (isEcho) return { pass: false, reason: 'claim-echo', detail: { hasLineRef, hasReexecOutput } };
+  if (!hasReexec) return { pass: false, reason: 'no-reexecution-content', detail: { hasLineRef, hasReexecOutput } };
+  return { pass: true, reason: 'ok', detail: { hasLineRef, hasReexecOutput } };
+}
+
+/**
+ * Surface (never rewrite) registry rows whose `evidencePair.codeAttestation` fails the structural
+ * predicate against its paired `specCitation`. Rows without a code attestation are skipped (spec-only
+ * rows carry no re-executable code evidence). Non-destructive: returns findings only.
+ *
+ * @param {Array<{canonicalName?:string, evidencePair?:{specCitation?:string, codeAttestation?:string}}>} rows
+ * @returns {{findings:Array<{canonicalName:string, reason:string}>}}
+ */
+export function gateRegistryEvidence(rows = []) {
+  const findings = [];
+  for (const r of rows) {
+    const att = r?.evidencePair?.codeAttestation;
+    if (att === undefined || att === null || att === '') continue;
+    const gate = structuralEvidenceOk(att, r?.evidencePair?.specCitation ?? '');
+    if (!gate.pass) findings.push({ canonicalName: r?.canonicalName ?? '(unnamed)', reason: gate.reason });
+  }
+  return { findings };
+}
+
 /**
  * Update the registry rows + changelog from Step 1's triage output.
  *

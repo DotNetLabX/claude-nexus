@@ -66,7 +66,7 @@ const _argsRaw = (typeof args !== 'undefined' && args) ? args : {}
 let _args = {}
 try { _args = typeof _argsRaw === 'string' ? JSON.parse(_argsRaw) : _argsRaw } catch { _args = {} }
 
-const SR = 'D:\\src\\sprint-rituals'
+const SR = _args.sr ?? 'D:\\src\\sprint-rituals'
 // Model for every agent in this controller AND forwarded to both sub-workflows. Default Sonnet
 // (cheaper; the mutation/verify gates measure output quality, so the model is validated by the gate,
 // not assumed). Escalate a stage to Opus via _args.model only if a gate can't be met on Sonnet.
@@ -89,15 +89,15 @@ const MUTATE_GLOB      = _args.mutateGlob ?? `**/${TARGET_CLASS}.cs`
 const PATTERN_TESTS    = _args.patternTests ?? null
 
 // Runner results: nexus-side + git-ignored (harness/.runs/). NEVER in the SR tree.
-const RUNS_DIR     = 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
+const RUNS_DIR     = _args.runsDir ?? 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
 const RUNNER_RESULT = _args.runnerResult ?? `${RUNS_DIR}\\cover-${TARGET_CLASS.toLowerCase()}-run.json`
 
 // Report path (Step 7): self-written run report per the cover-bugratio.md shape.
 const REPORT_PATH  = _args.reportPath ?? `D:\\src\\claude-plugins\\nexus\\docs\\specs\\adhoc-MineVerifyCoverHarness\\delivery\\cover-${TARGET_CLASS.toLowerCase()}.md`
 
 // The nexus-repo abs paths for the sub-workflows (used if workflow() composition works).
-const MINE_VERIFY_SCRIPT = 'D:\\src\\claude-plugins\\nexus\\harness\\mine-verify.workflow.js'
-const COVER_SCRIPT       = 'D:\\src\\claude-plugins\\nexus\\harness\\cover.workflow.js'
+const MINE_VERIFY_SCRIPT = _args.mineVerifyScript ?? 'D:\\src\\claude-plugins\\nexus\\harness\\mine-verify.workflow.js'
+const COVER_SCRIPT       = _args.coverScript ?? 'D:\\src\\claude-plugins\\nexus\\harness\\cover.workflow.js'
 
 // =================================================================================================
 // SAFETY RAILS
@@ -133,10 +133,36 @@ const EXPECTED_SURVIVOR_LINES = _args.expectedSurvivorLines
 const MONOLITH_FALLBACK = false // flip to true at Step-8 if workflow() nesting fails.
 
 // =================================================================================================
+// INLINED EVIDENCE GATE (F7 S1.3 — the MONOLITH path carries verdict evidence onto rules, same as the
+// delegated mine-verify.workflow.js path, so it needs the SAME structural gate). Copy of the shipped
+// predicate — kept in lockstep with the other inlines.
+// SOURCE OF TRUTH: plugins/nexus/skills/mine-verify-cover/tools/evidence-gate.mjs (target-agnostic,
+// unit-tested in tests/unit/evidence-gate.test.mjs). Copied VERBATIM; keep in sync.
+// =================================================================================================
+const _EVIDENCE_LINE_REF_RE = /\bL\d+\b|\blines?\s+\d+|:\d+\b|@@/i
+const _EVIDENCE_REEXEC_RE = /["'`][^"'`\n]+["'`]|=>|->|→|==|!=|>=|<=|\breturn(?:s|ed)?\b|\boutput\b|\bactual\b|\bexpected\b|\bstdout\b|\bresult(?:s|ed)?\b|\bprint(?:s|ed)?\b|\byield(?:s|ed)?\b|\bevaluate(?:s|d)?\b|\bcomputed?\b|\bran\b|\bthrew\b|\bthrows\b/i
+function _evidenceNorm(s) { return String(s ?? '').toLowerCase().replace(/\s+/g, ' ').trim() }
+function structuralEvidenceOk(evidence, claim = '') {
+  const raw = evidence == null ? '' : String(evidence)
+  const e = _evidenceNorm(raw)
+  if (e === '') return { pass: false, reason: 'empty', detail: { evidenceLength: 0 } }
+  const hasLineRef = _EVIDENCE_LINE_REF_RE.test(raw)
+  const hasReexecOutput = _EVIDENCE_REEXEC_RE.test(raw)
+  const hasReexec = hasLineRef || hasReexecOutput
+  const c = _evidenceNorm(claim)
+  const _evContains = (hay, needle) => (' ' + hay + ' ').includes(' ' + needle + ' ')
+  const isEcho = c !== '' && (e === c || (!hasReexec && (_evContains(c, e) || _evContains(e, c))))
+  if (isEcho) return { pass: false, reason: 'claim-echo', detail: { hasLineRef, hasReexecOutput } }
+  if (!hasReexec) return { pass: false, reason: 'no-reexecution-content', detail: { hasLineRef, hasReexecOutput } }
+  return { pass: true, reason: 'ok', detail: { hasLineRef, hasReexecOutput } }
+}
+
+// =================================================================================================
 // INLINED GATE HELPERS (copy of cover-gates.mjs — keep in sync, same pattern as cover.workflow.js)
 // =================================================================================================
 // The Workflow runtime has no module/fs access — gate helpers must be inlined.
-// SOURCE OF TRUTH: harness/lib/cover-gates.mjs (unit-tested). Copied VERBATIM; keep in sync.
+// SOURCE OF TRUTH: plugins/nexus/skills/mine-verify-cover/tools/cover-gates.mjs (the SHIPPED canonical
+// battery, ADR-62; harness/lib/cover-gates.mjs re-exports it, unit-tested). Copied VERBATIM; keep in sync.
 
 function suiteGreen(testRuns) {
   const runs = testRuns ?? [];
@@ -431,16 +457,33 @@ if (!MONOLITH_FALLBACK) {
     { label: 'verify:transcribed-batch', phase: 'Mine→Verify', schema: TRANSCRIBED_SCHEMA, model: MODEL }
   )) ?? { failures: [] }) : { failures: [] }
 
+  // F7 S1.3: structural evidence gate — SAME as the delegated mine-verify.workflow.js path. A verdict whose
+  // evidence is empty / a claim-echo / carries no re-execution content is DROPPED (evidence not carried onto
+  // the rule), so this MONOLITH fallback cannot bypass the gate the delegated path enforces.
+  const evidenceDrops = []
+  const gatedEvidenceById = new Map()
+  for (const v of verdicts) {
+    if (!v?.evidence) continue
+    const claim = consensus.consensusRules.find((r) => r.id === v.id)?.statement ?? ''
+    const gate = structuralEvidenceOk(v.evidence, claim)
+    if (gate.pass) gatedEvidenceById.set(v.id, v.evidence)
+    else evidenceDrops.push({ id: v.id, reason: gate.reason })
+  }
+  if (evidenceDrops.length) {
+    log(`S1.3 evidence gate (monolith): dropped ${evidenceDrops.length} verdict evidence excerpt(s) — ${evidenceDrops.map((d) => `${d.id}:${d.reason}`).join(', ')}`)
+  }
+
   mineVerifyResult = {
     // F6-MineMachineryHardening R2: carry the matching verdict's evidence onto the rule (mirrors the
     // delegated mine-verify.workflow.js path's same fix) — transcribed rules have no verdict and
-    // correctly gain no evidence field.
+    // correctly gain no evidence field. F7 S1.3: only GATED evidence is carried (see the gate above).
     consensusRules: consensus.consensusRules.map((r) => {
-      const v = verdicts.find((x) => x.id === r.id)
-      return { id: r.id, kind: r.kind, agreement: r.agreement, lines: r.lines, statement: r.statement, ...(v?.evidence ? { evidence: v.evidence } : {}) }
+      const gatedEvidence = gatedEvidenceById.get(r.id)
+      return { id: r.id, kind: r.kind, agreement: r.agreement, lines: r.lines, statement: r.statement, ...(gatedEvidence ? { evidence: gatedEvidence } : {}) }
     }),
     counts: { consensusRules: consensus.consensusRules.length, interpretive: interpretive.length, transcribed: transcribed.length },
     interpretiveVerdicts: verdicts,
+    evidenceGateDropped: evidenceDrops, // F7 S1.3: [{ id, reason }] for each dropped verdict evidence
     transcribedFailures: transcribedCheck.failures,
     outputTokensThisTurn: budget.spent(),
   }

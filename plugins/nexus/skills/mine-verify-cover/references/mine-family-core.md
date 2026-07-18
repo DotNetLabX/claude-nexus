@@ -83,16 +83,53 @@ filesystem it cannot re-assemble a truncated write — so the writing agent owns
   Cover agent per selected flow; the orchestrator computes the sabotage gate from raw runner
   output (the golden-bless hop is the flow family's human-in-loop point).
 
+## Stage-completion discipline + mechanized firing
+
+**Poll, don't wait (canonical statement — every mine-family member shares this).** Subagent
+background-run completion notifications are unreliable: a stage prompt must instruct its agent to run
+measurements in the FOREGROUND (a bounded poll loop if the command runs long) and never end its turn
+waiting on a background-command completion notification. On the pilot's platform the notification
+repeatedly failed to re-invoke the waiting agent — a developer stranded TWICE on this exact pattern before
+an explicit "poll, don't wait" instruction fixed it; once every pilot-stage prompt carried the instruction,
+no stage stranded. Treat background-completion callbacks as best-effort — completion discipline belongs in
+the stage prompt, not in hoping the callback fires.
+
+**Mechanized stage/skeptic firing (F7 S2).** Prompt discipline is now PAIRED with a mechanism: a **watcher**
+polls the run journal (the §Marginal-budget rail run journal below — its **binding** state source) on a
+bounded interval and, when a stage has been RUNNING past a stall threshold, **advances the stalled stage or
+fires the cadence skeptic without operator input, logging each firing**. The watcher reads the JOURNAL, not
+the Workflow in-session `agent()` cache — an external watcher process cannot reach that cache, so the
+journal's stage / status / timestamps are the only pollable substrate. **Disclosure:** the watcher
+IMPLEMENTATION is dev-repo harness machinery (`harness/lib/stage-watcher.mjs` — a Windows-compatible poll
+loop, no cron assumption); the capability is the contract, the mechanism is not shipped. A prose-only
+sibling run with no watcher falls back on the poll-don't-wait prompt discipline above — disclosed here.
+
 ## Marginal-budget rail + report-on-halt
 
 - **Budget cap** — halt when the run's **marginal** spend exceeds the ceiling. `budget.spent()` is
   the shared session pool, NOT the run's cost; **capture the start** spend and gate on the delta, or
   a run fired late in a long session trips on the session's prior spend.
 - **Report on halt** — every stop writes a report naming the stop reason. Never silently exit green.
+- **Runway forecast (F7 S5)** — beyond the reactive halt, project the run forward: realized tokens accrue
+  per completed stage into the run journal, then `spent + projected-remaining` (the average realized cost
+  per completed stage applied to the remaining stages) is compared against the budget. When the projection
+  crosses the ceiling, emit **`forecast: over-budget at stage N`** (binding line shape) **before** the
+  overrun — a warning ahead of the halt, never a replacement for it; report-on-halt semantics are unchanged.
+  Computed by `harness/lib/run-journal.mjs` `forecastRunway(journal, { budget })` over the journal's
+  per-stage token accrual.
 - **Capture the `runId` at launch; resume, don't restart** — a `Workflow` launch returns a
   `runId`; on a kill or hang, relaunch with `Workflow({scriptPath, resumeFromRunId})` — the
-  unchanged `agent()` prefix replays from cache and only live work re-runs. Same-session only: a
-  run killed today cannot be resumed tomorrow, so resume immediately or write the loss off.
+  unchanged `agent()` prefix replays from cache and only live work re-runs. The `agent()` cache itself is
+  same-session, but the **run journal (F7 S3)** persists run state across sessions, so a next-session
+  `reconcile` resumes a killed run from the first non-done stage instead of abandoning it.
+
+  > **Superseded (F7 S3, 2026-07-18):** this rail previously read *"Same-session only: a run killed today
+  > cannot be resumed tomorrow, so resume immediately or write the loss off."* The per-run journal
+  > (`harness/lib/run-journal.mjs`, under the runs dir — stage / status / `runId` / timestamps) is now the
+  > durable cross-session run-state substrate layered over the same-session `agent()` cache: a `reconcile`
+  > pass in a new session reads the journal and returns an idempotent plan — **resume** the killed run from
+  > where it stopped, **complete-tail** a finished-but-unfinalized run, or **none**. It is also the wave's
+  > shared run-state source (Step 5's watcher polls it; Step 7 accrues per-stage tokens into it).
 
 Each sibling keeps its own skill-specific prohibitions list (the AC-anchored "four prohibitions"
 glance list) — this rail is the shared mechanism, not the full safety-rails section.
@@ -144,6 +181,16 @@ defined in that skill.
 artifact schema/path (`docs/business-rules/`, `docs/tech-debt/{area}.md`, `docs/reference-model.md`)
 stays defined in that skill.
 
+**Evidence gate on write (F7 S1.3).** Wherever a registry row or a KB `- verify:` sub-bullet is written,
+run the shipped structural evidence predicate (`tools/evidence-gate.mjs`
+`structuralEvidenceOk(evidence, claim)`) first: evidence that is empty, a **claim-echo**, or carries **no
+re-execution content** (no line reference and no quoted/output artifact) is **dropped** — never recorded as
+verified. The `minLength: 1` schema check a verdict already passes cannot express this; the predicate is the
+code enforcement, paired with this instruction. The harness chokepoints run it in code (the mine-verify
+verdict handler drops it live; the C1 registry writer and the KB serializer expose it at their seam). The
+residual — a prose-only sibling run with **no orchestrating code** — must run the predicate by hand; that
+path is prompt-tier, disclosed here.
+
 **Refresh outcome grammar** (run 2+, re-verify existing rows against the git delta since
 `last_verified`):
 - **resolved** — the evidence command no longer reproduces -> disposition `resolved` + re-stamped
@@ -156,19 +203,84 @@ stays defined in that skill.
 Each skill keeps its own refresh **triggers** and disposition/verdict vocabulary; this is the
 shared grammar the triggers map onto.
 
+## Shipped gate battery — invoke in place (ADR-62)
+
+`mine-verify-cover` ships the Cover-stage §6 gate battery as an executable artifact at
+`tools/cover-gates.mjs` (relative to this skill's base directory). It is the ONE canonical copy — the
+ADR-62 hash-drift anchor: **target-agnostic, zero imports**, seven exported gates (`suiteGreen`,
+`noFlaky`, `mutationFloor`, `targetMutated`, `noNewSkips`, `charPin`, `mutationRatchet`). The
+expected-survivor exclusion set is **caller input** (`opts.expectedSurvivorLines` on `mutationFloor`) —
+the shipped file carries **no per-class default**, so a fresh target never inherits another class's
+dead lines.
+
+**Invoke-in-place recipe (the default path).** When this skill is Skill-tool loaded the harness
+announces `Base directory for this skill: <base-dir>`. The orchestrator computes the gates by importing
+the shipped file **by absolute path** — no copy, no vendoring:
+
+```
+# <base-dir> = the announced "Base directory for this skill:" path for mine-verify-cover.
+# An orchestrator-side runner imports the shipped battery by ABSOLUTE path (passed as argv[1]) and
+# gates the runner agent's JSON output — REPORT/SRC/DEAD_LINES come from that JSON at run time.
+# NOTE: dynamic import() of an OS-absolute path must go through a file:// URL (Windows-safe) —
+# import(pathToFileURL(path).href), never import(path) on a bare "D:\..." literal.
+node --input-type=module -e "
+  import('node:url').then(({ pathToFileURL }) =>
+    import(pathToFileURL(process.argv[1]).href).then((g) => {
+      const gate = g.mutationFloor(REPORT, SRC, { floor: 75, expectedSurvivorLines: DEAD_LINES });
+      console.log(gate.pass ? 'PASS' : 'FAIL', gate.detail.scorePct + '%');
+    }));
+" "<base-dir>/tools/cover-gates.mjs"
+```
+
+Inside a `Workflow` body that cannot `import` (the runtime has no module/fs access), paste the gate
+functions inline VERBATIM from the shipped file — the harness drivers do exactly this — and keep the
+inlined copy in sync with the shipped canonical.
+
+**Consumer-CI vendored fallback (ADR-5 read-index — documented, NEVER the default).** A consuming CI
+that cannot reach the installed plugin path may vendor a **hash-stamped** copy of `tools/cover-gates.mjs`
+into its own repo, pinning the source file's hash; on a hash mismatch the copy is stale and CI
+re-vendors. This is the read-index fallback for locked-down CI only — invoke-in-place is the default,
+vendoring is the exception, and a vendored copy is a copy that can drift.
+
+**Stability disclosure (MEDIUM).** The `Base directory for this skill:` announcement is the single fix
+locus for the shipped path: if the announcement mechanism or the base-dir shape changes, this ONE recipe
+updates and every consumer follows — MEDIUM stability, one-file blast radius by design (ADR-62).
+
 ## Kickoff checklist (new-target runs, B4)
 
-Before launching any mine-family run on a **NEW target** (a repo or class it hasn't scanned
-before), confirm all four up front:
+Before launching any mine-family run on a **NEW target** (a repo or class it hasn't scanned before), an
+orchestrator-verified **preflight** confirms the preconditions below. A failed precondition **REFUSES the
+run with a named reason** (the `mine-algorithm` Stage-0 HARD BLOCK pattern) — the run never launches on an
+unmet assumption.
 
-1. **Tool preflight confirmed** — the target's toolchain (test runner, mutation tool, Code
-   Maat/lizard, or the metric-layer preflight) is verified present, or the documented fallback is
-   consciously accepted.
-2. **Expected survival rate stated up front** — a rough mined->confirmed expectation, so a run
-   that comes back far off that number gets a second look before the registry is trusted.
-3. **stop-budget set** — the marginal-spend ceiling this run halts at (see the budget rail above).
-4. **Run-report location named** — where the run's report (areas scanned/skipped, survival rate,
-   registry delta) will land, before the run starts.
+**Tier 1 — Universal (blocking, ALL members):**
 
-**Wired-but-advisory:** each sibling skill carries one pointer line at its run-launch area ("on a
-NEW target, walk this checklist first") — discipline without an enforced gate.
+1. **Tool preflight confirmed** — the target's toolchain (test runner, mutation tool, Code Maat/lizard, or
+   the metric-layer preflight) is verified present, or the documented fallback is consciously accepted.
+2. **Expected survival rate stated up front** — a rough mined→confirmed expectation, so a run that comes
+   back far off that number gets a second look before the registry is trusted.
+3. **stop-budget declared** — the marginal-spend ceiling this run halts at (see the budget rail above).
+4. **Run-report location named** — where the run's report (areas scanned/skipped, survival rate, registry
+   delta) will land, before the run starts.
+
+**Tier 2 — Member-conditional (blocking when applicable; skipped by member class otherwise):**
+
+- **Registry existence/freshness** — **oracle-consuming members ONLY** (`mine-design`, `mine-algorithm`):
+  the BR registry the run consumes as its oracle must exist and be fresh, else the run STOPS and requests a
+  `mine-verify-cover` run to produce/refresh it (the anti-self-mine independence rule). Every other member
+  produces or does not consume a registry — the check is **reachable and skipped by member class**, never
+  vacuously absent.
+- **Mined-test-root disclosure** — **Cover-arm runs ONLY**: a Cover-arm run declares where the mined tests
+  are rooted, before writing them.
+
+**Enforcement (F7 S4).** For workflow-run members the preflight is **code-enforced** — the orchestrator
+invokes the shipped checker (`tools/kickoff-preflight.mjs` `preflight(config)`), which returns the named
+refusals; a non-empty refusal list HALTS the launch. The skill-text obligation is thereby PAIRED with an
+enforcement. **Residue (disclosed):** a **prose-only** sibling run with no orchestrating code walks the same
+two tiers by hand — the discipline, not the gate.
+
+> **Superseded (F7 S4, 2026-07-18):** the prior label read *"**Wired-but-advisory:** each sibling skill
+> carries one pointer line at its run-launch area (\"on a NEW target, walk this checklist first\") —
+> discipline without an enforced gate."* The preflight is now an **enforced gate** for workflow-run members
+> (`tools/kickoff-preflight.mjs`); the per-sibling pointer lines remain, but the checklist is no longer
+> advisory-only.

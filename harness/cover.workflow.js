@@ -55,7 +55,9 @@ export const meta = {
 }
 
 // --- Inlined §6 gate battery (self-contained — the Workflow runtime has no module/fs access) -------
-// SOURCE OF TRUTH: harness/lib/cover-gates.mjs (unit-tested in tests/unit/cover-gates.test.mjs). The
+// SOURCE OF TRUTH: plugins/nexus/skills/mine-verify-cover/tools/cover-gates.mjs (the SHIPPED canonical
+// battery, ADR-62; harness/lib/cover-gates.mjs is a dev-repo re-export shim, unit-tested in
+// tests/unit/cover-gates.test.mjs). The
 // Workflow runtime parses this body in a non-module context, so a static `import` is a syntax error and
 // there is no filesystem to load a sibling module — the workflow must be self-contained (same reason the
 // Inc-1 workflow inlines its target config). Copied VERBATIM from cover-gates.mjs; keep in sync until a
@@ -218,7 +220,7 @@ function mutationRatchet(priorScore, currentScore) {
 const _argsRaw = (typeof args !== 'undefined' && args) ? args : {}
 let _args = {}
 try { _args = typeof _argsRaw === 'string' ? JSON.parse(_argsRaw) : _argsRaw } catch { _args = {} }
-const SR = 'D:\\src\\sprint-rituals'
+const SR = _args.sr ?? 'D:\\src\\sprint-rituals'
 // Model for every agent here. Default Sonnet (the mutation gate measures test quality, so the model
 // is validated by the gate, not assumed); override via _args.model.
 const MODEL = _args.model ?? 'sonnet'
@@ -260,7 +262,7 @@ const PATTERN_BLOCK = _args.patternTests ?? `PATTERN TO FOLLOW (the already-done
 
 // Runner results land HERE — nexus-side + git-ignored (.gitignore: harness/.runs/). NEVER in the SR tree
 // (Step-7 hazard: a runner result file in the SR working tree would strand in the SR commit).
-const RUNS_DIR = 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
+const RUNS_DIR = _args.runsDir ?? 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
 const RUNNER_RESULT = _args.runnerResult ?? `${RUNS_DIR}\\cover-bugratio-run.json`
 
 // First-pass acceptance floor (design §6 / plan Step 5 stop rule): per-file REACHABLE kill >= 75. The

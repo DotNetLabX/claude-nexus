@@ -214,7 +214,8 @@ function labelRed(r) {
 }
 
 // =================================================================================================
-// Inlined §6 gate helpers (SOURCE OF TRUTH: harness/lib/cover-gates.mjs). Copied VERBATIM — same
+// Inlined §6 gate helpers (SOURCE OF TRUTH: plugins/nexus/skills/mine-verify-cover/tools/cover-gates.mjs,
+// the SHIPPED canonical battery — ADR-62; harness/lib/cover-gates.mjs re-exports it). Copied VERBATIM — same
 // runtime-contract reason. The spec front-end REUSES these helpers (AC-1) but NOT cover.workflow.js's
 // all-gates-green stop: suiteGreen is computed over the GREEN subset for the mutation-pass precondition
 // only, NEVER applied as a pass/fail to the spec-driven reds (which are the primary output — ADR-D).
@@ -294,7 +295,7 @@ const _argsRaw = (typeof args !== 'undefined' && args) ? args : {}
 let _args = {}
 try { _args = typeof _argsRaw === 'string' ? JSON.parse(_argsRaw) : _argsRaw } catch { _args = {} }
 
-const KG = 'D:\\src\\knowledge-gateway'
+const KG = _args.kg ?? 'D:\\src\\knowledge-gateway'
 // Model for every agent. Default Sonnet (owner directive — matches cover/loop defaults); override via _args.model.
 const MODEL = _args.model ?? 'sonnet'
 const TARGET_CLASS = _args.targetClass ?? 'GeneratedSqlValidator'
@@ -326,7 +327,7 @@ const OK_VALUE = _args.okValue !== undefined ? _args.okValue : null
 
 // Runner results + the run report land HERE — nexus-side + git-ignored (.gitignore: harness/.runs/). NEVER
 // in the KG tree (a result file in KG's working tree would strand in a KG commit — cover.workflow.js:261-264).
-const RUNS_DIR = 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
+const RUNS_DIR = _args.runsDir ?? 'D:\\src\\claude-plugins\\nexus\\harness\\.runs'
 const RUNNER_RESULT = _args.runnerResult ?? `${RUNS_DIR}\\spec-cover-generatedsqlvalidator-run.json`
 // Q8 (architect-confirmed default): the run report is git-ignored, nexus-side, mirroring the RUNS_DIR discipline.
 const REPORT_PATH = _args.reportPath ?? `${RUNS_DIR}\\spec-cover-generatedsqlvalidator.md`

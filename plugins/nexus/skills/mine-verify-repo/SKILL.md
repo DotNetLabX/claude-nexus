@@ -112,14 +112,12 @@ commands*.
 **On a NEW target, walk the core §kickoff checklist first** (tool preflight, expected survival rate,
 stop-budget, run-report location) before launching a run.
 
-**Poll, don't wait (canonical statement — `mine-verify-cover`'s topology paragraph mirrors this).**
-Subagent background-run completion notifications are unreliable: a stage prompt must instruct its
-agent to run measurements in the FOREGROUND (a bounded poll loop if the command runs long) and never
-end its turn waiting on a background-command completion notification. On the pilot's platform the
-notification repeatedly failed to re-invoke the waiting agent — a Step-6 developer stranded TWICE on
-this exact pattern before an explicit "poll, don't wait" instruction fixed it; once all 23
-pilot-stage prompts carried the instruction, no stage stranded. Treat background-completion callbacks
-as best-effort — completion discipline belongs in the stage prompt, not in hoping the callback fires.
+**Poll, don't wait + mechanized firing.** Read `../mine-verify-cover/references/mine-family-core.md`
+§Stage-completion discipline + mechanized firing — the canonical "poll, don't wait" completion discipline (background-run
+completion callbacks are best-effort; run measurements in the foreground, never end a turn waiting on one)
+and the F7 S2 watcher that advances a stalled stage / fires the cadence skeptic off the run journal both
+live there. Disclosure: the watcher implementation is dev-repo machinery; a prose-only run relies on the
+poll-don't-wait prompt discipline.
 
 ## Contracts
 
