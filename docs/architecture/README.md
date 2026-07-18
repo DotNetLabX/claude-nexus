@@ -1692,6 +1692,48 @@ a ban also forfeits the instance discrimination that fixes the count-bucket coll
 
 ---
 
+## ADR-62 — Shipped executables ride the skill bundle and run in place from the version-keyed plugin cache; vendored hash-stamped copies only for consumer CI — Accepted
+
+> **Status: Accepted — F7-MineMachineryBorrowWave2 Stage-0 spike, owner-confirmed 2026-07-18**
+> (spike report: `docs/specs/F7-MineMachineryBorrowWave2/delivery/spike-report.md`; extracted per
+> ADR-28, not re-authored). Register re-checked — highest was ADR-61; 62 free, no renumber. **One
+> decision for both waves:** F7-S1 (the gate battery) and F8-W1 (the probe runner) — resolves both
+> proposals' Unresolved #1.
+
+**Context.** The mine family's #1 measured gap is prose-tier enforcement: the engineered gate
+battery (`harness/lib/cover-gates.mjs`, 235 lines, zero imports) ships nothing to consumers, and
+F6 deferred "ship the gates" (R4) on exactly this question. Platform constraint #2 (no
+`${CLAUDE_PLUGIN_ROOT}` expansion inside skill markdown) blocked the template-variable path. The
+Stage-0 spike surfaced what the F6-era analysis missed: the harness announces **"Base directory
+for this skill: {plugin-cache path}"** on every plugin-skill invocation — observed live for
+plugin-shipped skills, and the bundled-scripts pattern is documented platform behavior.
+
+**Decision.** Executables ship **inside the skill directory** and run **in place from the
+version-keyed plugin cache**, invoked via the runtime-announced skill base directory — no copy
+step, no template variable, no package. The invocation recipe lives in exactly **one shipped
+locus** (the family-core reference), so a platform change is a one-file fix; the S1 build probes
+`${CLAUDE_SKILL_DIR}` as a strengthener. **Consumer-CI fallback (never the default):** a repo that
+needs the gates on CI runners (no plugin cache there) vendors a **hash-stamped copy** listed by
+the ADR-5 read-index; drift is visible as a hash mismatch against the plugin's canonical file.
+
+**Why.** Most reversible option (zero consumer-repo footprint — ADR-25); version-true by
+construction (the cache path embeds the plugin version, so the version-keyed install IS the
+distribution); no transcription — model transcription is the exact failure mode the enforcement
+runtime exists to kill (measured 1-of-13 prose compliance).
+
+**Tradeoffs.** The base-dir announcement is a harness convention, not a formal API (stability:
+MEDIUM) — mitigated by the single-locus recipe + the `${CLAUDE_SKILL_DIR}` probe. CI runners
+cannot use the cache — hence the vendored fallback, which reintroduces copy drift in exactly one
+sanctioned, hash-visible place.
+
+**Rejected.** *Kickoff-generated from verbatim skill blocks* — re-transcribes 235 lines per
+consumer with hash-retry loops; transcription is the enforced-against failure mode. *A versioned
+package install* — a consumer-side dependency whose removal is breaking (near one-way door,
+ADR-25), plus publishing infrastructure owed. *Vendored copies as the default* — copy drift as
+the norm rather than the CI exception.
+
+---
+
 ## Inherited pipeline decisions
 Pre-existing tradeoffs, retained:
 

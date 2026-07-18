@@ -102,8 +102,11 @@ Plan: ../delivery/plan.md (2026-07-18) — W3 planned. W1 remains gated.
 - **W2 split into two repo-scoped runbooks executed where the artifacts live** — this repo never
   edits KG or VWH artifacts. (Two-way door; rejected: running the edits from this session — wrong
   repo boundaries, no local gates.)
-- **F7/F8 delivery-mechanism decision unified** — recorded in both artifacts. (Deferred-shared,
-  status: deferred to F7 Stage-0.)
+- **F7/F8 delivery-mechanism decision unified** — recorded in both artifacts. (Deferred-shared;
+  **resolved 2026-07-18: ADR-62** — W1's runner ships inside the skill directory and runs in place
+  from the version-keyed plugin cache via the base-dir announcement; vendored hash-stamped copies
+  only for consumer CI. Note for W1: KG retired its project-local skill on 2026-07-18 — recover
+  `tools/run-probe.cs` from KG git history at `1843209` if no longer on disk.)
 
 ## Critic disposition (2026-07-17, code-grounded, verdict GO-with-fixes — all folded)
 
