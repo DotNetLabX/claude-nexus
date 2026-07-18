@@ -1,8 +1,9 @@
 # F3 Stage-0 pilot plan — first real run on the analytics workspace (fmcg_platform)
 
-**Status:** Plan — architect (Fable 5), 2026-07-18. Review mode: self cross-check (this runbook
-restates the critic-passed F3 tech-spec Stage-0 plus the shipped skill's own procedure; no new
-design decisions). **Executes in the analytics workspace repo** (the fmcg_platform consumer — the
+**Status:** Plan — architect (Fable 5), 2026-07-18. Transcription-fidelity critic ran same day:
+**GO-with-fixes, folded** (exit criteria, eleven-input count, namespaced skill name, run-report
+sections, and the runner-recovery commit all verified against live sources; one MEDIUM provenance
+wording folded — the shadowing rule now cites the F7 spike report). **Executes in the analytics workspace repo** (the fmcg_platform consumer — the
 recorded first consumer, `tech-spec.md:26-28`; profile operator-owed since adhoc-AnalystExtension).
 Nothing in the nexus repo changes during the pilot; the pilot's outputs come back as files under
 this `delivery/` folder.
@@ -13,8 +14,8 @@ run #2 (refresh/migration path); this pilot is run #1 on a fresh consumer — th
 
 | # | Precondition | How |
 |---|--------------|-----|
-| 1 | nexus-analytics **0.3.0+** installed and current in that workspace | `/plugin update`, confirm version |
-| 2 | Invoke the skill **namespaced**: `nexus-analytics:mine-semantic-model` | a project-local same-name skill would shadow the bare name (platform rule, spike-verified); record which skill executed |
+| 1 | nexus-analytics **0.3.0+** installed and current in that workspace | `/plugin update`, confirm version (the tech-spec's "0.1.0 pilot" phrase is the era label from spec time, not a version requirement) |
+| 2 | Invoke the skill **namespaced**: `nexus-analytics:mine-semantic-model` | a project-local same-name skill shadows the bare name — docs-verified in the F7 Stage-0 spike (`docs/specs/F7-MineMachineryBorrowWave2/delivery/spike-report.md` §Rider); record which skill executed |
 | 3 | A **read-only DSN** for fmcg_platform resolvable in that shell | never committed, never echoed; the forbidden dev/admin surface named explicitly |
 | 4 | A **probe runner** exists or is adapted | the skill ships none (project-provided by contract). Fast path: recover KG's `run-probe.cs` shape from KG git history (`git -C D:\src\knowledge-gateway show 1843209:.claude/skills/mine-semantic-model/tools/run-probe.cs`) and re-point its BR1 refusal rules at THIS workspace's roles. This adaptation experience is exactly the W1 requirements input — log every rough edge |
 

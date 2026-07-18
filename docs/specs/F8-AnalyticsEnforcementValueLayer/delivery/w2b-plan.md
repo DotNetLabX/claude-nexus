@@ -1,8 +1,8 @@
 # F8-W2b plan — VWH retail-profile corrections from KG's verified derivations
 
-**Status:** Plan — architect (Fable 5), 2026-07-18. Review mode: self cross-check (this runbook is
-a per-item expansion of the critic-passed F8 tech-spec §W2b; content authority is the row-verified
-reconciliation doc — no new adjudications here).
+**Status:** Plan — architect (Fable 5), 2026-07-18. Transcription-fidelity critic ran same day:
+**GO-with-fixes, folded** (16/16 D-rows verified exact against the reconciliation doc; one LOW —
+the D15 join key — folded).
 **Executes in:** `D:\omnishelf\virtual-worker-harness`, target `profiles/retail/`. **This repo's
 files never change during W2b**; what comes back feeds the W2-close ADR here.
 **Content authority:** `D:\src\claude-plugins\nexus\docs\research\2026-07-17-semantic-model-reconciliation.md`
@@ -35,7 +35,7 @@ same: replace the flat-column hierarchy with `store_groups` / `store_group_level
 | D12 Aggregation | KR | condition the "percentages AVG" rule: second-stage rollups recompute `SUM(num)/SUM(den)` at target grain | KG BR1/BR2 |
 | D13 Hierarchy | SM | per Step 0 — `store_groups`/`store_group_levels` | user-directed 2026-07-09 |
 | D14 Phantom table | SM | DELETE the `analytics_report_qa` mapping — the table does not exist; QA lives as columns on reports | live whole-area mine, 15 tables |
-| D15 Planogram targets | SM | add the ~98%-null caveat on `target_osa/target_pog`; real thresholds via `task_kpis`; grading binds to `planogram_versions` | live null-rate |
+| D15 Planogram targets | SM | add the ~98%-null caveat on `target_osa/target_pog`; real thresholds via `task_kpis`; grading binds to `planogram_versions` via `planogram_version_id` (not the planogram header) | live null-rate |
 | D16 Report items | SM | row count → est 1.07B; loosen the prohibition to the verified capability (flexible aggregation surface, report-IDs-first guard unchanged) | user-confirmed |
 
 ## Preserve list (VWH-authoritative — do NOT overwrite)
