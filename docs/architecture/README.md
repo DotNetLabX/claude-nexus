@@ -1783,6 +1783,44 @@ different consumer and lifecycle.
 
 ---
 
+## ADR-64 — Cross-model reconciliation disposition: verified derivations win; engagement knowledge imports — Accepted
+
+> **Status: Accepted — F8-AnalyticsEnforcementValueLayer W2 close, 2026-07-18.** Extracted per
+> ADR-28 (never re-authored) from the ratified F8 proposal + the reconciliation doc's §5
+> dispositions at W2 execution close — W2a: KG import landed (`knowledge-gateway 1843209`); W2b:
+> the VWH correction pass executed 2026-07-18 (16/16 items, working tree under operator review).
+> Register re-checked — highest was ADR-63; 64 free, no renumber.
+
+**Context.** Two semantic models of the same database — KG's governed bundle (0/500-attested
+derivations, provenance ledger) and VWH's engagement profiles (battle-tested value/engagement
+knowledge) — materially disagreed: 20 overlapping concepts, **12 verified conflicts**; five of
+VWH's live client-facing KPI formulas were refuted against KG's verified derivations, while KG
+structurally lacked eight classes of knowledge only VWH's engagements produce (measured rates,
+SAP mappings, value weights, feed states, field measurements).
+
+**Decision.** When two models of the same data conflict: **the model holding verified derivations
+wins on formulas, filters, and mappings** — corrections flow from it as a targeted pass, each
+correction citing the verification stamp it adopts; **engagement-earned knowledge imports the
+other way** through the governed feedback loop (ledger-first staging, typed
+`kb(citation)`/`interview(date)` origins — never silently-authored constructs); **dual-framing
+findings land in both models** (the D8 phantom⇄ISA decomposition). Neither model wholesale
+re-mines the other's ground: a stamped correction pass beats a re-mining campaign.
+
+**Why.** The conflicts were not stylistic — client deliverables computed numbers differently from
+verified platform semantics — and the verified side lacked exactly the knowledge engagements
+earn. A standing disposition rule turns future cross-model drift into mechanical routing instead
+of re-litigated debate.
+
+**Tradeoffs.** "Verified wins" presumes the stamps stay live — staleness is owned by each model's
+refresh machinery (KG's Audit ordering; VWH's own passes). The import path costs a governed run
+rather than a quick paste — accepted; that is what keeps provenance honest.
+
+**Rejected.** *Each model owns its truth* — same DB, same client; divergence ships wrongness
+(measured, not hypothetical). *Wholesale re-mine of the losing model* — a campaign where a day's
+stamped correction pass suffices; revisit only if drift recurs after correction.
+
+---
+
 ## Inherited pipeline decisions
 Pre-existing tradeoffs, retained:
 
