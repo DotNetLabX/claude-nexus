@@ -12,6 +12,7 @@ release-plugin bump at wave close (**MINOR** — new capability: shipped enforce
 deferred); the VWH reference mechanisms (`kernel/monitor.py`, `kernel/recovery.py`,
 `kernel/charter.py`, `kernel/conclusion.py`, `dag.py` cost accrual — patterns only, no code
 imports).
+**Plan:** `docs/specs/F7-MineMachineryBorrowWave2/delivery/plan.md`
 
 ## Goal
 

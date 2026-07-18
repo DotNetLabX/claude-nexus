@@ -24,6 +24,15 @@ raw outputs. Fixtures authored by a dispatched subagent (architect writes no sou
   exist at session start (created 2026-07-17 20:36 by the fixture; this session is older) — the
   documented behavior: "a running session doesn't detect a newly created `agents` directory"
   (sub-agents doc). Not a refutation of enforcement; a registration-timing fact.
+- **Leg A — COMPLETED 2026-07-18 at S1 build kickoff (run `wf_e5da4915-84b`).** The fixture
+  registered as predicted (`.claude/agents/` pre-existed at session start) and dispatched cleanly
+  under Workflow. The `tools: Write` allowlist was **mechanically enforced for the custom type**:
+  Read, ToolSearch, Bash, and PowerShell were all absent from the toolset — no call could even be
+  issued ("the Read tool is not available in my toolset"; "ToolSearch is absent from my toolset";
+  "neither shell tool is available") — while the in-allowlist Write succeeded ("File created
+  successfully"). One level stronger than Leg B: for a custom type the ToolSearch escape hatch is
+  not merely closed, ToolSearch itself is absent. Confirms verdict 1 for custom `.claude/agents/`
+  types. Raw probe log: workflow journal `wf_e5da4915-84b/journal.jsonl`.
 - **Docs:** the `tools:` frontmatter field is an allowlist the harness enforces — restricted tools
   are absent from the agent's toolset (https://code.claude.com/docs/en/sub-agents.md).
 - **No path-scoped denial exists:** permission deny rules are tool-level; no documented mechanism
@@ -43,8 +52,9 @@ raw outputs. Fixtures authored by a dispatched subagent (architect writes no sou
    The "pending upstream platform support" limbo is over — replaced by a tested fact, exactly what
    the spike promised. Future lever (out of S1 scope, speculative **MEDIUM**): a `PreToolUse` hook
    inspecting Read paths; subagent applicability undocumented.
-4. Remaining leg: the custom-type leg now completes for free in any NEXT session
-   (`.claude/agents/` pre-exists → the fixture registers). One-minute check at S1 build kickoff.
+4. **Closed 2026-07-18:** the custom-type leg ran at S1 build kickoff exactly as predicted — see
+   Leg A COMPLETED above. S0a has no remaining legs; verdicts 1–3 stand unchanged (verdict 1 now
+   also directly observed for custom types).
 
 ## S0b — delivery mechanism for shipped executables (RECOMMENDATION — pending owner confirmation)
 
@@ -101,9 +111,9 @@ evidence" claim attaches only if the *plugin* skill executed — which now prova
 
 ## Fixture disposition & incidentals
 
-- `.claude/agents/spike-sealed-reader.md` — **kept deliberately** (untracked, outside `plugins/`,
-  no bump impact): it registers in any next session and completes the custom-type leg at S1
-  kickoff. Delete after that check.
+- `.claude/agents/spike-sealed-reader.md` — **deleted 2026-07-18** after the Leg-A check completed
+  at S1 build kickoff (it was kept untracked across sessions precisely for this, and registered as
+  predicted).
 - Canary + probe files live in the session scratchpad — no action.
 - Incidental: even with legitimate Read access, the Leg-B agent declined to echo the canary's
   DO-NOT-LEAK token — model-tier discretion. Recorded as color; it is not enforcement and changes
