@@ -1,6 +1,23 @@
 # nexus — Changelog
 
 
+## [1.34.9] — 2026-07-18
+**Back-port the first consumer's FL-2 verification-rescan feedback into `mine-verify-flows`**
+(hand-carried in the omni twin 2026-07-15, now canonical; 17-device-run calibration). Five
+guidance additions, all evidence-cited: (1) scrub token numbering must not depend on the document
+position of excluded content — first-seen-order across excluded subtrees produces phantom
+`{Path_A}`↔`{Path_B}` swap diffs in gated fields; (2) ranked below-the-winner candidate lists
+(alternative-SKU/OCR tails) are excluded-by-class from the start — gate the winner, never the tail
+(2nd occurrence); (3) when a verify pair fails on a field DERIVED from an already-excluded
+instability, enumerate the root cause's whole downstream surface and cut it in one pass, then run
+N uncounted flush runs before restarting the formal verify counter; (4) "accept the flake" is a
+legitimate third verdict at non-convergence — keep a core-value field gated with a documented
+flake signature + rerun-once policy; (5) an exclusion baseline transfers only for shared output
+files — every NEW file family adds a calibration round (2nd occurrence). Plus a stage recipe:
+identical-replay fixtures on verification-semantics flows assert the FAIL branch — name the
+expected verdict, never default to the happy path.
+  - skill change (mine-verify-flows)
+
 ## [1.34.8] — 2026-07-16
 - Agent model retier: po/architect/reviewer move to fable; developer/solo/data-analyst move to opus.
   - agent instruction/behavior change

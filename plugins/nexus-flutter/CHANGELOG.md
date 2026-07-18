@@ -1,6 +1,17 @@
 # Changelog — nexus-flutter
 
 
+## [0.4.3] — 2026-07-18
+**Back-port the first consumer's FL-2 feedback into the `mine-verify-flows-flutter` module spec**
+(hand-carried in the omni twin 2026-07-15, now canonical). The scrubJson spec gains the
+token-numbering pitfall (first-seen-order tokens assigned across excluded subtrees leak excluded
+flips into gated fields as phantom pairwise `{Path_N}` swaps; assign tokens over non-excluded
+content only, or derive identity from the value, and the diagnostic to run when the swap signature
+appears on an unfixed module). The carried worked-example config gains the candidate-list
+exclusion class and marks the `**.sfr` ε as a per-flow calibration outcome, not canon (the
+consumer widened its flow to 0.015 after a single-facing step).
+  - skill change (mine-verify-flows-flutter)
+
 ## [0.4.2] — 2026-07-14
 **The Dart/Flutter fills for `mine-verify-cover`'s new abnormal-exit contract, plus a codegen-inert
 mutant class and a mined-test placement rule that keeps generated suites in CI.** Hardened against

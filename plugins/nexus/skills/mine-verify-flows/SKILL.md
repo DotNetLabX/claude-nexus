@@ -56,7 +56,7 @@ One app per run. The orchestrator is deterministic and trusted; the agents do al
 Two-stage normalization before comparison:
 
 1. **Canonicalize** — parse, recursively sort object keys, re-serialize with fixed indentation. Arrays are reordered ONLY when the flow registry marks them semantically-unordered, and then by a stable key — never blanket-reorder.
-2. **Scrub** — regex-replace volatile values with stable tokens, one token per distinct original value (`Guid_1`, `Timestamp_1`, `{Path_1}`), preserving cross-field referential identity.
+2. **Scrub** — regex-replace volatile values with stable tokens, one token per distinct original value (`Guid_1`, `Timestamp_1`, `{Path_1}`), preserving cross-field referential identity. **Token identity must not depend on the document position of excluded content** — scrubbing runs before compare-time exclusion, so first-seen-order numbering across the whole document lets an excluded-field flip renumber tokens referenced by gated fields (a phantom diff; observed on the first consumer run: a pairwise `{Path_A}`↔`{Path_B}` swap in gated fields whose actual values were identical). Number only non-excluded content, or derive token identity from the value itself.
 
 Comparison is per-field, three verdict knobs — not two:
 
@@ -92,11 +92,19 @@ For a gate over FFI/ML output documents, **start at semantic-only exact-match pl
 
 **The worked example to copy** (a shelf-scan report gate, final form after 6 verify runs): semantic exact-match on ~189 leaf fields (SKUs, anchor ids, counts, KPIs, audit trail) + class-wide `**.`-suffix **exclusions** for the geometry and garbage classes (positions, widths/heights, uninitialized-memory fields, unstable OCR candidate lists) + a single per-field tolerance, `**.sfr` ε 0.005. The FFI-stage gate asserts **semantics only**; excluding geometry wholesale is a two-way door — tolerances can be reintroduced per-field if a future consumer needs geometry gated.
 
+**Ranked below-the-winner candidate lists are excluded-by-class from the start** — any ML output that is a ranked list of alternatives below the chosen winner (alternative-SKU lists, OCR candidate lists) reshuffles its tail membership and confidences run-to-run while the winner stays stable. Gate the winner; never the tail. (2nd-occurrence evidence: pilot OCR lists + the first consumer run's alternative-SKU tails.)
+
 **Diagnose which case a nondeterministic field is before reaching for a knob.** `FieldTolerance` (value drifts within a bounded range) and `FieldExclusion` (shape varies run-to-run, or the value is garbage) solve *different* problems — a length-mismatch on a shape-varying array short-circuits before any per-element tolerance runs, so tolerance on it still flakes. And exclude/tolerate only fields with **observed** drift — never sibling fields "for safety."
+
+**When a verify pair fails on a field DERIVED from an already-excluded instability, stop patching per-field.** The first consumer run's near-tie attribution escaped three successive narrow exclusions (a verdict subtree, then an identity trio, then a top-level summary bool), each escape costing a full device run to discover. Enumerate the root cause's whole downstream surface in the golden files (grep for every field family computed from the unstable input) and cut it in ONE reviewed pass. **After any config change, run N uncounted "flush" runs (the consumer used 3) before restarting the formal verify counter** — rare flips then surface as a batch instead of one per formal round.
+
+**"Accept the flake" is a legitimate third verdict at the non-convergence decision point.** When the flipping field is the gate's core value (the consumer run: per-product placement verdicts, one flip in 12 runs), excluding it guts the gate. Keep it GATED, document the exact flake signature + a rerun-once policy next to the gate config, and treat a failure matching only that signature as the known flake — never silently widen the blind spot.
 
 ## Budget ~4 verify pairs per new output document
 
 One verify pair *samples* an ML output document's drift; it does not *bound* it. In the pilot, four pairs produced four different drift surfaces (price-tag counts → product geometry → shelf dimensions → KPI floats). Budget roughly 4 pairs before the exclusion/tolerance set stabilizes for any newly-reached FFI output document.
+
+**An exclusion baseline transfers between flows only for the output files they share.** A new flow that gates report *variants* the baseline flow never serialized (confirmation-scoped reports, assistant report strings) meets field families the baseline never saw — every NEW file family adds at least one calibration round on top of the inherited config. (2nd-occurrence evidence: pilot + the first consumer run, which inherited the pilot's baseline and still needed rounds for its three new file families.)
 
 ## A determinism verdict is scoped to the files actually produced
 
@@ -122,6 +130,7 @@ When a plan step defers verification to "a later step," that later step's own pl
 - **State the intra-miner fan-out policy in the stage prompt.** Say explicitly whether a clean-room miner may sub-delegate its reading; inter-miner independence survives a fan-out, but delivery mechanics change and cost nudge cycles when it is left implicit.
 - **Flow mining doubles as dead-code discovery.** Reachability is a whole-graph property a class-scoped mine cannot surface — dead subtrees, orphaned routes, and stub buttons fall out of Verify. Log these by-product findings in the **run report as candidate rows** for a `mine-verify-repo` run — never append them directly to `docs/tech-debt/` (that registry's row contract requires its own pipeline's evidence, priority, and provenance).
 - **Critic-review the flow tech-spec against the live fixture tree, not doc-only.** A committed fixture snapshot already containing output-shaped files (an input/output collision) and a replace-the-snapshot procedure contradicting the committed snapshot were both invisible without reading the live tree.
+- **State a verification flow's expected verdict explicitly — identical-replay fixtures assert the FAIL branch.** When a flow's semantics are "verify that something changed" (a rescan measuring whether flagged problems were fixed), replaying the identical input frames must yield the FAILED verdict — the first consumer run initially asserted the happy-path PASS and was wrong. Name the expected verdict during flow analysis; never default to the happy path.
 
 ## The flow registry
 
