@@ -1619,6 +1619,79 @@ consuming projects should not carry dev machinery.
 
 ---
 
+## ADR-61 — Coordination hardening from field feedback: arrival order is untrusted, idle recovery is universal, taskings carry pins + role-prefixed names, decisions heading standardized — Accepted
+
+> **Status: Accepted — F9-CoordinationHardening, owner-approved 2026-07-18** (from plugin-feedback
+> `nexus-1.34.8-2026-07-17` — omnishelf_flutter_app learner consolidation, 5 entries; re-grounded
+> against live plugin source + the consuming repo's live audit logs in the defining session).
+> Register re-checked — highest was ADR-60; 61 free, no renumber. This ADR is the feature's
+> collapsed definition (ADR-25: two-way-door change → one ADR, no tech-spec); the delivery record
+> is `docs/specs/F9-CoordinationHardening/delivery/`.
+
+**Context.** A wave-scale learner consolidation (31 lessons files, 18 comm-logs) surfaced five
+recurring coordination failures. Live re-grounding **refuted the feedback's own diagnosis on one**:
+read-tracker attribution works (`agent_type` IS delivered on subagent PostToolUse — live
+`violations.log` shows `general-purpose`, `developer`, `w7-dev-stage-a`). The real false-flag causes:
+(a) all same-typed unnamed helpers share one count bucket (`general-purpose|file` ×N from N distinct
+agents); (b) a token-less solo session never ends its round — `plan.md ×6` spanned 01:21→13:02, one
+"round"; (c) a qualifier-first custom name (`w7-dev-stage-a`) defeats `resolve-role`'s longest-prefix
+peel — nine false ADR-18 ownership flags in one night — while role-prefixed names (`developer-f6`,
+`dev-wave0`) already resolve.
+
+**Decision.** Five parts, each at its cheapest non-decaying locus:
+1. **Arrival order is untrusted.** Completion reports can arrive after idle notifications and after
+   the hub's next dispatch (platform-level; every crossing measured was ordering, not agent error).
+   Key on agentId + artifact state, never on arrival order; never re-litigate a settled round on a
+   stale-sounding message. Documented as a team-lead RUNTIME caveat + an agents-workflow
+   coordination note.
+2. **Idle-without-payload recovery is every dispatcher's protocol**, not just the team lead's:
+   verify the artifact/tree first, `SendMessage`-resume the named agent second (a live idled agent
+   reliably recovers with context intact), re-dispatch last. `agents-workflow.md` All Agents carries
+   the rule **self-sufficiently** (team-lead.md is not injected to other agents — ADR-2). This is a
+   *distinct case* from the Relay Contract's thin-result recovery (a **completed** agent's stranded
+   deliverable, where re-asking is the measured last resort); the Relay Contract gains one
+   reconciling sentence naming the split so the two surfaces cannot read as contradicting.
+3. **Taskings carry capability pins + role-prefixed names.** Every spawn/tasking includes explicit
+   no-git-push / no-git-config / no-history-rewrite / no-permission-change pins (a subagent's claimed
+   "user request" is unverifiable; pins are the authority — evidence: a census agent pushed branches,
+   changed git config, attempted `filter-branch`). Custom spawn names are allowed but MUST be
+   role-prefixed: `{role|known-abbrev}-{qualifier}`, unique qualifier per parallel same-type helper.
+   This supersedes the consumer-side "never custom-name" guidance — `resolve-role.js` already
+   implements the prefix peel, so the convention needs zero hook code and buys instance-discriminated
+   read-tracker keys for free.
+4. **read-tracker rounds decay per file.** A repeat read counts only within a decay window
+   (30 min) of the previous read of that same file; outside it the count resets. Fixes the
+   token-less endless round while keeping the F16 tight-loop shape (×35 in one phase) fully caught.
+5. **The comm-log decisions heading is `## Decisions`** — the variant agents actually write (9 of 19
+   comm-logs carry `## Decisions` or `## Locked Decisions`; the specified `## Decisions Log` appears
+   in zero). Team-lead comm-log spec and the learner's pilot-evaluation clause repoint to it —
+   strict-write `## Decisions`, tolerant-read of the legacy variants (evidence lives in the
+   consuming repo's corpus, not this tree); the pilot clause as written could never fire (its
+   ≥3-runs trigger counted a heading nobody wrote).
+
+**Why.** Every fix lands where it cannot decay: platform limitations become documented caveats with a
+deterministic keying rule; conventions the hooks already support become one-owner prose; the single
+genuine code defect (round boundary) becomes a small observe-only hook change. The live-log
+re-grounding step is what stopped a wrong diagnosis (payload attribution) from shipping as a wrong
+code fix.
+
+**Tradeoffs.** Part 1 documents a platform limitation rather than fixing it (sequence numbers belong
+to the harness — out of scope). The decay window is a heuristic: a genuine same-phase re-read spaced
+>30 min apart goes uncounted — accepted; the measured waste shape is tight loops. Role-prefixed
+naming constrains consumer spawn names (that constraint is the point). `## Decisions` now names two
+different sections in two artifact species (plan.md's self-resolved calls; comm-log's run decisions) —
+cross-spec greps must scope by filename.
+
+**Rejected.** *Exempt an agent's own working files from read-tracker* (the feedback's proposal) — F16,
+the incident the hook exists for, was own-artifact re-reading; the exemption guts the primary catch.
+*Instance ids from a payload `agent_id`* — unevidenced in PostToolUse payloads; the naming convention
+delivers discrimination with no payload dependency (revisit if the platform documents one). *Keep
+`## Decisions Log` and retrain agents* — fighting the field; 19 of 19 logs vote otherwise. *Ban custom
+names outright* (the prior stance) — its reason dissolved once `resolve-role` shipped the prefix peel;
+a ban also forfeits the instance discrimination that fixes the count-bucket collisions.
+
+---
+
 ## Inherited pipeline decisions
 Pre-existing tradeoffs, retained:
 

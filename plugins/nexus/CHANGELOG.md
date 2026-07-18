@@ -1,6 +1,31 @@
 # nexus — Changelog
 
 
+## [1.34.11] — 2026-07-18
+**Coordination hardening from field feedback (ADR-61 / F9-CoordinationHardening).** A wave-scale
+learner consolidation surfaced five recurring coordination failures, re-grounded against live plugin
+source + the consuming repo's audit logs (Entry 3's diagnosis was refuted and replaced). Five fixes,
+each at its cheapest non-decaying locus:
+- `rules/agents-workflow.md` — two new `## All Agents` bullets: **arrival order is untrusted**
+  (completion reports can arrive after idle notifications / the next dispatch — key on agentId +
+  artifact state, never arrival order) and **idle-without-payload recovery** for every dispatcher
+  (verify artifact → SendMessage-resume → re-dispatch), plus a **spawn-tasking contract** bullet
+  (the four capability pins no-git-push / no-git-config / no-history-rewrite / no-permission-change +
+  the role-prefixed custom-name convention `{role|known-abbrev}-{qualifier}`).
+- `agents/team-lead.md` — a fourth RUNTIME caveat (out-of-order completion reports); the custom-name
+  paragraph **reverses the outright ban into the role-prefixed convention** (`resolve-role.js` peels
+  the qualifier suffix; only qualifier-first names break resolution); a standing dispatch line
+  carrying the four pins; a reconciling sentence in the Relay Contract distinguishing live-idled
+  resume from thin-result recovery; and the comm-log `## Decisions Log` → `## Decisions` rename.
+- `agents/learner.md` — the decisions-heading pilot clause repointed to **strict-write `## Decisions`,
+  tolerant-read of the legacy `## Decisions Log` / `## Locked Decisions` variants**, so historical
+  logs stay in evidence and the ≥3-runs pilot trigger can actually fire.
+- `hooks/scripts/read-tracker.js` — **per-file round decay**: a repeat read counts only within a
+  30-min sliding window of the previous read of the same file (`DECAY_MS`), else the count resets;
+  an explicit `[n, lastTs]` shape guard treats legacy/foreign values as absent. Bounds a token-less
+  hours-long round without weakening the F16 tight-loop catch. (+4 decay tests.)
+- `commands/team-lead.md`, `commands/learner.md` — regenerated.
+
 ## [1.34.10] — 2026-07-18
 **Close the learner's consolidation loop with a commit step.** The Consolidation Workflow ended at
 the run stamp (step 8), so a completed consolidation left every promoted file — conventions,

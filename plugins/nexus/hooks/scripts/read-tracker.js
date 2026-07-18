@@ -16,15 +16,26 @@
  *
  * Round boundary: the content of .claude/.pipeline-state OR the session id changing — the
  * team lead rewrites the token at every spawn/resume, so a token change IS a new round.
- * Chunked reads (offset/limit present) are one logical read and are never counted.
+ * Within a round, a per-file decay is the fallback boundary: a repeat read counts only within
+ * DECAY_MS (30 min) of the previous read of the same file, otherwise the count resets — this
+ * bounds a token-less, hours-long session that never rolls its round (ADR-61 part 4: a solo
+ * session re-read plan.md x6 across ~12 hours as one "round") while keeping the F16 tight-loop
+ * catch intact. Chunked reads (offset/limit present) are one logical read and are never counted.
  *
- * State: .claude/audit/read-tracker.json — { session, token, counts: { "agent|file": n } }.
+ * State: .claude/audit/read-tracker.json — { session, token, counts: { "agent|file": [n, lastTs] } }.
  * A deliberate exception to boundary-detector's zero-footprint posture (counting across
- * calls needs state); reset on every round change. Fail silent on any error.
+ * calls needs state); reset on every round change, and per file on decay. A count value that is
+ * not the [n, lastTs] shape (e.g. a bare number from a pre-decay state file) is treated as absent
+ * and reset, never destructured blindly. Fail silent on any error.
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
+
+// A repeat read counts only within this window of the previous read of the same file; outside it,
+// the count resets. Bounds a token-less, hours-long session that never rolls its round (ADR-61
+// part 4) without weakening the F16 tight-loop catch.
+const DECAY_MS = 30 * 60 * 1000; // 30 minutes
 
 let input = '';
 process.stdin.setEncoding('utf8');
@@ -59,8 +70,18 @@ process.stdin.on('end', () => {
     }
 
     const key = `${agent}|${fp.toLowerCase()}`;
-    const n = (state.counts[key] || 0) + 1;
-    state.counts[key] = n;
+    const now = Date.now();
+    // Per-file round decay: a repeat read counts only within DECAY_MS of the PREVIOUS read of the
+    // same file. lastTs is refreshed on every read below (counted OR reset), so the window slides
+    // — measured from the previous read, not fixed from the first (else a >30-min tight loop would
+    // escape once its total span exceeded the window). A value that is not the [n, lastTs] shape
+    // (a bare number from a pre-decay state file, a foreign value) is treated as absent and reset
+    // — never destructured blindly, which would throw into the fail-silent catch.
+    const prev = state.counts[key];
+    const live = Array.isArray(prev) && typeof prev[0] === 'number' && typeof prev[1] === 'number'
+      && (now - prev[1]) <= DECAY_MS;
+    const n = live ? prev[0] + 1 : 1;
+    state.counts[key] = [n, now];
 
     fs.mkdirSync(auditDir, { recursive: true });
     fs.writeFileSync(stateFile, JSON.stringify(state));
