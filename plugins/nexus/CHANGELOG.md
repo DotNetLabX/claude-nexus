@@ -1,6 +1,23 @@
 # nexus — Changelog
 
 
+## [1.36.0] — 2026-07-18
+**Skill-gap miner — the ninth mine (F10-SkillGapMiner, ADR-63).** New shipped skill
+`mine-skill-gaps`: sweep ONE repo's `docs/specs/*/delivery/` estate (plan.md + lessons.md) for
+recurring uncovered work and emit a skeptic-verified, evidence-ranked skill-candidate registry at
+`docs/skill-gaps/registry.md`. Two-tier discovery — Tier A greps pre-flagged `## Skill Gaps` lessons
+entries as candidates-of-record (`gap:` cells corroborate only, orphan cells surface as capture
+leaks); Tier B clusters unflagged `(none)` skill-mapping rows by task-shape at a 3-plan threshold.
+A fresh-context skeptic kills coincidental clusters; the owner triages `candidate → confirmed` and
+routes confirmed candidates to improve-skills (the miner never builds or auto-routes). Joins the mine
+family by **name and shape** — no stack adapter, no toolchain, no capability contract
+(mine-reference-model precedent). The family core becomes nine-member (family table 9th row + the
+member-count sweep across the six siblings).
+  - new skill (mine-skill-gaps) — new capability
+  - family-membership sweep: mine-family-core.md + mine-algorithm / mine-design /
+    mine-reference-model / mine-verify-cover / mine-verify-flows / mine-verify-repo (eight → nine)
+  - owner-escalated to minor (new user-facing capability: a new shipped skill)
+
 ## [1.35.0] — 2026-07-18
 **Mine machinery borrow wave 2 (F7-MineMachineryBorrowWave2).** The enforcement gate battery now
 ships target-agnostic inside mine-verify-cover (`tools/` — cover-gates, evidence-gate,

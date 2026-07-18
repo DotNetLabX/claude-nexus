@@ -1,6 +1,6 @@
 # Proposal — Skill-gap miner (cross-plan `(none)` cluster detection)
 
-**Status:** Draft
+**Status:** Ratified — Laurentiu, 2026-07-18 (graduated: `docs/specs/F10-SkillGapMiner/definition/tech-spec.md`; extracted ADR-63)
 **Decision-maker:** Laurentiu (repo owner)
 **Recommendation:** Ship a discovery skill (working name `mine-skill-gaps`) that sweeps a consumer repo's delivery artifacts — plan.md skill-mapping tables, implementation.md, review.md, lessons.md — clusters recurring uncovered work, and emits a verified skill-candidate registry that feeds the existing evaluate-skill / improve-skills apply-half. The pilot sweep already ran on knowledge-gateway (see Pilot results) — candidate yield is confirmed, so build v1 from the pilot's parser + method.
 **Confidence:** High — the blind spot is proven (see Need) AND the pilot sweep ran (2026-07-17, knowledge-gateway): 359 `(none)` rows across 72 plans yielded six clusters clearing the 3+ threshold, two of which plan authors had *named identically* across 3–4 plans with no skill ever built — see Pilot results.
@@ -91,19 +91,37 @@ queue instead of anecdote.
 
 - Naming: `mine-skill-gaps` (joins the mine family) vs `skill-gap-miner`; and whether it formally
   adopts the mine-family method contract or just its shape.
+  **Resolved (ratified 2026-07-18):** `mine-skill-gaps`, ninth family member by name + shape
+  (mine-verify-flows is the eighth — corrected at the definition review)
+  (discover → verify → registry), NOT the method contract — no stack adapter, no ADR-60
+  obligations (markdown unit, no toolchain); mine-reference-model precedent.
 - Registry home in consumer repos: `docs/skill-gaps/` vs a section in the existing tech-debt
   registry (mine-verify-repo's home).
+  **Resolved (ratified 2026-07-18):** own species at `docs/skill-gaps/registry.md` (ADR-63) —
+  different consumer (skill authoring vs refactoring lane) and lifecycle; ADR-43/45/49 registry
+  invariants carried.
 - Recurrence threshold: 3+ confirmed by the pilot (six clusters clear it with margin).
+  **Resolved (ratified 2026-07-18):** 3+ kept for clustered (Tier-B) candidates; pre-flagged
+  post-ADR-59 records (Tier A) enter at their native count — the asymmetry vs the learner's 2+ is
+  deliberate (noisier input, higher bar).
 - Cross-repo recurrence: several consumer repos share the plugin; a task recurring once per repo
   across three repos is the same signal. Single-repo scope for v1, but the registry format should
   not preclude merging.
+  **Resolved (ratified 2026-07-18):** single-repo v1; rows carry a `repo` field so merging stays
+  format-compatible — no merge machinery now.
 - Whether review.md mining pays: reviewer findings may be too feature-specific to cluster —
   pilot decides if that source stays.
+  **Resolved (ratified 2026-07-18):** dropped from v1 — and implementation.md with it: zero of the
+  pilot's six clusters cited either. Re-entry condition recorded in the tech-spec (a confirmed
+  cluster on another estate whose only evidence lives there).
 
 ## Graduate-to-spec
 
 Technical branch: on ratification this becomes a tech-spec in this repo (the skill ships in the
 nexus plugin), authored via improve-skills' New-Skill recipe so it gets the Judgment Gate.
+
+**Graduated 2026-07-18:** tech-spec at `docs/specs/F10-SkillGapMiner/definition/tech-spec.md`;
+ADR-63 extracted (architecture README); backlog row F10-SkillGapMiner.
 
 ## Provenance
 

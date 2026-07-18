@@ -13,7 +13,7 @@ Point this at ONE app. It produces two things, automatically:
 
 It **reverse-engineers** the flows already encoded in the app — it documents what the app *does*, not what it *should* do. It never edits production source, and it never deletes a failing test to go green.
 
-This is the **flow-scoped sibling** of the mine family (ground truth: routes/screens/blocs + the app's on-device output documents; gate: a sabotage check over golden-master comparison). Read `../mine-verify-cover/references/mine-family-core.md` §The mine family for the full 8-row family table and the shared invariant (bounded unit → clean-room miners → consolidate → skeptic verify → graded/verified registry) all eight members follow.
+This is the **flow-scoped sibling** of the mine family (ground truth: routes/screens/blocs + the app's on-device output documents; gate: a sabotage check over golden-master comparison). Read `../mine-verify-cover/references/mine-family-core.md` §The mine family for the full 9-row family table and the shared invariant (bounded unit → clean-room miners → consolidate → skeptic verify → graded/verified registry) all nine members follow.
 
 This is the **stack-neutral method**. The device toolchain (on-device runner, golden bless/pull mechanics, output capture, the golden-gate module, harness bringup) comes from a paired **stack adapter** skill — `mine-verify-flows-flutter` for Dart/Flutter. The method here does not change per stack; only the adapter does.
 

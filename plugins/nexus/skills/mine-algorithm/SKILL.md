@@ -23,9 +23,9 @@ unit's verified behavior, and does the swap earn a quantified win?**
 This is the **seventh mine** — the algorithm-shaped sibling of the mine family (ground truth: the
 BR registry as the conformance oracle; gate: row-by-row deviation classification with
 deviation-triggered row re-grounding). Read
-`../mine-verify-cover/references/mine-family-core.md` §The mine family for the full 8-row family
+`../mine-verify-cover/references/mine-family-core.md` §The mine family for the full 9-row family
 table and the shared invariant (bounded unit -> clean-room miners -> consolidate -> skeptic verify
--> graded registry) all eight members follow, and §Routing boundary for the line that decides an
+-> graded registry) all nine members follow, and §Routing boundary for the line that decides an
 algorithm-shaped unit belongs here versus a rule/mapping-shaped unit that belongs to `mine-design`.
 
 What changes here is the ground truth and the failure mode the gate kills: the gate kills the

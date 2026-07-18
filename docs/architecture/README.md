@@ -76,6 +76,9 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-58 — The lane rule: PO-shaped and architect-designed work is a feature; `adhoc-*` is the solo-only lane *(Accepted)*
 - ADR-59 — The Skill Gaps record: `lessons.md` `## Skill Gaps` is the binding capture; the plan's `Gap?` column is a two-value marker, never the record *(Accepted)*
 - ADR-60 — The adapter capability contract is mechanically checked: every stack adapter fills every named capability with a named executor *(Accepted — F6-MineMachineryHardening, 2026-07-16)*
+- ADR-61 — Coordination hardening from field feedback: arrival order is untrusted, idle recovery is universal, taskings carry pins + role-prefixed names, decisions heading standardized *(Accepted — F9-CoordinationHardening, 2026-07-18)*
+- ADR-62 — Shipped executables ride the skill bundle and run in place from the version-keyed plugin cache; vendored hash-stamped copies only for consumer CI *(Accepted — F7-MineMachineryBorrowWave2 Stage-0, 2026-07-18)*
+- ADR-63 — mine-skill-gaps is the ninth mine: unit = one repo's delivery-artifact estate, output = an owner-triaged skill-gap candidate registry *(Accepted — F10-SkillGapMiner, 2026-07-18)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -1731,6 +1734,52 @@ consumer with hash-retry loops; transcription is the enforced-against failure mo
 package install* — a consumer-side dependency whose removal is breaking (near one-way door,
 ADR-25), plus publishing infrastructure owed. *Vendored copies as the default* — copy drift as
 the norm rather than the CI exception.
+
+---
+
+## ADR-63 — mine-skill-gaps is the ninth mine: unit = one repo's delivery-artifact estate, output = an owner-triaged skill-gap candidate registry — Accepted
+
+> **Status: Accepted — F10-SkillGapMiner, ratified 2026-07-18** (proposal
+> `docs/proposals/skill-gap-miner-2026-07.md`, Laurentiu; extracted per ADR-28 from the proposal +
+> tech-spec `docs/specs/F10-SkillGapMiner/definition/tech-spec.md`, not re-authored). Register
+> re-checked — highest was ADR-62; 63 free, no renumber.
+
+**Context.** Skill-gap detection is per-plan local but the signal is cross-plan: a Skill-Mapping
+`(none)` asserts only "no existing skill fits this step," and whether that work repeats across
+plans is invisible to any single author. ADR-59 fixed capture for *recognized* gaps (the fielded
+`## Skill Gaps` record + the two-value `Gap?` vocabulary); the learner consolidates only what runs
+logged (lessons.md + comm-logs). Nothing accumulates the unrecognized case. The knowledge-gateway
+pilot (2026-07-17: 72 plans, 359 `(none)` rows) proved it — six clusters clear a 3+ recurrence
+threshold, two of them named *identically* by authors across 3–4 plans with no skill ever built.
+Collection, not detection, is the bottleneck.
+
+**Decision.** `mine-skill-gaps` ships as the **ninth** family member (`mine-verify-flows` is the
+eighth — the family core's own "eight-member" table; corrected at the definition review) — by
+**name and shape**
+(discover → verify → registry → owner triage), **not** the full method contract (no stack adapter,
+no ADR-60 obligations — the unit is markdown artifacts, no toolchain; mine-reference-model
+precedent). Unit = one repo's `docs/specs/*/delivery/` estate. Two-tier discovery: pre-flagged
+post-ADR-59 records are grepped; unflagged `(none)` rows are task-shape clustered (3+ plans). A
+skeptic verifies clusters before write. Output = `docs/skill-gaps/registry.md` — its own registry
+species, ADR-43/45/49 invariants carried — feeding owner-triaged routing to improve-skills'
+New-Skill recipe. Discovery only: the miner never authors skills and never invokes the apply-half.
+
+**Why.** Closes the one leg of the skill-feedback loop with no owner: plan-time `Gap?` catches
+what one author notices, the learner catches what runs logged, this catches what nobody logged
+because no single vantage point could see it. A separate miner keeps the learner's consolidation
+fence intact. The registry gives skill-authoring investment an evidence-ranked queue instead of
+anecdote.
+
+**Tradeoffs.** A second recurrence counter besides the learner's (3+ clustered vs 2+ curated —
+deliberate: noisier input earns a higher bar), fenced by strengthen-don't-duplicate: a registry
+row links a learner-`[TRACKED]` twin rather than forking it. Single-repo v1; rows carry a `repo`
+field so cross-repo merge stays format-compatible.
+
+**Rejected.** *Extend the learner* — changes its job from consolidation to discovery and bloats a
+high-traffic shipped agent. *Fold into evaluate-skill* — it judges existing skills; absent ones
+are a different input, method, and output. *Manual periodic sweep* — the pilot's method would be
+re-derived each time; that failure mode is why skills exist. *Tech-debt registry co-location* —
+different consumer and lifecycle.
 
 ---
 

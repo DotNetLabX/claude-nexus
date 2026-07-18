@@ -1,7 +1,7 @@
 # Mine-family core reference
 
-Shared content for the eight-member mine family (`mine-verify-cover` incl. its `mine-from-spec`
-mode, `mine-verify-repo`, `mine-reference-model`, `mine-semantic-model`, `mine-design`, `mine-algorithm`, `mine-verify-flows`). Each sibling SKILL.md replaces its restated copy
+Shared content for the nine-member mine family (`mine-verify-cover` incl. its `mine-from-spec`
+mode, `mine-verify-repo`, `mine-reference-model`, `mine-semantic-model`, `mine-design`, `mine-algorithm`, `mine-verify-flows`, and `mine-skill-gaps` (name-and-shape member; does not adopt the shared method contract)). Each sibling SKILL.md replaces its restated copy
 of the sections below with a short load-bearing pointer to this file, plus ONLY its own per-skill
 deltas. This file has no frontmatter — it is a reference, not a skill, and is never Skill-tool
 loaded directly.
@@ -18,8 +18,9 @@ loaded directly.
 | `mine-design` | one class/function | complexity census (cause-classified branches) | two-tier judge (grounding kill, then pairwise) | design-brief |
 | `mine-algorithm` | one algorithm-shaped unit | BR registry (conformance oracle) | row-by-row deviation classification + deviation-triggered row re-grounding | algorithm-brief |
 | `mine-verify-flows` | one app's user flows | routes/screens/blocs + on-device output documents | sabotage check + twice-green golden gate | flow registry + golden-gated flow tests |
+| `mine-skill-gaps` | one repo's delivery-artifact estate | plan/lessons artifact text | skeptic re-read + citation resolution | `docs/skill-gaps/registry.md` in the consuming repo |
 
-The family invariant is unchanged across all eight: bounded unit -> clean-room miners -> consolidate
+The family invariant is unchanged across all nine: bounded unit -> clean-room miners -> consolidate
 -> skeptic verify -> graded/verified registry. What changes per member is the unit, the ground
 truth, and the failure mode the gate kills.
 
@@ -162,7 +163,10 @@ consumer of this must-RUN protocol section. `mine-verify-flows`' Verify stage is
 re-trace for reachability** — it reuses the CONFIRMED/WRONG/IMPRECISE verdict grammar but a
 reachability verdict is a code-reading claim, not a runnable evidence command, so it is not a
 consumer of the command-re-execution must-RUN enforcement either (the same treatment the code-arm
-gets).
+gets). `mine-skill-gaps`' Verify stage is likewise a **re-read of artifact text** (plan/lessons
+rows), not a runnable command — it reuses the clean-room posture and carries the re-read excerpt
+into each registry row, but a reading claim is not a consumer of the command-re-execution must-RUN
+enforcement (the same carve-out as the flows sibling).
 
 ## Fact/judgment doctrine
 

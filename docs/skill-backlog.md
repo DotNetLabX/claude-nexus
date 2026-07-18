@@ -86,6 +86,15 @@ Tracks every skill created or fixed by the learner/developer pipeline. One entry
 
 ---
 
+### mine-skill-gaps
+- **Status:** Created
+- **Type:** Gap
+- **Source:** F10-SkillGapMiner
+- **Description:** The ninth mine — sweeps ONE repo's `docs/specs/*/delivery/` estate (plan.md + lessons.md) for recurring uncovered work and emits a skeptic-verified, evidence-ranked skill-candidate registry at `docs/skill-gaps/registry.md`. Two-tier discovery (Tier A: pre-flagged `## Skill Gaps` lessons entries as candidates-of-record, `gap:` cells corroborate only; Tier B: cross-plan clustering of unflagged `(none)` skill-mapping rows at the 3-plan threshold), a fresh-context general-purpose skeptic that kills coincidental clusters, owner-triaged routing to improve-skills (never auto-routed, never invoked by the miner). Light archetype — single SKILL.md, single-session run, no toolchain/adapter/capability-contract (name-and-shape family membership; mine-reference-model precedent). Parser posture: model-tier tolerant read (no bundled script in v1). Graduated from the ratified `skill-gap-miner-2026-07` proposal (ADR-63); KG pilot validated candidate yield. skill-lint exit 0; evaluate-skill Judgment Gate returned fix-then-accept (0 Critical, 1 High = the family-core member-count sweep landed in the same feature, 2 Medium + 2 Low folded — capture-leak registry home, skeptic disk-verify + model policy, not-rollbackable statement, frontmatter consumer-phrasing; net complexity flat), re-lint exit 0.
+- **Date:** 2026-07-18
+
+---
+
 ## Skills Fixed
 
 ### Learner consolidation 2026-07-11 (multi-skill)
