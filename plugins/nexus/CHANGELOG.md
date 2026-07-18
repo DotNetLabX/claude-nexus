@@ -1,6 +1,16 @@
 # nexus — Changelog
 
 
+## [1.36.1] — 2026-07-18
+**Table-first output (owner directive).** The `status-table-format` rule broadens from
+status-questions-only to ALL enumerable user-facing content: statuses, options, findings, next
+steps, remaining work, comparisons, and per-item verdicts render as compact Markdown tables,
+never bulleted/numbered lists — with table hygiene (≤~5 columns, short cells, explanations in
+surrounding prose) so terminals render them intact. The status-specific three-column case is
+retained as a subsection; the filename is unchanged (its `commands/backlog.md` reference still
+resolves).
+  - rule (injected every session)
+
 ## [1.36.0] — 2026-07-18
 **Skill-gap miner — the ninth mine (F10-SkillGapMiner, ADR-63).** New shipped skill
 `mine-skill-gaps`: sweep ONE repo's `docs/specs/*/delivery/` estate (plan.md + lessons.md) for
