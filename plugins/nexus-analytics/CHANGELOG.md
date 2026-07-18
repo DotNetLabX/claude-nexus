@@ -2,6 +2,12 @@
 
 All notable changes to the `nexus-analytics` plugin.
 
+## [0.3.0] — 2026-07-18
+- value-briefing skill — gated value/intelligence briefings over a governed value model (F8-W3)
+  - plugin.json metadata change
+  - skill change (value-briefing)
+  - owner-escalated to minor
+
 ## [0.2.0] — 2026-07-17
 - **Feedback-loop layer** ported into the shipped `mine-semantic-model` skill from the KG pilot's
   project-local evolution, generalized (F3 increment 0):
