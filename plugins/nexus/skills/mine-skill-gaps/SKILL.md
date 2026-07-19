@@ -20,7 +20,10 @@ detector.
 This is the **ninth mine** — the delivery-estate sibling of the mine family, joining by **name and
 shape** (discover -> verify -> registry -> owner triage), **not** the full method contract: the
 unit is markdown artifacts, so there is no stack adapter, no toolchain, and no capability-contract
-obligation (precedent: `mine-reference-model`, the family's toolchain-free member). Read
+obligation (precedent: `mine-reference-model`, the family's toolchain-free member). Its code-side
+counterpart is `mine-skill-candidates` — the same registry, the same triage surface, a different
+unit (code + git history instead of delivery artifacts); see its `source` field and the
+Anti-patterns cross-reference below for where the two skills meet. Read
 `../mine-verify-cover/references/mine-family-core.md` §The mine family for the family table and the
 shared invariant (bounded unit -> clean-room extraction -> skeptic verify -> verified registry) the
 family follows.
@@ -97,13 +100,19 @@ enter the registry.
 Write `docs/skill-gaps/registry.md` in the swept repo. One row per candidate:
 
 ```
-| name | kind | recurrence | citations | repo | skeptic excerpt | last_verified | status |
-|------|------|-----------|-----------|------|-----------------|---------------|--------|
-| {candidate skill name} | gap or fix | {N rows / M plans} | {slug + step, or lessons entry} | {repo} | {re-read excerpt} | {YYYY-MM-DD} | {status} |
+| name | kind | source | recurrence | citations | repo | skeptic excerpt | last_verified | status |
+|------|------|--------|-----------|-----------|------|-----------------|---------------|--------|
+| {candidate skill name} | gap or fix | artifact or code | {N rows / M plans} | {slug + step, or lessons entry} | {repo} | {re-read excerpt} | {YYYY-MM-DD} | {status} |
 ```
 
 - **name** — the candidate skill name (a Tier-A entry brings its own `### {Suggested skill name}`).
 - **kind** — `gap` (no skill covers it) or `fix` (an existing skill under-covers it).
+- **source** — values `artifact | code`. Optional-with-default `artifact`: every pre-existing row is
+  `artifact` by definition (this skill's own rows, backward compatible); `code` marks a row from the
+  sibling `mine-skill-candidates` (code + git history rather than delivery artifacts). A candidate
+  corroborated by both mines merges into ONE strengthened row valued `code+artifact` —
+  strengthen-don't-duplicate, never two rows for one
+  candidate.
 - **recurrence** — `{N rows / M plans}`. **Ranked by recurrence: plan count first, row count as
   tiebreak.** For a Tier-A candidate, `M` = the distinct plans in its `**Evidence:**` provenance tag
   and `N` = its entry/cell count, so a pre-flagged entry sorts on the same key as a Tier-B cluster.
@@ -128,6 +137,11 @@ flips to `superseded` with a reason, the record stays. A re-run against unchange
 candidates**, so they do not belong in the ranked candidate table. Surface them in a dedicated
 `## Capture leaks` subsection at the foot of the registry (one line per orphan cell: slug + step +
 the missing-gap text) — a standing to-do for the estate to log the gap, distinct from a candidate.
+
+**Anti-patterns cross-reference.** The registry may also carry a `## Anti-patterns
+(do-not-propagate)` section — recurring code shapes the sibling `mine-skill-candidates` found to be
+debt, not a good pattern to name a skill after. That section is emitted and owned by
+`mine-skill-candidates`; this skill neither writes it nor mirrors its row template here.
 
 ## S4 — Route (owner-triaged, never auto)
 

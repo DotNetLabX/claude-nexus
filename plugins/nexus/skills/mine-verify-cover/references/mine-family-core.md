@@ -1,7 +1,7 @@
 # Mine-family core reference
 
-Shared content for the nine-member mine family (`mine-verify-cover` incl. its `mine-from-spec`
-mode, `mine-verify-repo`, `mine-reference-model`, `mine-semantic-model`, `mine-design`, `mine-algorithm`, `mine-verify-flows`, and `mine-skill-gaps` (name-and-shape member; does not adopt the shared method contract)). Each sibling SKILL.md replaces its restated copy
+Shared content for the ten-member mine family (`mine-verify-cover` incl. its `mine-from-spec`
+mode, `mine-verify-repo`, `mine-reference-model`, `mine-semantic-model`, `mine-design`, `mine-algorithm`, `mine-verify-flows`, `mine-skill-gaps`, and `mine-skill-candidates` (the latter two are name-and-shape members; neither adopts the shared method contract)). Each sibling SKILL.md replaces its restated copy
 of the sections below with a short load-bearing pointer to this file, plus ONLY its own per-skill
 deltas. This file has no frontmatter — it is a reference, not a skill, and is never Skill-tool
 loaded directly.
@@ -19,8 +19,9 @@ loaded directly.
 | `mine-algorithm` | one algorithm-shaped unit | BR registry (conformance oracle) | row-by-row deviation classification + deviation-triggered row re-grounding | algorithm-brief |
 | `mine-verify-flows` | one app's user flows | routes/screens/blocs + on-device output documents | sabotage check + twice-green golden gate | flow registry + golden-gated flow tests |
 | `mine-skill-gaps` | one repo's delivery-artifact estate | plan/lessons artifact text | skeptic re-read + citation resolution | `docs/skill-gaps/registry.md` in the consuming repo |
+| `mine-skill-candidates` | one repo's code + git history | commit history + code structure | skeptic re-execution + debt health gate over resolving citations | skill candidates + anti-pattern rows in `docs/skill-gaps/registry.md` |
 
-The family invariant is unchanged across all nine: bounded unit -> clean-room miners -> consolidate
+The family invariant is unchanged across all ten: bounded unit -> clean-room miners -> consolidate
 -> skeptic verify -> graded/verified registry. What changes per member is the unit, the ground
 truth, and the failure mode the gate kills.
 

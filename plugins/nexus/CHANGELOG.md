@@ -1,6 +1,18 @@
 # nexus — Changelog
 
 
+## [1.37.0] — 2026-07-19
+- MINOR bump.
+  - skill change (mine-algorithm)
+  - skill change (mine-design)
+  - skill change (mine-reference-model)
+  - skill change (mine-skill-candidates)
+  - skill change (mine-skill-gaps)
+  - skill change (mine-verify-cover)
+  - skill change (mine-verify-flows)
+  - skill change (mine-verify-repo)
+  - owner-escalated to minor
+
 ## [1.36.1] — 2026-07-18
 **Table-first output (owner directive).** The `status-table-format` rule broadens from
 status-questions-only to ALL enumerable user-facing content: statuses, options, findings, next

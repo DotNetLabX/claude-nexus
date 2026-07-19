@@ -24,7 +24,7 @@ graphify areas (ground truth: deterministic git/complexity metrics + must-reprod
 hotspot ranking) to find WHERE a repo hurts. Read
 `../mine-verify-cover/references/mine-family-core.md` §The mine family for the full family table and
 the shared invariant (bounded unit → clean-room miners → consensus → skeptic verify → graded
-registry) all nine members follow.
+registry) all ten members follow.
 
 **First slice = Metric→Mine→Verify→Registry only.** Cover/mutation at repo scale, auto-generated
 refactoring plans, the security lens, and cross-model critic execution are out of scope — see
@@ -273,7 +273,7 @@ overrides it. The load-bearing invariants at a glance:
 ## Relationship to other skills
 
 See `../mine-verify-cover/references/mine-family-core.md` §The mine family for the full family
-table (all nine members) and how this skill's C4/C5 composes with each (M2 safety net via
+table (all ten members) and how this skill's C4/C5 composes with each (M2 safety net via
 `mine-verify-cover`; `mine-reference-model`'s `docs/reference-model.md` rows as the C5 adjudication
 reference, above).
 
