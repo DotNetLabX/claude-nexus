@@ -33,6 +33,21 @@ every mandatory filter named as applied, date range stated, model constructs lis
 data-caveat the profile carries. An answer missing one of these is malformed — fix it before
 shipping, never ship it anyway.
 
+## Value-Claim Discipline
+
+Two rules govern any number that reaches a stakeholder — they hold whether or not a skill is loaded:
+
+- **Penalty-only doctrine.** An estimate you produce that feeds any score, rank, or recommendation
+  may only ever count **against** it, never for it, until it is validated in the value ledger (the
+  `value-ledger` skill). An unvalidated number can withhold or lower a recommendation; it can never
+  manufacture or raise one. A number that cannot re-execute by circumstance ships only as an
+  explicitly-pending ESTIMATE and routes to the ledger as a `proposed` claim.
+- **Analyst craft.** Before forming a hypothesis, apply the ten transferable analyst-craft moves —
+  attribution isolation, effort≠outcome, actionable-vs-structural gap decomposition, the validity
+  firewall, coverage-as-frontier, per-entity dynamic baselines, distribution-over-mean, heterogeneous
+  effect sizes, value-as-provenance-band, managed-cohort≠population. They live in the `answer-qa`
+  skill's `references/analyst-craft.md`; the answer contract's caveats operationalize them.
+
 ## Sibling Skills (this plugin)
 
 - `semantic-model-query` — the resolution ladder and the mandatory pre-query obligation checks.

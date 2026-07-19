@@ -22,7 +22,11 @@ preloading entirely, so a default flow structurally cannot auto-load it. A human
 
 **The split it protects.** The accuracy layer answers *what is true* from the semantic model; it
 carries no value content and no measured-vs-estimated labeling. This skill is the ONLY home of
-value content and that labeling. Value content never flows back into the accuracy surface.
+value content and that labeling. Value content never flows back into the accuracy surface. The
+accuracy-side `value-ledger` skill does not cross this line: it registers *claims and their
+validation state* (an estimate must re-execute and hold before it counts as measured), never worth,
+prioritization, or measured-vs-estimated *value* labeling — deciding what a validated claim is worth
+stays this skill's monopoly.
 
 ## Phase 0 — Resolve the project profile (hard precondition)
 

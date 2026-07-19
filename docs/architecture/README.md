@@ -79,6 +79,8 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-61 — Coordination hardening from field feedback: arrival order is untrusted, idle recovery is universal, taskings carry pins + role-prefixed names, decisions heading standardized *(Accepted — F9-CoordinationHardening, 2026-07-18)*
 - ADR-62 — Shipped executables ride the skill bundle and run in place from the version-keyed plugin cache; vendored hash-stamped copies only for consumer CI *(Accepted — F7-MineMachineryBorrowWave2 Stage-0, 2026-07-18)*
 - ADR-63 — mine-skill-gaps is the ninth mine: unit = one repo's delivery-artifact estate, output = an owner-triaged skill-gap candidate registry *(Accepted — F10-SkillGapMiner, 2026-07-18)*
+- ADR-64 — Cross-model reconciliation disposition: verified derivations win; engagement knowledge imports *(Accepted — F8-AnalyticsEnforcementValueLayer W2 close, 2026-07-18)*
+- ADR-65 — The value ledger is a consuming-project artifact species: accuracy-side claim registry, distinct from value-briefing's worth labeling *(Accepted — F3-AnalyticsBorrowWave wave 1, 2026-07-19)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -1818,6 +1820,47 @@ rather than a quick paste — accepted; that is what keeps provenance honest.
 **Rejected.** *Each model owns its truth* — same DB, same client; divergence ships wrongness
 (measured, not hypothetical). *Wholesale re-mine of the losing model* — a campaign where a day's
 stamped correction pass suffices; revisit only if drift recurs after correction.
+
+---
+
+## ADR-65 — The value ledger is a consuming-project artifact species: accuracy-side claim registry, distinct from value-briefing's worth labeling — Accepted
+
+> **Status: Accepted — F3-AnalyticsBorrowWave wave 1 ship, 2026-07-19.** Extracted per ADR-28
+> (owed-at-ship, recorded in the F3 tech-spec's Decisions) from the ratified wave design + the
+> Stage-0 pilot's live trigger (`delivery/pilot-report.md` S1 placement line). Register
+> re-checked — highest was ADR-64; 65 free, no renumber.
+
+**Context.** nexus-analytics ships analysis method, but an analyst's *impact claims* ("~350/month
+lost to failed handoffs") had no durable home: the Stage-0 pilot produced an ESTIMATED number it
+could not validate, and the claim lived only in report prose. VWH's retail flavor paid tuition for
+exactly this (a summed-forecast gaming vector caught live). Meanwhile value-briefing (0.3.0)
+declares itself the only home of "value content and measured-vs-estimated labeling."
+
+**Decision.** The **value ledger** joins the registry-species family (the ADR-45/49 pattern):
+method ships in the plugin (`skills/value-ledger`), the artifact lives in the **consuming project**
+at `docs/value-ledger/` — 1-line index + one detail doc per claim, five statuses
+(`proposed | validating | validated | invalidated | retired`), append-only dated changelog,
+invariants inherited by pointer from `mine-family-core.md` `## Registry invariants + refresh
+outcome grammar` (cited, never restated). **Boundary:** the value ledger is the **accuracy-side
+claims registry** — whether an estimate may count, enforced by answer-qa's grounding gate and
+penalty-only doctrine (an unvalidated estimate only ever counts *against*); value-briefing keeps
+its monopoly on **worth/prioritization labeling** — what validated value is worth surfacing.
+Record-vs-decide: the ledger records claim truth-status; briefing decides presentation of worth.
+
+**Why.** A claim's lifecycle (ESTIMATED→MEASURED) is an artifact species with registry invariants,
+not a per-answer gate — folding it into answer-qa would couple claim persistence to answer
+shipping (rejected in the F3 spec). The boundary sentence resolves the otherwise-contradictory
+exclusivity claim two skills would carry in one plugin.
+
+**Tradeoffs.** No shipped tooling — the contract stands as prose until F8-W1 generalizes the
+checker (consistent with the F3 no-tooling posture); consuming projects self-police the index
+until then. Two ledger species in one plugin (value ledger vs model-feedback ledger) costs a
+disambiguation line in each consumer-facing file — paid once, in SKILL.md.
+
+**Rejected.** *Fold into answer-qa* — couples persistence to shipping. *A `refining` sixth
+status* — collapses into `validating`. *value-briefing absorbs claims* — briefing is gated,
+read-mostly, and worth-oriented; claim validation is accuracy work and belongs beside the
+grounding gate that enforces it.
 
 ---
 

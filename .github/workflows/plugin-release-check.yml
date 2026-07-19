@@ -38,10 +38,12 @@ jobs:
             fi
           fi
       - name: Generated commands in sync (audit B5)
-        # nexus only — nexus-dotnet ships no agents/commands (gen-commands no-ops there).
+        # nexus and nexus-analytics ship agents/commands; nexus-dotnet ships none (gen-commands no-ops there).
         run: |
           node scripts/gen-commands.mjs nexus
           git diff --exit-code plugins/nexus/commands
+          node scripts/gen-commands.mjs nexus-analytics
+          git diff --exit-code plugins/nexus-analytics/commands
 
   tests:
     # Hard gate: T1 structural lint + T2 unit tests (tests/README.md). $0, offline, no model.
@@ -73,3 +75,4 @@ jobs:
         run: |
           claude plugin validate plugins/nexus --strict
           claude plugin validate plugins/nexus-dotnet --strict
+          claude plugin validate plugins/nexus-analytics --strict

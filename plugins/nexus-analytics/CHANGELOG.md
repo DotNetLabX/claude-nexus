@@ -2,6 +2,40 @@
 
 All notable changes to the `nexus-analytics` plugin.
 
+## [0.4.0] — 2026-07-19
+- **Analyst honesty discipline imported from the VWH retail flavor as nexus-analytics method**
+  (F3-AnalyticsBorrowWave wave 1 — S1–S4; boundary rule preserved: *method → plugin, data →
+  project*, nothing of the autonomous loop imported):
+  - **New `value-ledger` skill** — the ESTIMATED-to-MEASURED value-claim lifecycle. A persistent,
+    provenance-backed record so an impact estimate that reaches a stakeholder gets a home, a
+    validation path, and a status instead of living in throwaway prose. Five statuses
+    (`proposed | validating | validated | invalidated | retired`; `retired` is the never-delete
+    terminal, re-entry is `validating`). The ledger artifact lives in the consuming project at
+    `docs/value-ledger/`; the skill ships only the method + an output contract (per-claim YAML
+    frontmatter, a one-line index, an append-only dated changelog). Registry invariants are cited by
+    cross-plugin pointer to the nexus `mine-verify-cover` skill's mine-family core, never restated. A
+    first-class *pending-live-validation* reading gives a shape-attested-but-unexecuted number a home
+    (enters `proposed`, names its probe window/cohort) — an ESTIMATED number in any shipped answer
+    MUST have a ledger entry. Two species carve-outs stated: the value ledger is not the
+    model-feedback ledger, and it is the accuracy-side claims registry, not value-briefing's
+    worth/prioritization monopoly (a coordinating sentence added to `value-briefing` to match).
+  - **`answer-qa` hardened** with a `## Grounding gate` (re-execute-or-drop, excerpt attached; a
+    number that cannot re-execute ships only as an explicitly-pending ESTIMATE routed to the ledger as
+    `proposed`, never as a validated value), a penalty-only doctrine (an unvalidated estimate feeding
+    a score/rank/recommendation counts only *against* it), and a provenance panel integrating the
+    date-range and constructs contract items with source + query (a presentation convention, not a
+    duplicate obligation). EXEMPT-filter vocabulary added: a profile-declared filter exemption is
+    named as "not applied and why" — omitting it is as malformed as claiming it was applied.
+  - **`analyst-craft.md`** reference (under `answer-qa/references/`) — the ten transferable
+    analyst-craft moves (attribution isolation, effort≠outcome, actionable-vs-structural
+    decomposition, validity firewall, coverage-as-frontier, per-entity baselines, distribution over
+    mean, heterogeneous effect sizes, value-as-provenance-band, managed-cohort≠population),
+    domain-generalized. The `data-analyst` persona points to it and carries the penalty-only doctrine.
+  - **CI rider** — `plugin-release-check.yml` now regenerates + diffs `nexus-analytics` commands and
+    runs `plugin validate` on `nexus-analytics` (the gap this wave's agent edit made live).
+  - New capability (a new skill + a new consuming-project artifact species) — owner-escalated to
+    MINOR.
+
 ## [0.3.0] — 2026-07-18
 - value-briefing skill — gated value/intelligence briefings over a governed value model (F8-W3)
   - plugin.json metadata change
