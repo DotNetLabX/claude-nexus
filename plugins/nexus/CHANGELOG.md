@@ -1,6 +1,15 @@
 # nexus — Changelog
 
 
+## [1.38.3] — 2026-07-20
+- `team-lead`: retired the stale "model overrides do not survive resume" doctrine — Claude Code
+  v2.1.211 fixed the underlying platform bug, so a spawn-time `model` param now persists across
+  `SendMessage` resume. The RUNTIME caveat is rewritten to the current behavior (pass the model
+  once at spawn; Phase 2 keeps it; older CLIs fell back to frontmatter — suspect an outdated CLI
+  on any silent model reversion), and Pre-Flight 4b no longer prescribes the re-spawn-fresh
+  workaround for model-critical Phase 2 work. Verdict researched and captured to the dev repo's
+  research pool (`claude-code-subagent-resume-model`). (adhoc-AgentModelResumeQnA)
+
 ## [1.38.2] — 2026-07-20
 - F20-ProcessSkillQuickWins (plugin-feedback nexus-1.36.0 P12+P13+P14, KG field run):
   - `tdd`: new **Retro-fit Mutation Variant** for tests over already-shipped behavior — green-first
