@@ -13,6 +13,7 @@ Test-driven development using red-green-refactor, one vertical slice at a time. 
 - Implementing domain logic with clear input/output contracts
 - Adding a new endpoint with defined request/response behavior
 - Fixing a bug (write the regression test FIRST — see `diagnose` skill Phase 5)
+- Writing tests over already-shipped behavior (characterization / coverage backfill) — use the **retro-fit mutation variant** below
 - User requests TDD explicitly
 
 ## When NOT to Use
@@ -75,6 +76,32 @@ With all tests passing, improve the code:
 
 Return to Step 1 with the next behavior. Each cycle should take 5–15 minutes.
 
+## Retro-fit Mutation Variant
+
+Use this when the behavior **already ships and is believed correct** — you are backfilling
+characterization or coverage, not driving new code. Step 2's red-first is impossible here: the test
+is born green against already-correct code, so a pre-implementation red can never appear. This is the
+**one sanctioned exception** to the red-first default — the mutation step below (not a
+pre-implementation red) is what proves the test has teeth.
+
+**The retro-fit mutation loop, per test** (or one tight behavior cluster):
+
+1. Write the test → run → **green** (it passes against the shipped behavior).
+2. Introduce **ONE** temporary mutation into the covered code — flip an operator, boundary, or
+   constant on a line the test guards.
+3. Run → confirm the test goes **RED for the right reason** (the mutation broke exactly the behavior
+   the test asserts, not something incidental).
+4. **Revert** the mutation → run → green again.
+
+**Rules:**
+
+- One mutation at a time — never stack two.
+- The mutation is **never committed** — verify the working tree is clean of it before moving on.
+- A test that stays green under its mutation is testing nothing — rewrite it. This step is the manual
+  analogue of a mutation-testing gate: it enforces anti-vacuity in the one case where red-first can't.
+- This variant is for coverage over **already-shipped** code only. For NEW behavior, normal
+  red-green-refactor (Steps 1–5) stays the default — the variant never replaces it.
+
 ## What to Test, Mocking Rules, Test Naming, Test Organization
 
 Read the project's testing conventions (e.g. `docs/conventions/testing.md`) for all stack-specific details: test layers and what to mock at each level, mocking rules (mock at system boundaries only, never mock internal classes or pure logic), test naming conventions, test file organization, and assertion style.
@@ -110,7 +137,7 @@ Before invoking this skill, ensure you have:
 ## Anti-patterns
 
 - **Writing all tests first, then all implementation (horizontal slicing).** This produces tests that verify shape rather than behavior. Write one test → implement → green → next test. Never batch tests.
-- **Writing a test that passes before any implementation.** If the test is green before you write the implementation code, the test is testing nothing. Confirm the test fails for the right reason (missing behavior, not a compile error) before implementing.
+- **Writing a test that passes before any implementation (new behavior).** For **new behavior**, if the test is green before you write the implementation code, the test is testing nothing — confirm the test fails for the right reason (missing behavior, not a compile error) before implementing. This applies to new behavior only: for coverage over **already-shipped** code, red-first is impossible by construction — see the **Retro-fit Mutation Variant**, where a temporary mutation (not a pre-implementation red) proves the test has teeth.
 - **Using implementation details as test assertions.** If refactoring internals breaks tests, the tests are wrong. Assert on observable behavior (return values, side effects, state changes) — not on how the code is structured internally.
 
 ## What This Skill Does NOT Do

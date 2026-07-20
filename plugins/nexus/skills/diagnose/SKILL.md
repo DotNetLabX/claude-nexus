@@ -54,6 +54,13 @@ H2: {hypothesis} — would show {evidence if true}
 H3: {hypothesis} — would show {evidence if true}
 ```
 
+**Infra-gate mimicry.** A tool-level infrastructure gate — an auth wall, a wrapper script, a
+test-runner precondition, a permission hook, a proxy — can emit an error **shaped like** an
+application- or pipeline-phase failure. When the error's apparent phase or source doesn't match where
+you actually are, rank a hypothesis that **the message's emitter is a gate in front of the tool, not
+the tool itself**. Probe it first: identify the emitter — locate which layer prints the literal
+message (grep the toolchain, hooks, and wrappers for it) — before debugging the application path.
+
 **Gate:** Hypotheses written. Test them in rank order, one at a time.
 
 ### Phase 4: Instrument

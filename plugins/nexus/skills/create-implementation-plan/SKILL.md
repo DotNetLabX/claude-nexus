@@ -20,16 +20,17 @@ After a feature spec exists (`docs/specs/{slug}/definition/spec.md` with `Status
 
 Before writing, ensure you have:
 
-1. **Feature spec** — read `docs/specs/{slug}/definition/spec.md` (or `epic.md` / `bug.md` depending on slug type)
-2. **Architecture doc** — read for system shape and existing decisions
-3. **Skill inventory** — if the architecture doc has a Skill Inventory section, use it; otherwise build one from **the skills surfaced in your context** (plugin skills live in the version-keyed cache — globbing `.claude/skills/` under-reports them) plus the project's own `.claude/skills/`.
-4. **Existing plans** — read `docs/specs/*/delivery/plan.md` for format consistency
+1. **Grep the feature name before authoring** — grep the feature name / slug keywords across `docs/proposals/`, `docs/specs/`, and `docs/backlog.md`. A same-name or same-topic artifact found is **surfaced in the plan's Context** (stale? superseded? already covering part of the scope?) — never silently re-planned. (Measured near-miss: a stale same-name proposal was nearly re-planned.)
+2. **Feature spec** — read `docs/specs/{slug}/definition/spec.md` (or `epic.md` / `bug.md` depending on slug type)
+3. **Architecture doc** — read for system shape and existing decisions
+4. **Skill inventory** — if the architecture doc has a Skill Inventory section, use it; otherwise build one from **the skills surfaced in your context** (plugin skills live in the version-keyed cache — globbing `.claude/skills/` under-reports them) plus the project's own `.claude/skills/`.
+5. **Existing plans** — read `docs/specs/*/delivery/plan.md` for format consistency
 
 ## Steps
 
 1. **Pre-fill from conversation context.** The architect has typically been discussing the feature before invoking this skill. Pull every answer you can from the existing conversation. Do not re-ask what the user already said.
 
-2. **Run the reading protocol.** Read existing feature specs, architecture doc, skill inventory, and existing plans.
+2. **Run the reading protocol.** Grep for prior same-name/same-topic artifacts, then read the feature spec, architecture doc, skill inventory, and existing plans.
 
 3. **Draft the implementation steps.** Each step is one focused task with full file paths.
 
@@ -94,6 +95,7 @@ Before invoking this skill, ensure you have read:
 - `docs/architecture/index.md` — system shape and existing decisions (read it if present — nothing is auto-loaded)
 - The skill inventory (context-surfaced plugin skills + project `.claude/skills/`) — needed for the Skill Mapping table
 - `docs/specs/*/delivery/plan.md` (1-2 recent examples) — format consistency
+- Plus the reading-protocol **grep-the-feature-name** collision check (grep the feature name across `docs/proposals/`, `docs/specs/`, `docs/backlog.md`) — see `## Reading protocol` item 1; this list and the reading protocol must not silently diverge
 
 ## Anti-patterns
 

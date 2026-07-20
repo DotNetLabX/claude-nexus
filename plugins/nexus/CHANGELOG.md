@@ -1,6 +1,19 @@
 # nexus — Changelog
 
 
+## [1.38.2] — 2026-07-20
+- F20-ProcessSkillQuickWins (plugin-feedback nexus-1.36.0 P12+P13+P14, KG field run):
+  - `tdd`: new **Retro-fit Mutation Variant** for tests over already-shipped behavior — green-first
+    → single-mutation → red → revert (the manual anti-vacuity analogue of a mutation gate); the
+    red-first anti-pattern is scoped to new behavior and cross-references the variant (the one
+    sanctioned exception).
+  - `diagnose`: Phase 3 gains the **Infra-gate mimicry** hypothesis class — a tool-level gate can
+    emit an error shaped like a pipeline-phase failure; identify the message's emitter before
+    debugging the application path.
+  - `create-implementation-plan`: the Reading protocol now starts with **grep the feature name
+    before authoring** (proposals/specs/backlog collision check — a stale same-name artifact is
+    surfaced, never silently re-planned), mirrored by a Required Reading pointer.
+
 ## [1.38.1] — 2026-07-20
 - F17-MineFieldFixes (plugin-feedback nexus-1.36.0 P18+P19, KG field run):
   - `mine-skill-gaps`: the S1 Tier-A census now sweeps the `Skill Gaps` heading
