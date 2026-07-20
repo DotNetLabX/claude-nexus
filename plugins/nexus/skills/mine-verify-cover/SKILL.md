@@ -470,9 +470,9 @@ arm's rule set does — and that combination is shipped now, for the scope above
 
 This skill is the **family head** — the class-scoped mine (ground truth: code; gate: mutants), and
 `references/mine-family-core.md` (owned by this skill folder) is the shared reference the whole
-mine family points to. See that file's §The mine family for the full 10-row family table (including
+mine family points to. See that file's §The mine family for the full 11-row family table (including
 `mine-verify-repo`, `mine-reference-model`, `mine-semantic-model`, `mine-design`, `mine-algorithm`,
-`mine-verify-flows`, `mine-skill-gaps`, and `mine-skill-candidates`).
+`mine-verify-flows`, `mine-architecture`, `mine-skill-gaps`, and `mine-skill-candidates`).
 
 | Skill | Relationship |
 |-------|-------------|

@@ -81,6 +81,7 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-63 — mine-skill-gaps is the ninth mine: unit = one repo's delivery-artifact estate, output = an owner-triaged skill-gap candidate registry *(Accepted — F10-SkillGapMiner, 2026-07-18)*
 - ADR-64 — Cross-model reconciliation disposition: verified derivations win; engagement knowledge imports *(Accepted — F8-AnalyticsEnforcementValueLayer W2 close, 2026-07-18)*
 - ADR-65 — The value ledger is a consuming-project artifact species: accuracy-side claim registry, distinct from value-briefing's worth labeling *(Accepted — F3-AnalyticsBorrowWave wave 1, 2026-07-19)*
+- ADR-67 — mine-architecture is the eleventh mine: unit = one repo's architecture, output = the current-state architecture-map registry (sixth species), extraction-only by decision *(Accepted — F16-ArchitectureMiner, 2026-07-20)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -1861,6 +1862,63 @@ disambiguation line in each consumer-facing file — paid once, in SKILL.md.
 status* — collapses into `validating`. *value-briefing absorbs claims* — briefing is gated,
 read-mostly, and worth-oriented; claim validation is accuracy work and belongs beside the
 grounding gate that enforces it.
+
+---
+
+## ADR-67 — mine-architecture is the eleventh mine: unit = one repo's architecture, output = the current-state architecture-map registry (sixth species), extraction-only by decision — Accepted
+
+> **Status: Accepted — F16-ArchitectureMiner, ratified 2026-07-20** (owner-directed 2026-07-19,
+> shaped in-session per ADR-58 — no proposal; graduated from the `omnivision-ai-sdk` F2-SdkRewrite
+> dependency. Extracted per ADR-28 from the tech-spec
+> `docs/specs/F16-ArchitectureMiner/definition/tech-spec.md`, not re-authored). Register re-checked
+> — highest *written* is ADR-65; **ADR-66 is claimed by F15-SkillCandidateMiner** (its summary
+> records the 65→66 renumber, not yet written to this register), so F16 takes **67**, no renumber.
+
+**Context.** The mine family answered two of the three repo-scoped questions — *what hurts*
+(`mine-verify-repo`) and *what to copy* (`mine-reference-model`) — but not *what is*: a
+verified current-state structural map. F2-SdkRewrite's **P2** hard-blocks on exactly that map
+(its tech-spec names "the architecture-miner skill (nexus plugin repo)" verbatim), and P3 target
+design consumes it as the *informed-by* current-state map, never a copy. The research base
+(`docs/kb/research/br-anchored-regeneration-landscape.md`, 10 sources, 3-vote verification) is
+explicit on why the skeptic is the load-bearing part: unverified extraction at ~90% fidelity still
+yielded near-total regeneration failure downstream — a plausible-but-wrong structural claim
+mis-scopes everything built on it.
+
+**Decision.** `mine-architecture` ships as the **eleventh** family member and a **full
+method-contract member** (unlike the two name-and-shape members): unit = one repo's architecture;
+ground truth = code structure (+ optional structural graph and change-coupling table); gate =
+adversarial skeptic re-execution; four default dimensions (D1 boundaries & context map, D2
+business-function catalog with the BR-coverage join, D3 data ownership, D4 contracts & seams).
+Output = **`docs/architecture-map/`** in the target repo — index + per-module files — the **sixth
+registry species** (after `docs/business-rules/`, `docs/tech-debt/`, `docs/reference-model.md`,
+`docs/skill-gaps/registry.md`, and the value ledger), carrying the family registry invariants and
+the shipped evidence gate on every row write. **Extraction-only by owner decision:** the artifact
+carries **zero target-design content**, and `index.md` declares it with a mandatory
+`Current-state only` header plus a decided-architecture pointer line separating the *decided*
+`docs/architecture/` estate from the *mined* map.
+
+**Why.** It closes the third leg of the repo-mine triangle with the one question a rewrite must
+answer before designing anything. A separate species keeps the human-*decided* record
+(`docs/architecture/`) and the code-*verified* map (`docs/architecture-map/`) from being read as
+competitors — on drift, the decided record wins for intent, the map for current-state fact. The
+adversarial skeptic re-execution is the invented, no-prior-art part the field's regeneration
+failures demand; borrowing `mine-reference-model`'s staging and anti-flattery framing keeps the
+implementation to one SKILL.md plus family bookkeeping (the evidence gate and preflight are shipped
+and invoked in place per ADR-62 — no new harness code).
+
+**Tradeoffs.** Extraction-only means the map feeds design but never proposes it — a deliberate
+omission accepted to avoid anchoring the human target design. graphify and the coupling table are
+**optional** D1 inputs with a deterministic import-scan fallback, so the skill runs on repos
+without either; the run report records which substrate a run used, so two registries in one repo
+cannot silently disagree about their basis. A sixth registry species adds one more species to keep
+coherent, paid down by reusing the family invariants wholesale rather than reinventing them.
+
+**Rejected.** *Mined target-design proposals* — a "proposed architecture" would be a judgment
+wearing a fact's clothes (ADR-47) and would silently anchor the P3 human design; the research base
+names the extracted-behavior / target-design separation as the copyable prior art. *A hard
+graphify precondition* — would block most consuming repos; the deterministic import scan is the
+always-available fallback instead. *A single flat `docs/architecture-map.md`* — too large for a
+multi-module repo; the per-module split follows the `docs/tech-debt/{area}.md` precedent.
 
 ---
 

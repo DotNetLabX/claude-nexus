@@ -1,6 +1,17 @@
 # nexus — Changelog
 
 
+## [1.38.0] — 2026-07-20
+**Architecture miner — the eleventh mine (F16-ArchitectureMiner, ADR-67).** New shipped skill
+`mine-architecture`: repo-scoped, skeptic-verified current-state architecture map — four clean-room
+dimensions (boundaries/context map, EARS-phrased business-function catalog with file:line
+traceability, data ownership, contracts/seams), a BR-coverage join (`none` / `no-registry-estate`
+grammar), and the adversarial skeptic re-execution gate; output `docs/architecture-map/` in the
+target repo (sixth registry species). Extraction-only by owner decision — zero target-design
+content, enforced by the mandatory `Current-state only` header + decided-architecture pointer
+line. Full method-contract family member (reference-model staging shape). Family core and the
+seven sibling SKILL.mds swept ten → eleven (positional ordinals untouched).
+
 ## [1.37.0] — 2026-07-19
 - MINOR bump.
   - skill change (mine-algorithm)
