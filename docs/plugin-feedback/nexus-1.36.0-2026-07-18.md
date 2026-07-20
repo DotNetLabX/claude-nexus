@@ -31,8 +31,9 @@ generative pattern pack — hence miner fixes first and authoring standards befo
 | P16, P17 | **F22-AnalyticsMinorFixes** | P17 is verify-then-fix — one absorbed item already confirmed at 0.3.0, two re-verified open at 0.4.0 |
 
 Out of scope of this file, flagged separately: the **C++ generative pattern pack** (F2-SdkRewrite
-P3's named consumer expectation of this repo) is not a feedback item — it gets its own shaped
-feature when P2/P3 requirements firm up. p0b's Stage A field-tests `mine-algorithm`; expect its
+P3's named consumer expectation of this repo) is not a feedback item — shaped 2026-07-20 as
+**F23-CppPatternPack** under the owner's pilot-then-generalize doctrine (pilot one stack, C++
+first, stack-flavors later if required). p0b's Stage A field-tests `mine-algorithm`; expect its
 method feedback in a future file.
 
 ---
