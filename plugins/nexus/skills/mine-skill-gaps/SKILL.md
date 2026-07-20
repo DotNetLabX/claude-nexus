@@ -32,7 +32,8 @@ family follows.
 
 ```
 S1 Discover  two tiers over docs/specs/*/delivery/ (v1 sources: plan.md + lessons.md only)
-             Tier A  grep pre-flagged lessons `## Skill Gaps` entries — candidates of record
+             Tier A  grep pre-flagged lessons `Skill Gaps` entries (case-insensitive, any
+                     heading level: `## Skill Gaps`, `### Skill gaps`) — candidates of record
              Tier B  collect unflagged `(none)` rows + step text, then task-shape cluster them
                      (group by what the step DOES, not its wording; count cross-plan recurrence)
 S2 Verify    a fresh-context skeptic subagent re-reads each cluster's source rows -> one task-shape,
@@ -49,10 +50,12 @@ S4 Route     the owner triages candidate -> confirmed; a confirmed candidate is 
 The estate splits into a pre-flagged tier that is already greppable and an unflagged tier that must
 be clustered. Both draw on **plan.md and lessons.md only** in v1.
 
-**Tier A — pre-flagged (grep, no clustering).** Post-standardization artifacts self-identify. The
-**candidate of record is the fielded `## Skill Gaps` lessons entry** (`### {Suggested skill name}`
-per `lessons-format`); it enters the registry as a named candidate whose native recurrence is its
-`**Evidence:**` provenance-tag count. A plan `gap: {what is missing}` skill-mapping cell (the
+**Tier A — pre-flagged (grep, no clustering).** Post-standardization artifacts self-identify. **The
+sweep matches the `Skill Gaps` heading case-insensitively at any heading level** (`## Skill Gaps`,
+`### Skill gaps`, …) — an h2-only, case-sensitive grep is too narrow and silently drops real
+entries. The **candidate of record is the fielded `Skill Gaps` lessons entry** (`### {Suggested
+skill name}` per `lessons-format`); it enters the registry as a named candidate whose native
+recurrence is its `**Evidence:**` provenance-tag count. A plan `gap: {what is missing}` skill-mapping cell (the
 two-value `Gap?` vocabulary) is **never an independently counted candidate** — the cell is a marker,
 never the record — it only corroborates and strengthens its matching lessons entry. A `gap:` cell
 with **no** matching lessons entry is a **capture-leak finding** the registry surfaces as such (a
@@ -76,6 +79,15 @@ Tolerance is why v1 reads model-tier rather than shipping a brittle regex parser
 parser script is an available option, taken only if a future estate's tables are uniform enough to
 make a deterministic parse cheaper than a tolerant read. The **clustering stays model-tier** either
 way — task-shape grouping is judgment, not a parse.
+
+**Heading-less tolerance.** A candidate-shaped gap bullet in lessons.md sitting under NO `Skill
+Gaps` heading at all (an F8-style bare bullet) is still swept and surfaced as a **capture-signal** —
+a *distinct* disposition from the orphan-cell **capture leak** of §S3 (do not conflate the two: a
+capture leak is a `gap:` cell with no lessons entry; a capture-signal is a heading-less candidate
+bullet the sweep recovered), never silently skipped. This tolerance and the case-insensitive
+any-heading-level match together close the measured miss (KG 2026-07-18: F3's `### Skill gaps`
+lowercase-h3 section was missed by an h2-only case-sensitive grep, and three captured candidates
+were initially misclassified as capture leaks).
 
 ## S2 — Verify (skeptic)
 
@@ -163,8 +175,10 @@ background-orchestration mandate is deliberately **not** adopted here — the un
 markdown files, not a codebase needing parallel clean-room miners. The one hard requirement: the S2
 skeptic **MUST be a fresh-context subagent** (a `general-purpose` agent carrying the skeptic prompt,
 dispatched at the session's model tier or a deliberately named one), never the same context that
-clustered — self-verification is the invented-cluster failure mode. Tier-B clustering may run inline
-or as a subagent. There is one skeptic pass over the whole run, so concurrency is one — no fan-out cap
+clustered — self-verification is the invented-cluster failure mode. That dispatch tier is this run's
+**stage-model-plan** — the core §Kickoff checklist Tier-1 item every member now declares at kickoff
+(`../mine-verify-cover/references/mine-family-core.md` §Kickoff checklist, item 5). Tier-B clustering
+may run inline or as a subagent. There is one skeptic pass over the whole run, so concurrency is one — no fan-out cap
 to state. Read
 `../mine-verify-cover/references/mine-family-core.md` §Execution topology for the clean-room
 rationale; only the fresh-skeptic clause binds here.

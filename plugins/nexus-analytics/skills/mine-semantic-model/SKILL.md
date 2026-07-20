@@ -295,8 +295,8 @@ above).
 **Kickoff checklist** — on a NEW datasource area (one this skill hasn't scanned before), walk
 nexus core's `mine-verify-cover` skill → its `mine-family-core.md` reference, §Kickoff checklist
 first (this plugin requires nexus core; tool preflight — a resolvable read-only DSN and a working
-project runner; expected survival rate; stop-budget; run-report location) before launching a
-Bootstrap run.
+project runner; expected survival rate; stop-budget; run-report location; stage-model-plan) before
+launching a Bootstrap run.
 
 ## References
 

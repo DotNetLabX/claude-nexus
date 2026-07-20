@@ -61,7 +61,7 @@ consolidate+skeptic agent.** The pilot-sibling's Entry-6 scale datapoint — one
 holding at roughly 145 findings — bounds this comfortably; a virtues run yields far fewer rows.
 
 **On a NEW target, walk the core §kickoff checklist first** (tool preflight, expected survival rate,
-stop-budget, run-report location) before launching a run.
+stop-budget, run-report location, stage-model-plan) before launching a run.
 
 ## Contracts
 

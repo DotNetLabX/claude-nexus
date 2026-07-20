@@ -68,7 +68,7 @@ stage prompt** — an unscoped file search runs against the orchestrator's own w
 yields false "not found" results.
 
 **On a NEW target, walk the core §Kickoff checklist first** (tool preflight, expected survival rate,
-stop-budget, run-report location) before launching a run.
+stop-budget, run-report location, stage-model-plan) before launching a run.
 
 ## Contracts
 

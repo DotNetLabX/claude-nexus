@@ -2,6 +2,11 @@
 
 All notable changes to the `nexus-analytics` plugin.
 
+## [0.4.1] — 2026-07-20
+- F17-MineFieldFixes: `mine-semantic-model`'s kickoff-checklist pointer enumeration gains the new
+  core Tier-1 item `stage-model-plan` (nexus 1.38.1 — a run declares which model tier each stage
+  class runs on; declare-and-veto).
+
 ## [0.4.0] — 2026-07-19
 - **Analyst honesty discipline imported from the VWH retail flavor as nexus-analytics method**
   (F3-AnalyticsBorrowWave wave 1 — S1–S4; boundary rule preserved: *method → plugin, data →

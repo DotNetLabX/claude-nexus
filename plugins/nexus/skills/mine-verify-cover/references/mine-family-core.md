@@ -270,6 +270,12 @@ unmet assumption.
 3. **stop-budget declared** — the marginal-spend ceiling this run halts at (see the budget rail above).
 4. **Run-report location named** — where the run's report (areas scanned/skipped, survival rate, registry
    delta) will land, before the run starts.
+5. **Stage-model-plan declared** — the run names which model tier each stage class runs on: mechanical
+   collection/extraction stages may run a **named** cheaper tier; judgment stages (clustering, skeptic,
+   judges) run the session tier or a deliberately named one. **Declare-and-veto** — the declaration
+   lands in the kickoff output for the operator to veto, never an interactive prompt. Generalizes the
+   `mine-skill-gaps` §Execution topology clause ("dispatched at the session's model tier or a
+   deliberately named one").
 
 **Tier 2 — Member-conditional (blocking when applicable; skipped by member class otherwise):**
 

@@ -110,7 +110,7 @@ journal watcher (advances a stalled stage / fires the cadence skeptic without op
 implementation is dev-repo machinery).
 
 **On a NEW target, walk the core §kickoff checklist first** (tool preflight, expected survival rate,
-stop-budget, run-report location) before launching this mode's run.
+stop-budget, run-report location, stage-model-plan) before launching this mode's run.
 
 ## The gate battery (never fake green)
 

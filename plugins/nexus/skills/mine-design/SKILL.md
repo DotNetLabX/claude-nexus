@@ -69,7 +69,7 @@ file search runs against the orchestrator's own working directory and yields a f
 found".
 
 **On a NEW target, walk the core §Kickoff checklist first** (tool preflight, expected survival rate,
-stop-budget, run-report location) before launching a run.
+stop-budget, run-report location, stage-model-plan) before launching a run.
 
 ## Contracts
 

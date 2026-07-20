@@ -1,6 +1,20 @@
 # nexus — Changelog
 
 
+## [1.38.1] — 2026-07-20
+- F17-MineFieldFixes (plugin-feedback nexus-1.36.0 P18+P19, KG field run):
+  - `mine-skill-gaps`: the S1 Tier-A census now sweeps the `Skill Gaps` heading
+    **case-insensitively at any heading level** (a lowercase-h3 section was missed in the field,
+    misclassifying three candidates as capture leaks); §Parser posture gains the heading-less-bullet
+    tolerance — a bare candidate bullet is surfaced as a **capture-signal** (distinct from the
+    orphan-cell capture leak).
+  - mine-family kickoff checklist (`mine-verify-cover/references/mine-family-core.md`): Tier 1 gains
+    item 5 **Stage-model-plan declared** — a run names which model tier each stage class runs on
+    (mechanical stages may run a named cheaper tier; judgment stages the session tier or a
+    deliberately named one); declare-and-veto, never an interactive prompt. Enforced in
+    `tools/kickoff-preflight.mjs` (new `stageModelPlan` universal key, TDD-covered) and reflected in
+    the Tier-1 enumerations of all seven sibling mine skills.
+
 ## [1.38.0] — 2026-07-20
 **Architecture miner — the eleventh mine (F16-ArchitectureMiner, ADR-67).** New shipped skill
 `mine-architecture`: repo-scoped, skeptic-verified current-state architecture map — four clean-room

@@ -106,7 +106,7 @@ chunked-writes rule), never composed in one oversized write.
 
 **On a NEW target, the core §Kickoff checklist is the enforced preflight** — walk it before
 launching. Tier 1 is universal (tool preflight, expected survival rate, stop-budget, run-report
-location). **Tier 2 — the registry-oracle freshness check is skipped by member class: this member
+location, stage-model-plan). **Tier 2 — the registry-oracle freshness check is skipped by member class: this member
 consumes no registry oracle** (unlike `mine-design` / `mine-algorithm`); the BR-coverage join input
 is **optional and disclosed at kickoff**, never a precondition.
 

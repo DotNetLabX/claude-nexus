@@ -152,7 +152,7 @@ Read `../mine-verify-cover/references/mine-family-core.md` §Registry invariants
 
 Read `../mine-verify-cover/references/mine-family-core.md` §Execution topology before orchestrating — the canonical shape (multi-agent by design, orchestrator-owns-spawning, staged background `general-purpose` agents, "launch = orchestrate stages") is defined there. This skill's own staging: the 3 clean-room flow miners run in parallel (background), then a consolidate+skeptic agent, then the Cover agent per selected flow — with the orchestrator computing the sabotage gate from raw runner output.
 
-**On a NEW target, walk the core §kickoff checklist first** (tool preflight, expected survival rate, stop-budget, run-report location) before launching a run.
+**On a NEW target, walk the core §kickoff checklist first** (tool preflight, expected survival rate, stop-budget, run-report location, stage-model-plan) before launching a run.
 
 **The Verify stage is a code re-trace, not a command re-execution** — this skill reuses the family verdict grammar but is not a consumer of the core §Skeptic protocol's must-RUN enforcement; the carve-out (and its rationale) is recorded in the core.
 

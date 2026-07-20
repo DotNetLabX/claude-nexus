@@ -19,6 +19,7 @@ function baseConfig(over = {}) {
     expectedSurvivalRate: '~80% mined→confirmed',
     stopBudget: 50000,
     runReportLocation: 'docs/tech-debt/area.md',
+    stageModelPlan: 'extract=named-cheaper-tier, judgment=session-tier',
     ...over,
   };
 }
@@ -39,7 +40,7 @@ test('(a) a missing universal precondition REFUSES the run with a named reason',
 });
 
 test('(a2) every universal precondition is individually blocking', () => {
-  for (const field of ['toolPreflight', 'expectedSurvivalRate', 'stopBudget', 'runReportLocation']) {
+  for (const field of ['toolPreflight', 'expectedSurvivalRate', 'stopBudget', 'runReportLocation', 'stageModelPlan']) {
     const r = preflight(baseConfig({ [field]: undefined }));
     assert.equal(r.pass, false, `${field} missing must refuse`);
     assert.ok(r.refusals.some((x) => x.check === field), `${field} is named in the refusal`);

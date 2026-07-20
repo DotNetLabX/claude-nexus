@@ -8,7 +8,7 @@
 // prose-only sibling run walks the same two tiers by hand — that residue is disclosed in the core section.
 //
 // TWO TIERS:
-//   Universal (blocking, ALL members): tool preflight · expected survival rate · stop-budget · run-report location.
+//   Universal (blocking, ALL members): tool preflight · expected survival rate · stop-budget · run-report location · stage-model-plan.
 //   Member-conditional:
 //     - registry existence/freshness — ORACLE-CONSUMING members only (mine-design, mine-algorithm).
 //     - mined-test-root disclosure   — Cover-arm runs only.
@@ -36,6 +36,7 @@ const UNIVERSAL = [
   { key: 'expectedSurvivalRate', reason: 'expected survival rate not stated — a run far off the estimate must get a second look before the registry is trusted' },
   { key: 'stopBudget', reason: 'stop-budget not declared — the marginal-spend ceiling this run halts at' },
   { key: 'runReportLocation', reason: 'run-report location not named — where the run report (areas scanned/skipped, survival rate, registry delta) lands' },
+  { key: 'stageModelPlan', reason: 'stage-model-plan not declared — which model tier each stage class runs on (mechanical collection/extraction stages may run a named cheaper tier; judgment stages run the session tier or a deliberately named one); declare-and-veto, the operator vetoes it in the kickoff output' },
 ];
 
 /**
@@ -43,7 +44,7 @@ const UNIVERSAL = [
  * refusals, and the full check map (member-conditional checks carry `applicable`).
  *
  * @param {{member:string, coverArm?:boolean, toolPreflight?:*, expectedSurvivalRate?:*, stopBudget?:*,
- *   runReportLocation?:*, registryFresh?:*, minedTestRootDisclosed?:*}} config
+ *   runReportLocation?:*, stageModelPlan?:*, registryFresh?:*, minedTestRootDisclosed?:*}} config
  * @returns {{pass:boolean, refusals:Array<{check:string, reason:string}>, checks:object}}
  */
 export function preflight(config = {}) {

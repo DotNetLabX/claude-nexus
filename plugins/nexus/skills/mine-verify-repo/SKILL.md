@@ -110,7 +110,7 @@ agent. The orchestrator has no filesystem — agents do all I/O, *including runn
 commands*.
 
 **On a NEW target, walk the core §kickoff checklist first** (tool preflight, expected survival rate,
-stop-budget, run-report location) before launching a run.
+stop-budget, run-report location, stage-model-plan) before launching a run.
 
 **Poll, don't wait + mechanized firing.** Read `../mine-verify-cover/references/mine-family-core.md`
 §Stage-completion discipline + mechanized firing — the canonical "poll, don't wait" completion discipline (background-run
