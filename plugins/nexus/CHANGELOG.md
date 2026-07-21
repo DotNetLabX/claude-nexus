@@ -1,6 +1,10 @@
 # nexus — Changelog
 
 
+## [1.38.4] — 2026-07-21
+- Agent model retier: po/architect/reviewer move from fable to opus; developer/critic/learner move to sonnet (team-lead/solo stay on opus).
+  - agent instruction/behavior change
+
 ## [1.38.3] — 2026-07-20
 - `team-lead`: retired the stale "model overrides do not survive resume" doctrine — Claude Code
   v2.1.211 fixed the underlying platform bug, so a spawn-time `model` param now persists across

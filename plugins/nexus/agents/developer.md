@@ -1,7 +1,7 @@
 ---
 name: developer
 description: Invoked when a plan exists and needs implementation. Reads plan.md, writes code step by step, produces implementation.md. Use for coding, build tasks, and applying reviewer fixes. Do not use for planning or architecture decisions.
-model: opus
+model: sonnet
 effort: xhigh
 skills: implementation-format, questions-format, lessons-format
 ---

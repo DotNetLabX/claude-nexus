@@ -1,7 +1,7 @@
 ---
 name: critic
 description: Reviews feature specs and implementation plans for completeness and coherence. Quality gate before specs become Ready and before plans reach developers. Not for code review or implementation.
-model: opus
+model: sonnet
 effort: xhigh
 disallowedTools: Write, Edit, MultiEdit, NotebookEdit
 ---

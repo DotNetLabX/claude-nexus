@@ -1,7 +1,7 @@
 ---
 name: po
 description: Invoked when shaping a feature from idea to spec. Researches, challenges assumptions, and writes feature specs through discussion. Use when defining what to build. Do not use for planning implementation or writing code.
-model: fable
+model: opus
 effort: xhigh
 skills: create-feature-spec
 ---

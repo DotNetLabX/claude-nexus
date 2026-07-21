@@ -2,6 +2,10 @@
 
 All notable changes to the `nexus-analytics` plugin.
 
+## [0.4.2] — 2026-07-21
+- Agent model retier: data-analyst moves from opus to sonnet.
+  - agent instruction/behavior change
+
 ## [0.4.1] — 2026-07-20
 - F17-MineFieldFixes: `mine-semantic-model`'s kickoff-checklist pointer enumeration gains the new
   core Tier-1 item `stage-model-plan` (nexus 1.38.1 — a run declares which model tier each stage
