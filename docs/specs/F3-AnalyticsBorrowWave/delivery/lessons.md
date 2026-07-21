@@ -1,5 +1,7 @@
 # F3 increment 0 — port the feedback-loop layer into `mine-semantic-model` — Lessons
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED] `node --test` glob form → CLAUDE.md ## Running tests (with F17, AgentModelRetier2). [APPLIED] all-file-type token sweeps + census-derived forbidden-token lists incl. numeric fingerprints (with F1, F8) → create-implementation-plan port/harden bullets. [TRACKED] description-drift reflex after skill-body edits (1 occurrence); sibling/cross-plugin E6 citation form (with F1, F7 — 3 occurrences, threshold met, surface next pass); coherent-fingerprint-set perturbation (1 occurrence).
+
 ## Developer Lessons
 - **The plan's Step 6.3 test command (`node --test tests/`) is broken on this repo's Node.** The
   bare-directory form errors `MODULE_NOT_FOUND: tests` on Node 24.18.0 (regressed on Node ≥22). The

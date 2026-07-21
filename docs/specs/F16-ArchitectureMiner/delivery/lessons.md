@@ -1,5 +1,7 @@
 # Lessons — F16-ArchitectureMiner
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED] enumeration-echo sweep (count word + adjacent member list + ordinal anaphora) and paste-don't-retype transcription → create-implementation-plan (counted-surface + refactor hardening). [ROUTED-TO-BACKLOG] mine-family-member authoring gap → backlog F25 (this entry is the binding record, ADR-59); edit-shipped-plugin-skill occurrence → backlog F24. [TRACKED] ADR next-free must include claimed-but-unwritten numbers (1 occurrence); critic-continuation fallback cost (1 occurrence).
+
 ## Architect Lessons
 
 - **A hand-transcribed sweep table drifted from its own source grep in the same authoring pass.**

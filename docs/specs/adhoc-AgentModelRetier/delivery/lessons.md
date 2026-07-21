@@ -1,5 +1,7 @@
 # Agent Model Retier — Lessons
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [RESOLVED] the pending omni-ahead back-port landed as adhoc-OmniFlowsBackport (`8e6d697`, nexus 1.34.9 + nexus-flutter 0.4.3). [TRACKED] pre-commit `git diff --numstat` omni-ahead-signature guard for twin regens (1 occurrence, data-loss-shaped; owner approval not given this pass). MODELS-allowlist and gen-commands-no-op facts confirmed by adhoc-AgentModelRetier2 (repo-internal, recorded here). [APPLIED-PRIOR] commit-scope staging discipline (recurrence evidence).
+
 ## Solo Lessons
 - The frontmatter lint's `MODELS` allowlist (`tests/lint/frontmatter.test.mjs`) is a closed set — a
   model retier that introduces a new alias (here `fable`) must ship the allowlist update in the same

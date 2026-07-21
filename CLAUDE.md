@@ -34,6 +34,13 @@ the plugin's `version` never reaches users (`/plugin update` is a no-op). So:
 This release machinery is a **dev-repo concern only**. It is deliberately *not* wired into the
 shipped agents/skills — a consuming project never versions the nexus plugin.
 
+## Running tests
+
+Always the glob form — `node --test "tests/lint/*.test.mjs" "tests/unit/*.test.mjs"` — never the
+bare-directory form (`node --test tests/unit/`), which fails on this repo's Node (≥22 regression:
+the runner loads the directory as a CJS entry point instead of discovering tests; `tests/lint/`
+alone dies with a single opaque `'test failed'`).
+
 ## Generated artifacts (don't hand-edit)
 
 - `plugins/{plugin}/commands/*.md` — generated from `agents/*.md` by `scripts/gen-commands.mjs`.

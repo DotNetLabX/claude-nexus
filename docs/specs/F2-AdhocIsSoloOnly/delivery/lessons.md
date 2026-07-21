@@ -1,5 +1,7 @@
 # F2-AdhocIsSoloOnly — Lessons
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [TRACKED] finder no-show → do-the-angle-set-yourself-and-disclose generalization (1 occurrence; F9's idle-recovery covers the dispatcher side). [TRACKED] selfcheck gen-commands FP wording is regen-timing-conditional (1 occurrence). Bump-reasons-are-categories note: recorded, no action (informational).
+
 ## Developer Lessons
 
 - The plan's exact-anchor grounding (12 line anchors, all verified exact by the code-grounded

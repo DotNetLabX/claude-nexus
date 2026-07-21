@@ -1,5 +1,7 @@
 # F8 W3 — Value Layer — Lessons
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED] reuse-claim-vs-hardcoded-domain (read the selection loop, not the CLI surface) → create-implementation-plan referent-verification bullet; sibling-example-vs-token-gate check folded into the port-step census bullet. [APPLIED-PRIOR] `--staged` scoping over snapshot dirt lists. [TRACKED] SKILL.md-summary-narrows-reference-list (with F4's gloss lesson — 2 occurrences, threshold met, surface next pass).
+
 ## Architect Lessons
 
 - **A "free reuse" claim on a config/enum-bound tool must be checked against its hardcoded domain,

@@ -4,6 +4,8 @@
 > "here"/"this repo" below mean the twin, where the run happened — so "`gen-omni.mjs`/
 > `bump-plugin.mjs` are nexus-side, absent here" is true as written, from omni's vantage.
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED] member-count-is-a-shared-fact sweep (with MineSkillAuthoring/F10/F16/F20) → create-implementation-plan counted-surface bullet. [TRACKED] mine-family lessons-capture hook gap (family-wide, L4.1) — 1 occurrence; handoff-mechanics re-verify folded under the applied referent-verification class.
+
 ## Architect Lessons
 
 - **Re-verify a handoff's repo mechanics before planning against them.** The graduation handoff (written 2026-07-12) was wrong on three verifiable facts by run time: the path layout (`plugins/omni/...`, not `omni/...`), the release tooling (`gen-omni.mjs`/`bump-plugin.mjs` are nexus-side, absent here), and the versions (the twin was 15 minors behind until a `git pull` synced it mid-session). The handoff itself said "re-check current" — the general rule: a handoff's *content* can be binding while its *mechanics* are a snapshot; grep the live repo before writing a single plan step.

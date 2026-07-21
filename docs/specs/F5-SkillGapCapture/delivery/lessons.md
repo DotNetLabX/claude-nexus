@@ -1,5 +1,7 @@
 # F5-SkillGapCapture — Lessons
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED-PRIOR] `git add -A` close-time ban — already shipped in team-lead.md Commit Protocol + architect.md fast-lane close (staging+cached-diff as one act); this run's incident is the measured evidence. [APPLIED] zero-hit grep exit-code trap → create-implementation-plan harden-patterns. [TRACKED] executed-at-plan-time extended to quantitative prose claims + denominator rule (1 occurrence). [TRACKED] verify-the-critic's-correction (1 occurrence — promote at 2nd per its own proposal). [ROUTED-TO-BACKLOG] `edit-shipped-agent-file` gap corroborates backlog F24.
+
 ## Architect Lessons
 
 - **A count you reasoned to is not a fact, and it fails silently.** This plan made **three** counting

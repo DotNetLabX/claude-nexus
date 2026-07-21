@@ -1,5 +1,7 @@
 # F20-ProcessSkillQuickWins — Lessons
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED] list-insert/renumber → grep for in-prose summaries of the same list → create-implementation-plan counted-surface bullet. [ROUTED-TO-BACKLOG] `edit-shipped-plugin-skill` gap → backlog F24 (binding entry lists F16/F17/F20; the exception-vs-anti-pattern two-surface reconciliation folds into that recipe). [TRACKED] range-scoped acceptance (awk-between-headings) as the default form for location claims (1 occurrence).
+
 ## Developer Lessons
 
 - **Insert/renumber a numbered list → grep the file for prose that *summarizes* that list.** Adding

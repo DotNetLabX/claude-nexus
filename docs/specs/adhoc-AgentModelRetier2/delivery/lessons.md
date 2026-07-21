@@ -1,5 +1,7 @@
 # Agent Model Retier 2 (fable retired) — Lessons
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED] `node --test` glob form → CLAUDE.md ## Running tests (3rd occurrence, with F3 + F17). Retier-mechanics confirmations and the solo-lane scope-cap precedent: recorded, no action.
+
 ## Solo Lessons
 - Confirmed two lessons from adhoc-AgentModelRetier: (1) the frontmatter lint's `MODELS` allowlist
   only needs editing when a retier introduces a *new* alias — moving between already-allowlisted

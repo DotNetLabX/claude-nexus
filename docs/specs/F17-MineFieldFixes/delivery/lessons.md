@@ -1,5 +1,7 @@
 # F17-MineFieldFixes — Lessons
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED] `node --test` glob form → CLAUDE.md ## Running tests (with F3, AgentModelRetier2) — the execute-the-test-invocation rule itself already ships in create-implementation-plan ("grep, test runner, or generator"); the CLAUDE.md line removes the per-run rediscovery. [ROUTED-TO-BACKLOG] `edit-shipped-plugin-skill` gap → backlog F24 (with F16, F20). [TRACKED] built-in `/review` is PR-scoped — disclosed self-review is the fast-lane fallback (1 occurrence); stale-adjacent-surface triple (JSDoc/header/prose) folds into the F24 recipe.
+
 ## Developer Lessons
 - **`node --test <dir>` (directory form) fails under Node 24 in this repo.** The plan's Step-4
   invocation `node --test tests/unit/` errors with `Cannot find module '…/tests/unit'` on Node

@@ -1,6 +1,7 @@
 # Lessons — adhoc-SddCoverageLoop
 
 > **Learner disposition (2026-07-11 → nexus 1.30.4):** [ROUTED-TO-PROPOSAL] resumed-agent absent-agent_type verify-skip gap → docs/proposals/session-scoped-pipeline-state-2026-07.md. [TRACKED] harness-inline-helper skill candidate (2 instances, borderline — held below threshold).
+> **Learner strengthen (2026-07-21):** harness-inline-helper provenance grows — F7-MineMachineryBorrowWave2 filed `inlined-copy-convergence-check` + `harness-workflow-authoring` (same family; the evidence-gate predicate now has 5 in-lockstep copies). 2 runs total. Before promoting/building, verify whether `scripts/selfcheck.mjs`'s existing inline-copy sync check already covers the `tools/*.mjs` ↔ workflow-driver pair class; if not, the promote shape is a mechanical convergence test (F7's re-review proved the behavioral-lockstep battery works — "5-copy × 19-fixture lockstep battery agrees", F7 communication-log.md row 34; the cycle-0 battery ran at 4 copies, the fix round grew it to 5).
 
 ## Architect Lessons
 

@@ -1,5 +1,7 @@
 # F15-SkillCandidateMiner — Lessons
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED] external-repo rule rephrased to ANY filesystem read (its exact ask; with F1, MineSkillAuthoring) → agents-workflow external-repo grounding bullet. [TRACKED] role-first-naming recurrence post-F9 fix (1 occurrence — escalate to a deterministic hook warning if it recurs); unlogged-mapped-skill consequence wording in lane dispatches (1 occurrence); finder read-once rule in finder prompts (1 occurrence). Re-verify-aged-findings and `git -C` fallback practicality: positive validations, no change. Occurrence credited to backlog F25 (mine-family recipe).
+
 ## Architect Lessons
 
 - **Name spawned lane agents role-first (`developer-f15`), never qualifier-first (`f15-developer`).**

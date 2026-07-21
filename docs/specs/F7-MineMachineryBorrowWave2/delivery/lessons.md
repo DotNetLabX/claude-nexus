@@ -1,5 +1,7 @@
 # F7-MineMachineryBorrowWave2 — Lessons
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED] `\s*=\s*` definition-line grep hardening + planned-shape-citable-only-as-planned → create-implementation-plan (harden-patterns + referent-verification). [TRACKED] `inlined-copy-convergence-check` + `harness-workflow-authoring` gaps — strengthen the adhoc-SddCoverageLoop `harness-inline-helper` tracked entry (same family, now 2 runs; before building, verify whether selfcheck's existing inline-copy sync already covers the `tools/*.mjs` pair class). [TRACKED] `git check-ignore` on committed-artifact paths at plan time; dormant-alternate-path gate sweep folded under the applied referent class. Behavioral-lockstep review technique: recorded for the F24 recipe.
+
 ## Architect Lessons
 
 - Phase-1 re-grounding of a 1-day-old, critic-folded tech-spec still caught three source drifts —

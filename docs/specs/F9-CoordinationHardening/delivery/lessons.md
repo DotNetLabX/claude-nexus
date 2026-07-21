@@ -1,5 +1,7 @@
 # F9-CoordinationHardening — Lessons
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED] cross-agent-file pointer reachability (injection surface check) → create-implementation-plan referent-verification bullet. [TRACKED] consuming-repo audit logs as ground truth for hook-behavior claims (1 occurrence). State-shape migration/test-seam lessons: stay with judgment (dev-repo technique). Carried-forward flags (mine-family read-tracker collision, capability-pin enforcement roadmap) remain open as recorded.
+
 ## Architect Lessons
 
 - **Live-log re-grounding overturned the inbound diagnosis.** Feedback Entry 3 blamed read-tracker

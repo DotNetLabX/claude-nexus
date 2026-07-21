@@ -1,5 +1,7 @@
 # F6-MineMachineryHardening — Lessons
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED] "runs-in-CI is a wiring fact — grep the invoker" (with MineSkillAuthoring/F7/F8/F9) → create-implementation-plan referent-verification bullet. [APPLIED-PRIOR] explicit-path staging (recurrence evidence; rule already shipped). [TRACKED] architect critic-default for shared-artifact tech-specs (owner approval not given this pass). [TRACKED] wiped-tree recovery mitigations (scratchpad-secure-first, commit-early) — 1 occurrence. [TRACKED] killed-agent cheap-verify-then-resume technique — 1 occurrence.
+
 ## Architect Lessons
 
 - **A "runs in CI" claim is a wiring fact — grep the invoker, never trust the invokee or repo prose.**

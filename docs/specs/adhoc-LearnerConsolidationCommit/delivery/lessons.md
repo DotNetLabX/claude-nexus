@@ -1,5 +1,7 @@
 # Lessons — adhoc-LearnerConsolidationCommit
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED] (self-applied in-feature — re-ground inbound feedback text; agent-workflow-edit ripple surfaces). Both confirmed in practice by this consolidation; no further action.
+
 ## Solo Lessons
 
 - **Re-ground inbound feedback text before pasting it in** — the proposed step 9 wording carried

@@ -1,6 +1,23 @@
 # nexus — Changelog
 
 
+## [1.39.2] — 2026-07-21
+- Learner consolidation (20 runs since 2026-07-11): `create-implementation-plan` Plan Grounding
+  extensions — referent verification (grep the target for the claimed content; existence is not
+  carriage), counted-surface sweep (count word + enumerated lists + prose summaries), port-step
+  Keep/Change/Scrub list with a census-derived token gate, Follow-step branch-pinning anti-pattern,
+  and harden-patterns additions (all-file-type sweeps, zero-hit exit-code trap, `\s*=\s*`
+  definition greps, paste-don't-retype tables). `team-lead`: Codex liveness revised — the job
+  registry is per-runtime so a coordinator status check can false-negative on a subagent-dispatched
+  job; proceed-without is revocable (watch for a late-landing `review-codex.md` through closure,
+  reconcile finding-by-finding). `agents-workflow`: external-repo grounding — an empty
+  Glob/Grep/Bash result on an out-of-tree path is unanswered, never absent; verify via Read
+  (absolute path), native shell, or `git -C`.
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (injected every session)
+  - skill change (create-implementation-plan)
+
 ## [1.39.1] — 2026-07-21
 - lint_clean gate (eighth gate) ported from the omni twin: analyzer zero-findings on generated tests, capability-4 analyzer-command input, deprecated-member suppression carve-out; flutter analyze fill; flows harness Dart under the same gate. Originally shipped twin-side as omni 1.38.5 / omni-flutter 0.4.4 by Ovidiu Usvat — ported to the source of truth and reconciled with the instrument-integrity release.
   - skill change (mine-verify-cover)

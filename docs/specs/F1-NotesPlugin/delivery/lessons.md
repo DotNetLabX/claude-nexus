@@ -1,5 +1,7 @@
 # F1-NotesPlugin — Lessons
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED] port-step Keep/Change/Scrub + census gate (with F3, F8) → create-implementation-plan Plan Grounding. [APPLIED] Follow-step branch pinning (with adhoc-MineSkillAuthoring, opposite direction) → create-implementation-plan Anti-patterns. [APPLIED] external-repo Glob/Grep empties (with adhoc-MineSkillAuthoring, F15) → agents-workflow external-repo grounding. [TRACKED] value-shaped leftover class (schema-enum diff of worked examples) — 1 occurrence; sibling-citation E6 form (with F3, F7 — 3 occurrences, threshold met, surface next pass).
+
 ## Architect Lessons
 
 - **A "port from X" step needs a Keep/Change/Scrub list whenever X is bigger than the consumer's need.** Step 3 (search-notes) had one and survived review clean; Step 2 (note-schemas) said only "port from the live file" and drew the single HIGH — the 534-line producer contract would have shipped 26 dangling hub references. The under-specified port is the same defect class as the unscoped "replace all X."

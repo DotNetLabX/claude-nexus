@@ -97,6 +97,23 @@ Tracks every skill created or fixed by the learner/developer pipeline. One entry
 
 ## Skills Fixed
 
+### Learner consolidation 2026-07-21 (create-implementation-plan + agent/rule promotions)
+- **Status:** Fixed
+- **Type:** Fix
+- **Source:** Learner consolidation 2026-07-21 (cross-run lessons sweep, 20 runs since 2026-07-11)
+- **Description:** `create-implementation-plan` — Plan Grounding extensions: referent verification
+  (a pointer/reuse/wiring claim is verified by grepping the target for the claimed content; 5 runs),
+  counted-surface sweep (counts + enumerated lists + prose summaries; 5 runs), port/generalization
+  census gate (Keep/Change/Scrub list, census-derived token list incl. numeric fingerprints, all
+  file types; 4 runs), Follow-step branch pinning anti-pattern (2 runs), harden-patterns additions
+  (all-file-type sweeps, zero-hit grep exit-code trap, `\s*=\s*` definition greps, paste-don't-retype
+  tables). Companion non-skill promotions same pass: team-lead Codex liveness revision (per-runtime
+  registry false-negative, proceed-without revocable), agents-workflow external-repo grounding
+  bullet. **Routed-to-backlog** (build deferred, owner-triaged): `edit-shipped-plugin-skill` →
+  backlog F24 (3 occurrences: F16/F17/F20), `mine-family-member-authoring` → backlog F25
+  (3 occurrences: F10/F15/F16). skill-lint exit 0 on the edited skill.
+- **Date:** 2026-07-21
+
 ### Learner consolidation 2026-07-11 (multi-skill)
 - **Status:** Fixed
 - **Type:** Fix

@@ -1,5 +1,7 @@
 # Agent Model Resume Q&A — Lessons
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED-PRIOR] all items — the stale resume-model doctrine was retired in-feature (nexus 1.38.3) and the plugin-first-fixes doctrine is in memory. Version-first triage of consuming-team reports: confirmed practice, recorded here.
+
 ## Solo Lessons
 - Both halves of this investigation resolved to "known bug, already fixed in a later version" —
   the resume-model claim maps to Claude Code's pre-v2.1.211 silent model-reversion bug (fixed

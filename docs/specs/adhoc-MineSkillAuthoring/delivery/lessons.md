@@ -1,5 +1,7 @@
 # Lessons — adhoc-MineSkillAuthoring
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED] referent verification (dead chunked-writes pointer; with F6/F7/F8/F9) + counted-surface sweep incl. enumerated-list blindness (with MineVerifyFlows/F10/F16/F20) + Follow-branch pinning (with F1) → create-implementation-plan. [APPLIED] external-repo Glob unreachability (with F1, F15) → agents-workflow. [APPLIED] Codex cross-runtime liveness revision → team-lead. [ROUTED-TO-PLUGIN] 2 codex-plugin items → docs/plugin-feedback/codex-2026-07-21.md. [TRACKED] Grep directory-brace-glob unreliability (1 occurrence). Oracle-independence/absence-gate lessons: mine-family-internal, applied in-feature.
+
 ## Architect Lessons
 
 - **Same-session oracle production is a structural fault, not a sequencing accident.** Pilot 2 followed the then-ratified Graduate-to-spec text ("its pilot pulls a Mine→Verify registry first") and mined the clusterize registry inside the consuming run — colliding with a concurrent canonical registry run (truth fork, contained at SDK `128aab9` + supersede + brief renumber) AND compromising the conformance gate's independence even absent the collision. The SDK architect's proposal amendment (HARD BLOCK: stage-0 precondition, never self-mine) is the correct supersession; folded into plan step 2 the same day. Lesson: when a method consumes a verified artifact as its oracle, the plan must require the oracle to be produced by a *separate* run — "the pilot pulls it first" hid a same-session shortcut.

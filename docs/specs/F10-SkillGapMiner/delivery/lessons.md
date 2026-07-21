@@ -1,5 +1,7 @@
 # F10-SkillGapMiner — Lessons
 
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [ROUTED-TO-BACKLOG] `add-mine-family-member` gap → backlog F25 (with F15, F16 — F16's entry is the binding record). [TRACKED] background-grandchild fan-out prohibition for mechanical extraction + stale-`<result>`-restate contract (1 occurrence; F9 idle-recovery covers the rest). [TRACKED] Judgment-Gate post-fold consistency pass (1 occurrence). Ordinal-from-family-core and tolerant plan-table parsing: fold into the F25 recipe when built. Executed-grep-beats-cited-list: positive validation of the shipped rule, no change.
+
 ## Developer Lessons
 - **Background grandchild fan-out is unreliable — do mechanical extraction inline.** A background
   miner subagent that itself spawns background sub-miners lost 5/5 of their results (the parent
