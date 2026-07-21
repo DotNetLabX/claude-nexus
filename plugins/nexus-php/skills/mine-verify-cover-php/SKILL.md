@@ -75,17 +75,17 @@ The runner maps each group array to a gate status using this **probe-observed** 
 
 | Infection group key | → gate status | In `mutants`? | Scored (`DENOMINATOR_STATUSES`)? |
 |---------------------|---------------|---------------|----------------------------------|
-| `killed` | `Killed` | yes | yes (kill) |
+| `killed` | `Killed` | yes | yes (kill — an assertion fired) |
 | `killedByStaticAnalysis` | `Killed` | yes | yes (kill) |
-| `errored` | `Killed` | yes | yes (kill — an errored mutant was detected) |
+| `errored` | `Killed` **only after per-mutant adjudication** | yes | conditional — read the mutant's `processOutput`: a PHP fatal originating in the MUTATED code (TypeError from the mutant's change, etc.) is a genuine detection → `Killed`; a harness/environment error (autoload, filesystem, framework bootstrap) is an **instrument defect → HALT and fix**, never a kill. `rc != 0` alone proves nothing (kill-attribution rule) |
 | `escaped` | `Survived` | yes | yes (survivor) |
-| `timeouted` | `Timeout` | yes | yes (kill — the gate treats Timeout as killed) |
+| `timeouted` | `Timeout` | yes | yes, on the **survivor** side unless adjudicated — the gate scores an unadjudicated Timeout as a survivor; only a proven infinite loop passes via `adjudicatedTimeoutKillLines` |
 | `uncovered` | `NoCoverage` | yes | yes (survivor side of the denominator) |
-| `syntaxErrors` | `CompileError` | yes | **no** — present for an honest count, excluded from the score (mirrors Stryker `CompileError`) |
+| `syntaxErrors` | `CompileError` | yes | **no** — present for an honest count, excluded from BOTH sides (mirrors Stryker `CompileError`) |
 | `ignored` | (excluded) | **no** — not enumerated | no |
 | `skipped` | (excluded — stats-only, no array) | no | no |
 
-`DENOMINATOR_STATUSES = {Killed, Survived, Timeout, NoCoverage}` (the gate battery's set, unchanged). `Timeout` counts on the **killed** side (gate semantics — unchanged from .NET/cpp/Flutter). Build `mutationSummary` from `stats` (`total: totalMutantsCount`, `killed: killedCount`, `escaped: escapedCount`, `timeout: timeOutCount`, `notCovered: notCoveredCount`, `errored: errorCount`, `killedByStaticAnalysis: killedByStaticAnalysisCount`, `syntaxError: syntaxErrorCount`, `ignored: ignoredCount`, `skipped: skippedCount`).
+`DENOMINATOR_STATUSES = {Killed, Survived, Timeout, NoCoverage}` (the gate battery's set, unchanged). **Timeout is NOT auto-killed** (kill-attribution rule, `mine-verify-cover` → `### Instrument integrity`, audit 2026-07-21 — Infection has never been audited; this map is the conservative fill). Build `mutationSummary` from `stats` (`total: totalMutantsCount`, `killed: killedCount`, `escaped: escapedCount`, `timeout: timeOutCount`, `notCovered: notCoveredCount`, `errored: errorCount`, `killedByStaticAnalysis: killedByStaticAnalysisCount`, `syntaxError: syntaxErrorCount`, `ignored: ignoredCount`, `skipped: skippedCount`).
 
 **Anti-fake-green cross-check** (the translation seam's guard — the Flutter runner's survivor-count analogue): the translated `mutants` array length MUST equal `stats.totalMutantsCount − ignoredCount − skippedCount`. A mismatch means the runner mis-translated, dropped, or padded the set → the run **HALTs** (`mutant-count-mismatch`), never scores on an inconsistent set. Report exactly what the log lists; never pad or drop to force the match.
 

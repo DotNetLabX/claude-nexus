@@ -200,10 +200,11 @@ test('mutationFloor still counts a KILLED mutant on a dead line (killing it is f
   assert.equal(res.detail.expectedSurvivorsExcluded, 0, 'no dead-line SURVIVOR to exclude');
 });
 
-test('mutationFloor counts Timeout as killed and lists only non-Timeout reachable survivors', () => {
-  // Inc-3 Step 3 fix: Timeout counts as killed (standard Stryker semantics — a detected mutation).
-  // With the fix: 6 Killed + 1 Timeout = 7 killed; 10 reachable; scorePct = round(7/10*100) = 70%.
-  // reachableSurvivors = Survived×2 + NoCoverage×1 = 3 (Timeout is no longer a survivor).
+test('mutationFloor treats an UNADJUDICATED Timeout as a survivor (kill-attribution rule, 2026-07-21)', () => {
+  // Instrument-integrity fix: a timeout is the harness giving up, not an assertion firing — audited
+  // estates found most timeouts were deadlocks/infrastructure. Unadjudicated Timeout = SURVIVOR
+  // (conservative), listed in detail.timeouts as the adjudication worklist.
+  // 6 Killed / 10 reachable = 60%; reachableSurvivors = Survived×2 + NoCoverage×1 + Timeout×1 = 4.
   const report = {
     schemaVersion: '2',
     files: {
@@ -218,12 +219,37 @@ test('mutationFloor counts Timeout as killed and lists only non-Timeout reachabl
     },
   };
   const res = mutationFloor(report, SRC_PATH, { floor: 75, expectedSurvivorLines: EXPECTED_SURVIVOR_LINES });
-  assert.equal(res.detail.scorePct, 70, '7 killed (6 Killed + 1 Timeout) / 10 reachable = 70%');
-  assert.equal(res.pass, false, '70% < 75 floor');
-  assert.equal(res.detail.reachableSurvivors.length, 3, 'Timeout is now killed — only 3 non-killed reachable mutants feed back (Survived/Survived/NoCoverage)');
-  // New assertion (Inc-3 Step 3): confirm the Timeout mutant landed in killed, not survivors.
+  assert.equal(res.detail.scorePct, 60, '6 Killed / 10 reachable = 60% — the Timeout is NOT a kill');
+  assert.equal(res.pass, false, '60% < 75 floor');
+  assert.equal(res.detail.reachableSurvivors.length, 4, 'the unadjudicated Timeout feeds back as a survivor');
+  assert.equal(res.detail.timeouts.length, 1, 'the Timeout lands in the adjudication worklist');
+  assert.equal(res.detail.timeouts[0].adjudicatedKill, false);
+});
+
+test('mutationFloor counts a Timeout as a kill ONLY when adjudicated a proven infinite loop', () => {
+  // Same fixture; the caller adjudicated L95's timeout as a proven infinite loop (e.g. i++ → i--).
+  const report = {
+    schemaVersion: '2',
+    files: {
+      [SRC_PATH]: {
+        language: 'cs',
+        mutants: [
+          mut('Killed', 35), mut('Killed', 48), mut('Killed', 76),
+          mut('Killed', 95), mut('Killed', 145), mut('Killed', 165),
+          mut('Survived', 35), mut('Survived', 48), mut('NoCoverage', 76), mut('Timeout', 95),
+        ],
+      },
+    },
+  };
+  const res = mutationFloor(report, SRC_PATH, {
+    floor: 75,
+    expectedSurvivorLines: EXPECTED_SURVIVOR_LINES,
+    adjudicatedTimeoutKillLines: [95],
+  });
+  assert.equal(res.detail.scorePct, 70, '6 Killed + 1 adjudicated Timeout = 7 / 10 reachable = 70%');
+  assert.equal(res.detail.timeouts[0].adjudicatedKill, true, 'the adjudication is recorded on the worklist entry');
   const survivorStatuses = res.detail.reachableSurvivors.map((m) => m.status);
-  assert.equal(survivorStatuses.includes('Timeout'), false, 'Timeout must not appear in reachableSurvivors — it is counted as killed');
+  assert.equal(survivorStatuses.includes('Timeout'), false, 'an adjudicated Timeout is no longer a survivor');
 });
 
 test('mutationFloor fails loud when the target file has no per-file Stryker entry (bad mutate glob)', () => {
@@ -244,9 +270,9 @@ test('mutationFloor fails when zero reachable mutants exist (nothing proven is n
   assert.equal(res.pass, false, '0 reachable mutants proves nothing → not a pass');
 });
 
-test('mutationFloor PASSES at exactly the floor (75%): 3 killed / 4 reachable = Math.round(0.75*100) = 75', () => {
+test('mutationFloor PASSES at exactly the floor (75%): 3 killed / 4 reachable, compared exactly', () => {
   // Boundary pin at N: exactly 75% must pass. 3 killed + 1 survivor on a live line = 4 reachable.
-  // Math.round(3/4 * 100) = Math.round(75.0) = 75 → scorePct === floor → pass: true.
+  // 3/4 >= 75/100 exactly → pass: true.
   const report = {
     schemaVersion: '2',
     files: {
@@ -258,9 +284,8 @@ test('mutationFloor PASSES at exactly the floor (75%): 3 killed / 4 reachable = 
   assert.equal(res.pass, true, 'exactly at the floor is a pass (>= floor)');
 });
 
-test('mutationFloor FAILS at 74% (N-1 boundary): 14 killed / 19 reachable = Math.round(73.68...) = 74', () => {
-  // Boundary pin at N-1: 74% must fail. 14 killed + 5 survivors on live lines = 19 reachable.
-  // Math.round(14/19 * 100) = Math.round(73.68) = 74 → scorePct < floor → pass: false.
+test('mutationFloor FAILS just under the floor: 14/19 = 73.68%, reported unrounded', () => {
+  // Boundary pin at N-1: below the floor must fail, and scorePct reports the honest 2-decimal figure.
   const report = {
     schemaVersion: '2',
     files: {
@@ -276,8 +301,20 @@ test('mutationFloor FAILS at 74% (N-1 boundary): 14 killed / 19 reachable = Math
     },
   };
   const res = mutationFloor(report, SRC_PATH, { floor: 75, expectedSurvivorLines: EXPECTED_SURVIVOR_LINES });
-  assert.equal(res.detail.scorePct, 74, '14/19 reachable = 73.68% → rounds to 74%');
-  assert.equal(res.pass, false, '74% < 75 floor → fails');
+  assert.equal(res.detail.scorePct, 73.68, '14/19 reachable = 73.68%, no rounding to 74');
+  assert.equal(res.pass, false, '73.68% < 75 floor → fails');
+});
+
+test('mutationFloor REGRESSION PIN: a score that Math.round would pass must FAIL (the 74.59 → 75 bug)', () => {
+  // Instrument-integrity audit 2026-07-21 (.NET estate): Math.round(74.59) = 75 passed a 75 floor.
+  // 149/200 = 74.5% — Math.round would say 75 (pass); the exact comparison must fail.
+  const mutants = [];
+  for (let i = 0; i < 149; i++) mutants.push(mut('Killed', 300 + i));
+  for (let i = 0; i < 51; i++) mutants.push(mut('Survived', 500 + i));
+  const report = { schemaVersion: '2', files: { [SRC_PATH]: { language: 'cs', mutants } } };
+  const res = mutationFloor(report, SRC_PATH, { floor: 75, expectedSurvivorLines: [] });
+  assert.equal(res.detail.scorePct, 74.5, '149/200 = 74.5% exactly');
+  assert.equal(res.pass, false, '74.5% < 75 — rounding must never carry a score over the floor');
 });
 
 // =================================================================================================

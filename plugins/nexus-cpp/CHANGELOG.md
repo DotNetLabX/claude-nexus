@@ -2,6 +2,11 @@
 
 All notable changes to the `nexus-cpp` plugin.
 
+## [0.2.0] — 2026-07-21
+- instrument-integrity: kill-attribution rule — timeout/crash/compile-fail are adjudication buckets, never auto-kills; exact floor comparison (no rounding); per-instrument honesty proofs; evidence committed
+  - skill change (mine-verify-cover-cpp)
+  - owner-escalated to minor
+
 ## [0.1.5] — 2026-07-09
 - **C++ graph-extraction recipe: clang-uml + Joern fallback (adhoc-AgentGrounding).**
   `mine-verify-cover-cpp/SKILL.md` gains a self-contained graph-extraction section beside `## Picking

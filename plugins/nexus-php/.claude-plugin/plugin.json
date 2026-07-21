@@ -1,6 +1,6 @@
 {
   "name": "nexus-php",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Nexus PHP (thin) — a stack extension for the `nexus` core pipeline. Ships the PHP adapter for the mine-verify-cover method: Infection (the PHP mutation standard) driving PHPUnit 12 inside a Docker toolchain (php:8.4-cli + PCOV + composer), a workspace-copy isolation that never touches the consuming repo, the Infection-json → Stryker-schema translation seam, native-fs container execution, and the eris property-test style. Generated tests land Pest-compatible. Reuses nexus's agents, rules, commands, and security guard — install ALONGSIDE nexus, not instead of it.",
   "author": {
     "name": "ldumit"

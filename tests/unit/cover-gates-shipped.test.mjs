@@ -48,7 +48,7 @@ test('mutationFloor with NO expectedSurvivorLines opt excludes nothing (no inher
   const res = mutationFloor(report, SRC, { floor: 75 });
   assert.equal(res.detail.expectedSurvivorsExcluded, 0, 'no dead line is excluded without a caller-supplied set');
   assert.equal(res.detail.reachableDenominator, 9, 'the line-17 survivor is counted, not silently excluded');
-  assert.equal(res.detail.scorePct, 89, '8/9 = 88.9 → 89%');
+  assert.equal(res.detail.scorePct, 88.89, '8/9 = 88.89%, reported unrounded (2 decimals)');
 });
 
 test('mutationFloor still honors a CALLER-supplied expectedSurvivorLines set', () => {

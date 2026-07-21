@@ -18,6 +18,27 @@ The **stack adapter** for `mine-verify-cover` (the nexus core method). The metho
 | Test-style contract | xUnit v3 `[Fact]` + AwesomeAssertions; FsCheck.Xunit.v3 `[Property]` |
 | Prod-source-diff scoping | `git diff -- {Module}.Domain/` (scoped to the production project) |
 
+## Instrument integrity — the Stryker shape (MANDATORY before any score is reported)
+
+This stack's proven failure mode is **timeout-as-kill** (audit 2026-07-21: 3 timeouts on loop-free
+string literals carried a 75-floor PASS that honestly read 73.58% FAIL; on another unit 17 of 20
+timeouts were deadlocks, not detections). The binding fills of `mine-verify-cover` →
+`### Instrument integrity`:
+
+- **`Timeout` is never a kill.** The gate scores unadjudicated Timeouts as survivors and lists them
+  in `detail.timeouts`. Adjudicate each at `--concurrency 1`: a proven infinite loop (e.g. `i++`→`i--`
+  in a loop header) passes its line via `adjudicatedTimeoutKillLines`; a deadlock or slow test is a
+  survivor — and usually a REAL suite gap (assert completion explicitly instead of hanging).
+- **`CompileError` stays excluded from BOTH sides** (the gate already does this) — but Stryker's
+  Safe Mode removes ALL mutants in a method on one compile error, so report the CompileError share
+  of the total surface as a disclosed blind spot (one audited unit had 20% of its surface erased in
+  method-wide clusters). Correct arithmetic ≠ adequate coverage.
+- **Floor comparison is exact** — the shipped gate no longer rounds; never reintroduce a rounded
+  score in any wrapper arithmetic.
+- **Commit the evidence.** Copy the `StrykerOutput` JSON backing any committed verdict into a
+  committed evidence path (e.g. `docs/business-rules/_evidence/{unit}/`, SHA-256 recorded). A
+  verdict whose evidence lives in a gitignored worktree is one cleanup away from unauditable.
+
 ## Test-project scaffold (the prerequisite)
 
 The Cover agent writes test *files*, not a test *project*. A repo with no tests needs a project scaffolded ONCE per bounded context, before the first run. Mirror this proven shape.

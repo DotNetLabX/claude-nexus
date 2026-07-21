@@ -63,7 +63,17 @@ The Cover agent writes the test file; a distinct runner agent executes the toolc
    cmake --build /probe/build-mull
    mull-runner-15 --reporters Elements --reporters SQLite --report-name cover --report-dir /probe/mull-out --workers 4 /probe/build-mull/cover_tests
    ```
-3. Read `/probe/mull-out/cover.json`. It is **already** mutation-testing-elements: `files[<path>].mutants[{status, location.start.line, mutatorName, replacement}]`, statuses `Killed`/`Survived`/`Timeout`/`NoCoverage` — exactly the gate's denominator set. Take the target file's `mutants` array **AS-IS** (no translation; `Timeout` counts as a kill).
+3. Read `/probe/mull-out/cover.json`. It is **already** mutation-testing-elements: `files[<path>].mutants[{status, location.start.line, mutatorName, replacement}]`, statuses `Killed`/`Survived`/`Timeout`/`NoCoverage` — exactly the gate's denominator set. Take the target file's `mutants` array **AS-IS** (no translation). `Timeout` is an **adjudication bucket**, not a kill — the gate scores an unadjudicated Timeout as a survivor; pass a timeout line via `adjudicatedTimeoutKillLines` only after proving the mutant a genuine infinite loop (kill-attribution rule, `mine-verify-cover` → `### Instrument integrity`).
+3b. **Instrument honesty proof — MANDATORY before any score is reported** (this stack's shape is
+   parallel-shared-state; a shared `/tmp` artifact under `--workers 4` once inflated a suite's score
+   97.8% → 53.8% by counting worker-collision crashes as kills):
+   - **Reproducibility proof:** run the identical mull invocation twice, plus once with `--workers 1`.
+     The per-mutant verdict sets must be IDENTICAL (survivor-set symmetric diff = 0) across all three.
+     Any diff = the instrument is lying — find the shared state, fix it, re-prove. No score ships
+     without this proof recorded in the run artifacts.
+   - **Harness isolation rule (test-authoring time):** any path a scored test writes MUST be
+     per-process — embed `getpid()` (or honor a per-worker env dir) in every temp filename. A fixed
+     shared path is the defect class; it is invisible to any later audit that doesn't re-run.
 4. Build `mutatedFiles` (one `{file,count}` per key in `cover.json.files`) for the `target_mutated` anti-fake-green guard — verify your slice's basename was actually mutated (count > 0).
 5. **Never execute mutant binaries outside mull.** Survivor triage is **read-only** — reason from `cover.json` + the source. A mutation can break a loop guard and produce a **non-terminating binary**; mull's per-mutant timeout contains that, an ad-hoc probe does not (a live run hand-compiled surviving mutants into a diff harness with no timeout — one spun at 100% CPU and deadlocked the whole workflow until killed). If SUT execution outside `ctest`/`mull-runner-15` is ever unavoidable, wrap it in `timeout <N>s`.
 

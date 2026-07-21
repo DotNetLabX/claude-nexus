@@ -1,6 +1,11 @@
 # nexus — Changelog
 
 
+## [1.39.0] — 2026-07-21
+- instrument-integrity: kill-attribution rule — timeout/crash/compile-fail are adjudication buckets, never auto-kills; exact floor comparison (no rounding); per-instrument honesty proofs; evidence committed
+  - skill change (mine-verify-cover)
+  - owner-escalated to minor
+
 ## [1.38.4] — 2026-07-21
 - Agent model retier: po/architect/reviewer move from fable to opus; developer/critic/learner move to sonnet (team-lead/solo stay on opus).
   - agent instruction/behavior change

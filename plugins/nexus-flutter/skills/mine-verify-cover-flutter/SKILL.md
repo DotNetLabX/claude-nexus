@@ -74,8 +74,23 @@ The Cover agent writes the test file; a distinct runner agent executes the toolc
 
    Derive:
    - `reachable = total − notCovered`
-   - `killed = reachable − undetected` (Timeouts count as killed — they interrupted a surviving mutation)
-   - `killRate = killed / reachable`
+   - `killed = reachable − undetected` — **as the raw cross-check only, never the reported score**
+   - `killRate = killed / reachable` — raw; the honest score requires the classification below.
+
+   **Kill classification — MANDATORY (kill-attribution rule; audit 2026-07-21 found 2 fake kills in
+   one battery where the Dart front-end rejected the mutant and zero tests executed):** the tool's
+   "detected" means only `exit != 0`. The runner must capture each detected mutant's output and
+   classify it — `BEHAVIORAL` (a failing test name / `Expected:`/`Actual:` in the compact reporter),
+   `COMPILE_FAIL` (`Error:`, `isn't defined`, `The argument type`, `Failed to load`,
+   `Compilation failed` — the suite never ran), `LOAD_CRASH`, or `TIMEOUT`:
+   - honest `killed` = `BEHAVIORAL` (+ any `TIMEOUT` adjudicated a proven infinite loop);
+   - `COMPILE_FAIL` = non-viable mutant — excluded from numerator AND denominator (Stryker
+     convention); it proves the compiler works, not the tests;
+   - unadjudicated `TIMEOUT` and `LOAD_CRASH` score as survivors (conservative) pending per-mutant
+     adjudication (crash from the mutant's semantics = kill; harness crash = instrument defect).
+   A `100% reachable-kill` claim is immune to non-viable contamination (n/n stays n/n after both-side
+   exclusion) — but any sub-100% raw score and any CROSS-ARM COMPARISON is valid only after
+   classification, and comparisons additionally require a uniform instrument across arms.
 
    Use the XML `<undetected-mutations>` ONLY to enumerate survivors (line + original→modified) for the survivor report — never to count kills.
 4. Clean up the config + `mutation_test_out/` from the app tree.
@@ -90,12 +105,14 @@ after three abnormal-exit incidents in one mutation campaign:
   Dart VM holding the stdout pipe open, so a naive `subprocess.run(timeout=...)` NEVER returns on Windows
   — the parent's timeout fires but the child keeps the pipe open and the call blocks forever. The harness
   must (a) redirect output to a FILE, never a captured pipe, and (b) kill the whole tree on timeout —
-  `taskkill /F /T /PID {pid}` on Windows (`/T` = tree). Only then does "Timeout counts as a kill"
-  (`mine-verify-cover` → `mutation_floor`) actually return a result instead of hanging the harness itself.
-- **A crash return code is a kill, not a SUSPECT.** A crashing mutant can hand back a platform crash code
-  (Windows `0xC0000409`, a stack-overflow security-cookie fault) paired with an empty or not-all-green
-  suite. Treat `rc ∉ {0, clean-fail}` AND not-all-green as **KILLED-by-crash** — never leave it `SUSPECT`
-  pending a manual look.
+  `taskkill /F /T /PID {pid}` on Windows (`/T` = tree). The terminated mutant then lands in the `TIMEOUT`
+  adjudication bucket (see the kill classification above) — recorded, never auto-scored as a kill.
+- **A crash return code is an ADJUDICATION entry, not an auto-kill.** A crashing mutant can hand back a
+  platform crash code (Windows `0xC0000409`, a stack-overflow security-cookie fault) paired with an empty
+  or not-all-green suite. Record it as `LOAD_CRASH` with its captured output and adjudicate: crash caused
+  by the mutant's semantic effect = kill; crash from the harness/environment = instrument defect to fix
+  before the score means anything. `rc != 0` alone proves the process died, not that a test detected
+  anything.
 - **Re-verify `char_pin` after every abnormal exit, before scoring the next mutant.** A hard external
   kill or the run's own time limit bypasses a restore-on-exit `finally` and can leave the mutant still
   applied to `lib/` source. Re-run the `git diff -- lib/` scoping (this adapter's capability-5 fill) and

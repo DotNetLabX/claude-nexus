@@ -1,6 +1,11 @@
 # Changelog — nexus-flutter
 
 
+## [0.5.0] — 2026-07-21
+- instrument-integrity: kill-attribution rule — timeout/crash/compile-fail are adjudication buckets, never auto-kills; exact floor comparison (no rounding); per-instrument honesty proofs; evidence committed
+  - skill change (mine-verify-cover-flutter)
+  - owner-escalated to minor
+
 ## [0.4.3] — 2026-07-18
 **Back-port the first consumer's FL-2 feedback into the `mine-verify-flows-flutter` module spec**
 (hand-carried in the omni twin 2026-07-15, now canonical). The scrubJson spec gains the

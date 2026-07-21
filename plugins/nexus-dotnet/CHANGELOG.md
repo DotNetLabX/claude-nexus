@@ -1,6 +1,11 @@
 # nexus-dotnet — Changelog
 
 
+## [1.6.0] — 2026-07-21
+- instrument-integrity: kill-attribution rule — timeout/crash/compile-fail are adjudication buckets, never auto-kills; exact floor comparison (no rounding); per-instrument honesty proofs; evidence committed
+  - skill change (mine-verify-cover-dotnet)
+  - owner-escalated to minor
+
 ## [1.5.0] — 2026-07-07
 Skill estate consolidation (adhoc-SkillEstateConsolidation) — the estate becomes pattern-first and
 exemplar-cited (PROPOSED ADR-51); count claim 33 → 37. MINOR (4 new skills = new capability).

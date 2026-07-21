@@ -2,6 +2,11 @@
 
 All notable changes to the `nexus-php` plugin.
 
+## [0.2.0] — 2026-07-21
+- instrument-integrity: kill-attribution rule — timeout/crash/compile-fail are adjudication buckets, never auto-kills; exact floor comparison (no rounding); per-instrument honesty proofs; evidence committed
+  - skill change (mine-verify-cover-php)
+  - owner-escalated to minor
+
 ## [0.1.0] — 2026-07-08
 
 Initial release. PHP stack adapter for the nexus `mine-verify-cover` method.

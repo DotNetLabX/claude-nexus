@@ -14,7 +14,8 @@
 //   noFlaky        — identical pass/fail/skip counts across the two runs
 //   mutationFloor  — per-file kill-rate >= floor of REACHABLE mutants (KB-pre-documented dead-code
 //                    survivors excluded from the denominator via opts.expectedSurvivorLines), read from
-//                    the Stryker JSON (schemaVersion 2)
+//                    the Stryker JSON (schemaVersion 2). Timeout is NOT a kill — it is an adjudication
+//                    bucket (opts.adjudicatedTimeoutKillLines). Floor compared EXACTLY, no rounding.
 //   targetMutated  — the Stryker report ACTUALLY mutated the target file (anti-fake-green cross-check)
 //   noNewSkips     — skip count <= the MEASURED baseline (read it; do not assert a literal 0)
 //   charPin        — prod-source-touch PROXY: the only allowed production-source diff is `// Stryker
@@ -60,11 +61,21 @@ export function noFlaky(testRuns) {
 // Stryker computes ONE aggregate score over the whole `mutate` array, so with sibling files also present
 // the aggregate is meaningless for a per-file gate. This gate reads the PER-FILE entry for the target
 // source and computes the kill-rate over REACHABLE mutants only:
-//   killed       = mutants with status Killed
+//   killed       = mutants with status Killed, PLUS Timeout mutants on caller-adjudicated
+//                  proven-infinite-loop lines (opts.adjudicatedTimeoutKillLines)
 //   reachable    = Killed + Survived + Timeout + NoCoverage  (standard Stryker denominator)
 //                  MINUS any survivor whose line is a KB-pre-documented dead line (expected-survivor)
 //   excluded     = Ignored / CompileError / Pending  (never in the denominator) + expected-survivors
-//   scorePct     = round(killed / reachable * 100)  (0 reachable → scorePct 0, pass=false: nothing proven)
+//   pass         = killed / reachable >= floor / 100, compared EXACTLY — no rounding. (A shipped
+//                  Math.round() once passed 74.59% against a 75 floor; instrument-integrity audit
+//                  2026-07-21.) scorePct in detail is display-only, 2 decimals.
+//
+// TIMEOUT IS NOT A KILL (kill-attribution rule, instrument-integrity audit 2026-07-21): a timeout is
+// the harness giving up, not an assertion failing — audited estates found most timeouts were deadlocks
+// or infrastructure, not detections. Unadjudicated timeouts count as SURVIVORS (conservative: the gate
+// may under-state, never over-state) and are listed in detail.timeouts for per-mutant adjudication;
+// only a timeout the caller adjudicated as a proven infinite loop (line listed in
+// opts.adjudicatedTimeoutKillLines) counts as a kill.
 
 // Stryker statuses that count toward the kill-rate denominator (the "covered + run" mutants).
 const DENOMINATOR_STATUSES = new Set(['Killed', 'Survived', 'Timeout', 'NoCoverage']);
@@ -76,14 +87,18 @@ function mutantLine(m) {
 /**
  * @param {object} strykerReport  Parsed Stryker JSON (schemaVersion 2): { files: { <absPath>: { mutants } } }.
  * @param {string} sourcePath     Absolute path of the target source file (the key into `files`).
- * @param {{floor:number, expectedSurvivorLines?:number[]}} opts  expectedSurvivorLines is CALLER INPUT
- *        (the KB-pre-documented dead lines for THIS target) — no default set ships in this file.
- * @returns {{pass:boolean, detail:object}}  detail carries scorePct, killed, reachableDenominator,
- *          expectedSurvivorsExcluded, and reachableSurvivors (the feedback list for the Cover loop).
+ * @param {{floor:number, expectedSurvivorLines?:number[], adjudicatedTimeoutKillLines?:number[]}} opts
+ *        expectedSurvivorLines is CALLER INPUT (the KB-pre-documented dead lines for THIS target);
+ *        adjudicatedTimeoutKillLines is CALLER INPUT (lines whose Timeout was adjudicated a PROVEN
+ *        infinite loop — the only timeouts that count as kills) — no default sets ship in this file.
+ * @returns {{pass:boolean, detail:object}}  detail carries scorePct (display-only, 2 decimals), killed,
+ *          reachableDenominator, expectedSurvivorsExcluded, timeouts (the adjudication worklist), and
+ *          reachableSurvivors (the feedback list for the Cover loop).
  */
 export function mutationFloor(strykerReport, sourcePath, opts) {
   const floor = opts?.floor ?? 75;
   const deadLines = new Set(opts?.expectedSurvivorLines ?? []);
+  const timeoutKillLines = new Set(opts?.adjudicatedTimeoutKillLines ?? []);
   const files = strykerReport?.files ?? {};
   const entry = files[sourcePath];
   if (!entry) {
@@ -94,6 +109,7 @@ export function mutationFloor(strykerReport, sourcePath, opts) {
         killed: 0,
         reachableDenominator: 0,
         error: `no per-file Stryker entry for ${sourcePath} (check the mutate glob + the json reporter)`,
+        timeouts: [],
         reachableSurvivors: [],
       },
     };
@@ -102,29 +118,33 @@ export function mutationFloor(strykerReport, sourcePath, opts) {
   let killed = 0;
   let reachableDenominator = 0;
   let expectedSurvivorsExcluded = 0;
+  const timeouts = [];
   const reachableSurvivors = [];
 
   for (const m of mutants) {
     if (!DENOMINATOR_STATUSES.has(m.status)) continue; // Ignored / CompileError / Pending — never counted.
     const line = mutantLine(m);
-    // Timeout is treated as killed: a timeout = the mutant was detected by a slow/hanging test — it counts
-    // as a kill for the numerator. So isSurvivor excludes both Killed and Timeout.
-    const isSurvivor = m.status !== 'Killed' && m.status !== 'Timeout';
-    if (isSurvivor && deadLines.has(line)) {
+    // Kill-attribution rule: only Killed (an assertion fired) and adjudicated-infinite-loop Timeouts are
+    // kills. An unadjudicated Timeout is a SURVIVOR for scoring (conservative) — never an auto-kill.
+    const isKill = m.status === 'Killed' || (m.status === 'Timeout' && timeoutKillLines.has(line));
+    if (!isKill && deadLines.has(line)) {
       expectedSurvivorsExcluded++;
       continue;
     }
     reachableDenominator++;
-    // Timeout counts as killed (standard Stryker semantics: a timeout = a detected mutation — the test
-    // ran long enough to break the mutant, which is a kill signal).
-    if (m.status === 'Killed' || m.status === 'Timeout') killed++;
+    if (m.status === 'Timeout') {
+      timeouts.push({ line, mutatorName: m.mutatorName, replacement: m.replacement, adjudicatedKill: isKill });
+    }
+    if (isKill) killed++;
     else reachableSurvivors.push({ status: m.status, line, mutatorName: m.mutatorName, replacement: m.replacement });
   }
 
-  const scorePct = reachableDenominator > 0 ? Math.round((killed / reachableDenominator) * 100) : 0;
+  // EXACT comparison — no rounding (a Math.round here once turned 74.59% into a 75-floor PASS).
+  const passExact = reachableDenominator > 0 && killed / reachableDenominator >= floor / 100;
+  const scorePct = reachableDenominator > 0 ? Math.round((killed / reachableDenominator) * 10000) / 100 : 0;
   return {
-    pass: reachableDenominator > 0 && scorePct >= floor,
-    detail: { scorePct, killed, reachableDenominator, expectedSurvivorsExcluded, floor, reachableSurvivors },
+    pass: passExact,
+    detail: { scorePct, killed, reachableDenominator, expectedSurvivorsExcluded, floor, timeouts, reachableSurvivors },
   };
 }
 // =================================================================================================

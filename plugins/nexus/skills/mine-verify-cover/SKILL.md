@@ -121,7 +121,7 @@ Every gate is computed by the orchestrator from the adapter's raw output — no 
 | `target_mutated` | the mutation report ACTUALLY mutated the target file (anti-fake-green — match the FULL source path, never the basename) |
 | `suite_green` | the test suite is run twice and is fully green both times |
 | `no_flaky` | the two runs report identical pass/fail/skip counts |
-| `mutation_floor` | reachable mutation kill is at or above the floor (default 75%); a Timeout counts as a kill |
+| `mutation_floor` | reachable mutation kill is at or above the floor (default 75%), compared **exactly — no rounding** (a shipped `Math.round` once carried 74.59% over a 75 floor); a kill counts **only when attributed to a failing test assertion** — Timeout and crash are adjudication buckets, never auto-kills |
 | `no_new_skips` | the suite adds no skipped tests over the measured baseline |
 | `char_pin` | the production source was not changed (only Stryker-disable annotations are allowed) |
 
@@ -132,6 +132,32 @@ Every gate is computed by the orchestrator from the adapter's raw output — no 
 A mutant can also hang or crash the runner instead of failing cleanly — see `## The adapter contract`'s
 "Abnormal mutant exits" paragraph for how that keeps `mutation_floor` and `char_pin` honest under a hard
 kill.
+
+### Instrument integrity — the kill-attribution rule (binding)
+
+A cross-stack audit (2026-07-21) found **every audited mutation instrument lying in its own way**:
+a parallel harness counted crashes as kills (shared temp-file race; a "97.8%" re-measured at 53.8%),
+an exit-code battery counted compile failures as kills, a Stryker gate counted deadlock timeouts as
+kills, and this skill's own shipped gate rounded 74.59% up to a 75-floor PASS. The binding rule:
+
+- **A mutation kill counts only when attributed to a failing test assertion.** Crashes, compile
+  errors, and timeouts are NEVER auto-kills — each lands in a named bucket (`COMPILE_FAIL`,
+  `LOAD_CRASH`, `TIMEOUT`) and is adjudicated per-mutant: a timeout is a kill only as a proven
+  infinite loop; a crash is a kill only when the mutant's semantic effect (not the harness) caused
+  it. Unadjudicated bucket entries score as survivors — the gate may under-state, never over-state.
+- **No score is reported until the instrument passes its shape's honesty proof.** Parallel harness →
+  reproducibility proof (two identical runs + one serial, per-mutant verdicts identical); exit-code
+  harness → failure-output classification (capture and read the output; `rc != 0` alone proves
+  nothing); timeout-counting gate → timeout adjudication. The adapter names the concrete procedure.
+- **Harness state must be process-isolated.** Any temp file, port, or global a scored test writes
+  must be per-process (pid/GUID-suffixed) — a shared mutable path under parallel workers converts
+  harness collisions into false kills at test-authoring time, where no audit can see them later.
+- **Score arithmetic and its evidence artifacts are committed**, never left in ephemeral paths
+  (gitignored dirs, worktrees, `/tmp`) — a committed verdict must not depend on artifacts one
+  cleanup away from gone.
+- **Comparative claims require a uniform instrument.** A ranking between arms survives contamination
+  only if the contamination is uniform; classify kills in every arm before comparing, or the
+  comparison is invalid even where the absolute scores survive.
 
 ## The Minimize stage
 
@@ -359,12 +385,16 @@ When a stack's mutation tool is **regex-based** (e.g. Dart's `mutation_test`) it
 assertion — it can make the target NON-TERMINATE (infinite recursion) or CRASH the runtime (stack
 overflow). The Test runner (capability 2) and Mutation tool (capability 3) fills must document, together,
 not re-derive per run:
-- **Timeout kill must reach the whole process tree.** If the runner spawns child processes, killing only
-  the top-level process can leave a descendant alive holding the output pipe open, so the run never
-  returns — "Timeout counts as a kill" (`## The gate battery` → `mutation_floor`) is a dead letter until
-  the adapter's kill mechanism terminates the tree, not one process.
-- **A crashing mutant is KILLED-by-crash, not SUSPECT.** A non-zero, non-clean-fail return code paired
-  with an incomplete/not-all-green suite scores as a kill — never left pending a manual look.
+- **Timeout handling must reach the whole process tree.** If the runner spawns child processes, killing
+  only the top-level process can leave a descendant alive holding the output pipe open, so the run never
+  returns. The terminated mutant then lands in the `TIMEOUT` adjudication bucket (see `### Instrument
+  integrity`) — it is recorded, never auto-scored as a kill.
+- **A crashing mutant is an ADJUDICATION entry, not an auto-kill.** Capture the failure output and
+  classify: a crash caused by the mutant's semantic effect (e.g. mutant-induced stack overflow) is a
+  kill; a crash from the harness or environment (shared-state race, corrupted temp file, load error) is
+  an instrument defect that must be fixed before the score means anything. `rc != 0` alone proves the
+  process died, not that the tests detected anything — the audited estates' false kills all rode this
+  exact conflation.
 - **Re-verify `char_pin` after ANY abnormal exit, before proceeding to the next mutant.** A hard external
   kill or the run's own time limit can bypass a restore-on-exit `finally` and leave a mutant still applied
   to production source; the orchestrator must re-check `char_pin` (capability 5) and restore before
