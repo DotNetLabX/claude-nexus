@@ -17,7 +17,7 @@ The Mine→Verify half is **stack-neutral** — the same clean-room miners + ske
 | Evidence indexer | the miner reads the target `.dart` source file directly |
 | Test runner | `flutter test {testFile}` — run twice for `suite_green` + `no_flaky` (parse the `+N: All tests passed!` summary) |
 | Mutation tool | `mutation_test` (pub.dev, regex) via `dart pub global run mutation_test -f xml`, configured to drive `flutter test` |
-| Test-style contract | `flutter_test` `test()`/`group()` + `mocktail`; `kiri_check` for property tests |
+| Test-style contract | `flutter_test` `test()`/`group()` + `mocktail`; `kiri_check` for property tests; lint gate = `flutter analyze` on the mined-test root (see "The lint gate" below) |
 | Prod-source-diff scoping | `git diff -- lib/` (scoped to the production source) |
 
 ## The trust anchor — why mutation_test, not dart_mutant
@@ -165,6 +165,31 @@ The orchestrator supplies **only** the `equivalentLoggingLines` signal and pre-t
 - Collaborators returning `Either<Failure, _>` (dartz): stub `Right(...)` for happy paths and `Left(Failure)` for failure-propagation rules.
 
 Record these facts in a project `docs/conventions/mutation-testing.md` so the Cover agent reads the contract from the consuming repo.
+
+## The lint gate — `flutter analyze` (the method's `lint_clean` fill)
+
+The method's gate battery includes `lint_clean` (`mine-verify-cover` → "The gate battery"); this adapter's
+fill is `flutter analyze {mined-test-root}` — **zero issues** is the pass bar, and `info`-level findings
+count (a Flutter repo that keeps a lint set treats style lints as real; CI does not distinguish). Run it
+after **every Cover write or edit**, not only at Report — one pilot skipped it and accumulated 105
+findings across 18 generated files before anyone looked.
+
+The three lint classes that actually bit in that pilot, with the correct fix for each (test-behavior must
+stay semantically identical — these are style repairs, never assertion changes):
+
+- **`cascade_invocations`** — consecutive statements on the same receiver in arrange blocks
+  (`tracker.total = n; tracker.start();`). Fix: cascade the flagged consecutive group
+  (`tracker..total = n..start();`). Never merge across intervening statements; never cascade a statement
+  whose return value is used. Better: the Cover agent emits cascades for multi-statement arranges up front.
+- **`missing_whitespace_between_adjacent_strings`** — long test descriptions split across adjacent string
+  literals with the break mid-word. Fix: RE-SPLIT at an existing space so the concatenated runtime string
+  is byte-identical — never insert a space that wasn't there (BR ids and grep-ability of test names depend
+  on the exact string).
+- **`deprecated_member_use_from_same_package`** — the mined class exercises a field its package has
+  deprecated. When the deprecated member is ITSELF the rule under test (BR coverage of a legacy field),
+  suppress with a justified `// ignore: deprecated_member_use_from_same_package` above the line — never
+  migrate to the replacement field, which would change what the test documents (the method's carve-out,
+  `mine-verify-cover` → "The adapter contract" capability 4).
 
 ## Fact tags & test tiers — Dart/Flutter mapping
 

@@ -124,6 +124,7 @@ Every gate is computed by the orchestrator from the adapter's raw output — no 
 | `mutation_floor` | reachable mutation kill is at or above the floor (default 75%), compared **exactly — no rounding** (a shipped `Math.round` once carried 74.59% over a 75 floor); a kill counts **only when attributed to a failing test assertion** — Timeout and crash are adjudication buckets, never auto-kills |
 | `no_new_skips` | the suite adds no skipped tests over the measured baseline |
 | `char_pin` | the production source was not changed (only Stryker-disable annotations are allowed) |
+| `lint_clean` | the stack's static analyzer reports zero findings on the generated test file(s) — info/style-level findings count (a repo that keeps a lint set treats them as real). The adapter supplies the analyzer command (capability 4); a stack with no configured analyzer declares that in its fill and the gate auto-passes — stated, never silent |
 
 `mutation_floor` measures **reachable** kill: mutants in known-dead lines are excluded only when the KB pre-documents them (default: exclude none). A sub-100% honest kill is a pass when it clears the floor — report the residual survivors, never hide them.
 
@@ -376,7 +377,7 @@ The method names FIVE capabilities; the stack adapter fills them. Do not extract
 1. **Evidence indexer** — read the target source (and, later, find coupled files for boundary analysis).
 2. **Test runner** — run the suite twice; report pass/fail/skip counts.
 3. **Mutation tool** — mutate ONLY the target file (pin the scope on the CLI, not just static config); emit a per-file survivor report the gate can parse.
-4. **Test-style contract** — the example + property test API the Cover agent must follow so generated tests compile.
+4. **Test-style contract** — the example + property test API the Cover agent must follow so generated tests compile, **plus the stack's static-analysis command the generated tests must pass clean** (the `lint_clean` gate's input). Run it after every Cover write, not only at Report — a lint-dirty suite compounds per iteration. One carve-out the contract must state: a deprecated member that is ITSELF the mined rule's subject gets a justified inline suppression, never a migration to the replacement — migrating changes what the test documents.
 5. **Prod-source-diff scoping** — the scoped diff of the production source for `char_pin`.
 
 When a stack's mutation tool is **regex-based** (e.g. Dart's `mutation_test`) it emits equivalent mutants the adapter must exclude by reasoning (a removed log call, a consistent internal-format change) — not chase. When a stack lacks a mutation tool **entirely**, the adapter declares a documented fallback (coverage + an assertion-density floor + a raised skeptic cadence) — a weaker gate, stated honestly, not a silent downgrade.

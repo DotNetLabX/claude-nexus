@@ -215,8 +215,8 @@ shared grammar the triggers map onto.
 
 `mine-verify-cover` ships the Cover-stage §6 gate battery as an executable artifact at
 `tools/cover-gates.mjs` (relative to this skill's base directory). It is the ONE canonical copy — the
-ADR-62 hash-drift anchor: **target-agnostic, zero imports**, seven exported gates (`suiteGreen`,
-`noFlaky`, `mutationFloor`, `targetMutated`, `noNewSkips`, `charPin`, `mutationRatchet`). The
+ADR-62 hash-drift anchor: **target-agnostic, zero imports**, eight exported gates (`suiteGreen`,
+`noFlaky`, `mutationFloor`, `targetMutated`, `noNewSkips`, `charPin`, `mutationRatchet`, `lintClean`). The
 expected-survivor exclusion set is **caller input** (`opts.expectedSurvivorLines` on `mutationFloor`) —
 the shipped file carries **no per-class default**, so a fresh target never inherits another class's
 dead lines.

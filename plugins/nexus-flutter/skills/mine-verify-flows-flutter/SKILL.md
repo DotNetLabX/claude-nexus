@@ -69,6 +69,7 @@ A pure path-set diff catches *created* files; for a flow the registry says **mod
 - **Fake camera / fake API** — installed at the test entrypoint via the harness's DI overrides: the fake API adapter answers unstubbed calls with an empty-success response (output generation stays fully local, per the method), and the fake camera feeds the seeded fixture frames so scan-flows drive the real native pipeline without hardware capture.
 - **Native-SDK init ordering** — bind the FFI symbol table (SDK init) **before** SDK configuration calls; the two traps below apply every time.
 - The class-scope adapter's repo bringup (`flutter pub get`, `build_runner`, the HTTPS rewrite — see `mine-verify-cover-flutter`) is a prerequisite here too.
+- **Generated Dart must pass `flutter analyze` clean** — flow tests, harness files, and the golden-gate module all sit on the repo's analyzer path; apply the class-scope adapter's lint gate (`mine-verify-cover-flutter` → "The lint gate") to every file this harness writes.
 
 ## Fixture soundness — grep the Dart chain before seeding a pre-recorded output
 

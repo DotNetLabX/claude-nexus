@@ -9,7 +9,7 @@
 // per-class defaults ship here — the expected-survivor exclusion set is CALLER INPUT only
 // (`opts.expectedSurvivorLines` on `mutationFloor`); this shipped file carries no analyzer-specific data.
 //
-// The seven gates (binding public export names):
+// The eight gates (binding public export names):
 //   suiteGreen     — all tests pass on BOTH double-runs
 //   noFlaky        — identical pass/fail/skip counts across the two runs
 //   mutationFloor  — per-file kill-rate >= floor of REACHABLE mutants (KB-pre-documented dead-code
@@ -21,6 +21,8 @@
 //   charPin        — prod-source-touch PROXY: the only allowed production-source diff is `// Stryker
 //                    disable`-only comment additions on KB-pre-documented dead lines; any other prod change fails
 //   mutationRatchet— a kill-rate REGRESSION halts the run (the harness is broken — do not continue)
+//   lintClean      — the stack's static analyzer reports ZERO findings on the generated test file(s);
+//                    a stack whose adapter declares no analyzer auto-passes (stated in detail, never silent)
 //
 // char_pin caveat: this is the documented PROXY. The true manifest-pin (hash the allowed-diff) is a known
 // deferral — this module does NOT claim a manifest pin.
@@ -268,4 +270,34 @@ export function mutationRatchet(priorScore, currentScore) {
     return { pass: false, detail: `mutation kill regressed ${priorScore}% → ${currentScore}% (harness broken — halt)` };
   }
   return { pass: true, detail: `kill held/improved ${priorScore}% → ${currentScore}%` };
+}
+// =================================================================================================
+// lint_clean — the stack's static analyzer reports ZERO findings on the generated test file(s)
+// =================================================================================================
+// Info/style-level findings COUNT (a repo that keeps a lint set treats them as real; CI does not
+// distinguish). The analyzer command is the stack adapter's capability-4 fill; the runner agent runs it
+// on the mined-test root and reports the findings here. A stack whose adapter declares NO configured
+// analyzer auto-passes — that declaration is caller input (`analyzerConfigured: false`), stated in
+// detail, never a silent default. FAIL-CLOSED: a missing/absent findings count with an analyzer
+// configured proves nothing → fail (same stance as mutationFloor's 0-reachable case).
+/**
+ * @param {{analyzerConfigured?:boolean, findings?:number, findingLines?:string[]}} lintResult
+ *        Runner-agent JSON: `findings` = total analyzer finding count on the generated test file(s)
+ *        (ALL severities); `findingLines` = optional capped excerpt for the Cover feedback loop;
+ *        `analyzerConfigured: false` = the adapter's explicit no-analyzer declaration (auto-pass).
+ * @returns {{pass:boolean, detail:object}}
+ */
+export function lintClean(lintResult) {
+  const r = lintResult ?? {};
+  if (r.analyzerConfigured === false) {
+    return { pass: true, detail: { autoPass: 'adapter declares no configured analyzer for this stack', findings: 0 } };
+  }
+  const findings = typeof r.findings === 'number' ? r.findings : null;
+  if (findings === null) {
+    return {
+      pass: false,
+      detail: { findings: null, error: 'no findings count reported with an analyzer configured — nothing proven (fail-closed)' },
+    };
+  }
+  return { pass: findings === 0, detail: { findings, findingLines: (r.findingLines ?? []).slice(0, 50) } };
 }

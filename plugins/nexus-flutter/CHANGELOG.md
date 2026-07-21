@@ -1,6 +1,11 @@
 # Changelog — nexus-flutter
 
 
+## [0.5.1] — 2026-07-21
+- lint_clean gate (eighth gate) ported from the omni twin: analyzer zero-findings on generated tests, capability-4 analyzer-command input, deprecated-member suppression carve-out; flutter analyze fill; flows harness Dart under the same gate. Originally shipped twin-side as omni 1.38.5 / omni-flutter 0.4.4 by Ovidiu Usvat — ported to the source of truth and reconciled with the instrument-integrity release.
+  - skill change (mine-verify-cover-flutter)
+  - skill change (mine-verify-flows-flutter)
+
 ## [0.5.0] — 2026-07-21
 - instrument-integrity: kill-attribution rule — timeout/crash/compile-fail are adjudication buckets, never auto-kills; exact floor comparison (no rounding); per-instrument honesty proofs; evidence committed
   - skill change (mine-verify-cover-flutter)
