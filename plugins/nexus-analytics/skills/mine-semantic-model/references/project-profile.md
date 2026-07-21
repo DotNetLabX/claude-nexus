@@ -9,6 +9,9 @@ pilot's own filled profile, the run this method was extracted from.
 A missing profile triggers the first-run intake (SKILL.md Phase 0) — one batched message asking
 for these eleven inputs, with the proposed defaults below offered as a starting point. The answered
 intake becomes the committed profile; a run never starts against an unresolved or assumed profile.
+Separately, this same `docs/semantic-model/profile.md` file may also carry an intake-declaration
+bridge section for the `nexus-analytics` plugin's analyst intake — not one of the eleven inputs
+below, documented on its own at the end of this file.
 
 ## The eleven inputs
 
@@ -131,3 +134,31 @@ tokens are allowed to appear (every other shipped file is generic).
 11. **Model-feedback ledger location:** `docs/model-feedback/{area}.md` (KG uses the proposed
     default as-is) — added by KG's F60 feature. Staleness threshold declared as
     `SemanticModel:StalenessThresholdDays`, feeding Audit leg 3's stale band.
+
+## Intake declaration (interim bridge)
+
+Separately from the eleven inputs above (which parameterize `mine-semantic-model` itself), a
+consuming project's `docs/semantic-model/profile.md` may carry one more section: an **`## Intake
+declaration`** block — the interim bridge for whatever the semantic model does not yet declare
+about a question's mandatory inputs. This section is consumed by the `fail-closed-intake` skill
+(the `nexus-analytics` plugin's data-analyst intake), not by this mining method.
+
+The authoritative shape of that block — the `inputs` dictionary, the `question_level` list, and
+each measure's `must_specify` list — is owned by the `fail-closed-intake` skill's `SKILL.md`; this
+file does not restate it. A project authoring or editing its profile's intake declaration should
+read that skill's declaration schema directly, not a copy here.
+
+Two rules govern the bridge itself:
+
+- **Per-measure flags mirror the model's own `must_specify`** — a measure's flags in the profile's
+  interim section use the identical field (`must_specify`, referencing `inputs` dictionary ids)
+  the semantic model will eventually carry on that measure, so the switch from bridge to
+  model-carried is a data move, never a reshape.
+- **Per-item precedence** — once the semantic model carries its own intake declaration, its entry
+  for a given input or measure supersedes the profile's interim entry for that same item; a
+  profile entry the model doesn't yet cover stays in force. Once every interim entry is shadowed
+  by a model-carried counterpart, the interim section's removal is **flagged to the repo owner as
+  a note**, never auto-edited by the mine or by the intake skill.
+
+This section documents where the bridge lives in the profile template; it is not itself a
+`mine-semantic-model` profile input and carries no proposed default.

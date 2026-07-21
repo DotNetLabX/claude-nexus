@@ -15,7 +15,8 @@ this worth", "what should we prioritize", "what would this monetization or displ
 grounded in the consuming project's **validated value model** — never improvised.
 
 **Explicit invocation only.** This skill is invoked deliberately for an intelligence task. The
-default accuracy flows — `semantic-model-query`, `data-investigation`, `answer-qa` — never load it;
+default accuracy flows — `semantic-model-query`, `data-investigation`, `answer-qa`,
+`fail-closed-intake` — never load it;
 `disable-model-invocation: true` removes it from Claude's automatic context and from subagent
 preloading entirely, so a default flow structurally cannot auto-load it. A human triggers it as
 `/value-briefing`.
@@ -92,7 +93,8 @@ briefing.
 ## What this skill does NOT do
 
 - **Touch the accuracy layer.** It never edits, and is never loaded by, `semantic-model-query`,
-  `data-investigation`, or `answer-qa`; measured-vs-estimated labeling lives only here.
+  `data-investigation`, `answer-qa`, or `fail-closed-intake`; measured-vs-estimated labeling lives
+  only here.
 - **Author or validate the value model.** The value model is created and validated by a governed
   run in the project that owns it; this skill only *reads* it.
 - **Emit an unlabeled or unguarded number.** A bare number, an estimate without its coefficient

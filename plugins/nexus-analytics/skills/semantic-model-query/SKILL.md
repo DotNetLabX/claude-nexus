@@ -13,7 +13,13 @@ at `docs/semantic-model/profile.md` — never a schema guess, never an improvise
 
 1. **`grain → table`** — the profile's construct-file map resolves the question's grain (the
    row-level unit: report, store-day, SKU-day, etc.) to the table or view that carries it at that
-   grain.
+   grain. Grain is resolved from the question's own wording via this lookup and is never a
+   user-interview item; when the lookup resolves nothing, that lookup-miss **is** the signal that
+   grain cannot be established from the question — the query does not proceed on a guessed grain.
+   This is the fail-closed floor's grain arm: this skill owns the "unresolved grain → signal,
+   don't guess" trigger; the sibling `fail-closed-intake` skill owns the ask itself, phrased as a
+   business-language clarification ("per store, or per SKU?"), never a technical "what grain?"
+   prompt.
 2. **`metric → column`** — the requested metric resolves to a column whose existence is verified
    against the model before it is ever referenced in a query — no metric ships blind.
 3. **`dimension → join`** — a requested dimension resolves to a join path via the model's declared
@@ -28,6 +34,11 @@ may name either representation — a JSON bundle or a CSV trio (a grain-routing 
 metric-dictionary file, and a dimension-dictionary file) — the ladder is representation-agnostic
 and consumes whatever the profile maps. Never assume one flavor; always resolve through whatever
 `docs/semantic-model/profile.md` actually declares.
+
+Unlike the grain arm above, which does trigger a business-language ask on a lookup-miss, the
+bad-reports-excluded row-quality exclusions below are **never asked about at all** — always
+applied, always named in the shipped answer, restated here as this ladder's own intake
+non-question; no behavior change from the existing obligation (see the next section).
 
 ## Mandatory-obligation pre-query check
 

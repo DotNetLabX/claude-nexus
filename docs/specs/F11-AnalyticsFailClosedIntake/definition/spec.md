@@ -4,7 +4,7 @@
 **Source:** Ratified proposal
 **Dependencies:** None ship-blocking. Related lanes: the KG-lane must-specify classification pass (fills the per-measure layer; the interim bridge below covers its absence), F12-AnalyticsWorkspaceSelfHeal (shares the `my-workspace/` home — this feature creates the file and folders it needs itself, so it does not wait for F12), and a product-repo work item retiring the consuming repo's own interview rule. **Sequencing constraint on that retirement:** the consumer's legacy interview rule stays active in every session until removed, so in each consuming repo the retirement must land **with or before** this feature's activation there — otherwise two interview owners run side by side, re-creating the double-ask this feature eliminates.
 **Status:** Ready
-**Plan:** None
+**Plan:** `docs/specs/F11-AnalyticsFailClosedIntake/delivery/plan.md`
 
 ---
 

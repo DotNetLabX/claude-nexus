@@ -2,6 +2,17 @@
 
 All notable changes to the `nexus-analytics` plugin.
 
+## [0.5.0] — 2026-07-21
+- MINOR bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - skill change (answer-qa)
+  - skill change (mine-semantic-model)
+  - skill change (semantic-model-query)
+  - skill change (value-briefing)
+  - skill change (fail-closed-intake)
+  - owner-escalated to minor
+
 ## [0.4.2] — 2026-07-21
 - Agent model retier: data-analyst moves from opus to sonnet.
   - agent instruction/behavior change

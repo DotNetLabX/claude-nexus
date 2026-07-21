@@ -1,6 +1,6 @@
 ---
 name: answer-qa
-description: Check a shipped analytics answer against the mandatory-obligation contract before it reaches the user — grain named, every mandatory filter named as applied (or its declared exemption named as not-applied-and-why), date range and model constructs presented in one provenance panel, and any data-caveat surfaced. A grounding gate re-executes every cited number or drops it — a number that cannot re-execute ships only as an explicitly-pending estimate, and an unvalidated estimate is penalty-only. An answer missing an obligation is malformed. Use as the final check on every analytics answer, right before presenting it.
+description: Check a shipped analytics answer against the mandatory-obligation contract before it reaches the user — grain named, every mandatory filter named as applied (or its declared exemption named as not-applied-and-why), date range and model constructs presented in one provenance panel, any data-caveat surfaced, and every applied default named (persisted defaults inline, documented defaults as an "assumed:" line). A grounding gate re-executes every cited number or drops it — a number that cannot re-execute ships only as an explicitly-pending estimate, and an unvalidated estimate is penalty-only. An answer missing an obligation is malformed. Use as the final check on every analytics answer, right before presenting it.
 user-invocable: true
 ---
 
@@ -8,7 +8,7 @@ user-invocable: true
 
 ## The answer contract
 
-Every shipped answer is checked against this contract before it reaches the user. All five items
+Every shipped answer is checked against this contract before it reaches the user. All six items
 are required whenever they apply to the query that produced the answer:
 
 1. **Grain** — the row-level unit the numbers are computed at (order, hub-day, account-month, etc.),
@@ -28,6 +28,12 @@ are required whenever they apply to the query that produced the answer:
 5. **Data caveats** — when the profile's model carries staleness info, availability gates, or a
    deferred/unknown-construct note relevant to this answer, that caveat is surfaced — never
    silently dropped because the number still computed.
+6. **Applied defaults** — every persisted default that was used is named inline ("Using default
+   {input}: {value}"); every documented default that was applied is named as an "assumed:
+   {input} = {value}" line, with any relative date resolved to its concrete, data-anchored range
+   (see the sibling `fail-closed-intake` skill) before it is stated. This item applies even when
+   the default maps to none of items 1–5 above — for example a per-user identifier the profile
+   marks as a persistable default.
 
 ## Grounding gate
 
@@ -77,6 +83,10 @@ underlying numbers happen to be correct; the contract is about what the user was
 whether the SQL ran clean. A declared **exemption** is on the same footing: **silently omitting a
 profile-declared filter exemption** is malformed just as stating an exempt filter as applied is —
 both misrepresent what the user was told.
+
+An answer that applied any default — persisted or documented — without its inline confirmation or
+"assumed:" line is likewise **malformed**, even when that default maps to none of items 1–5 above;
+fix it (name the default) before shipping, never ship it uncaptioned.
 
 ## Check order
 
