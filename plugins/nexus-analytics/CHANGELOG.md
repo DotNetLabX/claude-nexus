@@ -2,6 +2,14 @@
 
 All notable changes to the `nexus-analytics` plugin.
 
+## [0.6.0] — 2026-07-22
+- MINOR bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - skill change (answer-qa)
+  - skill change (workspace-self-heal)
+  - owner-escalated to minor
+
 ## [0.5.0] — 2026-07-21
 - MINOR bump.
   - agent instruction/behavior change

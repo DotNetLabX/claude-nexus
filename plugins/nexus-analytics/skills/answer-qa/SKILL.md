@@ -1,6 +1,6 @@
 ---
 name: answer-qa
-description: Check a shipped analytics answer against the mandatory-obligation contract before it reaches the user — grain named, every mandatory filter named as applied (or its declared exemption named as not-applied-and-why), date range and model constructs presented in one provenance panel, any data-caveat surfaced, and every applied default named (persisted defaults inline, documented defaults as an "assumed:" line). A grounding gate re-executes every cited number or drops it — a number that cannot re-execute ships only as an explicitly-pending estimate, and an unvalidated estimate is penalty-only. An answer missing an obligation is malformed. Use as the final check on every analytics answer, right before presenting it.
+description: Check a shipped analytics answer against the mandatory-obligation contract before it reaches the user — grain named, every mandatory filter named as applied (or its declared exemption named as not-applied-and-why), date range and model constructs presented in one provenance panel, any data-caveat surfaced, every applied default named (persisted defaults inline, documented defaults as an "assumed:" line), and the path of any file the flow produced (under my-workspace/exports/ when the AM named no location). A grounding gate re-executes every cited number or drops it — a number that cannot re-execute ships only as an explicitly-pending estimate, and an unvalidated estimate is penalty-only. An answer missing an obligation is malformed. Use as the final check on every analytics answer, right before presenting it.
 user-invocable: true
 ---
 
@@ -8,7 +8,7 @@ user-invocable: true
 
 ## The answer contract
 
-Every shipped answer is checked against this contract before it reaches the user. All six items
+Every shipped answer is checked against this contract before it reaches the user. All seven items
 are required whenever they apply to the query that produced the answer:
 
 1. **Grain** — the row-level unit the numbers are computed at (order, hub-day, account-month, etc.),
@@ -34,6 +34,11 @@ are required whenever they apply to the query that produced the answer:
    (see the sibling `fail-closed-intake` skill) before it is stated. This item applies even when
    the default maps to none of items 1–5 above — for example a per-user identifier the profile
    marks as a persistable default.
+7. **Produced-file path** — when the flow produced a file (an export written to disk), the shipped
+   answer names its full path; when the AM named no location, the path is under
+   `my-workspace/exports/` (the sibling `workspace-self-heal` skill owns *where* the file lands;
+   this contract owns that the answer *names* it). Conditional like the others — a query that
+   produces no file satisfies this vacuously.
 
 ## Grounding gate
 
@@ -87,6 +92,10 @@ both misrepresent what the user was told.
 An answer that applied any default — persisted or documented — without its inline confirmation or
 "assumed:" line is likewise **malformed**, even when that default maps to none of items 1–5 above;
 fix it (name the default) before shipping, never ship it uncaptioned.
+
+An answer that produced a file — an export written to disk — without naming that file's path is
+**malformed**; name the path (under `my-workspace/exports/` when the AM named no location) before
+shipping, never ship the file's existence uncaptioned.
 
 ## Check order
 

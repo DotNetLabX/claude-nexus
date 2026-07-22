@@ -4,7 +4,7 @@
 **Source:** Ratified proposal
 **Dependencies:** None ship-blocking. Consuming-repo precondition (already met in omnishelf-analytics): the repo commits the personal-workspace parent with its README and the star-form ignore protection — a repo-owner action this feature warns about but never performs. Related: F11-AnalyticsFailClosedIntake (its per-user defaults record lives in this folder; F11 creates what it needs itself, so neither feature waits on the other), F13-AnalyticsSavedPrompts (uses the prompts subfolder), F14-AnalyticsUsageCapture (will buffer its log here later).
 **Status:** Ready
-**Plan:** None
+**Plan:** docs/specs/F12-AnalyticsWorkspaceSelfHeal/delivery/plan.md
 
 ---
 
