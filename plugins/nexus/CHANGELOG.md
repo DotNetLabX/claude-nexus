@@ -1,6 +1,22 @@
 # nexus — Changelog
 
 
+## [1.46.0] — 2026-07-22
+**`edit-shipped-plugin-skill` — the coherent-edit recipe for shipped plugin prose (F24-EditShippedSkillRecipe).**
+Every plugin-feedback apply wave re-derived the same "edit shipped plugin text coherently" discipline in its
+own plan; this new dev-repo-scoped skill owns it once so consumer waves (F19/F21/F22) stop re-inventing it.
+- `skills/edit-shipped-plugin-skill` — **new light skill** (SKILL.md only). A dev-repo-only recipe covering
+  every shipped prose surface (skills, agents, rules, hook/script header comments) in six phases:
+  smallest-coherent-edit scoping, the enumeration/consumer sweep (count word + member list + in-prose
+  summary; scope-floor and DO-NOT-TOUCH carve-outs; markup-tolerance), edit discipline (two-surface
+  reconciliation, renumber/insert ripple, adjacent-surface staleness triple, estate-invariant protection),
+  the agent-file obligation rider, the skill-lint authoring gates (E9/E7/E6), and the one-run-per-feature
+  release obligation. Distilled from six delivery records (F17/F20/F29/F12/F5 lessons + F30's estate-invariant
+  discipline). Consuming projects route via `improve-skills`' plugin-feedback channel instead.
+- `skills/improve-skills` — the dev-repo carve-out blockquote gains one pointer sentence: the in-repo edit
+  pass itself follows `edit-shipped-plugin-skill`, naming the in-repo pass at the seam where the two channels
+  split. All three existing carve-out guarantees stay verbatim.
+
 ## [1.45.0] — 2026-07-22
 **Reference-model→skills seeding seam (F30-ReferenceModelSkillsSeam).** Graded reference-model rows
 now seed `improve-skills` pattern-pack authoring — closing `mine-reference-model` R5's named deferral
