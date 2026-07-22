@@ -170,20 +170,28 @@ line end-to-end.
 - Registries: `docs/business-rules/`, `docs/tech-debt/`, `docs/reference-model.md`; future
   `docs/architecture-map/` (P2) and `docs/architecture/target/` (P3 C4 diagrams)
 
-## 7. Program status & next milestones (2026-07-20)
+## 7. Program status & next milestones (2026-07-22)
 
-1. Capability complete for campaign #1's needs — the eleventh mine shipped; **first
-   `mine-architecture` pilot owed** — paid by whichever campaign runs it first (campaign #1's P2
-   census, or campaign #2's Phase 2 which explicitly plans to pay it).
-2. Campaign #1: P0/P0-bis GO · pilot p0c-shellimprove **owner-amended 2026-07-20 into the P4 wave
-   rehearsal** — Stage 0 registry maintenance → 1A mine-design brief + 1B oracle-strengthening to
-   ≥85% → Stage 2 whole-unit ENHANCED clean-room regeneration (registry + brief + reference model
-   + pattern skills; behavior frozen, bugs preserved; gates: suite + mull floor + goldens); the
-   85ff191 verbatim-move spike stands as structural prep only, not improvement · P1 running ·
-   P2 census next · P3 owner design (C4) · P4 waves.
-3. Campaign #2: both lane proposals **ratified 2026-07-20** · Phase 0 files plugin-feedback
-   E1–E4 + S1–S3 → triage here into F-slugs (fast-track: E1 mine-design D1 fix — live defect;
-   S2 `mine-oracle-strength` — shipped as the 12th mine (F29); S1 `regenerate-unit` — the P4 inner loop) ·
-   Phase 1 conventions charter → Phase 2 architecture map → Phase 3 fix-shelf pilot.
-4. Program-level candidates queued behind campaign #1's validation: the declared-ambiguity
-   generator obligation (P4 protocol), the campaign-in-a-box proposal (end-goal #2).
+1. **Capability:** twelve mines shipped — `mine-oracle-strength` (F29, nexus 1.42.0) closed the
+   set; `mine-design` charter tier live (F26, 1.40.0); instrument-integrity gate overhaul shipped
+   estate-wide (1.39.x — kill-attribution rule + per-shape honesty proofs, after the five-shape
+   instrument crisis); model-tier doctrine + agent retier (1.41.0). **Build queue:** F27
+   conventions pipeline → F28 `regenerate-unit` (cluster mode = gap G1, golden-seam catalog G2,
+   perf bench line G3) → F30/F31; F32 contract-form registry pilot (parallel, research-backed);
+   the **Q2 differential-oracle sweep** owed before P4 waves scale.
+2. **Campaign #2 — omnishelf_flutter_app (LEAD):** P1 done (3 regenerations adopted; suites
+   94%+ honest on the audited instrument) · Track A run complete — **election worksheet at the
+   owner's desk** (`docs/conventions/election-worksheet.md`, branch
+   `campaign/2-track-a-conventions`; 43-row reference model, 4 anti-patterns, 10 contested rows
+   incl. CT-1 positional-ctor and AS-1 encapsulated-aggregates aspire; the owner's hand-built
+   .NET reference model surfaced as the successor source — likely answers A4's exemplar
+   designation) · next: owner election → charter → Phase 2 `mine-architecture` (pays the
+   program's first pilot) + golden-seam catalog with the F32 candidate flag → owner P3 design →
+   fix-shelf cluster pilot (needs F28).
+3. **Campaign #1 — omnivision-ai-sdk (PARKED, healthy):** p0c enhanced shell proven (8.3/10,
+   adoption held pending 3 bug-witness fixtures); p0d Stages 0–1B closed, Stage-B conditional GO
+   armed behind the repaired floors (posm + D2 strengthening ordered; five sibling instruments
+   proven honest by the reproducibility sweep). Resumes on owner word.
+4. **.NET estate (knowledge-gateway):** two below-floor units in repair (GeneratedSqlValidator,
+   EmbeddedAskOrchestrator — honest-score reruns under the fixed gate); SystemPromptBuilder clean.
+5. Program-level queued: the campaign-in-a-box proposal (end-goal #2), the Q2 sweep (item 1).
