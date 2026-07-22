@@ -107,7 +107,7 @@ Every fix and every scaffold ends by running the lint that ships with this skill
 node {improve-skills folder}/scripts/skill-lint.mjs .claude/skills/{name}
 ```
 
-`scripts/skill-lint.mjs` sits next to this SKILL.md; in a consuming project resolve it via the plugin cache (glob `~/.claude/plugins/cache/**/skills/improve-skills/scripts/skill-lint.mjs`, highest version). It checks: SKILL.md exists, no BOM, frontmatter valid, `name` matches the folder, `description` present, and cited reference files exist — `references/`/`workflows/` (any shape) plus file-shaped `scripts/`/`assets/` paths, resolved skill-relative or at the repo root. It also warns (never errors) on an oversized body (over 500 lines) and on a reference that itself cites another reference.
+`scripts/skill-lint.mjs` sits next to this SKILL.md; in a consuming project resolve it via the plugin cache (glob `~/.claude/plugins/cache/**/skills/improve-skills/scripts/skill-lint.mjs`, highest version). It checks: SKILL.md exists, no BOM, frontmatter valid, `name` matches the folder, `description` present, and cited reference files exist — `references/`/`workflows/` (any shape) plus file-shaped `scripts/`/`assets/` paths, resolved skill-relative or at the repo root. It also warns (never errors) on an oversized body (over 500 lines), on a reference that itself cites another reference, and — for a stack-extension skill (plugin dir suffix `-dotnet`/`-flutter`/`-cpp`/`-php`) — on a missing `## Assumes` block (W5) or a description lacking a `use when` trigger (W6), per skill-recipe §4.
 
 **Exit 0 is the done-condition.** (For a **new** skill this is the form half — the Judgment Gate below is the other half.) Fix every ERROR before reporting the item complete; WARNs are advice. A prose rule no machine executes decays silently — this gate is the machine. (If node is genuinely unavailable, walk the checklist above by hand and say so in the report.)
 
@@ -151,6 +151,7 @@ Group entries under `## Skills Created`, `## Skills Fixed`, and `## Routed to Pl
 - The **reference files** mentioned in the gap still exist.
 - The steps are **concrete and actionable** — not abstract guidance.
 - Project-local skills may bake in project specifics; a skill proposed for the **plugin** must be generic — placeholders (`{Name}`, `{Svc}`), no project paths.
+- A **stack-extension** skill (a plugin dir suffixed `-dotnet`/`-flutter`/`-cpp`/`-php`) meets skill-recipe §4 — it opens with an `## Assumes` block and its `description` names the step-shapes plans use.
 - **No anti-pattern from `references/proven-patterns.md`** — especially AP1 (every MUST names its executor), AP4 (glob, don't enumerate), AP5 (every named path/tool verified to exist), AP6 (multi-phase producers ship a finalize path).
 
 If the gate fails, log the gap to the backlog with status `Deferred` and the reason.

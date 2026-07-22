@@ -1,4 +1,4 @@
-# Skill Authoring Recipe — archetype, element menu, frontmatter cheat-sheet
+# Skill Authoring Recipe — archetype, element menu, frontmatter cheat-sheet, stack-skill standards
 
 Sibling to `proven-patterns.md`. Where that file is the evidence layer (mechanisms proven to earn
 their keep), this file is the **authoring-from-scratch recipe** — the archetype decision, the
@@ -105,7 +105,7 @@ codebase.
 
 | Field | Use it for |
 |---|---|
-| `description` | Drives auto-invocation. Be specific, or the skill mis-fires or never fires. |
+| `description` | Drives auto-invocation. Be specific, or the skill mis-fires or never fires. For a stack-extension skill, §4 pins the discoverability standard — name the step-shapes plans use, not just the topic. |
 | `when_to_use` | Extra trigger phrases / example requests, appended to `description`. Cap is combined across both fields, at 1,536 characters (configurable via the `skillListingMaxDescChars` setting) — not a separate budget per field. |
 | `disable-model-invocation: true` | Side-effecting or timing-controlled skills. Removes the skill from Claude's automatic context entirely (not just hidden) and keeps it out of subagent preloading and scheduled-task auto-run. This is the mechanism for "never do X without a human driving it." |
 | `user-invocable: false` | Hides the skill from the `/` menu only — Claude can still invoke it automatically. To block automatic invocation too, use `disable-model-invocation` instead; the two fields are independent controls. |
@@ -118,3 +118,61 @@ codebase.
 **Add complexity only when it pays.** Rather than restating agent-design first principles here,
 see the nexus "allocation principle" (`docs/architecture/README.md`) — the nexus-native version of
 "start simple, hardening only what's demonstrably needed."
+
+---
+
+## 4. Stack-skill standards (binding for stack-extension plugins)
+
+A **stack-extension plugin** is one whose plugin directory carries a stack suffix — `-dotnet`,
+`-flutter`, `-cpp`, `-php`. Its skills teach a framework/stack pattern into a consuming project, so
+they carry two extra obligations the general recipe above does not. These two standards are
+**binding** for a stack-extension skill and **advisory** everywhere else (analytics/notes/core
+plugins carry their own heavier assumption structure). They are enforced twice: as deterministic
+lint **warns** (`skill-lint.mjs` W5/W6 — the machine-checkable proxy) and as an `evaluate-skill`
+rubric overlay (the judgment tier that reads whether they are honest, not just present).
+
+### 4.1 The Assumes block (P11)
+
+Every stack-extension skill opens with a `## Assumes` section — the **first H2 after the title** —
+that declares up front what the pattern silently presumes. An assumption a skill makes but never
+names is the failure shape P11 caught recurring on *every* mapped stack skill: a consumer whose
+stack differs follows the recipe, and it breaks in a way the skill never warned about. The `## Assumes`
+block states:
+
+- **The stack packages / infrastructure the pattern presumes** — BuildingBlocks, MediatR, EF Core,
+  the endpoint framework — whichever actually apply to this skill.
+- **The reference app it cites**, if the steps read from or mirror one.
+- **Either** a minimal-stack branch in the body ("if the service has no BuildingBlocks, do … instead")
+  **or** a one-line adaptation posture where a branch would be overkill ("without {package}, adapt by
+  substituting the framework-native equivalent"). One or the other is mandatory — a skill that presumes
+  a package with no escape hatch strands every consumer that lacks it.
+
+The canonical heading is exactly `## Assumes` — short and greppable so the deterministic warn (W5)
+can find it. A free-form "Assumptions" paragraph does not satisfy the standard: it is undetectable to
+the lint and drifts.
+
+### 4.2 Discoverability (P20)
+
+The frontmatter `description` names the **step-shapes plans actually use** — "adding an endpoint to
+an existing service", "creating an aggregate", "wiring a consumer" — not just the topic, and phrased
+with the `Use when …` trigger the auto-invocation scan keys on. P20's failure was a skill that
+*existed* but got mapped `(none)` by six plans in a row: not a coverage gap, a discovery gap. A skill
+the planner cannot find by the words in the plan step is, to that plan, absent. Name the situations,
+so a step that says "add an endpoint" surfaces the endpoint skill.
+
+The deterministic half of this standard is only that the phrase `use when` appears in the description
+(case-insensitive substring — "Use whenever …" satisfies it by containment); the real standard — that
+the named shapes are the ones plans use — is judgment, checked by the `evaluate-skill` rubric overlay,
+not the lint.
+
+### 4.3 Scope and enforcement
+
+- **Binding** for stack-extension plugins (plugin dir suffix `-dotnet` / `-flutter` / `-cpp` / `-php`);
+  **advisory** elsewhere. The suffix is the test, so it survives the gen-omni token swap (`omni-dotnet`
+  keeps the suffix) and auto-covers future stack adapters.
+- Enforced as lint **warns** W5 (missing `## Assumes`) and W6 (description lacks `use when`) — never
+  errors, so a pre-standard skill estate does not hard-fail; the warn list is the retrofit worklist.
+- Plus the `evaluate-skill` rubric's stack-extension overlay (the judgment tier).
+
+F19 retrofits the existing nexus-dotnet estate onto these standards; the C++ (F23) and Flutter (F31)
+packs are born under them (ADR-23).

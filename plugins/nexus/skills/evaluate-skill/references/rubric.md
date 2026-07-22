@@ -81,6 +81,15 @@ All blocking; fixed (or recorded, for shipped skills) before judgment review sta
   a receipt); a recorded-but-empty input is skipped WITHOUT recording, so a later run can
   pick it up; a finalize-what-exists entry point (AP6).
 
+**Stack-extension skill** (plugin dir suffix `-dotnet`/`-flutter`/`-cpp`/`-php`):
+- Opens with an `## Assumes` block that is present **and honest** — it names the stack
+  packages/infrastructure and reference app the body *actually* presumes (skill-recipe §4), not a
+  boilerplate stub, and offers a minimal-stack branch or a one-line adaptation posture for a
+  presumed package.
+- The `description` names the **step-shapes plans use** — the judgment behind Layer 0.3 / 1.1's
+  general description rules, checked there and not restated here — phrased with the `Use when …`
+  trigger. The lint (W5/W6) checks only presence; honesty and step-shape fit are this overlay's job.
+
 *(A consuming project may define additional overlays in its own rules — apply those too.)*
 
 ## Layer 4 — Maintenance hooks

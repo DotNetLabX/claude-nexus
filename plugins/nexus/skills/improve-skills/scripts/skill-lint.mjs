@@ -20,6 +20,8 @@
 //   W2  description longer than 1024 chars — bloats every auto-invocation scan
 //   W3  SKILL.md body over 500 lines — suggest a progressive-disclosure references/ split
 //   W4  a cited references/*.md that itself cites another references/ file (canon: one level deep)
+//   W5  stack-extension SKILL.md (plugin dir suffix -dotnet/-flutter/-cpp/-php) lacks a `## Assumes` heading — see skill-recipe §4
+//   W6  stack-extension description lacks a case-insensitive `use when` substring — the step-shape discoverability trigger
 // Errors exit 1; warnings alone exit 0; no arguments exits 2.
 import { readFileSync, existsSync } from 'node:fs';
 import { join, basename, resolve, dirname } from 'node:path';
@@ -51,9 +53,23 @@ function isFileShaped(ref) {
 
 let failed = false;
 
+// F18 — a stack-extension plugin is identified by its plugin DIRECTORY suffix. The plugin dir is
+// the path segment immediately above `skills/` in the resolved path (the script has no other
+// plugin-dir concept). Split on BOTH separators — this repo runs on win32, where resolve() yields
+// backslash-separated paths. Suffix-based, so it survives the gen-omni token swap (omni-dotnet
+// keeps the suffix) and auto-covers future stack adapters. In a consuming project the segment
+// above skills/ is the version dir, so W5/W6 never fire against the read-only cache (by design).
+function stackPluginDir(resolvedDir) {
+  const segs = resolvedDir.split(/[\\/]/);
+  const i = segs.lastIndexOf('skills');
+  return i > 0 ? segs[i - 1] : null;
+}
+
 for (const arg of args) {
   const dir = resolve(arg);
   const name = basename(dir);
+  const pluginDir = stackPluginDir(dir);
+  const isStackPlugin = pluginDir ? /-(dotnet|flutter|cpp|php)$/.test(pluginDir) : false;
   const repoRoot = findRepoRoot(dir);
   const errors = [];
   const warnings = [];
@@ -102,6 +118,23 @@ for (const arg of args) {
       const bodyLines = body.replace(/\r?\n$/, '').split(/\r?\n/).length;
       if (bodyLines > 500) {
         warnings.push(`SKILL.md body is ${bodyLines} lines (over 500) — split durable material into references/ for progressive disclosure, or record why the length is justified`);
+      }
+
+      // W5/W6 (F18) — stack-extension authoring standards, warned only on stack-suffixed plugin
+      // dirs (core/analytics/notes are out of scope). WARN, never ERROR: the pre-standard estate
+      // would hard-fail as errors, so the warn list is the standard-retrofit worklist. skill-recipe §4.
+      if (isStackPlugin) {
+        // W5 — must open with an `## Assumes` section (canonical greppable heading, first H2 after
+        // the title). A free-form "Assumptions" paragraph is undetectable and does not satisfy it.
+        if (!/^##\s+Assumes\b/m.test(text)) {
+          warnings.push('stack-extension skill should open with an `## Assumes` section declaring the stack packages/reference app it presumes — see skill-recipe §4');
+        }
+        // W6 — description names the step-shapes plans use, proxied by a case-insensitive `use when`
+        // SUBSTRING ("Use whenever …" passes by containment). The real step-shape standard is
+        // judgment (the evaluate-skill rubric overlay), not the lint.
+        if (data.description && !data.description.toLowerCase().includes('use when')) {
+          warnings.push('stack-extension description should name the step-shapes plans use, phrased with a `Use when ...` trigger — see skill-recipe §4');
+        }
       }
     }
 

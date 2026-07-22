@@ -1,6 +1,27 @@
 # nexus — Changelog
 
 
+## [1.47.0] — 2026-07-23
+**Stack-skill authoring standards (F18-SkillAuthoringStandards).** P11 (every stack skill declares its
+assumptions up front) and P20 (the description names the step-shapes plans actually map to) become binding
+authoring standards for stack-extension plugins (plugin dir suffix `-dotnet`/`-flutter`/`-cpp`/`-php`),
+enforced across a deterministic warn tier and a judgment tier. Ships the standard, not the per-skill
+retrofit (F19) or the born-compliant packs (F23/F31).
+- `skills/improve-skills/references/skill-recipe.md` — **new §4 (Stack-skill standards)**: the `## Assumes`
+  block (the first H2, declaring presumed stack packages/infrastructure + reference app, with a minimal-stack
+  branch or a one-line adaptation posture) and the step-shape `Use when …` description standard, plus a scope
+  and enforcement note. Title extended to name the section; the §3 `description:` row gains a pointer to §4.
+- `skills/improve-skills/scripts/skill-lint.mjs` — **two new warns** (W5/W6), scoped to stack-suffix plugin
+  dirs via the path segment immediately above `skills/` (split on both separators for win32): W5 flags a
+  missing `## Assumes` heading; W6 flags a description lacking a case-insensitive `use when` substring
+  ("Use whenever …" passes by containment). Warn-only — the exit code stays keyed on errors, so the
+  pre-standard estate (42 stack skills) does not hard-fail. Header enumeration extended W1–W4 → W1–W6.
+- `skills/improve-skills/SKILL.md` — the Deterministic Gate warn summary and the Quality Gate each gain one
+  clause pointing at §4 (pointers, no restatement); keeps the prose summary faithful to the check list.
+- `skills/evaluate-skill/references/rubric.md` — a Layer 3 capability overlay judging the Assumes block is
+  present **and honest** and the description names step-shapes — pointing at Layer 0.3/1.1's general
+  description rules, not restating them.
+
 ## [1.46.0] — 2026-07-22
 **`edit-shipped-plugin-skill` — the coherent-edit recipe for shipped plugin prose (F24-EditShippedSkillRecipe).**
 Every plugin-feedback apply wave re-derived the same "edit shipped plugin text coherently" discipline in its
