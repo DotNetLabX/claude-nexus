@@ -1,6 +1,29 @@
 # nexus — Changelog
 
 
+## [1.43.0] — 2026-07-22
+**Program-home regeneration skill (F28-RegenerateUnit).** New shipped skill `regenerate-unit`: the
+wave inner loop validated 5× by hand (RC/FSD/RG/p0c/p0d, repairs trending 1→1→1→0), codified as
+Stages 1–6 — Preflight (four fail-closed gates), Contract pack, clean-room generation from rules
+alone (target file forbidden in any form incl. git history), a bounded ≤3 hidden-oracle repair loop
+(registry-gap vs generation-slip adjudication), PROVE, and a GO/NO-GO report with a standalone
+adoption question. NOT a mine-family member — it consumes the mines' outputs (verified registry, S2
+suite-strength audit, design census, anti-pattern list) and produces regenerated code behind gates.
+Folds in the three shaped program gaps: **G1** cluster mode (the fix-shelf pilot's need — every
+legacy registry row from every cluster unit maps to a named target home or carries an explicit
+disposition; an unmapped row HALTs before generation), **G2** the golden-seam preflight gate reading
+the campaign-owned catalog's live row shape (a unit absent/seamless is a declared gate gap, never
+silent), and **G3** the before/after perf bench line. Seeds the calibration ledger with the four
+ratified rulings and pins every stage dispatch to an explicit model (opus generator / fable
+adjudication / sonnet mechanical; asymmetry rule). **D1 boundary:** the p0d incident extras
+(estate-damage sweep, plugin-gate stops) are excluded — instrument honesty is delegated to F29, whose
+oracle-strength attestation the preflight asserts. **PROVE is an F29 invocation:** Stage 5 invokes
+`mine-oracle-strength` and consumes its `## Scores / ## Buckets / ## Survivors / ## Gap-Kill / ## Pair
+/ ## Registry Annotations` report seam — F28 invokes, never re-implements. No scripts/assets (the
+loop is agent-orchestrated). Program doc updated (§5 S1+S2 marked shipped; §7 build queue).
+  - skill change (regenerate-unit)
+  - owner-escalated to minor
+
 ## [1.42.2] — 2026-07-22
 - instrument-integrity hardening: multi-oracle merge precedence — an infrastructure status never scores over a definite Survived; completion under any oracle refutes infinite-loop adjudication (sixth defect shape, campaign-#1 repair sweep 2026-07-22)
   - skill change (mine-verify-cover)

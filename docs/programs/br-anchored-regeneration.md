@@ -137,8 +137,9 @@ already ran there (P0-RC, P0-FSD — both adopted), and its W-waves are re-class
 repo's P1 refactoring-as-mining. Both lane proposals are **owner-ratified** (2026-07-20):
 `docs/proposals/refactoring-method-v2.md` — Track A (elected-conventions charter) **active**,
 Track B (full campaign candidacy) **gated** on charter + a P0-Flutter GO on the elected unit;
-`docs/proposals/regeneration-and-conventions-skill-pack.md` — S1 `regenerate-unit` and
-S2 `mine-oracle-strength` build **nexus-side**, S3 conventions pipeline prototypes locally first.
+`docs/proposals/regeneration-and-conventions-skill-pack.md` — S1 `regenerate-unit` (shipped —
+nexus 1.43.0, this release) and S2 `mine-oracle-strength` (shipped — nexus 1.42.0) build
+**nexus-side**; S3 conventions pipeline prototypes locally first.
 Pilot cluster: **fix-shelf** (+ the report-generation god-class variant). Doctrine minted there,
 now ratified: **design intent enters at generation time, never as post-generation refactoring**
 (the v3 pass was proven byte-identical and deliberately discarded; findings live in the S1
@@ -183,9 +184,9 @@ line end-to-end.
    set; `mine-design` charter tier live (F26, 1.40.0); instrument-integrity gate overhaul shipped
    estate-wide (1.39.x — kill-attribution rule + per-shape honesty proofs, after the five-shape
    instrument crisis); model-tier doctrine + agent retier (1.41.0). **Build queue:** F27
-   conventions pipeline → F28 `regenerate-unit` (cluster mode = gap G1, golden-seam catalog G2,
-   perf bench line G3) → F30/F31; F32 contract-form registry pilot (parallel, research-backed);
-   the **Q2 differential-oracle sweep** owed before P4 waves scale.
+   conventions pipeline → F30/F31; F32 contract-form registry pilot (parallel, research-backed);
+   the **Q2 differential-oracle sweep** owed before P4 waves scale. F28 `regenerate-unit` shipped
+   (this release — cluster mode G1 + G2/G3 preflight gates live).
 2. **Campaign #2 — omnishelf_flutter_app (LEAD):** P1 done (3 regenerations adopted; suites
    94%+ honest on the audited instrument) · Track A run complete — **election worksheet at the
    owner's desk** (`docs/conventions/election-worksheet.md`, branch
