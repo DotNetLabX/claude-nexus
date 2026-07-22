@@ -81,6 +81,13 @@ The Cover agent writes the test file; a distinct runner agent executes the toolc
      that completed (Survived) under any pass is disqualified from infinite-loop timeout
      adjudication (`adjudicatedTimeoutKillLines` promotion requires "never completed under any
      oracle").
+   - **Declared-pass manifest (deterministic leak — invisible to the run-pair):** the merged
+     evidence must name every declared mull pass (discovery/golden/shell/…) with a per-pass
+     evaluated-mutant count > 0; a declared pass absent from the merge HALTs the gate. A missing
+     pass is deterministic — it reproduces identically across the run-pair, so the
+     reproducibility proof cannot see it. That proof is necessary, never sufficient: it catches
+     non-deterministic defects only; deterministic mis-attribution needs this manifest assertion.
+     Both legs ship before any score does.
 4. Build `mutatedFiles` (one `{file,count}` per key in `cover.json.files`) for the `target_mutated` anti-fake-green guard — verify your slice's basename was actually mutated (count > 0).
 5. **Never execute mutant binaries outside mull.** Survivor triage is **read-only** — reason from `cover.json` + the source. A mutation can break a loop guard and produce a **non-terminating binary**; mull's per-mutant timeout contains that, an ad-hoc probe does not (a live run hand-compiled surviving mutants into a diff harness with no timeout — one spun at 100% CPU and deadlocked the whole workflow until killed). If SUT execution outside `ctest`/`mull-runner-15` is ever unavoidable, wrap it in `timeout <N>s`.
 

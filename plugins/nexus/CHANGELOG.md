@@ -1,6 +1,10 @@
 # nexus — Changelog
 
 
+## [1.43.1] — 2026-07-22
+- PATCH bump.
+  - skill change (mine-verify-cover)
+
 ## [1.43.0] — 2026-07-22
 **Program-home regeneration skill (F28-RegenerateUnit).** New shipped skill `regenerate-unit`: the
 wave inner loop validated 5× by hand (RC/FSD/RG/p0c/p0d, repairs trending 1→1→1→0), codified as

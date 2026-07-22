@@ -62,15 +62,23 @@ instrument** — the shipped `cover-gates.mjs` both counted Timeout as killed an
 no rounding). A fifth: **the instrument's scope is part of the claim** — campaign #1's D2 gate
 scored 91.9% on a `gitDiffRef`-collapsed 37-mutant subset; the honest whole-region score is
 60.3% (fix: the claimed scope's mutant total is recorded with the score, and a re-run must
-reproduce it). A sixth (2026-07-22, campaign #1 repair sweep): **multi-oracle merge precedence
+reproduce it). The declared oracle-pass set is scope too: a whole pass silently absent is the
+deterministic variant — it reproduces identically, so reproducibility proofs cannot see it (fix:
+a per-pass manifest assertion, every declared pass present with evaluated-mutant count > 0; the
+reproducibility proof is necessary, never sufficient). A sixth (2026-07-22, campaign #1 repair sweep): **multi-oracle merge precedence
 is part of the instrument** — a break-on-first-kill merge let a Timeout in one oracle pass
 overwrite a definite Survived in another, converting non-detections into kills; the honest
 re-merge flipped four more gates below floor (incl. the p0c artifact, 85.4→83.6 adjusted —
 its behavior gates stand; adoption was already held, so no exposure). Fix: an infrastructure
 status never *scores* over a definite Survived, and completion under any oracle refutes
-infinite-loop adjudication. Estate truth after the full honest sweep: three of seven C++
-instruments reproduce their claims; five sit below floor and are queued for strengthening
-(posm → p0c shell → D2 → clusterize ×2).
+infinite-loop adjudication. Estate truth after the full honest sweep (2026-07-22
+reality check, eight instruments): three claims honest as recorded (interfaces E4-U5,
+videoprocessor E2-U9, confirmationprocessor), five inflated; posm repaired same day (98.9%
+claimed → 51.6% honest → 89.0% after repair); four remain below floor, queued cheapest-first
+(p0c shell 83.6 → clusterize D4 main 79.0 → clusterize p0b core 80.9 → planogram D2 59.6 — the
+biggest gap, ~38 mutants). The era-rule re-score (audit under the claim-time rules) reproduced
+every inflated figure and survivor list exactly — the instrument spec, not the operators, was
+the defect; errata assign to the spec layer.
 
 - Research: `docs/kb/research/br-anchored-regeneration-landscape.md` (this repo)
 - Experiment reports: campaign #1's repo (see §6 artifact map)
@@ -198,10 +206,12 @@ line end-to-end.
    fix-shelf cluster pilot (needs F28).
 3. **Campaign #1 — omnivision-ai-sdk (PARKED, in repair):** p0c enhanced shell proven on
    behavior (8.3/10; suite + goldens + ABI stand; adoption held — no exposure) but its mull leg
-   fell to 83.6% adjusted under the honest merge (erratum ordered, sixth defect shape); repair
-   list is five instruments (posm → p0c shell → D2 → clusterize D4 main → clusterize p0b core;
-   three of seven reproduce honestly); p0d Stage-B conditional GO stays armed behind the
-   repaired posm floor. Resumes as repairs land.
+   fell to 83.6% adjusted under the honest merge (erratum ordered, sixth defect shape). **posm
+   repaired 2026-07-22 (89.0% honest)**; four instruments remain, cheapest-first (p0c shell →
+   clusterize D4 main → clusterize p0b core → planogram D2). **p0d Stage-B: GO** — the posm
+   floor precondition is met; gated only on posm's declared-pass-manifest spot-check (the
+   deterministic leak found in production is invisible to reproducibility proofs). Resumes as
+   repairs land.
 4. **.NET estate (knowledge-gateway):** two below-floor units in repair (GeneratedSqlValidator,
    EmbeddedAskOrchestrator — honest-score reruns under the fixed gate); SystemPromptBuilder clean.
 5. Program-level queued: the campaign-in-a-box proposal (end-goal #2), the Q2 sweep (item 1).

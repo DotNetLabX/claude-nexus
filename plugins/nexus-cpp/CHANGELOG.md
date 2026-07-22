@@ -2,6 +2,10 @@
 
 All notable changes to the `nexus-cpp` plugin.
 
+## [0.2.2] — 2026-07-22
+- PATCH bump.
+  - skill change (mine-verify-cover-cpp)
+
 ## [0.2.1] — 2026-07-22
 - instrument-integrity hardening: multi-oracle merge precedence — an infrastructure status never scores over a definite Survived; completion under any oracle refutes infinite-loop adjudication (sixth defect shape, campaign-#1 repair sweep 2026-07-22)
   - skill change (mine-verify-cover-cpp)

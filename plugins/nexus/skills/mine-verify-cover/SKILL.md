@@ -161,12 +161,27 @@ kills, and this skill's own shipped gate rounded 74.59% up to a 75-floor PASS. T
   adjudication** for that mutant — a mutant that ran to completion somewhere cannot be a genuine
   infinite loop; timeout-promotion flags are evidence-gated on "never completed under any
   oracle", or they become a way to buy back any failing gate.
+- **Every declared oracle pass must be proven present in the merge.** A gate whose merged evidence
+  is missing a whole declared pass mis-measures silently — and deterministically, so it
+  reproduces perfectly and the reproducibility proof cannot see it. The evidence carries a
+  per-pass manifest (each declared pass named, with its evaluated-mutant count > 0); a declared
+  pass absent from the merge HALTs the gate. Corollary: **the reproducibility proof is necessary,
+  never sufficient** — a run-pair catches non-deterministic defects (races, shared state) only;
+  deterministic mis-attribution (a missing pass, a collapsed scope, a wrong merge precedence)
+  needs its own assertion. Both legs are required.
 - **Score arithmetic and its evidence artifacts are committed**, never left in ephemeral paths
   (gitignored dirs, worktrees, `/tmp`) — a committed verdict must not depend on artifacts one
   cleanup away from gone.
 - **Comparative claims require a uniform instrument.** A ranking between arms survives contamination
   only if the contamination is uniform; classify kills in every arm before comparing, or the
   comparison is invalid even where the absolute scores survive.
+- **Auditing a past claim: re-score under the claim's own era rule first.** Reproducing the
+  original figure and survivor list exactly — under the rules in force when the claim was
+  recorded — proves the measurement was faithful and the *rule* was wrong (or the reverse). It
+  separates bad work from a bad instrument, assigns the erratum to the right layer, and protects
+  whoever recorded the number. (Proven in the 2026-07-22 C++ estate sweep: five inflated claims
+  all reproduced exactly under era rules — the instrument spec, not the operators, was the
+  defect.)
 
 ## The Minimize stage
 
