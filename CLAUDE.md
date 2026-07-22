@@ -4,6 +4,19 @@ This repo is the **single source of truth** for the `nexus` and `nexus-dotnet` C
 plugins (ADR-1). It is *not* a consuming project — it is where the plugins themselves are built.
 Architecture & decisions: `docs/architecture/README.md`.
 
+## Agent models in THIS repo (owner directive 2026-07-22)
+
+The shipped agent frontmatter (`plugins/*/agents/*.md`) is what **consuming repos** get — never
+edit it to tune this repo's own runs. **In this repo**, every pipeline-agent spawn carries an
+explicit `model` parameter on the Agent call (per-invocation model beats frontmatter):
+**architect and po → `fable`; every other agent (developer, reviewer, critic, solo, team-lead,
+learner) → `opus`.** Main-session personas (`be architect` / `/nexus:po`) run on the session model
+— keep `/model` on Fable when driving them. (Why a spawn rule and not `.claude/agents/`
+overrides: a project agent file must be a *full copy* — no thin frontmatter override exists — and
+full copies in the repo that authors these agents are a standing drift hazard. The campaign
+stage-model doctrine — opus generators / fable judges / sonnet mechanical — governs **mine/regen
+stage dispatches only**, never this repo's pipeline agents or the shipped frontmatter.)
+
 ## Releasing changes (read before committing plugin edits)
 
 The install cache is **version-keyed** — a change to a plugin's shipped files that doesn't bump

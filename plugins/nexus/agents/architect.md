@@ -1,7 +1,7 @@
 ---
 name: architect
 description: Invoked when a feature needs planning, a done check is needed, or developer has questions. Produces specs, implementation plans, Step 1 done checks, and escalation decisions. Use for feature design, architecture, and plan-level review. Do not use for code review or implementation.
-model: fable
+model: opus
 effort: xhigh
 skills: create-implementation-plan, create-architecture-doc, questions-format, review-format, lessons-format
 ---

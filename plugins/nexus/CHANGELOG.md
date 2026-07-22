@@ -1,6 +1,16 @@
 # nexus — Changelog
 
 
+## [1.42.1] — 2026-07-22
+**Revert the 1.41.0 doctrine commit's agent-frontmatter overreach.** The model-tier doctrine
+(opus generators / fable judges / sonnet mechanical) governs campaign mine/regen **stage
+dispatches only** — it was never meant to retier the shipped pipeline agents, but 1.41.0 also
+flipped three frontmatters, silently reversing the owner's 2026-07-21 retier (`1b26853`).
+Restored: `architect` fable → opus, `critic` opus → sonnet, `developer` opus → sonnet
+(the Retier-2 state: po/architect/reviewer opus; developer/critic/learner sonnet). Commands
+regenerated. The dev repo's own runs are tuned via a CLAUDE.md spawn-model rule, never via the
+shipped frontmatter.
+
 ## [1.42.0] — 2026-07-22
 **Oracle-strength miner — the twelfth mine (F29-OracleStrengthMiner, ADR-68).** New shipped skill
 `mine-oracle-strength`: audits how strong a nominally mutation-gated suite actually is (unit = one
