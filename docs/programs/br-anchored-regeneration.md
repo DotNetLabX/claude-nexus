@@ -42,7 +42,7 @@ batteries) was caught by the method *before* being trusted. Two corollary findin
 #2's W3 retrospective, now program doctrine candidates: **refactoring under house-precedent
 steering can inflate code** (+177% lines at CCN success — the mine-design D1 circularity, fix
 incoming as plugin feedback E1), and **per-shape mutant sets age — a "gated" suite still needs a
-fresh blind-battery audit** (the S2 `mine-oracle-strength` candidate, the 12th mine). A third
+fresh blind-battery audit** (now shipped as `mine-oracle-strength`, the 12th mine — F29). A third
 joined from campaign #1's P0d (2026-07-21): **the measuring instrument itself can lie** — P0's
 97.8–100% mull scores were race-inflated (a shared `/tmp` artifact under parallel workers turned
 crashes into false kills; honest per-pid re-instrument: 53.8%). Generalized after campaign #2's
@@ -104,8 +104,8 @@ budget-era "all spawned stages sonnet" ruling (S1 proposal, 2026-07-20).
 
 ## 4. The capability stack (what this repo ships)
 
-Eleven mines, one shared skeleton (clean-room extraction → skeptic → evidence-carrying registry),
-shipped in the `nexus` plugin (1.38.0) + stack adapters:
+Twelve mines, one shared skeleton (clean-room extraction → skeptic → evidence-carrying registry),
+shipped in the `nexus` plugin (1.42.0) + stack adapters:
 
 | Layer | Components | Status |
 |---|---|---|
@@ -113,7 +113,7 @@ shipped in the `nexus` plugin (1.38.0) + stack adapters:
 | Architecture mining | `mine-architecture` (F16 — current-state map, capability catalog, rule-coverage join) | Shipped 1.38.0; first pilot owed |
 | "Better" evidence | `mine-design` (patterns earn their complexity), `mine-algorithm` (canonical-replacement adjudication), `mine-reference-model` (what to copy) | Shipped |
 | Debt & patterns | `mine-verify-repo`, `mine-skill-gaps`, `mine-skill-candidates` (F15) | Shipped |
-| Gating | mutation floors (per-stack adapter), golden-master harness pattern (per-campaign, at the frozen seam), `mine-semantic-model` (data semantics) | Proven in campaign #1 |
+| Gating | mutation floors (per-stack adapter), golden-master harness pattern (per-campaign, at the frozen seam), `mine-oracle-strength` (blind-battery suite-strength audit, F29), `mine-semantic-model` (data semantics) | Proven in campaign #1 |
 | Pattern packs | per-target-stack generation skills — grown per campaign (C++ pack growing now via skill seeds + F15) | Per-campaign cost |
 
 ## 5. Campaigns (executions of the program)
@@ -183,7 +183,7 @@ line end-to-end.
    P2 census next · P3 owner design (C4) · P4 waves.
 3. Campaign #2: both lane proposals **ratified 2026-07-20** · Phase 0 files plugin-feedback
    E1–E4 + S1–S3 → triage here into F-slugs (fast-track: E1 mine-design D1 fix — live defect;
-   S2 `mine-oracle-strength` — candidate 12th mine; S1 `regenerate-unit` — the P4 inner loop) ·
+   S2 `mine-oracle-strength` — shipped as the 12th mine (F29); S1 `regenerate-unit` — the P4 inner loop) ·
    Phase 1 conventions charter → Phase 2 architecture map → Phase 3 fix-shelf pilot.
 4. Program-level candidates queued behind campaign #1's validation: the declared-ambiguity
    generator obligation (P4 protocol), the campaign-in-a-box proposal (end-goal #2).

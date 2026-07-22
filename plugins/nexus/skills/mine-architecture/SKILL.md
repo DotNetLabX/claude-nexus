@@ -21,9 +21,9 @@ This is the **eleventh mine** — a **full method-contract member** of the mine 
 two name-and-shape members): unit = one repo's architecture; ground truth = code structure (+
 optional structural graph and change-coupling table); gate = adversarial skeptic re-execution;
 output = the `docs/architecture-map/` registry (the sixth registry species). Read
-`../mine-verify-cover/references/mine-family-core.md` §The mine family for the full 11-row family
+`../mine-verify-cover/references/mine-family-core.md` §The mine family for the full 12-row family
 table and the shared invariant (bounded unit → clean-room miners → consolidate → skeptic verify →
-verified registry) all eleven members follow.
+verified registry) all twelve members follow.
 
 **The routing triangle.** Three repo-scoped mines answer three different questions about the same
 codebase and never duplicate one another:
@@ -212,7 +212,7 @@ These are load-bearing prompt clauses, verifiable by grep in this file:
 ## Relationship to other skills
 
 Read `../mine-verify-cover/references/mine-family-core.md` §The mine family for the full family
-table (all eleven members) and the routing triangle above for how this skill's *what is* differs
+table (all twelve members) and the routing triangle above for how this skill's *what is* differs
 from the *what hurts* / *what to copy* siblings.
 
 | Skill | Relationship |

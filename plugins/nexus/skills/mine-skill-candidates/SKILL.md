@@ -22,8 +22,8 @@ This is the **tenth mine** — joining the family by **name and shape** (discove
 registry -> owner triage), not the full method contract: no stack adapter, no capability-contract
 obligation (free tooling only: git, Code Maat, grep/ctags; graphify optional, never a
 prerequisite). Read `../mine-verify-cover/references/mine-family-core.md` §The mine family for the
-full 11-row family table and the shared invariant (bounded unit -> clean-room miners -> consolidate
--> skeptic verify -> graded registry) all eleven members follow.
+full 12-row family table and the shared invariant (bounded unit -> clean-room miners -> consolidate
+-> skeptic verify -> graded registry) all twelve members follow.
 
 ## The pipeline
 

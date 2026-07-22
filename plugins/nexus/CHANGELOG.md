@@ -1,6 +1,27 @@
 # nexus — Changelog
 
 
+## [1.42.0] — 2026-07-22
+**Oracle-strength miner — the twelfth mine (F29-OracleStrengthMiner, ADR-68).** New shipped skill
+`mine-oracle-strength`: audits how strong a nominally mutation-gated suite actually is (unit = one
+gated suite + its subject; ground truth = the subject source, never the suite). Six stages — a
+clean-room blind mutant author that never reads the suite, a hardened battery, an optional
+reference-pair discrimination stage (buggy-vs-fixed, D2), survivor adjudication with mandatory
+cluster detection, sanity-red-proven gap-kill, and an honest suite-strength report — each dispatched
+at an explicit stage-model pin (D3: opus generators, fable judge, sonnet mechanical; asymmetry rule).
+Name-and-shape member: the battery runner ships inline in `assets/mutation_battery.py` with a
+per-stack fill table (Dart filled, other stacks TBD-at-first-use, D1). The runner is **promoted from a
+field-validated campaign battery and hardened to the instrument-integrity rules (D4)**: a kill counts
+only when attributed to a failing test assertion; `COMPILE_FAIL`/`LOAD_CRASH`/`TIMEOUT` are
+adjudication buckets, never auto-kills (COMPILE_FAIL denominator-excluded); exact floor comparison, no
+rounding (fixes the source's `round(...)` score bug); per-pid scratch isolation; whole-tree timeout
+kill. The report's fixed section grammar (`## Scores / ## Buckets / ## Survivors / ## Gap-Kill /
+## Pair / ## Registry Annotations`) is the F28-RegenerateUnit PROVE consumption seam. Consumed by F28,
+run standalone between campaigns. Family core plus eight member SKILL.mds swept eleven → twelve
+(positional ordinals untouched); program doc + new ADR-68.
+  - MINOR bump (owner-escalated — new user-facing capability).
+  - owner-escalated to minor
+
 ## [1.41.0] — 2026-07-22
 - model-tier doctrine (owner-ratified 2026-07-22): architect agent to fable, critic + developer to opus; mine-family kickoff stage-model-plan default = miners/generators opus, skeptics/judges fable, mechanical sonnet; binding asymmetry rule — verification never runs below generation
   - agent instruction/behavior change

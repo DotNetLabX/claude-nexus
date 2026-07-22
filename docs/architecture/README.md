@@ -82,6 +82,7 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-64 — Cross-model reconciliation disposition: verified derivations win; engagement knowledge imports *(Accepted — F8-AnalyticsEnforcementValueLayer W2 close, 2026-07-18)*
 - ADR-65 — The value ledger is a consuming-project artifact species: accuracy-side claim registry, distinct from value-briefing's worth labeling *(Accepted — F3-AnalyticsBorrowWave wave 1, 2026-07-19)*
 - ADR-67 — mine-architecture is the eleventh mine: unit = one repo's architecture, output = the current-state architecture-map registry (sixth species), extraction-only by decision *(Accepted — F16-ArchitectureMiner, 2026-07-20)*
+- ADR-68 — mine-oracle-strength is the twelfth mine: unit = one gated suite + its subject, output = the suite-strength report + registry annotations *(Accepted — F29-OracleStrengthMiner, 2026-07-22)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -1919,6 +1920,69 @@ names the extracted-behavior / target-design separation as the copyable prior ar
 graphify precondition* — would block most consuming repos; the deterministic import scan is the
 always-available fallback instead. *A single flat `docs/architecture-map.md`* — too large for a
 multi-module repo; the per-module split follows the `docs/tech-debt/{area}.md` precedent.
+
+---
+
+## ADR-68 — mine-oracle-strength is the twelfth mine: unit = one gated suite + its subject, output = the suite-strength report + registry annotations — Accepted
+
+> **Status: Accepted — F29-OracleStrengthMiner, ratified 2026-07-22** (graduated per ADR-28 from the
+> `omnishelf_flutter_app` ratified proposal `docs/proposals/regeneration-and-conventions-skill-pack.md`
+> §S2 — promoted, not re-authored; owner decisions D1–D5 recorded in the tech-spec
+> `docs/specs/F29-OracleStrengthMiner/definition/tech-spec.md`). Register re-checked — highest
+> *written* is ADR-67; **ADR-66 is claimed by F15-SkillCandidateMiner** (not yet written to this
+> register), so F29 takes **68**, no renumber.
+
+**Context.** The mine family gated suites with mutation floors, but a "gated" badge is not proof: a
+suite's own mutant set was authored against it and **ages** — it tests only what its author already
+thought to test (program doctrine, §2: *per-shape mutant sets age — a "gated" suite still needs a
+fresh blind-battery audit*). The protocol was **field-validated 5× by hand** (RC / FSD / RG / p0c /
+p0d — 20 REAL blind spots exposed in suites that were already green-gated). F28-RegenerateUnit's
+**PROVE** stage hard-needs a trustworthy suite-strength measurement before it can trust a regenerated
+unit; its S1 spec names "S2 battery → survivor adjudication → gap-kill" as the PROVE machinery,
+consumed not re-implemented.
+
+**Decision.** `mine-oracle-strength` ships as the **twelfth** family member and a **name-and-shape
+member** (D1/Q1): unit = one gated suite + its subject; ground truth = **the subject source** (never
+the suite — clean-room mutant authoring is the anti-inflation defense); gate = **sanity-red-proven
+gap-kill + the instrument-integrity honesty proof**. Six stages — blind mutant author → battery →
+optional reference-pair discrimination → survivor adjudication (mandatory cluster detection) →
+gap-kill → report — each dispatched at an **explicit model pin** (D3: opus generators, fable judge,
+sonnet mechanical; asymmetry rule — verification never below generation). The battery runner ships
+**inline** in the skill's `assets/` with a **per-stack fill table** (Dart filled, other stacks
+`TBD-at-first-use`; promote to a full adapter contract only when a second stack's fill diverges),
+hardened to the **instrument-integrity rules** (D4: a kill counts only from a failing test
+assertion; `COMPILE_FAIL`/`LOAD_CRASH`/`TIMEOUT` are adjudication buckets, never auto-kills; exact
+floor comparison, no rounding; per-process scratch; whole-tree timeout kill). Output = the
+**suite-strength report** (stable, grep-checkable section names — the F28-PROVE consumption seam) +
+**registry annotations** where a survivor disproves a suite note (the BR-119 precedent). An
+**optional reference-pair discrimination stage** (D2) fires when the run declares a retained
+reference/candidate pair (buggy-vs-fixed): green-on-reference + red-on-candidate = discrimination
+proof; green-green = equivalence attestation *at the suite's measured strength*; red-on-reference =
+HALT; no pair → skipped, stated in the report, never silent.
+
+**Why.** It closes the suite-strength leg the family measured only indirectly, and single-homes the
+measurement so F28 invokes rather than re-implements it. The clean-room author (never reads the
+suite) and the instrument-integrity runner (never auto-kills a non-assertion failure) are the two
+load-bearing defenses the field failures demand — the cross-stack audit found *every* audited
+mutation instrument lying in its own way, so an honest score is the whole point. Reusing the family
+skeleton (execution topology, skeptic protocol, budget rail, kickoff checklist) and the shipped
+instrument-integrity rules keeps the build to one SKILL.md + one hardened runner asset + family
+bookkeeping.
+
+**Tradeoffs.** The runner ships **inline** (name-and-shape) rather than as a per-stack adapter skill
+— faithful to the family's "abstract only once a second stack is live" seam rule, at the cost of a
+fill table that grows by hand until a divergent second stack forces promotion. A **live battery is
+operator-owed** at first campaign use: the skill and runner are shipped and dry-run-provable (offline
+fixture: bucket grammar emitted, exit 0), but a real audit runs the stack toolchain, which this dev
+repo does not host.
+
+**Rejected.** *A full method-contract adapter member now* — over-abstracts a stack-thin runner from a
+single language (the seam rule forbids it). *Reporting-vocabulary-only pair mode* — ships the
+buggy-vs-fixed words without the real reference-pair capability, which IS the research adoption.
+*Deferring the pair mode to F28's PROVE stage* — would break the ratified consumed-not-reimplemented
+seam (F28 owns no measurement machinery). *All-sonnet stage models* (the S1/S2 proposal line) —
+superseded by the owner-ratified stage-model-plan (D3): generators opus, judge fable, mechanical
+sonnet.
 
 ---
 
