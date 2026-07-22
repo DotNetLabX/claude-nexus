@@ -1,5 +1,7 @@
 # F28-RegenerateUnit — Lessons
 
+> **Learner disposition (2026-07-22 → nexus 1.44.1):** [APPLIED] same-day-drift re-grounding (with F29 — threshold met) → architect.md Read Discipline carve-out: multi-session status docs re-read same-turn before citing. [APPLIED] program-home recipe gap → backlog F25 scope addendum (program-home variant, F28/F29 evidence). E9/E7 lint traps: gate-covered — folded into F24 recipe scope. Code-grounded critic 5th corroboration: standing mandate, no action. Pre-computed MINOR target + classifier-ignores-docs: informational, judgment.
+
 ## Architect Lessons
 
 - **Same-day drift is the fastest drift: a file you shipped edits to THIS MORNING is already

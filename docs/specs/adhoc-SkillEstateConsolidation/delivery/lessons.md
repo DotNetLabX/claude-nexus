@@ -1,6 +1,6 @@
 # Skill Estate Consolidation — Lessons
 
-> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] vacuous-grep acceptance recurrence → create-implementation-plan executed-acceptance bundle. [TRACKED] evaluate-skill rubric: mechanical diff of ported examples + domain-token grep (1 occurrence); skill-lint E6 sibling-path false positive (1 occurrence). Worktree audit-hook absence → docs/proposals/session-scoped-pipeline-state-2026-07.md evidence.
+> **Learner disposition (2026-07-11 → nexus 1.30.4):** [APPLIED] vacuous-grep acceptance recurrence → create-implementation-plan executed-acceptance bundle. [TRACKED] evaluate-skill rubric: mechanical diff of ported examples + domain-token grep (1 occurrence). [APPLIED 2026-07-22 → nexus 1.44.1] skill-lint E6 sibling-path cryptic-message trap (correct behavior, unhelpful error; 2nd occurrence F29) → E6 message now names the sibling-relative remedy. Worktree audit-hook absence → docs/proposals/session-scoped-pipeline-state-2026-07.md evidence.
 
 ## Architect Lessons
 - **A critic's "checked clean" fact can go stale between review and Phase-1.** The plan's Plan Review note

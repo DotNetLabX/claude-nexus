@@ -1,5 +1,7 @@
 # F29-OracleStrengthMiner — Lessons
 
+> **Learner disposition (2026-07-22 → nexus 1.44.1):** [APPLIED] mid-planning external-edit re-grounding (with F28 — threshold met) → architect.md Read Discipline carve-out. [APPLIED] skill-lint E6 sibling-cite (2nd occurrence with adhoc-SkillEstateConsolidation) → E6 message now names the `../{skill}/` remedy. [APPLIED] gap strengthening → backlog F25 (+F29, 4th occurrence) and F24 (+F29). [TRACKED] per-process isolation routes TEMP/TMPDIR at the scratch dir, never cwd (1 occurrence). [TRACKED] a promoted/field-validated asset is verified against CURRENT rules, never trusted (1 occurrence). Executed-acceptance partial coverage: prose already unambiguous ("every pinned acceptance command", create-implementation-plan) — compliance miss, corroboration only.
+
 ## Architect Lessons
 
 - **Mechanically-verifiable plan claims need a live dry-run before being written.** The code-grounded

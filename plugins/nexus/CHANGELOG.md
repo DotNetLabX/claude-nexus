@@ -1,6 +1,22 @@
 # nexus — Changelog
 
 
+## [1.44.1] — 2026-07-22
+**Learner consolidation 2026-07-22** (sources: F4, F8, F11, F12, F28, F29, adhoc-SkillEstateConsolidation).
+- `agents/architect.md` — Read Discipline gains the one carve-out to read-once: multi-session
+  status docs (backlog, program docs) are re-read same-turn before citing or editing — session
+  memory of them is never current, even same-day (F28 + F29).
+- `skills/create-implementation-plan` — counted/membered-fact bullet extended to canonical terms:
+  never gloss a term or list another artifact defines; point at the defining artifact — a
+  paraphrase silently narrows the definition (F4 + F8).
+- `skills/improve-skills/scripts/skill-lint.mjs` — E6 dangling-reference error now names the
+  sibling-relative remedy (`../{skill}/references/…`) for cites of another skill's file
+  (adhoc-SkillEstateConsolidation + F29).
+- **Comm-log decisions-heading pilot retired** (`agents/team-lead.md`, `agents/learner.md`) —
+  three runs carried a comm-log `## Decisions` section and no consolidation ever consumed its
+  evidence; the plan-side `## Decisions` section (architect/critic machinery) is unchanged.
+  Legacy comm-logs keep tolerant-read status in the learner.
+
 ## [1.44.0] — 2026-07-22
 **Contract-form registry grammar (F32-ContractFormRegistryPilot, grammar half).** The rule registry
 grammar gains an optional `precondition:` row field (`mine-verify-cover` §The rule registry) — the

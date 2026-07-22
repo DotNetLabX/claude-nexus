@@ -122,7 +122,7 @@ for (const arg of args) {
       // existing shape-agnostic check. A directory-shaped *fictional* cite escapes by design.
       if ((folder === 'scripts' || folder === 'assets') && !isFileShaped(ref)) continue;
       const found = existsSync(join(dir, ref)) || (repoRoot && existsSync(join(repoRoot, ref)));
-      if (!found) errors.push(`dangling reference: ${ref} is cited in SKILL.md but not on disk`);
+      if (!found) errors.push(`dangling reference: ${ref} is cited in SKILL.md but not on disk (checked skill-relative and repo-root) — if this cites a sibling skill's file, use the sibling-relative path ../{skill}/${ref}`);
     }
 
     // W4 — a cited references/*.md that itself cites another references/ file is two levels deep.

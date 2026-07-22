@@ -1,5 +1,7 @@
 # F11-AnalyticsFailClosedIntake — Lessons
 
+> **Learner disposition (2026-07-22 → nexus 1.44.1):** [APPLIED] roster-enumeration ripple → backlog F24 evidence (+F11). [TRACKED] Satisfies-tag sub-step cross-check (final literal AC pass + every Flow sub-step vs the step's own bullet list) — 1 feature occurrence (2 intra-run instances). Two-parallel-finder prose review: already encoded (architect.md fast-lane dispatch) — corroboration only. Schema-stress-test-against-cited-BR and authoritative-layer-first presentation: stay with judgment.
+
 ## Architect Lessons
 
 - **A novel cross-repo contract schema must be stress-tested against the very BR it satisfies, before

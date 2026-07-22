@@ -1,6 +1,6 @@
 # F4-ResearchBoostedAsks — Lessons
 
-> **Learner disposition (2026-07-21 → nexus 1.39.2):** [TRACKED] never-gloss-a-canonical-term (point at the definition, don't paraphrase) — 2 occurrences with F8's summary-narrowing; threshold met, surface next pass with approval. Section-names-not-line-numbers and the enforceable-gate-mechanism rule were encoded in this feature's own shipped edits (self-applied).
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED 2026-07-22 → nexus 1.44.1] never-gloss-a-canonical-term (with F8's summary-narrowing) → create-implementation-plan counted/membered-fact bullet, canonical-term clause. Section-names-not-line-numbers and the enforceable-gate-mechanism rule were encoded in this feature's own shipped edits (self-applied).
 
 ## Architect Lessons
 

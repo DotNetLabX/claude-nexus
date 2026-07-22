@@ -1,6 +1,6 @@
 # F8 W3 — Value Layer — Lessons
 
-> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED] reuse-claim-vs-hardcoded-domain (read the selection loop, not the CLI surface) → create-implementation-plan referent-verification bullet; sibling-example-vs-token-gate check folded into the port-step census bullet. [APPLIED-PRIOR] `--staged` scoping over snapshot dirt lists. [TRACKED] SKILL.md-summary-narrows-reference-list (with F4's gloss lesson — 2 occurrences, threshold met, surface next pass).
+> **Learner disposition (2026-07-21 → nexus 1.39.2):** [APPLIED] reuse-claim-vs-hardcoded-domain (read the selection loop, not the CLI surface) → create-implementation-plan referent-verification bullet; sibling-example-vs-token-gate check folded into the port-step census bullet. [APPLIED-PRIOR] `--staged` scoping over snapshot dirt lists. [APPLIED 2026-07-22 → nexus 1.44.1] SKILL.md-summary-narrows-reference-list (with F4's gloss lesson) → create-implementation-plan canonical-term clause.
 
 ## Architect Lessons
 

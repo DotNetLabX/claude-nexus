@@ -1,5 +1,7 @@
 # F32-ContractFormRegistryPilot (grammar half) — Lessons
 
+> **Learner disposition (2026-07-22 → nexus 1.44.1):** [TRACKED] omni-sync is a lane-close concern — gen-omni rides the closure commit, never mid-lane (1 occurrence). Sibling-weight-is-logical-weight: judgment, no action.
+
 ## Developer Lessons
 
 - **"Sibling weight" is logical/content weight, not physical line count.** The plan's critic-compressed

@@ -1,5 +1,7 @@
 # F12 — Workspace Self-Heal — Lessons
 
+> **Learner disposition (2026-07-22 → nexus 1.44.1):** [APPLIED] enumeration-sweep corroboration → backlog F24 evidence (+F12). [TRACKED] fast-lane developer dies mid-artifact → verify on-disk state first (git status + target files + partial implementation.md), then SendMessage-resume the same developer — never re-implement or re-spawn fresh (1 occurrence). [TRACKED] AC-is-ground-truth tiebreaker for an internally-ambiguous spec; a silent narrowing is a review finding even when the narrowing is right (1 occurrence). E9 colon-space: gate-covered (lint message ships the remedy) — folded into F24 recipe scope. Dirty-file attribution: judgment.
+
 ## Developer Lessons
 - **skill-lint E9 colon-space gotcha when authoring a SKILL.md `description`.** The lint rejects a
   `: ` (colon-followed-by-whitespace) inside an unquoted frontmatter scalar (strict YAML reads it as
