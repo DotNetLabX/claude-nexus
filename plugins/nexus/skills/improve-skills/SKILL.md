@@ -1,6 +1,6 @@
 ---
 name: improve-skills
-description: "Creates project-local skills for skill gaps, fixes project-local skills as a consolidating pass, and routes fixes to shipped (plugin) skills into the portable plugin-feedback file. Every scaffold and fix ends with the shipped skill-lint gate. Invoked by the learner agent after classification and user approval, or directly when the user asks to create or fix a skill. This is the APPLY half (it changes skill files); evaluate-skill is the DIAGNOSE half that produces the findings to act on. Order: evaluate-skill first, then improve-skills — not interchangeable."
+description: "Creates project-local skills for skill gaps, fixes project-local skills as a consolidating pass, and routes fixes to shipped (plugin) skills into the portable plugin-feedback file. Every scaffold and fix ends with the shipped skill-lint gate. Invoked by the learner agent after classification and user approval, or directly when the user asks to create or fix a skill. This is the APPLY half (it changes skill files); evaluate-skill is the DIAGNOSE half that produces the findings to act on. Order: evaluate-skill first, then improve-skills — not interchangeable. Also seeds pattern-pack skills from a repo's graded reference model + ratified charter (the Pattern-Pack Seeding entry point)."
 ---
 
 # Improve Skills
@@ -9,10 +9,11 @@ Handles lesson items about skills: "skill fix" (an existing skill needs correcti
 
 ## Entry Points
 
-Two callers, one process:
+Three callers, one process:
 
 1. **Learner-classified item** (the pipeline path) — the item arrives already classified and user-approved; the classification carries the channel and target.
 2. **Direct request** — the user asks to create or fix a skill ("build me a skill for X"). Same gates, same lint; where the learner's classification would have decided something (channel, gap home), confirm it with the user instead of inventing it.
+3. **Reference-model seeding** (the pack path) — a campaign or repo asks for pattern skills seeded from its mined estate; intake per §Pattern-Pack Seeding below, then the same authoring recipes and gates as the other two callers.
 
 ## Two Channels (ADR-1)
 
@@ -25,6 +26,45 @@ Shipped nexus skills live in the plugin's version-keyed cache — not editable f
 - **Skill gap** → decide the home:
   - **Project-specific pattern** (this codebase's stack/structure) → scaffold a **project-local** skill in `.claude/skills/{name}/` (a consumer project legitimately owns its local skills).
   - **Pipeline-generic pattern** (useful to every nexus consumer) → feedback-file entry proposing a new plugin skill; don't scaffold locally.
+
+## Pattern-Pack Seeding (Reference-Model Entry Point)
+
+The third caller (above): a campaign or repo seeds a **pattern pack** — pattern-teaching skills
+authored from its already-mined, already-elected estate — instead of paying that authoring as a
+per-campaign hand cost. This section is the **intake contract only**; authoring routes to the
+existing recipes below, unchanged.
+
+**Inputs (fail-closed disclosure — a missing input is named in the pack report, never silently
+skipped):**
+
+- **`docs/reference-model.md`** — rows with verdict **CONFIRMED** and portability **`portable` |
+  `adapt`** seed pattern-skill authoring (an `adapt` row seeds **together with its translation
+  note**). `not-portable` rows and non-CONFIRMED rows never seed.
+- **The ratified conventions charter** (`docs/conventions/coding-conventions.md`, F27) **when
+  present** — charter-elected patterns seed by disposition, following F27's three-way vocabulary:
+  - `keep` and `aspire` rows seed.
+  - a `replace` row's **banned old idiom never seeds** (it lives under `§ Banned`); its **named
+    successor** seeds via the reference-model channel when it appears there — a successor that
+    lives **only** in the research pool is **disclosed as unseedable in the pack report**, never
+    silently dropped.
+  - No charter present → reference-model-only seeding, disclosed in the pack report.
+- **`docs/skill-gaps/registry.md` `## Anti-patterns (do-not-propagate)`** **when present** — a
+  **kill filter**: a candidate matching an anti-pattern row is dropped, citing the row id.
+
+**Pack manifest checkpoint.** Before any authoring, one **batched owner confirmation** — a single
+manifest listing, per candidate skill: its seed row ids, its home (per §Two Channels), and its
+archetype (per `references/skill-recipe.md`). No skill is authored before the manifest is confirmed.
+
+**Authoring = the existing recipes, unchanged.** A project-local skill → §For New Project-Local
+Skills; a shipped pack (dev-repo carve-out) → the New-Skill recipe **including** its Judgment Gate.
+This section adds **no** authoring rules — one owner per fact; do not restate them here.
+
+**Provenance.** Each authored skill's changelog/backlog entry **cites its seed row ids**, so a
+pack skill traces back to the reference-model (and charter) rows it was grown from.
+
+**Two legs.** Campaign-side authoring is **project-local first**; promotion of a proven pattern
+skill to a **shipped** pack rides the existing dev-repo carve-out at campaign close — no new
+promotion machinery is introduced here.
 
 ## For New Project-Local Skills
 

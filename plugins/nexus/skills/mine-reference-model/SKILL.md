@@ -147,9 +147,10 @@ its provenance. Rows are never deleted.
   replacement for them; `no-reference-model` fires only when **no reference model of any kind** is
   available (no ADRs, no conventions, no `docs/reference-model.md`).
 - The **ad-hoc refactoring lane**: the roadmap's style guide + the translation dictionary.
-- **Not** a consumer: `improve-skills` — the "generate/refresh project skills from patterns" stage
-  from the pilot's Entry 8 is explicitly out of scope for v1 (that pipeline exists informally in the
-  pilot repo; formalizing it is a separate proposal if the pilot proves the demand).
+- `improve-skills` **§Pattern-Pack Seeding**: CONFIRMED `portable`/`adapt` rows (+ the ratified
+  charter when present) seed pattern-skill authoring there — the pilot's Entry-8 second stage,
+  formalized (F30). This skill mines and grades the rows; `improve-skills` owns the scaffolding —
+  this skill still never scaffolds skills.
 
 ### R6 — Cost & safety rails
 
@@ -204,8 +205,9 @@ overrides it. The load-bearing invariants at a glance:
 ## What this skill does NOT do
 
 - Generate or refresh project skills from the mined patterns — the **skill-generation second stage**
-  is out of scope for v1; `improve-skills` owns skill scaffolding, and formalizing this seam is a
-  separate proposal if the pilot proves demand.
+  is owned by `improve-skills` §Pattern-Pack Seeding, which seeds pattern-skill authoring from this
+  skill's CONFIRMED `portable`/`adapt` rows (F30). This skill mines and grades the rows; it never
+  scaffolds skills.
 - Merge **multiple reference repos** — one designated reference repo per run; the
   `docs/reference-model/{repo}.md` per-repo split is the named seam, not built now.
 - Run a **metric layer** over the reference repo — a deliberate asymmetry with the debt sibling
@@ -223,4 +225,4 @@ table (all twelve members) and R5 above for how this skill's output composes wit
 
 | Skill | Relationship |
 |-------|-------------|
-| `improve-skills` | **NOT a consumer** — the "generate project skills from patterns" stage 2 (pilot Entry 8) is out of scope for v1. `improve-skills` owns skill scaffolding; if the pilot proves the demand, wiring this skill's patterns into it is a separate proposal. |
+| `improve-skills` | **Consumer** (F30) — its §Pattern-Pack Seeding entry point seeds pattern-skill authoring from this skill's CONFIRMED `portable`/`adapt` rows (+ the ratified charter when present). `improve-skills` owns the scaffolding; this skill mines and grades the rows. |

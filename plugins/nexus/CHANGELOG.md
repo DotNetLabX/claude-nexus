@@ -1,6 +1,24 @@
 # nexus — Changelog
 
 
+## [1.45.0] — 2026-07-22
+**Reference-model→skills seeding seam (F30-ReferenceModelSkillsSeam).** Graded reference-model rows
+now seed `improve-skills` pattern-pack authoring — closing `mine-reference-model` R5's named deferral
+(E3, ratified 2026-07-20) and turning the program's per-campaign pattern-pack cost into a repeatable
+seam.
+- `skills/improve-skills` — new **§Pattern-Pack Seeding (Reference-Model Entry Point)** section: a
+  third caller plus its intake contract — CONFIRMED `portable`/`adapt` `reference-model.md` rows,
+  filtered by the F27 charter's three-way disposition (`keep`/`aspire` seed; a `replace` row's banned
+  idiom never seeds, its named successor seeds via the reference-model channel) and the
+  `skill-gaps/registry.md` anti-pattern kill filter, into the existing authoring recipes behind one
+  batched pack-manifest owner checkpoint. Fail-closed input disclosure, seed-row-id provenance, no
+  new promotion machinery. `description:` gains the pack-request auto-invocation trigger.
+- `skills/mine-reference-model` — R5's three deferral surfaces (previously marked non-consumer)
+  flipped to consumer (the R5 consumption-seam bullet, the "does NOT do" bullet, the
+  relationship-table row); the skill still only mines and grades the rows and never scaffolds skills.
+- `docs/architecture/README.md` — **ADR-69** records the seam as the durable decision (reverses
+  ADR-50's Rejected "auto-generating project skills" entry, demand now proven).
+
 ## [1.44.1] — 2026-07-22
 **Learner consolidation 2026-07-22** (sources: F4, F8, F11, F12, F28, F29, adhoc-SkillEstateConsolidation).
 - `agents/architect.md` — Read Discipline gains the one carve-out to read-once: multi-session

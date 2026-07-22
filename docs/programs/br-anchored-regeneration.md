@@ -133,7 +133,7 @@ shipped in the `nexus` plugin (1.42.0) + stack adapters:
 | "Better" evidence | `mine-design` (patterns earn their complexity), `mine-algorithm` (canonical-replacement adjudication), `mine-reference-model` (what to copy) | Shipped |
 | Debt & patterns | `mine-verify-repo`, `mine-skill-gaps`, `mine-skill-candidates` (F15) | Shipped |
 | Gating | mutation floors (per-stack adapter), golden-master harness pattern (per-campaign, at the frozen seam), `mine-oracle-strength` (blind-battery suite-strength audit, F29), `mine-semantic-model` (data semantics) | Proven in campaign #1 |
-| Pattern packs | per-target-stack generation skills — grown per campaign (C++ pack growing now via skill seeds + F15) | Per-campaign cost |
+| Pattern packs | per-target-stack generation skills — grown per campaign (C++ pack growing now via skill seeds + F15) | Per-campaign cost; seeding seam shipped (F30, nexus 1.45.0) |
 
 ## 5. Campaigns (executions of the program)
 
@@ -196,7 +196,8 @@ line end-to-end.
    set; `mine-design` charter tier live (F26, 1.40.0); instrument-integrity gate overhaul shipped
    estate-wide (1.39.x — kill-attribution rule + per-shape honesty proofs, after the five-shape
    instrument crisis); model-tier doctrine + agent retier (1.41.0). **Build queue:** F27
-   conventions pipeline → F30/F31; F32 contract-form registry pilot (parallel, research-backed);
+   conventions pipeline → F30 shipped (nexus 1.45.0 — the reference-model→skills seeding seam) →
+   F31 next; F32 contract-form registry pilot (parallel, research-backed);
    the **Q2 differential-oracle sweep** owed before P4 waves scale. F28 `regenerate-unit` shipped
    (this release — cluster mode G1 + G2/G3 preflight gates live).
 2. **Campaign #2 — omnishelf_flutter_app (LEAD):** P1 done (3 regenerations adopted; suites

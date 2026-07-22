@@ -83,6 +83,7 @@ plugin repo is the single source of truth (see ADR-1).
 - ADR-65 — The value ledger is a consuming-project artifact species: accuracy-side claim registry, distinct from value-briefing's worth labeling *(Accepted — F3-AnalyticsBorrowWave wave 1, 2026-07-19)*
 - ADR-67 — mine-architecture is the eleventh mine: unit = one repo's architecture, output = the current-state architecture-map registry (sixth species), extraction-only by decision *(Accepted — F16-ArchitectureMiner, 2026-07-20)*
 - ADR-68 — mine-oracle-strength is the twelfth mine: unit = one gated suite + its subject, output = the suite-strength report + registry annotations *(Accepted — F29-OracleStrengthMiner, 2026-07-22)*
+- ADR-69 — The reference-model→skills seam: graded rows seed improve-skills pattern-pack authoring (fulfills mine-reference-model R5's named deferral; reverses ADR-50's Rejected stage-2 entry) *(Accepted — F30-ReferenceModelSkillsSeam, 2026-07-22)*
 - [Inherited pipeline decisions](#inherited-pipeline-decisions)
 - [Known limitations / future work](#known-limitations--future-work)
 
@@ -1293,7 +1294,7 @@ the alternative (a human gate per run) re-creates the throughput ceiling ADR-47 
 **Rejected.** *Run mine-verify-repo on the reference repo* — produces a debt registry, the wrong
 artifact (the pilot's architect recommendation records this explicitly). *Auto-generating project
 skills from the extracted patterns* (Entry 8's optional stage 2) — `improve-skills` owns skill
-scaffolding; separate proposal if demand proves out. *Housing the output in `docs/kb/` or
+scaffolding; separate proposal if demand proves out — revisited and accepted, demand proven; see ADR-69. *Housing the output in `docs/kb/` or
 `docs/tech-debt/`* — re-creates the species collision ADR-45/49 removed. *A metric layer on the
 reference repo* — measures pain, not judgment.
 
@@ -1983,6 +1984,50 @@ buggy-vs-fixed words without the real reference-pair capability, which IS the re
 seam (F28 owns no measurement machinery). *All-sonnet stage models* (the S1/S2 proposal line) —
 superseded by the owner-ratified stage-model-plan (D3): generators opus, judge fable, mechanical
 sonnet.
+
+---
+
+## ADR-69 — The reference-model→skills seam: graded rows seed improve-skills pattern-pack authoring — Accepted
+
+> **Status: Accepted — F30-ReferenceModelSkillsSeam, 2026-07-22.** Register re-checked — highest
+> *written* is ADR-68; **ADR-66 is claimed by F15-SkillCandidateMiner** (not yet written to this
+> register), so F30 takes **69**, no renumber.
+
+**Context.** `mine-reference-model`'s **R5** deliberately deferred one consumption seam — the
+pilot's Entry-8 "generate/refresh project skills from the mined patterns" second stage, marked out
+of scope for v1 with *"a separate proposal if the pilot proves the demand"*. `omnishelf_flutter_app`'s
+`docs/proposals/refactoring-method-v2.md` **§E3** (ratified 2026-07-20) is that proposal, and the
+demand is now concrete: the BR-anchored-regeneration program carries **pattern-pack authoring as a
+per-campaign hand cost** (program doc §4), with **F31** (Flutter) and **F23** (C++) waiting on the
+seam. This decision also **reverses ADR-50's Rejected** *"Auto-generating project skills from the
+extracted patterns"* entry — that entry rejected the stage *"if demand proves out"* as its explicit
+condition, and the condition is now met.
+
+**Decision.** A **direct seeding pass** into `improve-skills`, not a new funnel. Its new
+**§Pattern-Pack Seeding** entry point takes CONFIRMED `portable`/`adapt` `reference-model.md` rows,
+filtered by the F27 conventions charter's three-way disposition (`keep`/`aspire` seed; a `replace`
+row's banned idiom never seeds, its **named successor** seeds via the reference-model channel) and
+by the `skill-gaps/registry.md` anti-pattern **kill filter**, into `improve-skills`' **existing**
+authoring recipes — behind **one batched pack-manifest owner checkpoint** (per candidate skill: seed
+row ids, home, archetype). No new promotion machinery: campaign-side authoring is project-local
+first, and **leg B** — promotion to a shipped pack — rides the existing dev-repo carve-out at
+campaign close.
+
+**Why.** The rows arrive **twice-gated** — skeptic-verified at mine time (the invented-virtue kill)
+and owner-elected into the charter — so a registry re-triage adds no information a seeding pass
+lacks. E3's ratified text names `improve-skills` as the pipeline, and `improve-skills` already owns
+every authoring recipe and gate the pack needs; the seam adds an intake contract, not a second
+authoring path.
+
+**Tradeoffs.** The direct pass **bypasses the ADR-63 single skill-gaps funnel** — accepted: the
+funnel exists to *discover and rank* uncovered work, but these rows are already discovered, verified,
+and elected, so re-triaging them buys nothing. The intake contract adds one section to
+`improve-skills` and restates no authoring rules (one owner per fact).
+
+**Rejected.** *Route the rows through the skill-gaps registry funnel* — re-triages already-elected,
+already-verified rows, a step with no new information (the tradeoff above). *A standalone seeding
+skill* — duplicates `improve-skills`' authoring recipes and gates; the seam is an intake contract,
+not a second authoring engine.
 
 ---
 
