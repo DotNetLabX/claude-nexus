@@ -1,6 +1,10 @@
 # nexus — Changelog
 
 
+## [1.42.2] — 2026-07-22
+- instrument-integrity hardening: multi-oracle merge precedence — an infrastructure status never scores over a definite Survived; completion under any oracle refutes infinite-loop adjudication (sixth defect shape, campaign-#1 repair sweep 2026-07-22)
+  - skill change (mine-verify-cover)
+
 ## [1.42.1] — 2026-07-22
 **Revert the 1.41.0 doctrine commit's agent-frontmatter overreach.** The model-tier doctrine
 (opus generators / fable judges / sonnet mechanical) governs campaign mine/regen **stage

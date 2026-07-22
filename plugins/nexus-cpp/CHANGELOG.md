@@ -2,6 +2,10 @@
 
 All notable changes to the `nexus-cpp` plugin.
 
+## [0.2.1] — 2026-07-22
+- instrument-integrity hardening: multi-oracle merge precedence — an infrastructure status never scores over a definite Survived; completion under any oracle refutes infinite-loop adjudication (sixth defect shape, campaign-#1 repair sweep 2026-07-22)
+  - skill change (mine-verify-cover-cpp)
+
 ## [0.2.0] — 2026-07-21
 - instrument-integrity: kill-attribution rule — timeout/crash/compile-fail are adjudication buckets, never auto-kills; exact floor comparison (no rounding); per-instrument honesty proofs; evidence committed
   - skill change (mine-verify-cover-cpp)

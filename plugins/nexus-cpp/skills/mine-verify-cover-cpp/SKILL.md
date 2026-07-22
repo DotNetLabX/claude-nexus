@@ -74,6 +74,13 @@ The Cover agent writes the test file; a distinct runner agent executes the toolc
    - **Harness isolation rule (test-authoring time):** any path a scored test writes MUST be
      per-process — embed `getpid()` (or honor a per-worker env dir) in every temp filename. A fixed
      shared path is the defect class; it is invisible to any later audit that doesn't re-run.
+   - **Multi-oracle merge precedence (proven leak 2026-07-22):** when a suite scores one mutant
+     under several mull passes (discovery/golden/shell), the offline merge must never let a
+     Timeout *score* over a definite Survived — break-on-first-kill merges converted
+     non-detections into kills and flipped four gates below floor on honest re-merge. A mutant
+     that completed (Survived) under any pass is disqualified from infinite-loop timeout
+     adjudication (`adjudicatedTimeoutKillLines` promotion requires "never completed under any
+     oracle").
 4. Build `mutatedFiles` (one `{file,count}` per key in `cover.json.files`) for the `target_mutated` anti-fake-green guard — verify your slice's basename was actually mutated (count > 0).
 5. **Never execute mutant binaries outside mull.** Survivor triage is **read-only** — reason from `cover.json` + the source. A mutation can break a loop guard and produce a **non-terminating binary**; mull's per-mutant timeout contains that, an ad-hoc probe does not (a live run hand-compiled surviving mutants into a diff harness with no timeout — one spun at 100% CPU and deadlocked the whole workflow until killed). If SUT execution outside `ctest`/`mull-runner-15` is ever unavoidable, wrap it in `timeout <N>s`.
 

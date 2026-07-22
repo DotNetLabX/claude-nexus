@@ -153,6 +153,14 @@ kills, and this skill's own shipped gate rounded 74.59% up to a 75-floor PASS. T
 - **Harness state must be process-isolated.** Any temp file, port, or global a scored test writes
   must be per-process (pid/GUID-suffixed) — a shared mutable path under parallel workers converts
   harness collisions into false kills at test-authoring time, where no audit can see them later.
+- **Multi-oracle merges are part of the instrument.** When one mutant is scored under several
+  oracle passes, the merge must never let an infrastructure status *score* over a definite
+  `Survived` — a break-on-first-kill merge once let a Timeout in one pass overwrite a Survived in
+  another, converting non-detections into kills (four gates flipped below floor on honest
+  re-merge, 2026-07-22). And **completion under ANY oracle refutes an infinite-loop
+  adjudication** for that mutant — a mutant that ran to completion somewhere cannot be a genuine
+  infinite loop; timeout-promotion flags are evidence-gated on "never completed under any
+  oracle", or they become a way to buy back any failing gate.
 - **Score arithmetic and its evidence artifacts are committed**, never left in ephemeral paths
   (gitignored dirs, worktrees, `/tmp`) — a committed verdict must not depend on artifacts one
   cleanup away from gone.
