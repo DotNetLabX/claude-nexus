@@ -1,6 +1,11 @@
 # nexus — Changelog
 
 
+## [1.40.0] — 2026-07-22
+- mine-design charter tier (campaign-#2 feedback E1): ratified conventions-charter + graded reference-model rows become designer-citable anchors, judge tier-1 re-executes them, anti-pattern-listed house idioms non-citable — fixes the house-precedent circularity (W3: +177% lines at CCN success)
+  - skill change (mine-design)
+  - owner-escalated to minor
+
 ## [1.39.2] — 2026-07-21
 - Learner consolidation (20 runs since 2026-07-11): `create-implementation-plan` Plan Grounding
   extensions — referent verification (grep the target for the claimed content; existence is not

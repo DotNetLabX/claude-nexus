@@ -85,8 +85,20 @@ stop-budget, run-report location, stage-model-plan) before launching a run.
   in-run would yield an unverified oracle. This is a halt to obtain a required input, not a
   self-mining prohibition.
 - **Optional** — a tech-debt row (targeting/ranking + pre-verified metrics; not needed for the
-  method); a house-precedent inventory (a cheap stage-0 sweep inside this skill). The external
-  **reference-model is NOT an input** — this miner does not consume it.
+  method); a house-precedent inventory (a cheap stage-0 sweep inside this skill).
+- **The charter tier (optional second citable-anchor tier).** When the consuming repo carries a
+  **ratified** `docs/conventions/` charter and/or a graded `docs/reference-model.md`, their rows are
+  designer-citable anchors alongside house precedent (see D3) and are judge-verified like any other
+  citation (see D4 tier 1). When neither exists, this tier is simply absent — the census itself
+  never consumes them (clean-room grounding stays source + registry only). **Why this tier exists:**
+  house precedent alone is circular — in a repo whose dominant idiom is impoverished, a
+  precedent-only filter can only return more of that idiom (measured: a consuming repo's W3
+  refactoring inflated a unit +177% lines at CCN success because a grep, not the owner, elected the
+  vocabulary). The charter is the owner's elected vocabulary; grading is what makes it citable.
+- **Anti-patterns are non-citable.** A house idiom listed on the repo's anti-pattern
+  (do-not-propagate) list (`docs/skill-gaps/registry.md`) or debt-implicated in a confirmed
+  `docs/tech-debt/` row is **not citable as precedent** by any designer, even where it is the
+  dominant idiom.
 
 ### D2 — Stage 1: the complexity census (mechanical, one clean-room agent)
 
@@ -115,8 +127,13 @@ hard obligations per proposed pattern**:
    rule). A pattern that cannot name the branches it kills is rejected.
 2. **Name the strangler-fig migration path** — the design must be reachable in small safe steps, not
    a big-bang rewrite.
-3. **Cite house precedent where it exists** — grep/read-verified in the target repo, with the
-   **search root pinned** (an unscoped sweep hits the wrong repo).
+3. **Cite a structural anchor where one exists** — house precedent (grep/read-verified in the
+   target repo, **search root pinned** — an unscoped sweep hits the wrong repo), OR a
+   charter-elected convention row, OR a graded reference-model row (D1's charter tier). All three
+   anchor forms carry equal weight; the anti-cosplay rule (obligation 1) applies unchanged — an
+   anchor licenses a pattern's *vocabulary*, never exempts it from citing the census rows it kills.
+   **A house idiom on the anti-pattern list is non-citable** (D1) — a designer needing an anchor
+   for that ground must cite a charter/reference-model row or propose without an anchor.
 
 - **Honest zero-cause scoping** — a designer never prescribes for a cause the census counted **zero**
   of; the prescription is scoped to what the census actually found.
@@ -131,6 +148,10 @@ The judge is **blind** (no exemplar or reference brief in its inputs), **provena
 
 - **Tier 1 — absolute grounding kill.** Each pattern survives only if its census-row citation
   **verifies** — the judge re-executes the citation against live source and records the excerpt.
+  Charter and reference-model citations (D1's charter tier) are re-executed the same way: the judge
+  opens the cited charter/reference-model row and verifies it exists, says what the designer claims,
+  and is not anti-pattern-listed — an unverifiable or misquoted charter citation kills the pattern
+  exactly like a fabricated census row.
   Famous pattern **names score zero**: grounding is the only currency, so an authority citation
   ("this is the GoF X pattern") earns nothing. Anti-move proposals (the decision table's cite-nothing
   tier — Extract Method as a destination, guard-clause flattening, the standing estate rejections)
