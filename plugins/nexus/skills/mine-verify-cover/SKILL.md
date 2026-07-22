@@ -307,6 +307,9 @@ artifact-species split is ADR-45). Each rule is a `## Rules` bullet (`- BR-1: {s
 appended row of fields — this sentence is the grammar every other shipped file references:
 
 - `source: code | spec | both`
+- `precondition:` — optional; the input assumptions under which the rule's outcome holds
+  (argument ranges, null/shape constraints, checked or stated state). Mined, never invented —
+  a rule with no encoded assumption carries no field; zero-`precondition:` registries stay valid.
 - `status`: `verified` after Verify, flipped to `mutation-gated` after the Cover gate passes; also
   `divergence-pending-triage` for an unresolved Merge-arm conflict awaiting a human ruling
 - `criticality: golden | core | edge | untagged` (`untagged` = the arm never mined that fact — never
@@ -318,6 +321,10 @@ Rule statements are durable prose — describe rules by SYMBOL and CONDITION (na
 by source line number (line numbers rot when the source shifts; keep them in a separate field). See
 `kb-entry-schema` for the registry's non-row context sections (Key Files, Edge Cases, Source, etc.) —
 those stay unchanged below the rows.
+
+A present `precondition:` is consumed by the Cover test-writer (input construction) and by regeneration
+(the generator treats it as the rule's binding input contract); provenance: F32,
+`spec-representation-and-equivalence-oracles.md`.
 
 **Flutter migration note.** Existing Flutter-repo rule ledgers under `docs/kb/` and registries under
 `docs/kb/golden/` migrate to `docs/business-rules/` on that repo's next campaign touch; until then,

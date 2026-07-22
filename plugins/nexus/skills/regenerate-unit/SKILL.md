@@ -108,7 +108,8 @@ hardest defense:
   is *better, never a copy*.)
 - **Allowed:** the registry, the entities/models/contracts/core, sibling usecases.
 - **Registry semantics:** **active rows only**; **bug-preserve rows implemented verbatim** (a
-  preserved bug is a verified behavior).
+  preserved bug is a verified behavior). A row's optional `precondition:` field is the rule's
+  **input-assumption contract**, binding on the generator the same way the rule statement is.
 - **MANDATORY outputs** (each one a measured honesty signal):
   - a **files-read honesty list** — exactly what the generator read;
   - a **declared-ambiguities list** — what the registry under-specifies (**empty is suspicious** —

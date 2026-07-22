@@ -1,6 +1,19 @@
 # nexus — Changelog
 
 
+## [1.44.0] — 2026-07-22
+**Contract-form registry grammar (F32-ContractFormRegistryPilot, grammar half).** The rule registry
+grammar gains an optional `precondition:` row field (`mine-verify-cover` §The rule registry) — the
+input assumptions under which a rule's outcome holds (argument ranges, null/shape constraints, checked
+or stated state). Mined, never invented: a rule with no encoded assumption carries no field, and a
+zero-`precondition:` registry stays valid. Two consumers wired: the **Cover test-writer** (input
+construction) and **regeneration** (`regenerate-unit` Stage 3 treats a present `precondition:` as the
+rule's binding input-assumption contract, the same weight as the rule statement). Research provenance:
+`docs/kb/research/spec-representation-and-equivalence-oracles.md` (full contracts close the
+spec-soundness gap prose leaves implicit). This ships the **grammar half only** — the contract-form
+re-authoring + regeneration-vs-prose pilot is **owed campaign-side** (runs in the consuming repo after
+`/plugin update`); the F32 backlog row is "grammar half shipped / pilot owed", not Done.
+
 ## [1.43.1] — 2026-07-22
 - PATCH bump.
   - skill change (mine-verify-cover)
