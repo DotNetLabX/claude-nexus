@@ -78,7 +78,11 @@ claimed → 51.6% honest → 89.0% after repair); four remain below floor, queue
 (p0c shell 83.6 → clusterize D4 main 79.0 → clusterize p0b core 80.9 → planogram D2 59.6 — the
 biggest gap, ~38 mutants). The era-rule re-score (audit under the claim-time rules) reproduced
 every inflated figure and survivor list exactly — the instrument spec, not the operators, was
-the defect; errata assign to the spec layer.
+the defect; errata assign to the spec layer. A repair-round corollary (p0c, 2026-07-22): a
+stale in-code comment ("settings are NOT settable from a test" — false) had walled off an
+entire fixture family from every suite ever written for the unit; **claimed untestability is
+verified by attempting the public path, never trusted from comments** — a doctrine candidate
+for the cover stage.
 
 - Research: `docs/kb/research/br-anchored-regeneration-landscape.md` (this repo)
 - Experiment reports: campaign #1's repo (see §6 artifact map)
@@ -205,13 +209,16 @@ line end-to-end.
    program's first pilot) + golden-seam catalog with the F32 candidate flag → owner P3 design →
    fix-shelf cluster pilot (needs F28).
 3. **Campaign #1 — omnivision-ai-sdk (PARKED, in repair):** p0c enhanced shell proven on
-   behavior (8.3/10; suite + goldens + ABI stand; adoption held — no exposure) but its mull leg
-   fell to 83.6% adjusted under the honest merge (erratum ordered, sixth defect shape). **posm
-   repaired 2026-07-22 (89.0% honest)**; four instruments remain, cheapest-first (p0c shell →
-   clusterize D4 main → clusterize p0b core → planogram D2). **p0d Stage-B: GO** — the posm
-   floor precondition is met; gated only on posm's declared-pass-manifest spot-check (the
-   deterministic leak found in production is invisible to reproducibility proofs). Resumes as
-   repairs land.
+   behavior (8.3/10; suite + goldens + ABI stand; adoption held on the unwitnessed-bug axis) and
+   its mull leg **repaired 2026-07-22 — 95.18% honest** (158/166; +20 kills, 0 de-kills, all
+   shell-oracle-attributed; supersedes the erratum's 83.6% with a gate stronger than the
+   original 85.4% claim; the 8 remaining survivors all adjudicated equivalent or
+   infinite-loop). **posm repaired (89.01%)**; both repairs carry survivor-diff 0 across three
+   runs and clean pass manifests → **p0d Stage-B: FIRED 2026-07-22.** Queue: clusterize D4 main
+   (79.0% — the manifest-HALT gate; resolved only by re-running the missing pass, never by
+   adjudicating around it) → clusterize p0b core (80.9%) → planogram D2 (59.6%). Corrected
+   scorers propagate into every clone before the next round — two scorer versions in
+   circulation is itself an instrument hazard.
 4. **.NET estate (knowledge-gateway):** two below-floor units in repair (GeneratedSqlValidator,
    EmbeddedAskOrchestrator — honest-score reruns under the fixed gate); SystemPromptBuilder clean.
 5. Program-level queued: the campaign-in-a-box proposal (end-goal #2), the Q2 sweep (item 1).
