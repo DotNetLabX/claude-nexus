@@ -1,6 +1,12 @@
 # nexus — Changelog
 
 
+## [1.41.0] — 2026-07-22
+- model-tier doctrine (owner-ratified 2026-07-22): architect agent to fable, critic + developer to opus; mine-family kickoff stage-model-plan default = miners/generators opus, skeptics/judges fable, mechanical sonnet; binding asymmetry rule — verification never runs below generation
+  - agent instruction/behavior change
+  - skill change (mine-verify-cover)
+  - owner-escalated to minor
+
 ## [1.40.0] — 2026-07-22
 - mine-design charter tier (campaign-#2 feedback E1): ratified conventions-charter + graded reference-model rows become designer-citable anchors, judge tier-1 re-executes them, anti-pattern-listed house idioms non-citable — fixes the house-precedent circularity (W3: +177% lines at CCN success)
   - skill change (mine-design)

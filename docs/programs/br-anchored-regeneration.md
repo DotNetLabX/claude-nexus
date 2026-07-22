@@ -86,6 +86,22 @@ Doctrine that holds everywhere: **facts vs judgments** (mines record only what r
 fixtures before regeneration — the strengthen-before-regenerate class); **declared ambiguity**
 (generators flag what the registry under-specifies; each flag becomes a registry fix).
 
+**Model-tier doctrine (owner-ratified 2026-07-22; usage constraints lifted).** Capability is
+spent where the campaigns proved failures live — mining completeness and verification — never on
+generation glamour (sonnet generators already delivered 97/97 zero-repair):
+
+| Stage class | Tier | Grounds |
+|---|---|---|
+| Orchestrating architect, gate audits, escalation rulings | **fable** | the adjudication layer — wrong rulings compound |
+| Skeptics, judges, adjudication (fidelity, survivors, timeouts) | **fable** | the trust layer; the estate's one fable judge caught the wrong-formula rule (BR-89) three miners + a skeptic missed |
+| Miners/extractors + clean-room generators, designers, blind mutant authors | **opus** | registry completeness is the proven bottleneck — every repair ever traced to under-mining |
+| Mechanical stages (re-pointing, refresh, scoring, repairs) | **sonnet** | judgment-free |
+
+**The asymmetry rule (binding): verification never runs below generation** — a skeptic or judge
+runs at ≥ the tier of the producer it checks. Declared per run via the kickoff stage-model-plan
+(declare-and-veto, F17); enforced in `mine-family-core` §Kickoff item 5. Supersedes the
+budget-era "all spawned stages sonnet" ruling (S1 proposal, 2026-07-20).
+
 ## 4. The capability stack (what this repo ships)
 
 Eleven mines, one shared skeleton (clean-room extraction → skeptic → evidence-carrying registry),

@@ -270,12 +270,17 @@ unmet assumption.
 3. **stop-budget declared** — the marginal-spend ceiling this run halts at (see the budget rail above).
 4. **Run-report location named** — where the run's report (areas scanned/skipped, survival rate, registry
    delta) will land, before the run starts.
-5. **Stage-model-plan declared** — the run names which model tier each stage class runs on: mechanical
-   collection/extraction stages may run a **named** cheaper tier; judgment stages (clustering, skeptic,
-   judges) run the session tier or a deliberately named one. **Declare-and-veto** — the declaration
-   lands in the kickoff output for the operator to veto, never an interactive prompt. Generalizes the
-   `mine-skill-gaps` §Execution topology clause ("dispatched at the session's model tier or a
-   deliberately named one").
+5. **Stage-model-plan declared** — the run names which model tier each stage class runs on.
+   **Program default plan (owner-ratified 2026-07-22):** miners/extractors and clean-room
+   generators → **opus** (mining completeness is the program's proven bottleneck — every
+   regeneration repair ever recorded traced to under-mining); skeptics, judges, and adjudication
+   stages → **fable** (the trust layer; the estate's one fable judge out-caught three miners plus
+   a skeptic on a wrong-formula rule); mechanical collection/re-pointing/scoring stages →
+   **sonnet**. **The asymmetry rule (binding): verification never runs below generation** — the
+   skeptic/judge tier is ≥ the producer tier it checks, always. **Declare-and-veto** — the
+   declaration lands in the kickoff output for the operator to veto, never an interactive prompt.
+   Generalizes the `mine-skill-gaps` §Execution topology clause ("dispatched at the session's
+   model tier or a deliberately named one").
 
 **Tier 2 — Member-conditional (blocking when applicable; skipped by member class otherwise):**
 

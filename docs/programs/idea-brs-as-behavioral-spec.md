@@ -111,7 +111,27 @@ Re-evaluation found the "narrow dive" framing under-scoped:
   rule-shaped units; the binding constraints are registry completeness + oracle strength — so the
   research weights the *oracle* question at least as heavily as *representation*.
 
-**Refined research question (for `/deep-research`; status: not yet run):** for LLM regeneration of
+**Grounding check before firing (2026-07-22, both campaign repos read):** the WHAT-representation is
+the estate's MOST validated layer (repairs 1/39, 0/97 across five runs — prose rules + contract pack
+suffice for behavior); the HOW layer's gaps have an internal build queue (F27 charter, F28
+regenerate-unit, F31 pattern pack). The genuinely uncovered representation layers, evidence-cited:
+(1) **no property/invariant layer** — P0c's BR-89 was a factually wrong formula surviving 3-miner
+consensus + skeptic, caught only by the regeneration itself; BR-129 was a missing merge-asymmetry
+invariant; (2) **recurring prose-ambiguity shapes** — accessor pins (projected-vs-raw), sign/endpoint
+semantics, log-text — a precision-grammar question; (3) **the oracle is the load-bearing risk** — all
+20 real cross-campaign defects sat in the TEST half of the representation, never the rules; and
+"faithful regeneration as registry verifier" (the BR-89 catch) wants checking against
+N-version / translation-validation literature. Research therefore weights Q1 invariants/precision and
+Q2 oracles; the pipeline-exists and HOW questions are out of scope.
+
+**Refined research question (RUN 2026-07-22 → captured as
+`docs/kb/research/spec-representation-and-equivalence-oracles.md`, cite-check passed; 24 sources,
+22/25 claims survived 3-vote verification. Headline: Q1 YES-with-limits — inferred properties catch
+wrong-formula defects but only behind a skeptic + mechanical downstream check, which VALIDATES the
+pipeline's Mine→Verify→Gate + regeneration-as-checker shape, and BR-89 has a named 2002 Daikon/ESC-Java
+precedent; contracts (pre+post) close most of the test-validation soundness gap (~6x overestimate
+confirmed); Q2 oracles = evidence hole, dedicated follow-up sweep owed; Q3 = buggy/fixed-pair
+discrimination adoptable as the spec-strength metric, invariant-gap route refuted 0-3):** for LLM regeneration of
 legacy code into a new architecture — (1) do richer representations (behavioral-spec graphs, inferred
 invariants/contracts, EARS, DSL/model lifting) demonstrably beat named prose rules + gated tests as
 generation input? (2) is differential/metamorphic testing against a retained reference implementation
