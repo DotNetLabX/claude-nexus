@@ -260,8 +260,7 @@ line end-to-end.
    sibling tree — redone from clean configure with a 692/0 tree-identity proof; the doctrine
    shipped as 1.47.2's subject-identity rule). Legacy-file mull 85.71% retained as historical
    control; the adopted artifact's evidence is Stage-B's 93.94%; decide-stage re-scope =
-   wave-cutover work. **The SDK repo holds unpushed commits incl. the adoption — pushing is
-   the owner's standalone word.** Queued for resume: clone/container retirement, the p0b
+   wave-cutover work. **Repo pushed to origin 2026-07-23 (owner's word given).** Queued for resume: clone/container retirement, the p0b
    stash drop, 9 registry annotations, the F26 companion fixture, the branch
    inventory/consolidation (owner-ordered 2026-07-23), and — at P2 — the **tuning-knob estate
    census** (owner finding, documented in the four-version evaluation: empirical knobs +
@@ -270,7 +269,12 @@ line end-to-end.
    P3: configure / derive / retire) plus the **rule-intent triage** at the P2/P3 boundary
    (F33 — prototype complete 2026-07-23 on posmCompliance: 133 rules → T21/C61/D22/A23/M6,
    10 settling queries; owner election → the simplified registry becomes the P3 wave's spec;
-   applies to campaign #2 equally). Campaign idles behind campaign #2 once executed.
+   applies to campaign #2 equally). **Owner ruling 2026-07-23: P2 prep starts NOW, in
+   parallel with campaign #2** (deliberate — each campaign's experience feeds the other;
+   the architecture mine itself still waits its turn behind the Flutter pilot). Scope of the
+   parallel prep: P1 closure report, the housekeeping queue, branch inventory, P2 coverage
+   census, tuning-knob estate census, the four repo-grep triage queries (Q2/Q7/Q8/Q10).
+   Kickoff prompt delivered to the SDK session 2026-07-23.
 4. **.NET estate (knowledge-gateway):** two below-floor units in repair (GeneratedSqlValidator,
    EmbeddedAskOrchestrator — honest-score reruns under the fixed gate); SystemPromptBuilder clean.
 5. Program-level queued: the campaign-in-a-box proposal (end-goal #2), the Q2 sweep (item 1).
