@@ -16,11 +16,17 @@
   })
   ```
 
-  **Exception — deep research runs on fable.** Research dives get the strongest model, not sonnet:
-  the `research` skill's forked web researcher, and every agent spawned while executing the built-in
-  `/deep-research` harness (Agent-tool or workflow `agent()` spawns alike), set `model: "fable"`.
-  This is the only exception — it does not extend to code-discovery Explore dives or any other
-  general-purpose spawn.
+  **Exception — research dives tier by run mode (owner-set 2026-07-23).** The `research` skill's
+  forked web researcher, and every agent spawned while executing the built-in `/deep-research`
+  harness (Agent-tool or workflow `agent()` spawns alike), pick the model by run mode:
+  - **`[UNATTENDED]` runs — `model: "sonnet"`, always.** A premium spawn can hard-fail on plan
+    gating or drain the session quota mid-run with no human there to recover.
+  - **Attended runs — tier by stakes:** `sonnet` for a routine fact, `opus` for a high-stakes or
+    breadth verdict; both free to use without asking.
+  - **`fable` — only with explicit human approval.** Recommend it when the verdict warrants the
+    strongest model, then wait for the user's yes; never auto-spawn fable. No approval → opus.
+  This exception covers research dives only — it does not extend to code-discovery Explore dives or
+  any other general-purpose spawn.
 
 - **Never override specialized agent models** — specialized agents (architect, developer, reviewer, etc.) have their model baked into their definition frontmatter. Never pass a `model` parameter that overrides it.
 - **Nexus agents own the pipeline** — for feature pipeline roles (architect, developer, reviewer), always use the Nexus pipeline agents. Don't substitute generic or third-party agents for pipeline roles.

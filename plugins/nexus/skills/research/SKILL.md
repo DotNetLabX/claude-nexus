@@ -93,7 +93,11 @@ For a **low–medium** question (the default route above), run the forked dive:
    answer you expect. Confirmation-biased framing ("confirm that X works") corrupts the verdict; ask
    "does X work, and under what conditions?" This neutral framing is part of the researcher's prompt.
 
-2. **Spawn the forked researcher.** Use the **Agent tool** with subagent type `Explore` and `model: "fable"` — the deep-research exception to the sonnet guardrail (research verdicts are load-bearing and get the strongest model). Its prompt
+2. **Spawn the forked researcher.** Use the **Agent tool** with subagent type `Explore`, model
+   tiered by run mode (the research-dive exception in the `pipeline-guardrails` rule): in an
+   `[UNATTENDED]` run always `model: "sonnet"`; attended, tier by stakes — `sonnet` for a routine
+   fact, `opus` for a high-stakes or breadth verdict — and `fable` only after the user explicitly
+   approves it (recommend it when the verdict warrants the strongest model; never auto-spawn fable). Its prompt
    carries: the neutrally-framed question; the instruction to use **`WebSearch` / `WebFetch` only**; the
    **`research-entry-schema`** format (fields + the 8-part body + the claim grammar) to draft the entry
    in; and the cite-or-drop rule — **every claim line ends with an inline `[n]` source reference or the

@@ -1,6 +1,18 @@
 # nexus — Changelog
 
 
+## [1.47.3] — 2026-07-23
+**Research-dive model policy: fable pin → run-mode tiering (adhoc-ResearchModelTiering, owner-set
+2026-07-23).** The research skill's forked researcher and `/deep-research` harness spawns no longer
+pin fable. `[UNATTENDED]` runs: always sonnet — a premium spawn can hard-fail on plan gating or
+drain the session quota mid-run with no human to recover (owner incident: fable deep-research runs
+failing out of tokens or depleting the 5h quota). Attended runs: tier by stakes — sonnet routine,
+opus high-stakes/breadth, free. Fable: only with explicit human approval, never auto-spawned.
+Surfaces: pipeline-guardrails rule (the research-dive exception) + research skill Step 2. Scope is
+deep-search only — the mine/regen fable-judge stage pins (campaign doctrine) are untouched.
+  - rule (injected every session)
+  - skill change (research)
+
 ## [1.47.2] — 2026-07-23
 - PATCH bump.
   - skill change (mine-verify-cover)
