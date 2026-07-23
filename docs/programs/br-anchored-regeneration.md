@@ -262,8 +262,12 @@ line end-to-end.
    control; the adopted artifact's evidence is Stage-B's 93.94%; decide-stage re-scope =
    wave-cutover work. **The SDK repo holds unpushed commits incl. the adoption — pushing is
    the owner's standalone word.** Queued for resume: clone/container retirement, the p0b
-   stash drop, 9 registry annotations, the F26 companion fixture. Campaign idles behind
-   campaign #2 once executed.
+   stash drop, 9 registry annotations, the F26 companion fixture, the branch
+   inventory/consolidation (owner-ordered 2026-07-23), and — at P2 — the **tuning-knob estate
+   census** (owner finding, documented in the four-version evaluation: empirical knobs +
+   case-patches + unfinished-intent sentinels, coupled through fallback cascades; annotate
+   constant-anchored registry rows `tuning-knob`, census the estate, disposition per knob at
+   P3: configure / derive / retire). Campaign idles behind campaign #2 once executed.
 4. **.NET estate (knowledge-gateway):** two below-floor units in repair (GeneratedSqlValidator,
    EmbeddedAskOrchestrator — honest-score reruns under the fixed gate); SystemPromptBuilder clean.
 5. Program-level queued: the campaign-in-a-box proposal (end-goal #2), the Q2 sweep (item 1).
