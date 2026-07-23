@@ -292,8 +292,12 @@ line end-to-end.
    `049fdd5`, 6 ahead of origin) · local master fast-forwarded · F26 deferral confirmed.
    Remaining owner-terminal work (paste-ready in branch-inventory.md §Execution record):
    3 tag pushes → 4 stale-remote deletes → 3 F2-remote deletes, plus the p0b clone rm and
-   the docker pair. **Lane push unsanctioned — standing standalone ask.** Q1/Q3–Q6/Q9
-   remain with the data team.
+   the docker pair. **Lane push unsanctioned — standing standalone ask.**
+   **Architecture-mine pilot confirmed complete in campaign #2** (`archmap-2026-07-22-a`,
+   12 modules, fable-skeptic verified) → the SDK's P2 architecture mine is UNBLOCKED;
+   kickoff prompt delivered 2026-07-23. Data queries Q1/Q3–Q6/Q9: owner holds a semantic
+   model + read access to the platform reports DB — routing through the data-analyst path
+   instead of a data-team hand-off.
 4. **.NET estate (knowledge-gateway):** two below-floor units in repair (GeneratedSqlValidator,
    EmbeddedAskOrchestrator — honest-score reruns under the fixed gate); SystemPromptBuilder clean.
 5. Program-level queued: the campaign-in-a-box proposal (end-goal #2), the Q2 sweep (item 1).
