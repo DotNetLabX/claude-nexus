@@ -234,11 +234,13 @@ line end-to-end.
    survivor-diff 0, pass manifests green; interfaces E4-U5 evidence upgraded 2026-07-23 —
    Q36 rebased on a code-cited equivalence proof (boundary-idempotent self-assignments),
    routed-union scope recorded with a non-vacuity + anti-double-count proof: 8/10 raw ·
-   8/8 adjudicated MET, always dual-reported). **Five owner decisions pending at the SDK desk:**
-   enhanced-posm adoption (standalone; recommended HOLD until the gap-kill lands), dead-code
-   deletion (BR-69–74 + posmRect/iou), BR-63 witnessability (UB-pinned golden vs formally
-   unwitnessable), the 10-change gap-kill (closes all 31 mapped blind spots), the M52 harness
-   fix (per-fixture compare + try/catch). Resumes on the owner's word.
+   8/8 adjudicated MET, always dual-reported). **Owner dispositions given 2026-07-23 (all as
+   recommended):** enhanced-posm adoption HOLD (re-asked standalone after the gap-kill);
+   dead-code NOT deleted — BR-69–74 + posmRect/iou marked `dead-code — proven unreachable`,
+   deletion deferred to wave cutover; BR-63 formally unwitnessable (UB analysis = closure
+   evidence); the 10-change gap-kill RUNS; the M52 harness fix YES (remaining C++
+   per-fixture-compare half). Execution order 5 → 4 → re-ask adoption; campaign idles behind
+   campaign #2 once executed.
 4. **.NET estate (knowledge-gateway):** two below-floor units in repair (GeneratedSqlValidator,
    EmbeddedAskOrchestrator — honest-score reruns under the fixed gate); SystemPromptBuilder clean.
 5. Program-level queued: the campaign-in-a-box proposal (end-goal #2), the Q2 sweep (item 1).
