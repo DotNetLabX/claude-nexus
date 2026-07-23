@@ -6,6 +6,13 @@ human-designed better architecture, gated so nothing is lost. Projects run it as
 the omnivision-ai-sdk is campaign #1, not the program. This repo (nexus) is the program's home:
 it builds and ships the capability. Written 2026-07-20; update at program milestones.
 **Owner / decision-maker:** Maria.
+**Concurrent editors (protocol, 2026-07-23):** this file is edited by the program-home architect
+AND campaign-manager sessions. Rules: (1) **section ownership** — a campaign session edits ONLY
+its own §7 status item (campaign #2 → item 2); the program home owns everything else, and §2
+doctrine changes only via program-home rulings; (2) **mechanics** — `git pull` immediately before
+any edit, re-read the target section (never edit from stale context), commit + push immediately
+after (small single-purpose `docs(program):` commits); (3) on a rejected push: `git pull
+--rebase`, re-verify your section survived the merge, push — never force.
 
 ---
 
