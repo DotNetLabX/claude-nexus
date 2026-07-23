@@ -84,7 +84,13 @@ status never *scores* over a definite Survived, and completion under any oracle 
 infinite-loop adjudication. Estate truth after the full honest sweep (2026-07-22
 reality check, eight instruments): three claims honest as recorded (interfaces E4-U5,
 videoprocessor E2-U9, confirmationprocessor), five inflated; posm repaired same day (98.9%
-claimed → 51.6% honest → 89.0% after repair); four remain below floor, queued cheapest-first
+claimed → 51.6% honest → 89.0% after repair; **revised 2026-07-23**: the 89.0 carried a
+two-mutant timeout buy-back — valid under its era's single oracle, refuted when four oracles
+showed both mutants completing; honest prior was 86.81% raw, and after the gap-kill the gate
+reads **85.71% MET with zero adjudication** — the floor holds clean. Doctrine minted by the
+revision: **standing timeout promotions are re-verified whenever the oracle set grows** — an
+adjudication is only as strong as the oracle set that failed to refute it; ships with the next
+instrument-integrity patch); four remained below floor, queued cheapest-first
 (p0c shell 83.6 → clusterize D4 main 79.0 → clusterize p0b core 80.9 → planogram D2 59.6 — the
 biggest gap, ~38 mutants). The era-rule re-score (audit under the claim-time rules) reproduced
 every inflated figure and survivor list exactly — the instrument spec, not the operators, was
@@ -230,7 +236,8 @@ line end-to-end.
    regeneration holds on C++ at ~1,200-line scale (25/25 byte-exact; better on every shape
    metric; mull 93.94% vs legacy control 89.01%; 1 repair = the second double-verified-false
    registry row — see §2's closing finding). **All five instruments repaired on audited
-   gates** (posm 89.01 · p0c shell 95.18 · D4 main 86.67 · p0b core 86.36 · D2 95.36 —
+   gates** (posm 85.71 zero-adjudication [89.01 revised — see §2] · p0c shell 95.18 · D4 main
+   86.67 · p0b core 86.36 · D2 95.36 —
    survivor-diff 0, pass manifests green; interfaces E4-U5 evidence upgraded 2026-07-23 —
    Q36 rebased on a code-cited equivalence proof (boundary-idempotent self-assignments),
    routed-union scope recorded with a non-vacuity + anti-double-count proof: 8/10 raw ·
@@ -239,7 +246,12 @@ line end-to-end.
    dead-code NOT deleted — BR-69–74 + posmRect/iou marked `dead-code — proven unreachable`,
    deletion deferred to wave cutover; BR-63 formally unwitnessable (UB analysis = closure
    evidence); the 10-change gap-kill RUNS; the M52 harness fix YES (remaining C++
-   per-fixture-compare half). Execution order 5 → 4 → re-ask adoption; campaign idles behind
+   per-fixture-compare half). **All five EXECUTED 2026-07-23** (stage5-gapkill-report.md):
+   blind battery 63/70 = 90.00% (survivors = exactly the 7 predicted; zero pending buckets);
+   suite 4 binaries / 29 fixtures / 86 asserts; enhanced artifact 29/29 byte-exact; whole-TU
+   67.90% (+20.25); 28 of 31 gaps closed (rest: M19 ruled, M63 proven equivalent, M52 = the
+   delivered fix); posm gate 85.71% MET with zero adjudication. **Adoption ask OPEN at the
+   owner's desk (standalone, recommended ADOPT).** Campaign idles behind
    campaign #2 once executed.
 4. **.NET estate (knowledge-gateway):** two below-floor units in repair (GeneratedSqlValidator,
    EmbeddedAskOrchestrator — honest-score reruns under the fixed gate); SystemPromptBuilder clean.
