@@ -267,7 +267,10 @@ line end-to-end.
    census** (owner finding, documented in the four-version evaluation: empirical knobs +
    case-patches + unfinished-intent sentinels, coupled through fallback cascades; annotate
    constant-anchored registry rows `tuning-knob`, census the estate, disposition per knob at
-   P3: configure / derive / retire). Campaign idles behind campaign #2 once executed.
+   P3: configure / derive / retire) plus the **rule-intent triage** at the P2/P3 boundary
+   (F33 — prototype complete 2026-07-23 on posmCompliance: 133 rules → T21/C61/D22/A23/M6,
+   10 settling queries; owner election → the simplified registry becomes the P3 wave's spec;
+   applies to campaign #2 equally). Campaign idles behind campaign #2 once executed.
 4. **.NET estate (knowledge-gateway):** two below-floor units in repair (GeneratedSqlValidator,
    EmbeddedAskOrchestrator — honest-score reruns under the fixed gate); SystemPromptBuilder clean.
 5. Program-level queued: the campaign-in-a-box proposal (end-goal #2), the Q2 sweep (item 1).
