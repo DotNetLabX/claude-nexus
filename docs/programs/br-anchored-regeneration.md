@@ -231,7 +231,10 @@ line end-to-end.
    metric; mull 93.94% vs legacy control 89.01%; 1 repair = the second double-verified-false
    registry row — see §2's closing finding). **All five instruments repaired on audited
    gates** (posm 89.01 · p0c shell 95.18 · D4 main 86.67 · p0b core 86.36 · D2 95.36 —
-   survivor-diff 0, pass manifests green). **Five owner decisions pending at the SDK desk:**
+   survivor-diff 0, pass manifests green; interfaces E4-U5 evidence upgraded 2026-07-23 —
+   Q36 rebased on a code-cited equivalence proof (boundary-idempotent self-assignments),
+   routed-union scope recorded with a non-vacuity + anti-double-count proof: 8/10 raw ·
+   8/8 adjudicated MET, always dual-reported). **Five owner decisions pending at the SDK desk:**
    enhanced-posm adoption (standalone; recommended HOLD until the gap-kill lands), dead-code
    deletion (BR-69–74 + posmRect/iou), BR-63 witnessability (UB-pinned golden vs formally
    unwitnessable), the 10-change gap-kill (closes all 31 mapped blind spots), the M52 harness
