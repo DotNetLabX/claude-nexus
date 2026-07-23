@@ -285,9 +285,15 @@ line end-to-end.
    Q7 Order is load-bearing (app sorts by it), Q8 bidir is a first-class UI semantic,
    Q10 mockWobblers demo-only confirmed · branch inventory: 17 branches dispositioned,
    elections pending (4 safe deletes, 3 F2-evidence remotes = owner risk call, 5 Norbert
-   sign-offs). Open owner rulings: P1 close · knob-tagging scope · `f2-p2-prep` lane merge ·
-   branch elections + owner-terminal deletes · F26 fixture (deferred, standalone gate
-   change). Q1/Q3–Q6/Q9 remain with the data team.
+   sign-offs). **All six rulings given and executed 2026-07-23** (owner: "all as
+   recommended" + push-tags-first on the F2 evidence remotes): **P1 CLOSED** (two P0-bis
+   rows folded into a queued registry-maintenance unit) · lazy knob-tagging RATIFIED ·
+   `f2-p2-prep` ff-merged into the lane and deleted (lane `adhoc-RulesRegistry` at
+   `049fdd5`, 6 ahead of origin) · local master fast-forwarded · F26 deferral confirmed.
+   Remaining owner-terminal work (paste-ready in branch-inventory.md §Execution record):
+   3 tag pushes → 4 stale-remote deletes → 3 F2-remote deletes, plus the p0b clone rm and
+   the docker pair. **Lane push unsanctioned — standing standalone ask.** Q1/Q3–Q6/Q9
+   remain with the data team.
 4. **.NET estate (knowledge-gateway):** two below-floor units in repair (GeneratedSqlValidator,
    EmbeddedAskOrchestrator — honest-score reruns under the fixed gate); SystemPromptBuilder clean.
 5. Program-level queued: the campaign-in-a-box proposal (end-goal #2), the Q2 sweep (item 1).
