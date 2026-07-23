@@ -87,7 +87,18 @@ The Cover agent writes the test file; a distinct runner agent executes the toolc
      pass is deterministic — it reproduces identically across the run-pair, so the
      reproducibility proof cannot see it. That proof is necessary, never sufficient: it catches
      non-deterministic defects only; deterministic mis-attribution needs this manifest assertion.
-     Both legs ship before any score does.
+     Both legs ship before any score does. Multi-build gates assert per pass × build against a committed region-routing table — an empty
+     cell is legitimate only when the table predicts it; every region must appear in ≥1 build
+     with count > 0 (full rule: the generic skill's instrument-integrity section).
+   - **Battery evidence banking + freshness anchor (two proven traps):** (1) a harness that
+     accumulates kills across fixtures and compares once at the end discards evidence already
+     earned when a late fixture crashes — compare per fixture inside try/catch so a crash after
+     divergence still banks the kills (under-statement is acceptable; hidden evidence is not);
+     (2) when test executables statically embed the target TU (whole-archive link), rebuilding
+     only the shared library changes the .so hash while the exe runs stale code — a naive
+     freshness assertion passes on dead evidence (a hard `return;` mutant read SURVIVED this
+     way). Anchor freshness on the FINAL LINKED test artifact, never an intermediate library,
+     and red-prove the anchor.
 4. Build `mutatedFiles` (one `{file,count}` per key in `cover.json.files`) for the `target_mutated` anti-fake-green guard — verify your slice's basename was actually mutated (count > 0).
 5. **Never execute mutant binaries outside mull.** Survivor triage is **read-only** — reason from `cover.json` + the source. A mutation can break a loop guard and produce a **non-terminating binary**; mull's per-mutant timeout contains that, an ad-hoc probe does not (a live run hand-compiled surviving mutants into a diff harness with no timeout — one spun at 100% CPU and deadlocked the whole workflow until killed). If SUT execution outside `ctest`/`mull-runner-15` is ever unavoidable, wrap it in `timeout <N>s`.
 

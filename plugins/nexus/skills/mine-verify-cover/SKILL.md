@@ -165,13 +165,22 @@ kills, and this skill's own shipped gate rounded 74.59% up to a 75-floor PASS. T
   is missing a whole declared pass mis-measures silently — and deterministically, so it
   reproduces perfectly and the reproducibility proof cannot see it. The evidence carries a
   per-pass manifest (each declared pass named, with its evaluated-mutant count > 0); a declared
-  pass absent from the merge HALTs the gate. Corollary: **the reproducibility proof is necessary,
+  pass absent from the merge HALTs the gate. On a multi-build gate (regions routed to the build that can execute them), the manifest is
+  asserted per pass × build against a **committed region-routing table**: a cell empty by the
+  table's construction is legitimate; an empty cell the table does not predict HALTs; and every
+  region appears in ≥1 build with evaluated-mutant count > 0 — a region silently dropped from
+  every build is the deterministic scope leak. Per-region instrumented totals are recorded with
+  the score; a routed-union denominator is honest only when it provably sums the full
+  instrumented total of every declared region. Corollary: **the reproducibility proof is necessary,
   never sufficient** — a run-pair catches non-deterministic defects (races, shared state) only;
   deterministic mis-attribution (a missing pass, a collapsed scope, a wrong merge precedence)
   needs its own assertion. Both legs are required.
 - **Score arithmetic and its evidence artifacts are committed**, never left in ephemeral paths
   (gitignored dirs, worktrees, `/tmp`) — a committed verdict must not depend on artifacts one
-  cleanup away from gone.
+  cleanup away from gone. The instrument's own sources are covered too: a corrected scorer counts as propagated only
+  when EVERY live copy (clone, container, worktree) is committed or provably derived from a
+  committed source — an uncommitted correction silently reverts on the next branch switch
+  (measured in production: one clone fully reverted, 49 stale scorers across 7 containers).
 - **Comparative claims require a uniform instrument.** A ranking between arms survives contamination
   only if the contamination is uniform; classify kills in every arm before comparing, or the
   comparison is invalid even where the absolute scores survive.

@@ -66,8 +66,9 @@ scored 91.9% on a `gitDiffRef`-collapsed 37-mutant subset; the honest whole-regi
 60.3% (fix: the claimed scope's mutant total is recorded with the score, and a re-run must
 reproduce it). The declared oracle-pass set is scope too: a whole pass silently absent is the
 deterministic variant — it reproduces identically, so reproducibility proofs cannot see it (fix:
-a per-pass manifest assertion, every declared pass present with evaluated-mutant count > 0; the
-reproducibility proof is necessary, never sufficient). A sixth (2026-07-22, campaign #1 repair sweep): **multi-oracle merge precedence
+a per-pass manifest assertion, every declared pass present with evaluated-mutant count > 0 —
+on multi-build gates asserted per pass × build against a committed region-routing table, every
+region in ≥1 build; the reproducibility proof is necessary, never sufficient). A sixth (2026-07-22, campaign #1 repair sweep): **multi-oracle merge precedence
 is part of the instrument** — a break-on-first-kill merge let a Timeout in one oracle pass
 overwrite a definite Survived in another, converting non-detections into kills; the honest
 re-merge flipped four more gates below floor (incl. the p0c artifact, 85.4→83.6 adjusted —

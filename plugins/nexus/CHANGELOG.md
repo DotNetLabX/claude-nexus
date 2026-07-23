@@ -1,6 +1,10 @@
 # nexus — Changelog
 
 
+## [1.47.1] — 2026-07-23
+- PATCH bump.
+  - skill change (mine-verify-cover)
+
 ## [1.47.0] — 2026-07-23
 **Stack-skill authoring standards (F18-SkillAuthoringStandards).** P11 (every stack skill declares its
 assumptions up front) and P20 (the description names the step-shapes plans actually map to) become binding
