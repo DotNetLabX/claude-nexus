@@ -15,6 +15,22 @@ Two through-lines run under everything here:
 
 > **Worked exemplar — the reference app (dotnet-microservices).** Every concrete class (`HttpContextProvider`, `RequestContext`, `AddAndValidateOptions`), building-blocks package (`Blocks.Core`, `Blocks.AspNetCore`, `Blocks.Domain`), and service name (Submission / Review / Production / ArticleHub) below is that app's Articles pipeline. Each section cites the reference-app source file that grounds it. The rules are portable; the class names are the example.
 
+## Assumes
+
+- **`Blocks.Core` configuration extensions** — `AddAndValidateOptions` / `GetSectionByTypeName` for the
+  fail-fast options binding in §3 — plus the `Blocks.Core` / `Blocks.AspNetCore` ambient-context providers
+  (`IClaimsProvider`, `IRouteProvider`, `HttpContextProvider`, `RequestContext`).
+- **The MediatR pipeline** for the fixed behavior order in the cheat sheet (AssignUserId → Validation →
+  Logging).
+- **Central Package Management** (CPM) for the zero-inline-`Version=` convention (§7 and
+  `central-package-management`).
+- The reference app (dotnet-microservices) for every concrete class name and source path cited below.
+
+**Without those BuildingBlocks (adaptation posture):** the *rules* are portable even when the helpers are
+not. Each section that presumes a `Blocks.*` helper carries the framework-native fallback inline (see §3
+options binding for the plain `AddOptions<T>()` shape); the convention it enforces — fail-fast options,
+narrow ambient interfaces, fixed pipeline order — holds regardless of package.
+
 ## Cheat sheet
 
 | Concern | The rule |
@@ -107,7 +123,7 @@ private static string ResolveCorrelationId(HttpContext httpContext)
 
 Bind every options type through the two shared helpers (reference app: `Blocks.Core`). Both name the config section by the type name, so the section is `JwtOptions`, `RabbitMqOptions`, and so on — no string keys.
 
-- `AddAndValidateOptions<TOptions>(configuration)` — binds, runs DataAnnotations, and calls `ValidateOnStart()`, so a missing or invalid section throws when the app boots. This is the default for anything a service needs to be present.
+- `AddAndValidateOptions<TOptions>(configuration)` — binds, runs DataAnnotations, and calls `ValidateOnStart()`, so a missing or invalid section throws when the app boots. In the reference-app stack this is the default for anything a service needs to be present.
 - `GetSectionByTypeName<TOptions>()` — returns the bound value right there at registration time, for when you need it to build something else (a gRPC client, the MassTransit connection). It throws if the section is absent.
 
 In the reference app there are many call sites and zero ad-hoc `services.Configure<SomethingOptions>(...)` calls anywhere. Keep it that way.
@@ -139,7 +155,18 @@ var grpcOptions = configuration.GetSectionByTypeName<GrpcServicesOptions>();
 services.AddCodeFirstGrpcClient<IPersonService>(grpcOptions, "Person");
 ```
 
-**Don't** call `services.Configure<SomethingOptions>(section)` directly. If a required value is missing you want a startup crash, not a `null` surfacing three requests later.
+**Don't** call `services.Configure<SomethingOptions>(section)` directly **without a `ValidateOnStart()`** — if a required value is missing you want a startup crash, not a `null` surfacing three requests later. (The reference-app stack routes this through `AddAndValidateOptions`; a minimal stack uses the plain `AddOptions<T>()…ValidateOnStart()` shown below.)
+
+**Without `Blocks.Core` (adaptation posture).** The helpers are a reference-app convenience, not a requirement. Without them, bind options with the plain framework-native shape — it is exactly what `AddAndValidateOptions` wraps, so you keep the fail-fast guarantee:
+
+```csharp
+services.AddOptions<RabbitMqOptions>()
+    .Bind(configuration.GetSection(nameof(RabbitMqOptions)))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+```
+
+Or copy the `AddAndValidateOptions` / `GetSectionByTypeName` source above into the service once and use it as the reference app does. Either way, plain `services.Configure<T>(...)` **without** `ValidateOnStart` is the thing to avoid — it defers a missing-config crash to first use.
 
 ## 4. Default interface methods for shared derivations
 

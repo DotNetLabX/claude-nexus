@@ -1,12 +1,23 @@
 ---
 name: vue-patterns
-description: Vue 3 Composition API patterns — script setup macros, reactivity, composables, lifecycle, built-in components. Loaded when writing or reviewing Vue SFC files. MUST be used for Vue.js tasks.
+description: Vue 3 Composition API patterns — script setup macros, reactivity, composables, lifecycle, built-in components, URL-state sync. Use when writing or reviewing a Vue SFC — adding a composable, typing props/emits with the script-setup macros, wiring reactivity (ref/computed/watch), or using a built-in component (Transition/Teleport/Suspense). MUST be used for Vue.js tasks.
 user-invocable: true
 ---
 
 # Vue Patterns
 
 Vue 3.5+ with `<script setup lang="ts">`. Always Composition API. Never Options API.
+
+## Assumes
+
+- **Vue 3.5+** with `<script setup lang="ts">` and the Composition API throughout (never Options API).
+- **The reference client layout** for the `## Project Conventions` section only — the `client/src/…`
+  folder paths and the globally-registered `RouterLink` / `RouterView` are that app's setup. The pattern
+  guidance (macros, reactivity, composables, built-in components) is layout-agnostic.
+
+**Different layout?** The Project Conventions paths are discovery-driven, not a contract — read the target
+app's existing structure and follow it; only the *shape* (types / api / stores / components / composables /
+views) carries over.
 
 ## Principles
 
@@ -118,6 +129,10 @@ watch(
 See `references/recommended-packages.md` for the approved ecosystem stack.
 
 ## Project Conventions
+
+These paths are the **reference app's** layout, not a universal Vue contract — treat them as
+discovery-driven: read the target app's existing structure and match it. The *shape* is what carries
+across apps; the exact paths may differ.
 
 - Types live in `client/src/types/index.ts`
 - API modules in `client/src/api/{resource}.ts` using `apiFetch`

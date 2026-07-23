@@ -1,12 +1,28 @@
 ---
 name: service-registration
-description: Service DI registration — layer structure, where each dependency type goes, Host composition for modular monolith. Use when registering dependencies, adding services to the Host, or modifying DependencyInjection.cs files.
+description: Within-service DI layer structure — where each dependency type goes across a service's API/Application/Persistence layers, plus Host composition for a modular monolith. Use when registering a dependency, choosing which layer a dependency belongs in, wiring a service into the Host, or modifying DependencyInjection.cs files.
 user-invocable: true
 ---
 
 # Service Registration
 
-Where each dependency type is registered across a service's DI layers, and how those layers compose into a modular-monolith Host.
+Where each dependency type is registered across a single service's API / Application / Persistence DI layers, and how those layers compose into a modular-monolith Host.
+
+## Assumes
+
+- **BuildingBlocks registration extensions** — `AddMassTransitWithRabbitMQ`, `AddAndValidateOptions`,
+  `GetSectionByTypeName`, `AddCodeFirstGrpcClient`, `AddDerivedTypesOf`, and the other `Blocks.*` DI
+  helpers the patterns below call.
+- **MediatR** with the open pipeline behaviors in the fixed order **AssignUserId → Validation → Logging**.
+- The reference app (dotnet-microservices) for the layer names (`AddApiServices` / `AddApplicationServices`
+  / `AddPersistenceServices`), the `Add{Service}Module` host-composition shape, and the `Program.cs`
+  section order.
+
+**Without those packages (adaptation posture):** register the equivalent services directly in each layer —
+plain `services.AddOptions<T>().Bind(...).ValidateOnStart()` instead of `AddAndValidateOptions`, a plain
+`AddMassTransit(...)` instead of `AddMassTransitWithRabbitMQ`, MediatR's own `AddMediatR` instead of a
+`Blocks.MediatR` extension. **The layer-placement rules stand regardless of package** — what goes in API
+vs Application vs Persistence does not change when the registration helper does.
 
 ## Reference
 

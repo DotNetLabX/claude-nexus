@@ -13,6 +13,19 @@ DDD building blocks for the domain layer. Two stack variants recur and are calle
 
 Pick the variant from the service's CLAUDE.md; the patterns below are otherwise stack-agnostic. Examples name a concrete type only to make a shape legible — substitute your own.
 
+## Assumes
+
+- **`Blocks.Domain` base classes** — `Entity<TPrimaryKey>`, `AggregateRoot`, the value-object bases
+  (`ValueObject` / `StringValueObject` / `SingleValueObject<T>`), and `IDomainEvent`. Every pattern below
+  names its `Blocks.Domain/…` source file.
+- **MediatR** for the **full-stack** variant (dual-typed events, the `INotification` publisher). The
+  **light stack** (`IDomainEvent : IEvent`, FastEndpoints) drops MediatR **but still uses `Blocks.Domain`**
+  — dropping MediatR is not dropping BuildingBlocks.
+- The reference app (dotnet-microservices) for the concrete file paths and the identity-model variants.
+
+**No `Blocks.Domain` at all?** See the **Zero-dependency variant** below — declare tiny inline base
+classes instead of taking the package.
+
 ## AggregateRoot
 
 **File:** `src/BuildingBlocks/Blocks.Domain/Entities/AggregateRoot.cs`
@@ -42,6 +55,18 @@ Pick the variant from the service's CLAUDE.md; the patterns below are otherwise 
 - `IsNew` returns true when ID is default value
 - Transient entities (both `IsNew`) are never considered equal
 - **Encapsulating an entity's setters?** Do not write `required` + `private set` together — that is a CS9032 compile error (a `required` member must be at least as visible as its setter). For an entity whose behavior methods mutate the property after construction (e.g. an `UpdateFromGoogle`-style method), drop `required` and add a private constructor (the factory is then the only construction path, making `required` redundant); use `init` only when nothing mutates it post-construction. Full rule + remedies: `conventions/csharp.md` → Type Conventions.
+- **`Entity<int>` vs the non-generic `Entity` — mind the alias and constraint chain.** `AggregateRoot` and the non-generic `Entity` convenience forms fix `TPrimaryKey` = `int`. When you change a base class — swap a hand-rolled base for `Entity<int>`, or move an entity onto the non-generic `Entity` — the generic argument and any generic constraints must line up at **every** reference: a repository typed `IRepository<TEntity, TKey>`, an `IAuditedEntity<TPrimaryKey>` implementation, an EF `IEntityTypeConfiguration<TEntity>`. A mismatch — e.g. a `where T : Entity<int>` constraint meeting an entity that now extends the non-generic `Entity` — is a compile-time failure, not a runtime surprise. Reconcile the whole chain in one edit, not just the class declaration.
+
+## Promoting an Entity to an AggregateRoot in place
+
+An entity often starts as a plain `Entity<int>` and later earns aggregate status — it acquires its own consistency boundary, raises domain events, or becomes the root others load through. Promote it in place, without moving the file or rewriting every call site:
+
+1. **Change the base** from `Entity<int>` (or the non-generic `Entity`) to `AggregateRoot` (PK = int) or `AggregateRoot<TKey>`. This adds the audit fields, the `_domainEvents` list, and `AddDomainEvent()` — mind the `Entity<int>`-vs-`Entity` constraint chain noted above.
+2. **Adopt the partial behavior split** — move the mutating methods into `Behaviors/{Aggregate}.cs` (see Partial Class Behavior Split below) so the new aggregate raises its events from one place.
+3. **Add the EF `OwnsOne` / navigation config** for anything the aggregate now owns, and stop the former parent from tracking the promoted type as an owned child once it loads it as a root.
+4. **Route writes through the root** — callers that mutated the entity directly now call an aggregate behavior method; the resource gate and repository target the new root.
+
+Promote only when the entity truly gains a boundary — not every entity should be an aggregate. If it stays a child of another aggregate, leave it an `Entity`.
 
 ## Value Objects
 
@@ -92,6 +117,32 @@ access is genuinely needed.
 These extend `ValueObject` directly and are mapped via EF `OwnsOne(..., b => b.ToJson())`. Remaining incidental scalars on the settings class (a standalone alert threshold, a feature flag) stay flat — they carry no shared invariant, so a VO would add ceremony without protecting anything.
 
 **Persistence:** Cohesive VOs map via EF Core `OwnsOne` (JSON columns) or `ComplexProperty` (flat columns) — see `persistence-patterns` for the config patterns. Do not restate EF config here.
+
+## Zero-dependency variant (no Blocks.Domain)
+
+When the service does not take `Blocks.Domain` — a standalone service (see `create-service`'s minimal-stack branch) — declare tiny inline bases instead of the package. The DDD shape is unchanged; only where the base classes come from differs.
+
+```csharp
+// Inline, in your own .Domain project — no Blocks.Domain package.
+public abstract class Entity<TKey>
+{
+    public TKey Id { get; protected set; } = default!;
+    public bool IsNew => EqualityComparer<TKey>.Default.Equals(Id, default!);
+    // equality-by-Id: override Equals/GetHashCode; transient entities (both IsNew) are never equal
+}
+
+public abstract class AggregateRoot<TKey> : Entity<TKey>
+{
+    private readonly List<IDomainEvent> _domainEvents = new();
+    public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    protected void AddDomainEvent(IDomainEvent e) => _domainEvents.Add(e);
+    public void ClearDomainEvents() => _domainEvents.Clear();
+}
+
+public interface IDomainEvent; // plain marker — no MediatR/FastEndpoints base when neither is present
+```
+
+Keep the same conventions the packaged bases enforce (equality by Id, `AddDomainEvent` / `ClearDomainEvents`, value objects with a static `Create()` factory). Without an event bus, dispatch events yourself after `SaveChanges` rather than through `DispatchDomainEventsInterceptor` (which ships in `Blocks.EntityFrameworkCore`). Promote to `Blocks.Domain` if the service later joins the estate.
 
 ## Partial Class Behavior Split
 

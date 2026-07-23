@@ -1,6 +1,43 @@
 # nexus-dotnet — Changelog
 
 
+## [1.7.0] — 2026-07-23
+F19-DotnetSkillCoverageWave — plugin-feedback P1–P10 applied under the F18 authoring standard
+(nexus-1.36.0-2026-07-18 §A; first W5 retrofit tranche). All 10 skills gain an `## Assumes`
+first-H2 block + a minimal-stack branch or adaptation posture; owner-escalated MINOR (new decision
+branches/patterns).
+
+- `authorization-patterns` (P7) — policy-based vs two-layer architecture branch; minimal
+  single-stub-principal shape; honest-scope description (names non-coverage: OAuth/OIDC sign-in
+  middleware, client route guards, 401 interception).
+- `create-feature` (P1) — FastEndpoints validator template reconciled with
+  service-infra-conventions §10 (`ValidatorsMessagesConstants`, no Blocks.Core helpers); Blocks.Core
+  helpers scoped to the MediatR path + plain-FluentValidation fallback; explicit no-CQRS/endpoint-only
+  framing; GET query-string + DELETE/no-body coverage; response-record location guidance.
+- `create-service` (P5) — minimal-stack branch (no BuildingBlocks: direct NuGet, inline/no base
+  classes, SQLite-first or raw Npgsql, no MediatR).
+- `domain-patterns` (P6) — zero-dependency variant (inline bases); in-place Entity→AggregateRoot
+  promotion recipe; `Entity<int>` vs non-generic `Entity` constraint-chain note.
+- `create-vue-feature` (P2) — extend-an-existing-slice branch; layout-mismatch callout.
+- `vue-patterns` (P3) — Project Conventions scoped reference-app/discovery-driven; `Use when`
+  description (W6).
+- `pinia-patterns` (P4) — localStorage persistence pattern; extend-an-existing-store section
+  (distinct from cross-store composition); `Use when` description (W6).
+- `service-registration` (P8) — description/lead refit to within-service DI layer structure +
+  host composition; §4.1 adaptation posture.
+- `service-infra-conventions` (P9) — §3 options-binding no-BuildingBlocks fallback
+  (`AddOptions<T>().Bind().ValidateDataAnnotations().ValidateOnStart()`); unconditional imperatives
+  scoped to the reference-app branch.
+- `add-integration-event` (P10) — test-harness-only consumer guidance (no production consumer yet).
+  - skill change (create-service)
+  - skill change (create-vue-feature)
+  - skill change (domain-patterns)
+  - skill change (pinia-patterns)
+  - skill change (service-infra-conventions)
+  - skill change (service-registration)
+  - skill change (vue-patterns)
+  - owner-escalated to minor
+
 ## [1.6.0] — 2026-07-21
 - instrument-integrity: kill-attribution rule — timeout/crash/compile-fail are adjudication buckets, never auto-kills; exact floor comparison (no rounding); per-instrument honesty proofs; evidence committed
   - skill change (mine-verify-cover-dotnet)

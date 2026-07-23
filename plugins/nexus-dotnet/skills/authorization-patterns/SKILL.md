@@ -1,6 +1,6 @@
 ---
 name: authorization-patterns
-description: Endpoint authorization for a role-based domain — a closed role enum surfaced as string constants, the two-layer role + resource endpoint gate (both wired by one RequireRoleAuthorization extension), the authentication-only read-model exception, per-service resource access checks, framework-specific server-side identity stamping, and JWT validation. Use when gating an endpoint by role, adding a resource access check, stamping the acting user onto a command, configuring JWT authentication, or adding a role.
+description: Endpoint authorization for a role-based domain — the two-layer role + resource endpoint gate (a closed role enum surfaced as string constants, both layers wired by one RequireRoleAuthorization extension), the authentication-only read-model exception, per-service resource access checks, framework-specific server-side identity stamping, and JWT validation; plus when to reach for ASP.NET Core policy-based authorization instead and a minimal single-stub-principal shape. Use when gating an endpoint by role, adding a resource access check, choosing between the role/resource gate and a policy-based gate, stamping the acting user onto a command, configuring JWT authentication, or adding a role. Does not cover OAuth/OIDC sign-in middleware, client-side route guards, or 401 response interception.
 user-invocable: true
 ---
 
@@ -13,6 +13,49 @@ aggregate views take **authentication only**. The acting user is stamped onto th
 and every service validates the same JWT identically.
 
 > **Worked exemplar — the reference app (dotnet-microservices).** The concrete `UserRoleType` enum, the `Role` string constants, the `RequireRoleAuthorization` extension, `IArticleAccessChecker` / `ArticleRoleRequirement` / `ArticleActors`, the ArticleHub read models, and the Submission / Review / Production service names below are that app's Articles pipeline. The pattern — a closed role enum surfaced as constants, a stacked role+resource gate, auth-only reads, stamped provenance, one shared JWT validator — is domain-neutral; substitute your own aggregate and roles. (The `Article*` names appear throughout as that worked example, not because the pattern is article-specific.)
+
+## Assumes
+
+This skill teaches the reference app's (dotnet-microservices) authorization stack. It presumes:
+
+- **A closed, shared role enum** (`UserRoleType`, in an `Abstractions` BuildingBlocks package) surfaced
+  as string constants — one vocabulary across every service.
+- **The two-layer `RequireRoleAuthorization` infrastructure** — the extension plus `ArticleRoleRequirement`
+  and `ArticleAccessAuthorizationHandler` that stack the role gate over the resource gate; in the reference
+  app these live in the `Security` BuildingBlocks package.
+- **Per-service resource checkers** that answer access from a locally-replicated actors table, never a
+  synchronous cross-service query.
+- **One shared JWT validator** (`AddJwtAuthentication`) that every service calls identically.
+
+**If your app carries none of that** — no shared role package, no `RequireRoleAuthorization` extension — do
+not scaffold it just to follow along. Two escape hatches live in the body: reach for **policy-based
+authorization** (the "Choosing your authorization model" branch below) when the gate is a claim/attribute
+predicate rather than a role+resource pair, or start from the **minimal single-stub-principal shape** (same
+section) when the app has one hard-coded principal and no real role vocabulary yet.
+
+## Choosing your authorization model
+
+The five phases below teach **one** model — a stacked role + resource gate — because that is what the
+reference app needs. It is not the only shape, and it is overkill for some apps. Pick the model first:
+
+- **Two-layer role + resource gate (this skill's Phases 1–5).** Reach for it when authorization is
+  *"which roles, and does the caller own this resource?"* — a closed role vocabulary plus per-resource
+  ownership. Everything below implements this branch.
+- **Policy-based authorization.** When the decision is a **claim or attribute predicate** rather than a
+  role+resource pair — "has a verified-email claim", "is over a spend threshold", "owns any of N scopes" —
+  use ASP.NET Core's built-in policy model: `AddAuthorizationBuilder().AddPolicy(name, p => …)` with an
+  `IAuthorizationRequirement` + `IAuthorizationHandler`, gated by `.RequireAuthorization(name)`. The
+  role/resource gate here *is* a policy under the hood (Phase 2 builds one inline via `RequireAuthorization`);
+  the difference is whether you model the rule as a first-class named policy or as this skill's role+resource
+  pair. Do not hand-roll the role+resource machinery when a single claim policy expresses the rule.
+
+### Minimal shape — single stub principal
+
+Early services often have **one** principal and no real role vocabulary yet. Do not build the closed enum,
+the `Security` package, or the resource checker prematurely. Authenticate only (`.RequireAuthorization()` on
+the group, plus JWT validation from Phase 5) and stamp a fixed system/user id rather than resolving roles.
+Promote to the two-layer gate (Phases 1–3) only when a second role actually appears — at that point adding
+the enum member and the `RequireRoleAuthorization` call is the three-edit recipe in Phase 1, not a rewrite.
 
 ## Binding rules
 
@@ -205,3 +248,6 @@ real boundary; `RoleClaimType = ClaimTypes.Role` is what makes `GetUserRoles<Use
 - **Implement `IClaimsProvider` / `HttpContextProvider`** — they live in `Blocks.Core` / `Blocks.AspNetCore`.
 - **Define `IAuditableAction` / `ArticleCommandBase`** — the CQRS command contract, used here, not created here.
 - **Multi-tenant / tenant-scoped authorization** — not applicable to this stack; there is no tenant dimension in the access check.
+- **OAuth / OIDC sign-in middleware** — the interactive external-IdP / authorization-code flow that mints the token. This skill assumes a bearer JWT already arrives and only *validates* it (Phase 5); the pre-processor identity stamp (Phase 4) and JWT validation ARE covered.
+- **Client-side route guards** — SPA router navigation guards are a frontend concern (see the Vue skills), not the endpoint gate.
+- **401 / 403 response interception** — client-side retry, redirect-to-login, or token-refresh on an auth failure is a frontend concern, not part of the server-side gate.

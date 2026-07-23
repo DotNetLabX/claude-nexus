@@ -1,12 +1,21 @@
 ---
 name: pinia-patterns
-description: Pinia state management — setup stores, storeToRefs, store vs view state, async patterns, composition. Loaded when creating or modifying Pinia stores.
+description: Pinia state management — setup stores, storeToRefs, store vs view state, async/initialize/optimistic patterns, store composition, localStorage persistence. Use when creating a Pinia store, extending an existing store with new state or actions, or persisting store state to localStorage. Loaded when creating or modifying Pinia stores.
 user-invocable: true
 ---
 
 # Pinia Patterns
 
 Pinia 3 with Composition API (setup stores). This project uses setup stores exclusively.
+
+## Assumes
+
+- **Pinia 3** with **setup stores** (Composition API) and **Vue 3** — this project uses setup stores
+  exclusively.
+- **Framework-native — no extra packages presumed.** The patterns here use only Pinia and the Vue
+  reactivity primitives. The localStorage-persistence pattern below uses the plain Web Storage API
+  directly; adopt a persistence plugin (e.g. `pinia-plugin-persistedstate`) only if the project already
+  carries one — do not add a dependency just to persist one store.
 
 ## Setup Store Pattern
 
@@ -226,6 +235,43 @@ async function updateField(id: string, newValue: number) {
 - Re-fetch after success if the server computes derived values.
 - Expose `error` state — don't show toasts from the store.
 
+## Persisting State to localStorage
+
+Some store state should survive a reload — a selected filter, a collapsed-panel flag, a saved preference.
+Persist it with the plain Web Storage API and a `watch`; no plugin required (see Assumes).
+
+```typescript
+export const useUiStore = defineStore('ui', () => {
+  const STORAGE_KEY = 'ui:preferences'
+
+  // Seed from localStorage on store creation (guard JSON.parse)
+  const saved = (() => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') }
+    catch { return {} }
+  })()
+
+  const sidebarCollapsed = ref<boolean>(saved.sidebarCollapsed ?? false)
+  const theme = ref<string>(saved.theme ?? 'system')
+
+  // Write through on any change
+  watch(
+    [sidebarCollapsed, theme],
+    () => localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      sidebarCollapsed: sidebarCollapsed.value,
+      theme: theme.value,
+    })),
+  )
+
+  return { sidebarCollapsed, theme }
+})
+```
+
+**Rules:**
+- Persist **UI/preference** state only — never server-owned business data (re-fetch that from the API).
+- Guard `JSON.parse` in a try/catch — a corrupt or absent key must not break store creation.
+- Namespace the key (`ui:preferences`) so multiple stores don't collide.
+- If the project already carries a persistence plugin, use it instead of hand-rolling the `watch`.
+
 ## Store Composition
 
 Stores can use other stores:
@@ -245,6 +291,23 @@ export const useDashboardStore = defineStore('dashboard', () => {
 ```
 
 **Call stores inside the setup function, not at module level.**
+
+## Extending an Existing Store
+
+Adding state, a getter, or an action to a store that **already exists** is an edit-in-place — not a new
+store, and not `Store Composition` (that combines *separate* stores; this grows *one*). When a feature
+needs more from a resource's existing store:
+
+1. **Add the ref(s)** to the store's state block, **the action(s)** that mutate them (following the Async
+   Action Pattern), and any derived `computed` getter.
+2. **Return the new members** from the setup function — a ref or action missing from the returned object
+   is invisible to components.
+3. **Consume them** via `storeToRefs` (state/getters) or a direct destructure (actions); existing
+   consumers are unaffected.
+
+Prefer extending the resource's existing store over spinning up a second store for the same resource.
+Split into a new store only when the file crosses the ~300-line anti-pattern threshold below, or the state
+genuinely belongs to a different domain.
 
 ## Naming Conventions
 

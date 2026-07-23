@@ -7,6 +7,25 @@ description: Creates a complete vertical slice feature — endpoint, command/que
 
 Creates a complete vertical slice for a new feature. The endpoint framework determines which workflow variant to follow.
 
+## Assumes
+
+This skill mirrors the reference app (dotnet-microservices). It presumes:
+
+- **A per-service endpoint framework** — FastEndpoints **or** Carter **or** Minimal APIs — chosen in the
+  service's `CLAUDE.md`, not by this skill. The FastEndpoints variant is **endpoint-only (no MediatR)**;
+  the Carter and Minimal-API variants dispatch through **MediatR**.
+- **`GlobalExceptionMiddleware`** for exception-to-status mapping (endpoints never catch-to-respond) and
+  the FastEndpoints static **`Send.*`** response API — both declared in the per-framework endpoint
+  workflows' Error Handling / Notes sections; this block points at them, it does not restate them.
+- **Blocks.Core FluentValidation helpers** (`NotEmptyWithMessage`, `MaximumLengthWithMessage`) and the
+  **`MaxLength.C*`** constant ladder for the **MediatR** validator path (reference app). The FastEndpoints
+  path uses a service-local `ValidatorsMessagesConstants` instead — see `workflows/Validator.md`.
+
+**Adaptation posture (no BuildingBlocks):** without Blocks.Core, follow the plain-FluentValidation
+fallback in `workflows/Validator.md` (inline messages / raw `MaximumLength(n)`); without MediatR, use the
+FastEndpoints endpoint-only branch. The vertical-slice shape (endpoint + command + handler + validator +
+mappings) holds regardless of package.
+
 ## Required Reading
 
 Before invoking this skill, ensure you have read:
@@ -29,7 +48,7 @@ Before invoking this skill, ensure you have read:
 
 2. **Create the endpoint** using the appropriate workflow above.
 
-3. **Create the command/query and handler** — if the service uses MediatR (Carter/MinAPI), follow `workflows/Handler.md`.
+3. **Create the command/query and handler** — if the service uses MediatR (Carter/MinAPI), follow `workflows/Handler.md`. FastEndpoints has **no separate handler**: the logic lives inline in the endpoint's `HandleAsync` — this is the **endpoint-only / no-CQRS** branch, so skip `Handler.md` entirely for a FastEndpoints service.
 
 4. **Create the validator** — follow `workflows/Validator.md` (variant-aware).
 
@@ -51,6 +70,13 @@ Before invoking this skill, ensure you have read:
   resource CRUD. (Reference app: `AcceptArticleEndpoint`, `UploadFinalFileEndpoint`.)
 - **Authorization is two-layer for writes** — role gate + resource gate; a group-level `RequireAuthorization`
   alone drops the resource layer. See `authorization-patterns` and the per-framework endpoint workflows.
+- **GET reads bind from the query string** — a list/filter read takes no request body; its request DTO
+  properties bind from the query string (`GET /articles?status=active&page=2`). FastEndpoints binds query
+  params onto the request DTO by convention; Minimal APIs use `[FromQuery]` (or `[AsParameters]`); Carter
+  reads `HttpContext.Request.Query`. There is no request-body validation on a GET.
+- **DELETE / no-body writes** — `DELETE /articles/{id}` carries no request body; the route parameter is
+  the entire input, and the endpoint returns `204 No Content` (`Send.NoContentAsync(ct)` in FastEndpoints,
+  `Results.NoContent()` in Minimal APIs). Bind the id from the route, never from a body.
 
 ## Arguments
 
@@ -60,7 +86,7 @@ The feature name is used for all file names: `{FeatureName}Endpoint.cs`, `{Featu
 
 ## Feature Folder Structure
 
-### FastEndpoints
+### FastEndpoints (endpoint-only — no CQRS/MediatR)
 
 Everything co-located in the API project:
 ```
@@ -94,3 +120,15 @@ Endpoint flat in API project, handler in Application project:
 ```
 
 Check the service's CLAUDE.md for which framework to use.
+
+### Request and response records — where they live
+
+`{CommandType}` / `{ResponseType}` are records, not primitives — place them, don't leave them opaque:
+
+- **FastEndpoints (co-located):** declare the request and response records in the same
+  `{FeatureName}Command.cs` beside the command, or inline in the endpoint file — the whole slice lives in
+  the API project.
+- **Carter / Minimal APIs (MediatR):** the command and its `{ResponseType}` are declared together in the
+  Application project's `{FeatureName}Command.cs`; the endpoint in the API project references that type.
+- A response record is the endpoint's **contract** — keep it a dedicated `record {Feature}Response(...)`,
+  never return the aggregate or the EF entity directly.

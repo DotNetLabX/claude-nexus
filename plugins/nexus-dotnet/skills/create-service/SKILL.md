@@ -7,6 +7,23 @@ description: Scaffolds an empty service skeleton from its CLAUDE.md — folder t
 
 Scaffolds a new service as an empty skeleton — folders, csproj files with correct references, infrastructure wire-up (Program.cs, DI stubs, appsettings, Dockerfile, docker-compose entry), but **no business classes**. After this skill runs the Developer runs `create-aggregate` for the first aggregate and `create-feature` for the first feature.
 
+## Assumes
+
+This skill scaffolds a service in the shape of the reference app (dotnet-microservices). It presumes:
+
+- **The BuildingBlocks packages** the csproj references pull in — `Blocks.Domain` (Domain layer),
+  `Blocks.Core` (Application), `Blocks.MediatR` (MediatR variants), `Blocks.EntityFrameworkCore` /
+  `Blocks.Redis` (Persistence), `Blocks.AspNetCore` / `Blocks.FastEndpoints` (API). The exact reference
+  set is in `workflows/ScaffoldCsprojFiles.md`.
+- **MediatR** for the Carter / Minimal-API variants (the FastEndpoints variant is inline-handler).
+- **The `create-service-claude-md` precondition** — the service's `CLAUDE.md` already exists (see
+  Precondition below); this skill reads its axes, it does not invent them.
+- **The reference app's solution / folder layout** — `src/Services/{Svc}/…`, a `BuildingBlocks/` tree,
+  a `docker-compose` file.
+
+**If the target repo has no BuildingBlocks** — a standalone service, a fresh solution — do not scaffold
+the `Blocks.*` packages just to satisfy the references. Follow the **Minimal-stack branch** below.
+
 ## Precondition
 
 `src/Services/{Name}/CLAUDE.md` must already exist. It is produced by the Architect's `create-service-claude-md` skill. If the file is missing, **hard-error**:
@@ -37,6 +54,36 @@ Do not proceed without the CLAUDE.md.
 
 10. **Report to the user:**
     > Service `{Name}` scaffolded. Run `create-aggregate` next for the first aggregate, then `create-feature` for the first feature.
+
+## Minimal-stack branch (no BuildingBlocks)
+
+Use this when the service is **standalone** — no `Blocks.*` packages, often a fresh solution or a single
+service rather than the microservices estate. The layered shape (Domain / Persistence / Application / API)
+still holds; what changes is every fork point that reaches for a BuildingBlock. Author fresh — there is
+nothing to promote from the reference app here.
+
+At each csproj / DI fork in `workflows/ScaffoldCsprojFiles.md` and the `Scaffold*Project.md` workflows,
+substitute:
+
+- **Packages, not BuildingBlocks references.** Drop the `..\..\..\BuildingBlocks\Blocks.*` project
+  references. Add the underlying NuGet packages directly where they are used — e.g.
+  `Microsoft.EntityFrameworkCore` plus a provider in `.Persistence`, `FluentValidation` in the validator's
+  project — instead of inheriting them transitively through a `Blocks.*` package.
+- **Inline base classes, or none.** `Blocks.Domain` supplies the `Entity` / `AggregateRoot` / value-object
+  bases. Without it, either declare a tiny inline `Entity` / `AggregateRoot` base in `.Domain` (see the
+  `domain-patterns` zero-dependency variant) or skip the base entirely and use plain classes.
+- **SQLite-first, raw provider config.** Prefer SQLite for a standalone service
+  (`UseSqlite("Data Source=app.db")`) — no SQL Server / Postgres container to stand up. For PostgreSQL use
+  raw Npgsql (`UseNpgsql(...)`) configured directly in the Persistence DI, not a `Blocks` EF extension.
+- **No MediatR.** Skip `Blocks.MediatR` and the `.Application` MediatR wiring; put handler logic inline in
+  the endpoint (the FastEndpoints endpoint-only shape from `create-feature`) or in a plain service class
+  the endpoint calls.
+- **Skip the estate infrastructure** that assumes the microservices repo — `docker-compose` entries, the
+  API-gateway route, the shared `{ProjectName}.Security` / `.Abstractions` packages — unless the standalone
+  service genuinely needs them.
+
+The result compiles against the .NET SDK alone. Promote to the full BuildingBlocks stack only if the
+service later joins the microservices estate.
 
 ## Arguments
 
