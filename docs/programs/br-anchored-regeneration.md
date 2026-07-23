@@ -274,7 +274,20 @@ line end-to-end.
    the architecture mine itself still waits its turn behind the Flutter pilot). Scope of the
    parallel prep: P1 closure report, the housekeeping queue, branch inventory, P2 coverage
    census, tuning-knob estate census, the four repo-grep triage queries (Q2/Q7/Q8/Q10).
-   Kickoff prompt delivered to the SDK session 2026-07-23.
+   Kickoff prompt delivered to the SDK session 2026-07-23. **P2-prep EXECUTED same day**
+   (branch `f2-p2-prep`, 4 commits, unmerged/unpushed): P1 acceptance criteria all MET
+   (closure ruling pending; residue = two P0-bis rows, recommended fold into one
+   registry-maintenance unit) · coverage census 98 units, 0 undispositioned (17 mined /
+   14 mine-owed / 7 algorithm-brief / 60 glue / 0 dead) · knob census: posm's 13 tagged
+   A/B/C, 295 estate candidates (tagging-scope election pending — evidence-backed lazy
+   tagging recommended over a blanket pass) · triage greps answered: **Q2 consumers EXIST —
+   no estate-wide balloon retirement (posm-local dead-effect proof stands unchanged)**,
+   Q7 Order is load-bearing (app sorts by it), Q8 bidir is a first-class UI semantic,
+   Q10 mockWobblers demo-only confirmed · branch inventory: 17 branches dispositioned,
+   elections pending (4 safe deletes, 3 F2-evidence remotes = owner risk call, 5 Norbert
+   sign-offs). Open owner rulings: P1 close · knob-tagging scope · `f2-p2-prep` lane merge ·
+   branch elections + owner-terminal deletes · F26 fixture (deferred, standalone gate
+   change). Q1/Q3–Q6/Q9 remain with the data team.
 4. **.NET estate (knowledge-gateway):** two below-floor units in repair (GeneratedSqlValidator,
    EmbeddedAskOrchestrator — honest-score reruns under the fixed gate); SystemPromptBuilder clean.
 5. Program-level queued: the campaign-in-a-box proposal (end-goal #2), the Q2 sweep (item 1).
