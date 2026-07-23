@@ -32,9 +32,11 @@ collapses to near-zero equivalence. We closed the loop ourselves, twice, in camp
 | P0-bis (RANSAC row-clustering core) | C++ / algorithm-shaped, stochastic | **GO-ALGORITHM-ARM** — behaviorally exact under seeded RNG; 1 repair (RNG ambiguity); mull above baseline |
 | P0-RC (`CompleteRealogram` area, 84 rules) | **Flutter/Dart** / domain usecase | **GO** — 38/39 first shot; 1 repair = the generator's own pre-declared ambiguity (registry corrected); fresh blind battery → 100% reachable-kill; **regenerated 599L readable-first vs the refactored 1,335L — adopted** |
 | P0-FSD (141 rules) | **Flutter/Dart** / domain usecase | **GO** — **97/97 first shot, ZERO repairs**; fresh battery 100% after 14 REAL suite gaps killed; **adopted** |
+| P0d (posmCompliance regen #2 — full-class ENHANCED, ~1,200 lines) | C++ / rule-shaped, god-class scale | **GO-WAVE-READY** (2026-07-23) — clean first build with NO include list; 25/25 byte-exact at repair 1 of ≤3; better on every shape metric (CCN 294→261, max 54→45, BR-traceability 1.15→23.77/100 NLOC, +4.79% NLOC under budget); mull 93.94% vs same-session legacy control 89.01% — the regeneration out-gates the code it byte-matches; 5 of 6 preserved bugs now suite-provable (p0c: 2); the 1 repair = a FALSE double-verified registry row |
 
-**Four experiments, two stacks, four GO — and the trend is improving** (repairs 1→1→1→0; the
-declared-ambiguity obligation turned the RC repair into a pre-flagged registry fix). Same profile
+**Five experiments, two stacks, five GO** (repairs 1→1→1→0→1 — the last a false registry pin
+exposed by the regeneration itself, not a generation failure; the declared-ambiguity obligation
+turned the RC repair into a pre-flagged registry fix). Same profile
 every time: **generation is not the bottleneck — registry completeness and oracle strength are.**
 Every repair traced to registry under-specification; every gate-invisible risk (P0's BR-106,
 P0-bis's 45.6% weak-oracle shell, the Flutter suites' 20 REAL blind spots exposed by fresh blind
@@ -82,7 +84,14 @@ the defect; errata assign to the spec layer. A repair-round corollary (p0c, 2026
 stale in-code comment ("settings are NOT settable from a test" — false) had walled off an
 entire fixture family from every suite ever written for the unit; **claimed untestability is
 verified by attempting the public path, never trusted from comments** — a doctrine candidate
-for the cover stage.
+for the cover stage. And the arc's closing finding (P0d, 2026-07-23): the run's single repair
+traced to a false **double-verified** registry row — miner-written, independently
+skeptic-confirmed, wrong (the p0c BR-89 class, second instance) — and the blind battery proved
+`checkAndFixiouPOSMSInserts` dead code with six registry rows specifying behavior that can
+never execute. **Mine → skeptic → mutation-gate demonstrably cannot catch this class; only
+behavioral equivalence against a regeneration can** — regeneration is itself the estate's
+strongest registry verifier, the mechanical-checker role the research sweep predicted, now
+proven twice.
 
 - Research: `docs/kb/research/br-anchored-regeneration-landscape.md` (this repo)
 - Experiment reports: campaign #1's repo (see §6 artifact map)
@@ -201,25 +210,24 @@ line end-to-end.
    the **Q2 differential-oracle sweep** owed before P4 waves scale. F28 `regenerate-unit` shipped
    (this release — cluster mode G1 + G2/G3 preflight gates live).
 2. **Campaign #2 — omnishelf_flutter_app (LEAD):** P1 done (3 regenerations adopted; suites
-   94%+ honest on the audited instrument) · Track A run complete — **election worksheet at the
-   owner's desk** (`docs/conventions/election-worksheet.md`, branch
-   `campaign/2-track-a-conventions`; 43-row reference model, 4 anti-patterns, 10 contested rows
-   incl. CT-1 positional-ctor and AS-1 encapsulated-aggregates aspire; the owner's hand-built
-   .NET reference model surfaced as the successor source — likely answers A4's exemplar
-   designation) · next: owner election → charter → Phase 2 `mine-architecture` (pays the
-   program's first pilot) + golden-seam catalog with the F32 candidate flag → owner P3 design →
-   fix-shelf cluster pilot (needs F28).
-3. **Campaign #1 — omnivision-ai-sdk (PARKED, in repair):** p0c enhanced shell proven on
-   behavior (8.3/10; suite + goldens + ABI stand; adoption held on the unwitnessed-bug axis) and
-   its mull leg **repaired 2026-07-22 — 95.18% honest** (158/166; +20 kills, 0 de-kills, all
-   shell-oracle-attributed; supersedes the erratum's 83.6% with a gate stronger than the
-   original 85.4% claim; the 8 remaining survivors all adjudicated equivalent or
-   infinite-loop). **posm repaired (89.01%)**; both repairs carry survivor-diff 0 across three
-   runs and clean pass manifests → **p0d Stage-B: FIRED 2026-07-22.** Queue: clusterize D4 main
-   (79.0% — the manifest-HALT gate; resolved only by re-running the missing pass, never by
-   adjudicating around it) → clusterize p0b core (80.9%) → planogram D2 (59.6%). Corrected
-   scorers propagate into every clone before the next round — two scorer versions in
-   circulation is itself an instrument hazard.
+   94%+ honest on the audited instrument) · Track A **COMPLETE — election held, charter
+   RATIFIED 2026-07-22** (`docs/conventions/coding-conventions.md`; worksheet stamped ELECTED
+   with the verbatim record: EN/SM bulk-keep, AP-1..4 confirmed banned, CT-1 positional
+   elected with gate re-bless, CT-11 mixin, AS-1/AS-2 aspire, SK-1..8 confirmed) · next:
+   Phase 2 `mine-architecture` (pays the program's first pilot) + golden-seam catalog with the
+   F32 candidate flag → owner P3 design → fix-shelf cluster pilot (F28 shipped; campaign
+   session prompt delivered 2026-07-22).
+3. **Campaign #1 — omnivision-ai-sdk (repairs COMPLETE 2026-07-23; strategically parked behind
+   campaign #2):** **P0d closed — GO-WAVE-READY**: full-class one-pass enhanced clean-room
+   regeneration holds on C++ at ~1,200-line scale (25/25 byte-exact; better on every shape
+   metric; mull 93.94% vs legacy control 89.01%; 1 repair = the second double-verified-false
+   registry row — see §2's closing finding). **All five instruments repaired on audited
+   gates** (posm 89.01 · p0c shell 95.18 · D4 main 86.67 · p0b core 86.36 · D2 95.36 —
+   survivor-diff 0, pass manifests green). **Five owner decisions pending at the SDK desk:**
+   enhanced-posm adoption (standalone; recommended HOLD until the gap-kill lands), dead-code
+   deletion (BR-69–74 + posmRect/iou), BR-63 witnessability (UB-pinned golden vs formally
+   unwitnessable), the 10-change gap-kill (closes all 31 mapped blind spots), the M52 harness
+   fix (per-fixture compare + try/catch). Resumes on the owner's word.
 4. **.NET estate (knowledge-gateway):** two below-floor units in repair (GeneratedSqlValidator,
    EmbeddedAskOrchestrator — honest-score reruns under the fixed gate); SystemPromptBuilder clean.
 5. Program-level queued: the campaign-in-a-box proposal (end-goal #2), the Q2 sweep (item 1).
