@@ -295,9 +295,14 @@ line end-to-end.
    the docker pair. **Lane push unsanctioned — standing standalone ask.**
    **Architecture-mine pilot confirmed complete in campaign #2** (`archmap-2026-07-22-a`,
    12 modules, fable-skeptic verified) → the SDK's P2 architecture mine is UNBLOCKED;
-   kickoff prompt delivered 2026-07-23. Data queries Q1/Q3–Q6/Q9: owner holds a semantic
-   model + read access to the platform reports DB — routing through the data-analyst path
-   instead of a data-team hand-off.
+   kickoff prompt delivered 2026-07-23. **Data queries executed 2026-07-24 via the
+   data-analyst path** (omnishelf-analytics repo, semantic model, live `fmcg_platform`;
+   recorded in the triage file, SDK lane `3242716`): Q1 — zero live `Left` usage (3 rules
+   ever, all soft-deleted, one client), `inside`/`unknown` never occur → BR-66 blast radius
+   zero; Q3 — shelf-band path LIVE (8 live rules) → BR-106 fix stands; Q4 — 23% of live
+   materials multi-code → BR-116/128 fix confirmed; Q5/Q6/Q9 unresolved-via-model → routed
+   to the KG model loop (+ 3 model-gap findings). D-lane election now unblocked except the
+   three routed rules.
 4. **.NET estate (knowledge-gateway):** two below-floor units in repair (GeneratedSqlValidator,
    EmbeddedAskOrchestrator — honest-score reruns under the fixed gate); SystemPromptBuilder clean.
 5. Program-level queued: the campaign-in-a-box proposal (end-goal #2), the Q2 sweep (item 1).
