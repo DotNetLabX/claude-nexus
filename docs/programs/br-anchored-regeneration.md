@@ -39,7 +39,7 @@ collapses to near-zero equivalence. We closed the loop ourselves, twice, in camp
 | P0-bis (RANSAC row-clustering core) | C++ / algorithm-shaped, stochastic | **GO-ALGORITHM-ARM** — behaviorally exact under seeded RNG; 1 repair (RNG ambiguity); mull above baseline |
 | P0-RC (`CompleteRealogram` area, 84 rules) | **Flutter/Dart** / domain usecase | **GO** — 38/39 first shot; 1 repair = the generator's own pre-declared ambiguity (registry corrected); fresh blind battery → 100% reachable-kill; **regenerated 599L readable-first vs the refactored 1,335L — adopted** |
 | P0-FSD (141 rules) | **Flutter/Dart** / domain usecase | **GO** — **97/97 first shot, ZERO repairs**; fresh battery 100% after 14 REAL suite gaps killed; **adopted** |
-| P0d (posmCompliance regen #2 — full-class ENHANCED, ~1,200 lines) | C++ / rule-shaped, god-class scale | **GO-WAVE-READY** (2026-07-23) — clean first build with NO include list; 25/25 byte-exact at repair 1 of ≤3; better on every shape metric (CCN 294→261, max 54→45, BR-traceability 1.15→23.77/100 NLOC, +4.79% NLOC under budget); mull 93.94% vs same-session legacy control 89.01% — the regeneration out-gates the code it byte-matches; 5 of 6 preserved bugs now suite-provable (p0c: 2); the 1 repair = a FALSE double-verified registry row |
+| P0d (posmCompliance regen #2 — full-class ENHANCED, ~1,200 lines) | C++ / rule-shaped, god-class scale | **GO-WAVE-READY** (2026-07-23) — clean first build with NO include list; 25/25 byte-exact at repair 1 of ≤3; better on every shape metric (CCN 294→261, max 54→45, BR-traceability 1.15→23.77/100 NLOC, +4.79% NLOC under budget); mull 93.94% vs same-session legacy control 89.01% — the regeneration out-gates the code it byte-matches; 5 of 6 preserved bugs now suite-provable (p0c: 2); the 1 repair = a FALSE double-verified registry row; **ADOPTED 2026-07-23** (29/29 byte-exact, 17/17 family regression, frozen seam 2,772 symbols diff-0) |
 
 **Five experiments, two stacks, five GO** (repairs 1→1→1→0→1 — the last a false registry pin
 exposed by the regeneration itself, not a generation failure; the declared-ambiguity obligation
@@ -89,8 +89,8 @@ two-mutant timeout buy-back — valid under its era's single oracle, refuted whe
 showed both mutants completing; honest prior was 86.81% raw, and after the gap-kill the gate
 reads **85.71% MET with zero adjudication** — the floor holds clean. Doctrine minted by the
 revision: **standing timeout promotions are re-verified whenever the oracle set grows** — an
-adjudication is only as strong as the oracle set that failed to refute it; ships with the next
-instrument-integrity patch); four remained below floor, queued cheapest-first
+adjudication is only as strong as the oracle set that failed to refute it; shipped 1.47.2/cpp
+0.2.4 together with the two-oracle promotion minimum and the subject-identity-proof rule); four remained below floor, queued cheapest-first
 (p0c shell 83.6 → clusterize D4 main 79.0 → clusterize p0b core 80.9 → planogram D2 59.6 — the
 biggest gap, ~38 mutants). The era-rule re-score (audit under the claim-time rules) reproduced
 every inflated figure and survivor list exactly — the instrument spec, not the operators, was
@@ -250,8 +250,19 @@ line end-to-end.
    blind battery 63/70 = 90.00% (survivors = exactly the 7 predicted; zero pending buckets);
    suite 4 binaries / 29 fixtures / 86 asserts; enhanced artifact 29/29 byte-exact; whole-TU
    67.90% (+20.25); 28 of 31 gaps closed (rest: M19 ruled, M63 proven equivalent, M52 = the
-   delivered fix); posm gate 85.71% MET with zero adjudication. **Adoption ask OPEN at the
-   owner's desk (standalone, recommended ADOPT).** Campaign idles behind
+   delivered fix); posm gate 85.71% MET with zero adjudication. **ADOPTED 2026-07-23** (SDK
+   commit d59199e, local): the Stage-B artifact is now `src/planogram/compliance_posm.cpp` —
+   29/29 byte-exact, full build 77 targets rc=0, 17/17 planogram-family regression, frozen
+   C-export seam identical (2,772 symbols, diff 0). Two recorded caveats: a **declared ABI
+   delta** (9 incidentally-exported file-scope helpers no longer exported — out of contract,
+   none in the header, no in-repo dependents; an out-of-repo consumer linking them directly
+   would break) and a **caught vacuous verification** (inherited CMake cache compiled the
+   sibling tree — redone from clean configure with a 692/0 tree-identity proof; the doctrine
+   shipped as 1.47.2's subject-identity rule). Legacy-file mull 85.71% retained as historical
+   control; the adopted artifact's evidence is Stage-B's 93.94%; decide-stage re-scope =
+   wave-cutover work. **The SDK repo holds unpushed commits incl. the adoption — pushing is
+   the owner's standalone word.** Queued for resume: clone/container retirement, the p0b
+   stash drop, 9 registry annotations, the F26 companion fixture. Campaign idles behind
    campaign #2 once executed.
 4. **.NET estate (knowledge-gateway):** two below-floor units in repair (GeneratedSqlValidator,
    EmbeddedAskOrchestrator — honest-score reruns under the fixed gate); SystemPromptBuilder clean.

@@ -160,7 +160,13 @@ kills, and this skill's own shipped gate rounded 74.59% up to a 75-floor PASS. T
   re-merge, 2026-07-22). And **completion under ANY oracle refutes an infinite-loop
   adjudication** for that mutant — a mutant that ran to completion somewhere cannot be a genuine
   infinite loop; timeout-promotion flags are evidence-gated on "never completed under any
-  oracle", or they become a way to buy back any failing gate.
+  oracle", or they become a way to buy back any failing gate. Two corollaries: **timeout
+  promotion requires a multi-oracle instrument** — a single-oracle gate cannot distinguish a
+  genuine infinite loop from that oracle's own long path, so the promotion hatch may fire only
+  when ≥2 oracles exist and the mutant completed under none; and **standing promotions are
+  re-verified whenever the oracle set grows** — an adjudication is only as strong as the oracle
+  set that failed to refute it (proven: a two-mutant promotion valid under one oracle was
+  refuted by completion under three later ones, revising a recorded campaign score).
 - **Every declared oracle pass must be proven present in the merge.** A gate whose merged evidence
   is missing a whole declared pass mis-measures silently — and deterministically, so it
   reproduces perfectly and the reproducibility proof cannot see it. The evidence carries a
@@ -191,6 +197,12 @@ kills, and this skill's own shipped gate rounded 74.59% up to a 75-floor PASS. T
   whoever recorded the number. (Proven in the 2026-07-22 C++ estate sweep: five inflated claims
   all reproduced exactly under era rules — the instrument spec, not the operators, was the
   defect.)
+- **The subject's identity is part of the evidence.** A green run must prove WHAT it ran: a
+  build tree inheriting another tree's cache (CMake, Gradle, MSBuild — any cached configure)
+  silently compiles the wrong sources and reports a vacuous green (proven: an adoption
+  verification inherited a sibling tree's CMake cache — 29/29 green that proved nothing).
+  Verification evidence records a clean configure plus a subject-identity proof (e.g. a
+  reference count showing N hits on the subject tree, 0 on any sibling).
 
 ## The Minimize stage
 

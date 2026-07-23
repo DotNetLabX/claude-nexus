@@ -2,6 +2,10 @@
 
 All notable changes to the `nexus-cpp` plugin.
 
+## [0.2.4] — 2026-07-23
+- PATCH bump.
+  - skill change (mine-verify-cover-cpp)
+
 ## [0.2.3] — 2026-07-23
 - PATCH bump.
   - skill change (mine-verify-cover-cpp)

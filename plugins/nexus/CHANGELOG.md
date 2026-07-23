@@ -1,6 +1,10 @@
 # nexus — Changelog
 
 
+## [1.47.2] — 2026-07-23
+- PATCH bump.
+  - skill change (mine-verify-cover)
+
 ## [1.47.1] — 2026-07-23
 - PATCH bump.
   - skill change (mine-verify-cover)

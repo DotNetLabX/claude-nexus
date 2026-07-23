@@ -80,7 +80,9 @@ The Cover agent writes the test file; a distinct runner agent executes the toolc
      non-detections into kills and flipped four gates below floor on honest re-merge. A mutant
      that completed (Survived) under any pass is disqualified from infinite-loop timeout
      adjudication (`adjudicatedTimeoutKillLines` promotion requires "never completed under any
-     oracle").
+     oracle"). Promotion additionally requires ≥2 oracles in the instrument (one oracle cannot
+     tell a genuine infinite loop from its own long path), and standing promotions are
+     re-verified whenever the oracle set grows.
    - **Declared-pass manifest (deterministic leak — invisible to the run-pair):** the merged
      evidence must name every declared mull pass (discovery/golden/shell/…) with a per-pass
      evaluated-mutant count > 0; a declared pass absent from the merge HALTs the gate. A missing
@@ -90,7 +92,7 @@ The Cover agent writes the test file; a distinct runner agent executes the toolc
      Both legs ship before any score does. Multi-build gates assert per pass × build against a committed region-routing table — an empty
      cell is legitimate only when the table predicts it; every region must appear in ≥1 build
      with count > 0 (full rule: the generic skill's instrument-integrity section).
-   - **Battery evidence banking + freshness anchor (two proven traps):** (1) a harness that
+   - **Battery evidence banking + freshness anchor (three proven traps):** (1) a harness that
      accumulates kills across fixtures and compares once at the end discards evidence already
      earned when a late fixture crashes — compare per fixture inside try/catch so a crash after
      divergence still banks the kills (under-statement is acceptable; hidden evidence is not);
@@ -98,7 +100,9 @@ The Cover agent writes the test file; a distinct runner agent executes the toolc
      only the shared library changes the .so hash while the exe runs stale code — a naive
      freshness assertion passes on dead evidence (a hard `return;` mutant read SURVIVED this
      way). Anchor freshness on the FINAL LINKED test artifact, never an intermediate library,
-     and red-prove the anchor.
+     and red-prove the anchor. (3) a work tree inheriting a sibling tree's CMake cache compiles
+     the WRONG sources and reports vacuous green — verification runs record a clean configure
+     plus a tree-identity proof (reference count: N hits on the subject tree, 0 on siblings).
 4. Build `mutatedFiles` (one `{file,count}` per key in `cover.json.files`) for the `target_mutated` anti-fake-green guard — verify your slice's basename was actually mutated (count > 0).
 5. **Never execute mutant binaries outside mull.** Survivor triage is **read-only** — reason from `cover.json` + the source. A mutation can break a loop guard and produce a **non-terminating binary**; mull's per-mutant timeout contains that, an ad-hoc probe does not (a live run hand-compiled surviving mutants into a diff harness with no timeout — one spun at 100% CPU and deadlocked the whole workflow until killed). If SUT execution outside `ctest`/`mull-runner-15` is ever unavoidable, wrap it in `timeout <N>s`.
 
