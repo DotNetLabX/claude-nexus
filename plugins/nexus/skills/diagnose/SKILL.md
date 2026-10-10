@@ -1,0 +1,151 @@
+---
+name: diagnose
+description: "Structured debugging protocol — phased loop for bugs and regressions. Loaded by developer and solo agents when a bug is encountered or a test fails unexpectedly. Timing: reach for it AFTER the first obvious fix fails and BEFORE the 3-attempt circuit-breaker escalates — not on the first error (try the obvious fix first), not after escalation (too late)."
+---
+
+# Diagnose
+
+Disciplined, phased debugging for hard bugs and performance regressions. Prevents ad-hoc thrashing by forcing sequential gates: you cannot skip a phase.
+
+## When to Use
+
+- A build error persists after an obvious fix attempt
+- A runtime bug is reported or encountered mid-implementation
+- A test fails for a non-obvious reason
+- Performance regresses after a change
+- The circuit breaker (3 failed attempts) is about to trigger — use this BEFORE escalating
+
+## Phases
+
+### Phase 1: Build a Feedback Loop
+
+Before touching anything, establish a way to **see** the bug reproduce on demand. Pick the lightest option that gives signal:
+
+1. **Failing test** — integration or unit test that exercises the broken path (preferred if test project exists)
+2. **Saved request file** — a checked-in HTTP request (`.http` or the stack's equivalent) that triggers the failure (API bugs)
+3. **Throwaway harness** — a scratch console/script entry point in the stack's language that isolates the logic
+4. **Manual HTTP request** — curl or the shell's HTTP client, expected vs actual output
+5. **Frontend repro** — specific route + action sequence in browser (document it)
+6. **ORM / SQL query trace** — turn on query logging to see the generated SQL
+7. **WebSocket/realtime test** — connect via ws client, trigger event, observe payload
+8. **git bisect** — when you know "it worked before" but not when it broke
+9. **Differential** — compare working service/endpoint with broken one side-by-side
+10. **Manual HITL** — last resort: document exact steps for user to reproduce, capture their output
+
+**Stack adapters:** when a `diagnose-{stack}` skill is installed (e.g. `nexus-dotnet:diagnose-dotnet`), read it for the stack's concrete tool per menu item.
+
+**Gate:** You have a reproducible signal before proceeding. If you can't reproduce, state that and ask the user for reproduction steps.
+
+### Phase 2: Reproduce
+
+Run your feedback loop. Confirm it shows **exactly** the failure the user described (not a different failure). Document:
+- Expected behavior
+- Actual behavior
+- Exact error message or incorrect output
+
+**Gate:** The loop reproduces the user's reported symptom.
+
+### Phase 3: Hypothesize
+
+Generate 3–5 ranked hypotheses **before** testing any. Each must be falsifiable (you can describe what you'd see if it were true vs false).
+
+Format:
+```
+H1: [Most likely] {hypothesis} — would show {evidence if true}
+H2: {hypothesis} — would show {evidence if true}
+H3: {hypothesis} — would show {evidence if true}
+```
+
+**Infra-gate mimicry.** A tool-level infrastructure gate — an auth wall, a wrapper script, a
+test-runner precondition, a permission hook, a proxy — can emit an error **shaped like** an
+application- or pipeline-phase failure. When the error's apparent phase or source doesn't match where
+you actually are, rank a hypothesis that **the message's emitter is a gate in front of the tool, not
+the tool itself**. Probe it first: identify the emitter — locate which layer prints the literal
+message (grep the toolchain, hooks, and wrappers for it) — before debugging the application path.
+
+**Gate:** Hypotheses written. Test them in rank order, one at a time.
+
+### Phase 4: Instrument
+
+Probe **one variable at a time**. Tag all debug instrumentation with a unique prefix for easy cleanup:
+
+```
+[DEBUG-{4-char-hex}] — remove after diagnosis
+```
+
+Use your language's logging or print facility. Every debug line must include the `[DEBUG-xxxx]` tag so cleanup can grep for it. For performance regressions: use timing, not logs — wrap suspect sections with a stopwatch/timer and log elapsed time with the same tag prefix.
+
+After each probe:
+- Run the feedback loop
+- Record: which hypothesis confirmed/eliminated, what new evidence — a hypothesis is *eliminated* only by recorded falsifying evidence (its "would show X if true" observed absent or contradicted); a probe that neither confirms nor falsifies leaves it **`inconclusive`** (the resting verdict) — alive and testable. One ambiguous probe never kills a ranked hypothesis
+- Narrow or pivot
+
+**Gate:** Root cause identified with evidence — the causal verdict names (a) the ONE variable whose change **flips the outcome**, (b) the confirming probe, and (c) what falsified the ranked alternatives. If more than one variable changed (last-known-good → failure, or during probing), the verdict carries an explicit **`confounded`** tag: keep bisecting, or override with a logged reason. (This governs the *verdict*; the one-variable-at-a-time guardrail governs the *probing*.)
+
+### Phase 5: Fix + Regression Guard
+
+1. Write the fix (minimal change that addresses root cause)
+2. Run the feedback loop — confirm it passes
+3. If a test project exists: write a regression test that would have caught this
+4. If no test project: document the regression scenario in the PR/commit message
+
+**Gate:** Feedback loop passes. Fix is minimal.
+
+### Phase 6: Cleanup + Post-Mortem
+
+1. **Remove ALL debug instrumentation** — grep for your `[DEBUG-{prefix}]` tag:
+   ```
+   grep -r "DEBUG-a4f2" src/
+   ```
+2. **Verify** the original feedback loop still passes after cleanup
+3. **Write lessons** — append to `docs/specs/{slug}/delivery/lessons.md` (if in pipeline) or state the finding (if solo/ad-hoc):
+   - What was the root cause?
+   - What would have prevented this?
+   - Is there an architectural improvement needed? (flag for architect)
+4. **Verification** — one call of `verify-run.js --profile fast` (it runs `roles.unit` from `.claude/verify.json`) passes — the narrowest command covering the files this fix changed — 30 seconds, never the whole suite; where the repo declares none, that same narrowest command, per the project's build conventions (`docs/conventions/coding-conventions.md`, if defined)
+
+## Integration with Circuit Breaker
+
+The developer/solo circuit breaker triggers after 3 failed attempts. This skill should be invoked **before** reaching that limit:
+
+- Attempt 1 fails → invoke diagnose skill (Phase 1–4)
+- If root cause found → Phase 5–6 (fix)
+- If 3 hypotheses exhausted without root cause → escalate to architect with your evidence log
+
+**Pre-escalation kill rule.** An "approach is unworkable / unfixable" conclusion requires ≥2 distinct falsifying probes in the evidence log, or an explicit override with a logged reason — it composes with, never replaces, the 3-attempt breaker (that bounds *fix attempts*; this bounds premature *conclusions*). **Escalation is a handoff, not a kill:** escalating to the architect with the evidence log is never gated by the elimination rule. "3 hypotheses exhausted" means each top hypothesis has been probed at least once (confirmed / falsified / **inconclusive**) — an inconclusive-alive hypothesis still counts toward the escalation trigger, it never defers it.
+
+## Guardrails
+
+- **Never skip phases** — especially Phase 3 (hypothesize before testing)
+- **One variable at a time** — shotgun debugging (changing multiple things) resets you to Phase 1
+- **Tag everything** — untagged debug output becomes production noise
+- **Minimal fix** — don't refactor during a fix. Fix the bug, verify, then propose refactoring separately
+- **No permanent logging for debugging** — if the insight is valuable long-term, it's observability (different concern, different PR)
+- **Conclusion grammar** — a causal verdict names its cause-variable or carries the `confounded` tag; `inconclusive` is the resting verdict — one ambiguous probe never kills a hypothesis
+
+## Required Reading
+
+Before invoking this skill, ensure you have:
+- The exact error message or failure symptom (copy it verbatim — every word matters)
+- The build or test output from the failed attempt
+- A description of what changed immediately before the failure (the last step you completed)
+
+## Anti-patterns
+
+- **Skipping Phase 3 (Hypothesize) and going straight to fixing.** Without ranked hypotheses, each fix attempt is a shot in the dark. The circuit breaker exists precisely because ad-hoc fixing compounds problems. Write the hypotheses before touching the code.
+- **Changing multiple things in one fix attempt.** Bundling fixes resets you to Phase 1 — if it works, you don't know why; if it doesn't, you've made the state harder to reason about. One variable at a time.
+- **Forgetting to remove debug instrumentation.** Tagged debug output (`[DEBUG-xxxx]`) left in after the fix becomes production noise. Phase 6 cleanup is not optional.
+
+## Downstream Consumers
+
+| Agent | How they use this skill | Impact if skipped |
+|-------|------------------------|-------------------|
+| Developer | Follows phases to diagnose build/runtime failures | Without structure, 3 failed attempts trigger circuit breaker and escalate to architect unnecessarily |
+| Architect | Reviews evidence log when escalated | Incomplete phase logs make root cause analysis impossible; architect can't make a good decision |
+
+## What This Skill Does NOT Do
+
+- Replace the architect's escalation role — if you can't find root cause, escalate
+- Guide test infrastructure setup — use `tdd` skill for that
+- Fix performance at scale — this finds the bottleneck; optimization is separate work
+- Handle flaky tests — flaky = non-deterministic; that's a different investigation pattern

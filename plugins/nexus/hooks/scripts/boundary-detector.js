@@ -1,0 +1,160 @@
+#!/usr/bin/env node
+/**
+ * Nexus PostToolUse(Write|Edit|MultiEdit) boundary detector. Async, observe-only — never blocks
+ * (PostToolUse cannot block, and this must never wedge a run).
+ *
+ * Why this exists (evaluation roadmap B.2, unlocked by Probe P1 on 2026-06-10): the platform
+ * drops a PreToolUse deny for background subagents (ADR-13), so the pipeline gate cannot
+ * PREVENT a backgrounded agent's boundary violation — but PostToolUse hooks DO fire there.
+ * Prevention stays with the agents' hard rules (ADR-14/18); this makes every breach
+ * DETERMINISTICALLY VISIBLE: a violation appends one JSON line to .claude/audit/violations.log
+ * (+ a systemMessage), and the team lead checks the log at every checkpoint instead of hoping
+ * an agent self-reports.
+ *
+ * Scope: SUBAGENT calls only (agent_type present). Main-session/foreground writes are already
+ * covered by the gate + guard, whose denies ARE honored there.
+ *
+ * Rules (ADR-18 ownership matrix + ADR-21 delegation):
+ *   - a non-code role (architect/reviewer/po/critic/team-lead/learner) writing application source
+ *   - a role writing another role's artifact: plan.md=architect, done-check.md=architect,
+ *     review.md=reviewer|team-lead (the team lead writes its fix list; the architect is absent because
+ *     it writes done-check.md, and its fast-lane fix list is a main-session write this detector skips),
+ *     implementation.md=developer, summary.md=team-lead (lessons.md is shared by design)
+ *   - ANY subagent writing .claude/.pipeline-state (the team lead owns it, main-session only)
+ *   - ANY subagent spawning a pipeline-role agent via Agent/Task (ADR-21: delegated
+ *     self-advancement — the F16 incident vector: a developer commissioned done-checks, a
+ *     Step-2 review, and a learner as correctly-typed agents, so the ownership rules above
+ *     never fired). Research spawns (Explore, general-purpose) are sanctioned.
+ *   - ANY subagent running a state-changing git write through either shell tool (ADR-18/20: pipeline agents
+ *     never commit; the team lead owns commits — the #1 fabrication vector's commit leg).
+ *     Matched by anchored-regex substring (guard.js house style) on the canonical verb list
+ *     commit/add/reset/push/stash/restore/switch; read-only git (`show`/`log`/`diff`, and the
+ *     read-only stash subcommands `git stash list`/`git stash show`) and `git commit-graph` never
+ *     flag. Best-effort early-warning only — the team lead's `git log` author check is the
+ *     guaranteed retroactive catch (team-lead.md Enforcing the Rules).
+ *
+ * Zero footprint when clean: nothing is created unless a violation occurs. Fail silent on any
+ * error (mirrors audit-logger).
+ */
+'use strict';
+const fs = require('fs');
+const path = require('path');
+const { isCodeFile } = require('./lib/is-code-file');
+const { resolveRole } = require('./lib/resolve-role');
+
+const NONCODE_ROLES = new Set(['architect', 'reviewer', 'po', 'critic', 'team-lead', 'learner']);
+const PIPELINE_ROLES = new Set(['po', 'architect', 'developer', 'reviewer', 'critic', 'learner', 'team-lead', 'solo']);
+const ARTIFACT_OWNERS = [
+  [/\/plan\.md$/, new Set(['architect'])],
+  [/\/review\.md$/, new Set(['reviewer', 'team-lead'])],
+  [/\/done-check\.md$/, new Set(['architect'])],
+  // implementation.md is the developer's deliverable AND solo's — solo runs the implement phase
+  // outside the team pipeline and writes its own implementation.md (plugin-feedback nexus-1.13.0
+  // item 2: flagging solo's own deliverable was a false positive that drowned real breaches).
+  [/\/implementation\.md$/, new Set(['developer', 'solo'])],
+  [/\/summary\.md$/, new Set(['team-lead'])],
+];
+
+function violation(role, fp, root) {
+  if (/(^|\/)\.claude\/\.pipeline-state$/.test(fp)) {
+    return 'subagent wrote .claude/.pipeline-state — the team lead (main session) is its sole writer (ADR-18)';
+  }
+  for (const [re, owners] of ARTIFACT_OWNERS) {
+    if (re.test(fp) && !owners.has(role)) {
+      return `wrote an artifact whose owner is another role (${fp}) — each artifact has exactly one owner (ADR-18)`;
+    }
+  }
+  if (NONCODE_ROLES.has(role) && isCodeFile(fp, root)) {
+    return `non-code role edited application source (${fp}) — route code changes to the developer`;
+  }
+  return null;
+}
+
+let input = '';
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', (d) => (input += d));
+process.stdin.on('end', () => {
+  try {
+    const data = JSON.parse(input || '{}');
+    if (!/^(Write|Edit|MultiEdit|Agent|Task|TaskCreate|TaskUpdate|Bash|PowerShell)$/.test(data.tool_name || '')) return process.exit(0);
+    if (!data.agent_type) return process.exit(0); // main session: the foreground gate + team lead cover it
+    // resolveRole strips a `nexus:` namespace AND a custom/auto-suffixed spawn name (developer-2,
+    // developer-f6) to its base role — without it ARTIFACT_OWNERS false-flags a suffixed developer
+    // writing its OWN implementation.md. plugin-feedback from two consuming repos.
+    const role = resolveRole(data.agent_type);
+    const ti = data.tool_input || {};
+    const root = process.env.CLAUDE_PROJECT_DIR || data.cwd || process.cwd();
+
+    let rule = null;
+    let fp = '';
+    if (/^(Agent|Task)$/.test(data.tool_name)) {
+      // ADR-21: delegated self-advancement — a subagent commissioning pipeline-role agents.
+      const target = resolveRole(ti.subagent_type);
+      if (!PIPELINE_ROLES.has(target)) return process.exit(0); // research spawns are sanctioned
+      fp = String(ti.subagent_type || '');
+      rule = `subagent spawned a pipeline-role agent (${target}) — pipeline advancement belongs to the team lead alone (ADR-21)`;
+    } else if (/^Task(Create|Update)$/.test(data.tool_name)) {
+      // ADR-21 (peer channel): a subagent re-owning a task to ANOTHER agent via the task system.
+      // Assignment = setting `owner` (TaskCreate makes owner-less tasks; TaskUpdate sets owner). A
+      // subagent legitimately claims its OWN task (owner === its own spawn identity) or updates status
+      // (no owner); assigning work to a peer is the team lead's alone. The Agent/Task spawn branch above
+      // can't see this — it's a different tool. (A consuming repo's plugin-feedback — developer-2
+      // assigned "Step 2" to developer-1.)
+      // Compare RAW identities, not base roles: developer-2 and developer-1 both resolve to `developer`,
+      // so a base-role compare would mistake a peer hand-off for a self-claim and miss it. (A base-role
+      // self-claim — owner `developer` while spawned `developer-2` — may log; the detector is
+      // observe-only, so the team lead adjudicates that rare case rather than the breach going unseen.)
+      const ownerRaw = String(ti.owner || '').toLowerCase();
+      const selfRaw = String(data.agent_type || '').toLowerCase();
+      // Exempt a self-claim by EITHER the exact spawn identity (developer-2 -> developer-2) OR the
+      // bare base role of self (developer-2 -> "developer") — an agent naturally claims its own task as
+      // "the developer". A peer hand-off (developer-2 -> developer-1) still differs from both, so it
+      // still flags. Without the base-role exemption the raw compare re-introduces the very suffix
+      // noise resolve-role removed (a real developer-2 emits `TaskUpdate{owner:"developer"}`).
+      if (!ownerRaw || ownerRaw === selfRaw || ownerRaw === resolveRole(data.agent_type)) return process.exit(0);
+      fp = `${data.tool_name} owner=${ti.owner}`;
+      rule = `subagent re-owned a task to another agent (${ti.owner}) — cross-agent task assignment belongs to the team lead alone (ADR-21 peer-orchestration)`;
+    } else if (/^(Bash|PowerShell)$/.test(data.tool_name)) {
+      // ADR-18/20: pipeline agents never commit — the team lead owns commits. A subagent running a
+      // state-changing git write is the #1 fabrication vector's commit leg. Best-effort EARLY-WARNING
+      // layer only; the team lead's `git log` author check at every verify point is the GUARANTEED
+      // retroactive catch (it unwinds any commit not authored by the team lead, however it was made).
+      //
+      // Matching: anchored-regex substring on the LOWERCASED command (guard.js house style at :137-138)
+      // — NOT a prefix scan. A prefix scan misses `git status && git commit -m x` (prefix is `git status`)
+      // and `bash -c "git commit …"` (prefix is `bash`); a missed write is a silently undetected breach.
+      // The trailing (\s|$) is load-bearing: `\bcommit\b` alone matches INSIDE `git commit-graph` (the `-`
+      // is a word boundary), so requiring whitespace-or-end after the verb is what excludes the
+      // `git commit-graph` maintenance command while still matching `git add .`, `git add -A`, and chains.
+      //
+      // `stash` is a write EXCEPT its read-only subcommands `list`/`show` — a developer proving a
+      // pre-existing failure legitimately runs `git stash list` (plugin-feedback nexus-1.13.0 item 5).
+      // Strip those occurrences BEFORE the verb scan rather than after-the-fact exempting, so a chained
+      // `git stash list && git commit -m x` still flags the commit (no bypass hole — the strip removes
+      // only the read-only invocation; any following write verb survives). The `(?:-{1,2}…)*` tolerates
+      // interposed git global flags (`git --no-pager stash list`, `git --git-dir=x stash show`) so they
+      // aren't mis-flagged; it matches only flag-shaped tokens, never a write verb. `git show`/`log`/
+      // `diff` already never match — they are not in the verb list.
+      const c = String(ti.command || '').toLowerCase().replace(/\bgit\s+(?:-{1,2}[\w-]+(?:=\S+)?\s+)*stash\s+(list|show)\b/g, '');
+      if (!/\bgit\s+(commit|add|reset|push|stash|restore|switch)(\s|$)/.test(c)) return process.exit(0);
+      fp = String(ti.command || '');
+      rule = 'subagent ran a git write — pipeline agents never commit; the team lead owns commits (ADR-18, commit strategy ADR-20)';
+    } else {
+      fp = String(ti.file_path || ti.path || '').replace(/\\/g, '/');
+      if (!fp) return process.exit(0);
+      rule = violation(role, fp, root);
+      if (!rule) return process.exit(0);
+    }
+
+    const dir = path.join(root, '.claude', 'audit');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(
+      path.join(dir, 'violations.log'),
+      JSON.stringify({ ts: new Date().toISOString(), agent: role, tool: data.tool_name, path: fp, rule }) + '\n'
+    );
+    process.stdout.write(JSON.stringify({
+      systemMessage: `Nexus boundary detector: ${role} ${data.tool_name} -> ${fp} (${rule}). Logged to .claude/audit/violations.log.`,
+    }));
+  } catch { /* fail silent — observe-only */ }
+  process.exit(0);
+});

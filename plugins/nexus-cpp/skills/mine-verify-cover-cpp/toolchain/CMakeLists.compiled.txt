@@ -1,0 +1,30 @@
+# CMake template — COMPILED slice (.cpp/.c + .h). For a header-only/template SUT use CMakeLists.header-only.txt.
+cmake_minimum_required(VERSION 3.16)
+project(mvc_cover C CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_BUILD_TYPE Debug)
+
+option(MULL "Compile with the mull IR pass plugin" OFF)
+if(MULL)
+  add_compile_options(-O0 -g -grecord-command-line -fpass-plugin=/usr/lib/mull-ir-frontend-15)
+endif()
+
+# The slice under test (real source COPIED in — keep the consuming repo pristine). Replace <SLICE>.
+add_library(slice STATIC src/<SLICE>.cpp)
+target_include_directories(slice PUBLIC src)
+
+enable_testing()
+find_package(GTest REQUIRED)
+
+# support/exit_wrap.cpp provides __wrap_exit (harness infra, never mutated — see the link option below).
+file(GLOB COVER_TESTS tests/*.cpp)
+add_executable(cover_tests ${COVER_TESTS} support/exit_wrap.cpp)
+target_link_libraries(cover_tests PRIVATE slice GTest::gtest GTest::gtest_main)
+# exit() neutralization (REQUIRED if the SUT calls exit()/abort() on invalid state): route it through
+# __wrap_exit so an invariant-breaking mutant FAILS the run instead of false-passing as exit(0).
+target_link_options(cover_tests PRIVATE -Wl,--wrap=exit)
+
+include(GoogleTest)
+gtest_discover_tests(cover_tests)

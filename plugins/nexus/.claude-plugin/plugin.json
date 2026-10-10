@@ -1,0 +1,30 @@
+{
+  "name": "nexus",
+  "version": "2.3.0",
+  "description": "Nexus core — a stack-agnostic multi-agent team pipeline (architect, developer, reviewer, PO, critic, learner, team-lead, solo) with always-on rules, persona commands, process skills, and a security guard.",
+  "author": {
+    "name": "ldumit"
+  },
+  "keywords": [
+    "agents",
+    "pipeline",
+    "team",
+    "workflow",
+    "code-review",
+    "planning"
+  ],
+  "userConfig": {
+    "security_mode": {
+      "type": "string",
+      "title": "Security mode",
+      "description": "Install posture: open (block catastrophic actions only — recommended) | hardened (strict, for teams/CI) | off (no guard).",
+      "default": "open"
+    },
+    "token_audit": {
+      "type": "boolean",
+      "title": "Audit trail (tool calls + token consumption)",
+      "description": "When on, the audit-logger records a per-session tool-call trace (.claude/audit/{session}.log — agent, tool, file/command detail) and per-agent token usage (.claude/audit/token-usage.jsonl). Add .claude/audit/ to your .gitignore. Default off — truly zero work when disabled (no files, no directories).",
+      "default": false
+    }
+  }
+}

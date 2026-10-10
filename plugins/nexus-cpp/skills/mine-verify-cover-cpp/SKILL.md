@@ -1,0 +1,231 @@
+---
+name: mine-verify-cover-cpp
+description: The C/C++ stack adapter for the mine-verify-cover method — fills its 5 capabilities with mull (the C++ Stryker-equivalent, driving GoogleTest/CTest), libclang evidence indexing, GoogleTest + RapidCheck test style, and a Docker toolchain (clang-15 + mull-15 + GoogleTest + libclang) because mull has no native Windows build (Linux/macOS only). Use when running Mine→Verify→Cover on a C or C++ unit (a function, class, or header-only template) — especially the first run on a repo, which needs the Docker image + workspace bringup below. Ships the toolchain ready to run (toolchain/).
+user-invocable: true
+---
+
+# Mine→Verify→Cover — C/C++ adapter
+
+Needs the `nexus-miner` plugin — if `mine-verify-cover` is not in your skill list, stop and tell the user `/plugin install nexus-miner@claude-nexus-miner`.
+
+The **stack adapter** for `mine-verify-cover` (the `nexus-miner` method). The method owns the loop, the gate battery, and the KB ledger; this skill fills the 5 toolchain capabilities for C/C++. Read `mine-verify-cover` first — this skill only supplies the C/C++-specific parts.
+
+The Mine→Verify half is **stack-neutral** — the same clean-room miners + skeptic verify run on a `.cpp`/`.h` source with no change (proven 2026-06 on a C assignment solver). This adapter is really about the **Cover + Gate** half: the mutation tool, the test runner, and the Docker bringup.
+
+## The 5 capabilities, filled for C/C++
+
+| Capability | C/C++ fill |
+|------------|------------|
+| Evidence indexer | the miner reads the target `.cpp`/`.h` directly; `toolchain/index_slice.py` (libclang) extracts per-function slices for boundary/coupled-file analysis |
+| Test runner | `ctest` (GoogleTest, via `gtest_discover_tests`) **inside the Docker image** — run twice for `suite_green` + `no_flaky` |
+| Mutation tool | **mull-15** via `mull-runner-15`; emits `cover.json` (mutation-testing-elements) + `cover.sqlite` |
+| Test-style contract | GoogleTest `TEST()`; a C SUT is included via `extern "C" { #include "x.h" }`, a C++ SUT by its namespace-qualified calls; `int**`/`std::vector` helpers; RapidCheck `RC_GTEST_PROP` for property tests |
+| Prod-source-diff scoping | `git diff -- <slice>` for `char_pin`; the only tolerated change is a `// mull disable` / `// Stryker disable` comment |
+
+## The trust anchor — why mull, and why Docker
+
+C/C++ **does** have a Stryker-grade mutation tool, unlike Dart:
+
+- **mull** (LLVM IR pass-plugin) is the production-viable engine: config-driven (`mull.yml`), headless, and it emits a **mutation-testing-elements JSON** — the *same schema family Stryker uses* — so the per-mutant array is consumed by the gate **AS-IS, with no translation** (the thinnest adapter fork; contrast the Flutter XML translation). It embeds all mutants at compile time via `-fpass-plugin` and `mull-runner-15` toggles them per-run.
+- **dextool-mutate** is the heavier AST-based alternative — skip it unless mull can't target your build.
+- mull is **Clang/LLVM + Linux/macOS-only** — there is **no native Windows** build that ships the runner (it runs natively on Linux and on macOS via Homebrew). We run every command **inside Docker** regardless — the proven, host-uniform path (the `toolchain/Dockerfile` image: Ubuntu 22.04 + clang-15 + mull-15 + GoogleTest + libclang). On Ubuntu jammy the Cloudsmith repo ships mull up to LLVM 15, so clang/mull are pinned to **15**.
+
+Grounding: `docs/kb/research/cpp-mutation-and-test-tooling.md` in the nexus dev repo (hands-on confirmed); proven end-to-end on a consuming C++ SDK repo — see `docs/specs/adhoc-MineVerifyCppProbe` + `adhoc-MineVerifyCppAdapter`.
+
+## Toolchain bringup (the prerequisite — do ONCE per repo)
+
+**Run doctor first.** Run `tools/doctor.mjs` from the base directory the loaded `mine-verify-cover`
+skill announced (`node {that-base-dir}/tools/doctor.mjs --skill {this-skill-dir}`): it probes this stack's prerequisites (Docker reachable, the `mvc-probe` image built,
+mull-15 inside it) and reports severity-rated results with fix hints pointing back here. It tells you
+which of the steps below you still need; it does not replace them.
+
+The C/C++ analogue of the .NET test-project scaffold / the Flutter `build_runner`. You need **Docker running** — nothing is compiled on the host.
+
+1. **Build the image once:** `docker build -t mvc-probe <skill>/toolchain` (clang-15 + mull-15 + GoogleTest + libclang; ~1.2 GB).
+2. **Scaffold a workspace** the image mounts at `/probe` — set up ONCE per target, kept OUT of the consuming source tree:
+   ```
+   workspace/
+     CMakeLists.txt   # copy toolchain/CMakeLists.compiled.txt (.cpp slice) OR .header-only.txt (.h/template)
+     mull.yml         # copy toolchain/mull.yml.template; set includePaths to your slice
+     src/   <slice>   # the SUT, COPIED from the consuming repo (the repo stays pristine — never edited)
+     support/ exit_wrap.cpp   # copy toolchain/exit_wrap.cpp IF the slice calls exit()/abort() (see below)
+     tests/           # the Cover agent writes <class>_harness_test.cpp here
+   ```
+3. The runner mounts it: `MSYS_NO_PATHCONV=1 docker run --rm -v "<workspace>:/probe" -w /probe mvc-probe bash -lc '<cmd>'` (the `MSYS_NO_PATHCONV=1` stops Git-Bash mangling `/probe` on a Windows host).
+
+## The mull run (what the runner does)
+
+The Cover agent writes the test file; a distinct runner agent executes the toolchain inside Docker:
+
+1. Configure + build (non-mutated) and run the suite **twice** (for `suite_green` + `no_flaky`):
+   ```
+   cmake -S /probe -B /probe/build -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+   cmake --build /probe/build
+   ctest --test-dir /probe/build    # ×2 — record { passed, failed, skipped } each run
+   ```
+2. Mutated build + mull on ONLY the target file:
+   ```
+   export MULL_CONFIG=/probe/mull.yml
+   cmake -S /probe -B /probe/build-mull -G Ninja -DMULL=ON
+   cmake --build /probe/build-mull
+   mull-runner-15 --reporters Elements --reporters SQLite --report-name cover --report-dir /probe/mull-out --workers 4 /probe/build-mull/cover_tests
+   ```
+2b. **Activation-boundary probe — before any oracle joins the roster or a battery is funded.**
+   Mutant activation is **per-process** and does not survive `execve`: an oracle that runs the
+   subject in a CHILD process (self-reinvoke via `fork`/`exec`/`std::system`, a shell toolchain
+   wrapper, a driver-per-arm design) never exposes that child to the mutant and is structurally
+   blind — symbol presence in the oracle binary cannot detect this. An oracle enters the mull
+   roster only after ONE mull pass shows at least one **non-Survived** verdict (kill, crash or
+   timeout); a uniform all-Survived tally is a blind instrument until proven otherwise (measured:
+   same instrumented binary, same 533 mutants — child-process arms scored 533 Survived / 0, the
+   in-process entry 519 / 14 Timeout). Give self-reinvoking oracles an in-process entry point.
+   (Survivor-replay that applies the mutant as a source edit and rebuilds the tree is unaffected —
+   there the child loads the mutated library.)
+3. Read `/probe/mull-out/cover.json`. It is **already** mutation-testing-elements: `files[<path>].mutants[{status, location.start.line, mutatorName, replacement}]`, statuses `Killed`/`Survived`/`Timeout`/`NoCoverage` — exactly the gate's denominator set. Take the target file's `mutants` array **AS-IS** (no translation). `Timeout` is an **adjudication bucket**, not a kill — the gate scores an unadjudicated Timeout as a survivor; pass a timeout line via `adjudicatedTimeoutKillLines` only after proving the mutant a genuine infinite loop (kill-attribution rule, `mine-verify-cover` → `### Instrument integrity`).
+3b. **Instrument honesty proof — MANDATORY before any score is reported** (this stack's shape is
+   parallel-shared-state; a shared `/tmp` artifact under `--workers 4` once inflated a suite's score
+   97.8% → 53.8% by counting worker-collision crashes as kills):
+   - **Reproducibility proof:** run the identical mull invocation twice, plus once with `--workers 1`.
+     The per-mutant verdict sets must be IDENTICAL (survivor-set symmetric diff = 0) across all three.
+     Any diff = the instrument is lying — find the shared state, fix it, re-prove. No score ships
+     without this proof recorded in the run artifacts.
+   - **Harness isolation rule (test-authoring time):** any path a scored test writes MUST be
+     per-process — embed `getpid()` (or honor a per-worker env dir) in every temp filename. A fixed
+     shared path is the defect class; it is invisible to any later audit that doesn't re-run.
+   - **Multi-oracle merge precedence (proven leak 2026-07-22):** when a suite scores one mutant
+     under several mull passes (discovery/golden/shell), the offline merge must never let a
+     Timeout *score* over a definite Survived — break-on-first-kill merges converted
+     non-detections into kills and flipped four gates below floor on honest re-merge. A mutant
+     that completed (Survived) under any pass is disqualified from infinite-loop timeout
+     adjudication (`adjudicatedTimeoutKillLines` promotion requires "never completed under any
+     oracle"). Promotion additionally requires ≥2 oracles in the instrument (one oracle cannot
+     tell a genuine infinite loop from its own long path), and standing promotions are
+     re-verified whenever the oracle set grows.
+   - **Declared-pass manifest (deterministic leak — invisible to the run-pair):** the merged
+     evidence must name every declared mull pass (discovery/golden/shell/…) with a per-pass
+     evaluated-mutant count > 0; a declared pass absent from the merge HALTs the gate. A missing
+     pass is deterministic — it reproduces identically across the run-pair, so the
+     reproducibility proof cannot see it. That proof is necessary, never sufficient: it catches
+     non-deterministic defects only; deterministic mis-attribution needs this manifest assertion.
+     Both legs ship before any score does. Multi-build gates assert per pass × build against a committed region-routing table — an empty
+     cell is legitimate only when the table predicts it; every region must appear in ≥1 build
+     with count > 0 (full rule: the generic skill's instrument-integrity section).
+   - **Battery evidence banking + freshness anchor (three proven traps):** (1) a harness that
+     accumulates kills across fixtures and compares once at the end discards evidence already
+     earned when a late fixture crashes — compare per fixture inside try/catch so a crash after
+     divergence still banks the kills (under-statement is acceptable; hidden evidence is not);
+     (2) when test executables statically embed the target TU (whole-archive link), rebuilding
+     only the shared library changes the .so hash while the exe runs stale code — a naive
+     freshness assertion passes on dead evidence (a hard `return;` mutant read SURVIVED this
+     way). Anchor freshness on the FINAL LINKED test artifact, never an intermediate library,
+     and red-prove the anchor. (3) a work tree inheriting a sibling tree's CMake cache compiles
+     the WRONG sources and reports vacuous green — verification runs record a clean configure
+     plus a tree-identity proof (reference count: N hits on the subject tree, 0 on siblings).
+   - **Per-process resource budget (proven 335-false-kill leak):** before a battery is costed,
+     measure what ONE oracle process leaves behind (`/dev/shm`, `/tmp`, open handles) and multiply
+     by (mutants × oracles × passes); the runner cleans between mull invocations and asserts the
+     budget. "Original test failed (warmup run)", a 0-byte report, or rc≠0 is an **instrument
+     fault**, never a verdict. Measured: a `std::_Exit` teardown skipped libomp's atexit
+     unregister, leaving one `/dev/shm/__KMP_REGISTERED_LIB_<pid>` per process; Docker's default
+     64 MB `/dev/shm` filled after ~16k mutant runs, warmups died with SIGBUS, and mid-exhaustion
+     one oracle scored 335 FALSE KILLS (survivors 430+ → 198, 29 s instead of ~55 s) while a
+     subshell-scoped fail-closed flag still printed ALL GATES PASSED. A per-oracle kill-jump
+     alarm (sudden survivor drop paired with a runtime drop) is the cheap tripwire.
+4. Build `mutatedFiles` (one `{file,count}` per key in `cover.json.files`) for the `target_mutated` anti-fake-green guard — verify your slice's basename was actually mutated (count > 0).
+5. **Never execute mutant binaries outside mull.** Survivor triage is **read-only** — reason from `cover.json` + the source. A mutation can break a loop guard and produce a **non-terminating binary**; mull's per-mutant timeout contains that, an ad-hoc probe does not (a live run hand-compiled surviving mutants into a diff harness with no timeout — one spun at 100% CPU and deadlocked the whole workflow until killed). If SUT execution outside `ctest`/`mull-runner-15` is ever unavoidable, wrap it in `timeout <N>s`.
+
+Two path namespaces (the one structural difference from host-native adapters): the **container** source path (`/probe/src/<slice>`) is the mull-report key + the `mutation_floor` lookup; the **host** path is what the Cover agent reads. `target_mutated` matches on basename, so it is namespace-agnostic.
+
+## exit()/abort() neutralization — a FIRST-CLASS limiter, not a footnote
+
+If the SUT calls `exit()`/`abort()` on invalid internal state (a sanity check, a `assert`-like guard), it is a **mutation blind spot**: a mutant that breaks an invariant trips the guard → the process exits status 0 *before the test asserts* → the runner sees "passed" → the mutant **survives undetectably**. Measured on the Hungarian solver: this masking capped black-box kill at **46%**.
+
+**Fix (ship it, don't remember it):** copy `toolchain/exit_wrap.cpp` into `workspace/support/` and link with `-Wl,--wrap=exit` (already in `CMakeLists.compiled.txt`). `exit()` from the SUT is redirected to `__wrap_exit`, which exits **non-zero** → the tripping mutant is **killed**. `main()`-return is unaffected (glibc resolves it inside libc, not via the final link). The Hungarian kill rose **46% → 64%** from this alone. Make `--wrap=exit` a PREREQUISITE for any slice that calls `exit`/`abort` — it is not later hardening.
+
+## Header-only / template targets
+
+mull mutates header-only templates fine: the instantiated code's debug **source path is the header**, so `includePaths: src/<hdr>.h` scopes mutation correctly even though the IR physically lives in the test TU (kept un-mutated by `excludePaths: tests/.*`). Use `CMakeLists.header-only.txt` — no library target, no exit-wrap unless the header calls `exit()`. Proven on `levenshtein.h` (103 mutants, 99 killed = 96% reachable kill; that run's 2 `suite_green` reds were the agent's hand-computed-position errors, not bugs — see the test-style note below).
+
+## Equivalent-mutant filter (reason about it — the tool can't)
+
+Some survivors are **equivalent mutants** a behaviour-asserting test can never kill. Identify them by reasoning, then exclude their line numbers via the method's `expectedSurvivorLines` so they leave the reachable denominator (the .NET dead-line mechanism):
+
+- **`cxx_remove_void_call` on `free()` / `printf` / logging** — removing a free (a leak) or a print (no asserted output) cannot fail a behaviour assertion. **Side-effect-only ⇒ defensibly excludable.**
+- **`exit()`-line mutants** (a `remove_void_call` *on* the exit call): once `--wrap=exit` is in, mutants that TRIP exit are killed, but a mutant ON the exit line is genuinely equivalent for a valid-input suite (the guard is never true) — keep those lines excluded.
+- **`cxx_assign_const` on internal state** that can propagate to the output is **NOT** provably equivalent — leave it counted. Exclude on mutator-type × observability, never "everything that survived" (that is reward-hacking).
+
+## Test style (so generated tests compile and kill mutants)
+
+- **Example tests** — GoogleTest `TEST()`/`TEST_F()`, one per rule boundary. A C SUT: `extern "C" { #include "x.h" }`. A C++ SUT: include the header and call namespace-qualified (`Ns::fn<T>(...)`). Build inputs in the test; assert ONLY on the **public return value(s)** — never on internal state or log output.
+- **Assert STRUCTURAL INVARIANTS, not hand-computed values.** The recurring Cover-agent failure mode (seen on BOTH Hungarian costs and Levenshtein edit-op positions): the agent hand-computes a wrong expected value, the test fails on *correct* code, and `suite_green` goes red on a non-bug. Prefer invariants the agent cannot mis-arithmetic: round-trip (`apply(ops, source) == target`), conservation (`editops.size() == distance`), a reference implementation, or symmetry (`f(a,b)==f(b,a)`). Assert an exact hand-computed value ONLY for a single trivially-traceable case. **A wrong hand-computed expectation is a FALSE failure, never a candidate bug — do not keep it as one.**
+- **Property tests** — RapidCheck (`RC_GTEST_PROP`) for pure functions (the FsCheck/kiri_check analogue).
+- **Pick boundary cases** that kill relational/arithmetic mutants: every `<`/`<=`/`==`/`!=`, each `+1`, init values, and traversal-direction cases.
+
+Record these facts in a project `docs/conventions/mutation-testing.md` so the Cover agent reads the contract from the consuming repo.
+
+## Run artifacts — written AUTOMATICALLY, every run, without being asked
+
+A run that leaves only a green console is not done. Every run — **all-gates-green OR refused** —
+ends by landing THREE artifacts in the **consuming repo** (the orchestrator/agents write them as the
+final step of the loop; the operator never has to request them):
+
+1. **The gated test suite** → `tests/mine-code/<area>/<class>_test.cpp` — the deliverable.
+   Landed only when the gates pass; a refused run lands no suite (but still writes #2).
+2. **The run report** → append a per-class section to the consuming repo's
+   `docs/specs/{slug}/delivery/mvc-report.md` (the canonical, cumulative report — one file per
+   MVC campaign, one section per class/run; a thin per-run summary next to the test file is optional).
+   Required content per section — match the depth of the Flutter pilot's report, not a gate printout:
+   verdict + full 6-gate table; **Mine stats** (miners, raw-rules-per-miner, consensus count, agreement
+   distribution, triage); **Verify verdicts** (CONFIRMED/IMPRECISE/WRONG + notable corrections);
+   **Cover stats** (tests per iteration, cover-quality findings, CANDIDATE BUGS — state "none" explicitly);
+   **Gate stats** (mutants, kill history across iterations, **every reachable survivor** classified
+   killable vs equivalent-with-reasoning + the `expectedSurvivorLines` hand-off for the next run);
+   **incidents** (every anomaly and what rule/fix it produced); **cost** (agents, tokens, wall time).
+   A refused or halted run STILL writes its section with the stop reason — never silently exit.
+3. **The verified rule KB (the mined BRs)** → the consuming repo's
+   `docs/business-rules/<area>/<unit>.md` (registry rows over `kb-entry-schema` context sections — row
+   grammar defined in `mine-verify-cover`'s `## The rule registry` section) — written at the
+   Mine→Verify seam, flipped `verified → mutation-gated` when the gates pass. The BRs belong to the
+   consuming project, not to the harness side. **Even when a run reuses a previously-mined KB, copy it
+   into the consuming repo** — every input artifact must exist there, not only on the harness side.
+4. **Evidence copies** → beside the report in `docs/specs/{slug}/delivery/`: every generated suite
+   (dated, including refused ones that never land in `tests/`), the KB snapshot(s), and the raw
+   per-mutant gate JSON. The consuming repo must hold the complete evidence trail of every run.
+
+`mine-code` vs `mine-spec` stay separate trees (`tests/mine-spec/` for the spec-conformance mode) —
+the two modes must never read each other's output during a run.
+
+## Picking a target (this decides the ceiling)
+
+The kill-rate ceiling is the **target's observable surface**, not the harness. Same adapter: Hungarian (output in an opaque `int**`, `exit()` guards, lots of internal bookkeeping) capped at **64%**; Levenshtein (pure input→`int`/op-list return) hit **96%**. **Choose a slice whose rules are observable through its public return value(s)** — a dependency-isolated slice proves the toolchain but is not automatically a good kill-rate target. `index_slice.py` + the mined KB's `[OBS]`/`[INT]` tags tell you which rules are observable.
+
+## Graph extraction — clang-uml (feeds `graphify-out/GRAPH_REPORT.md`)
+
+Generate the structural graph that `graphify-out/GRAPH_REPORT.md` and target-picking above consume, using **clang-uml**:
+
+- **Prerequisite:** `compile_commands.json`, generated via a Ninja build (`cmake -G Ninja ... && ninja`) — clang-uml reads the compilation database to resolve includes/templates correctly.
+- **Output:** GraphML + JSON model — the JSON model is what `graphify-out` consumes; GraphML is for visual inspection.
+- **Filter at extraction time, not after:** use clang-uml's context-radius and path/regex include/exclude filters to exclude god nodes (framework base classes, STL/Boost internals) from the graph BEFORE it's generated — filtering post-hoc on an already-bloated graph wastes the extraction pass.
+- **CodeQL is licence-barred** for private repos — do not reach for it here.
+- **Joern** is the zero-build fallback when a `compile_commands.json` can't be produced (no working build, exotic build system) — it parses source directly, no compilation database required, at some precision cost vs clang-uml's semantic resolution.
+
+Provenance only (not the resolver): `docs/kb/research/cpp-code-graph-tooling.md` (the C++ probe repo).
+
+## Cost / scaling note
+
+mull embeds all mutants in ONE compiled binary, then runs them in-process — **far cheaper than per-mutation rebuilds**: ~300 mutants run in one in-process pass, no per-mutant rebuild. The cost is the LLM Cover loop, not the engine. For an exploratory first run on a new slice, cap `maxIterations` low (1–2) to get the kill signal cheaply before committing to the full feedback loop.
+
+## What this skill does NOT do
+
+- Own the loop, the gate battery, or the KB ledger — those are `mine-verify-cover` (the `nexus-miner` method). This skill is only the C/C++ toolchain fill.
+- Compile on the host — everything runs in the Docker image (mull has no native Windows build; Docker is the host-uniform path).
+- Decide WHICH unit to target — the operator chooses; start with logic-rich, return-observable slices (math, geometry, parsing, distance/scoring, data structures), not framework-coupled (e.g. OpenCV `cv::Mat`-trapped) code.
+
+## Relationship to other skills
+
+| Skill | Relationship |
+|-------|-------------|
+| `mine-verify-cover` | the stack-neutral method this adapter plugs into (read it first) |
+| `mine-verify-cover-dotnet` | the sibling .NET adapter — same method (Stryker.NET + dotnet test + xUnit/FsCheck) |
+| `mine-verify-cover-flutter` | the sibling Dart/Flutter adapter (mutation_test + flutter test + flutter_test/mocktail) |
+| `tdd` | the boundary-case + kill-the-mutant test discipline |

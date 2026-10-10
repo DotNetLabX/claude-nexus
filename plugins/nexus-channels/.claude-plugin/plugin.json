@@ -1,0 +1,20 @@
+{
+  "name": "nexus-channels",
+  "version": "0.2.5",
+  "description": "nexus-channels — the access-channels extension for the `nexus` core pipeline. A consuming repo declares its knowledge and data channels per corpus in one committed file, `.claude/access.yaml`, and this extension turns that declaration into a session fact instead of an agent guess. It parses the file fail-closed (block-style dialect, unknown keys rejected, every error naming its line), resolves each corpus by kind against a safe default (a private corpus resolves to its local copy; a published corpus that declares a local copy, its version stamp, a version tool and the key to read from that tool's answer has its channel decided by a version compare the agent runs at first grounding — the local copy while it matches the source, the declared remote when it differs — and otherwise resolves to its declared remote server, or falls back to the local copy disclosed as currency-unverified; a split corpus carries both arms and the consuming skill picks per operation), and runs a session-start conservation check — every declared `deny` entry must already be present in `permissions.deny` of a settings layer (verbatim or covered by a deny glob), every declared path must exist, a declared remote tool that is itself denied unresolves that arm, a declared version tool that is denied costs the corpus its compare without touching that arm, and one compare key declared without the other is reported as an incomplete pair. The same pair of checks covers the optional per-file fetch a consuming extension acts on: a fetch tool declared without the name of its path argument (or the reverse) is reported as an incomplete pair and the pair is ignored, and a declared fetch tool that a settings layer denies is reported and stops being a usable input, again without touching the remote arm. The resolved channel table, the resolver rule and the check findings are injected through this plugin's own SessionStart hook, under its own per-hook output cap, when the declaration file exists; a repo that has the extension installed and has not declared yet gets one line of setup nudge instead — installing the extension is the opt-in, and a project that wants no channels disables the plugin for that project. A repo without the extension installed gets nothing at all. Ships the `access-declaration` skill: the schema reference, the guided setup (drafted from a received template, from your own per-machine defaults, or from a short interview — and every settings change confirmed before it is written), the refresh recipe for when a newer template arrives, the hands-on scaffold recipe, the deny recipe and a `--check` validate recipe. It never edits a settings file, never calls a remote from the hook, and never invents a value — it resolves what the repo declared and discloses what is missing. Requires nexus core installed — install ALONGSIDE nexus, not instead of it.",
+  "author": {
+    "name": "ldumit"
+  },
+  "keywords": [
+    "access",
+    "channels",
+    "access-declaration",
+    "grounding",
+    "session-start",
+    "skills",
+    "extension"
+  ],
+  "dependencies": [
+    "nexus"
+  ]
+}

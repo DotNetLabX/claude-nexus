@@ -1,0 +1,171 @@
+---
+name: improve-skills
+description: "Creates project-local skills for skill gaps, fixes project-local skills as a consolidating pass, and routes fixes to shipped (plugin) skills into the portable plugin-feedback file. Every scaffold and fix ends with the shipped skill-lint gate. Invoked by the learner agent after classification and user approval, or directly when the user asks to create or fix a skill. This is the APPLY half - it changes skill files, acting on findings it is given rather than producing them. Also seeds pattern-pack skills from a repo's graded reference model + ratified charter (the Pattern-Pack Seeding entry point)."
+---
+
+# Improve Skills
+
+Handles lesson items about skills: "skill fix" (an existing skill needs correction) or "skill gap" (a new skill is needed). The meta-loop has a force-multiplier property — a defect in a skill propagates into every run that follows it — so everything this skill writes must be **born compliant**: registered, lint-clean, correctly encoded.
+
+## Entry Points
+
+Three callers, one process:
+
+1. **Learner-classified item** (the pipeline path) — the item arrives already classified and user-approved; the classification carries the channel and target.
+2. **Direct request** — the user asks to create or fix a skill ("build me a skill for X"). Same gates, same lint; where the learner's classification would have decided something (channel, gap home), confirm it with the user instead of inventing it.
+3. **Reference-model seeding** (the pack path) — a campaign or repo asks for pattern skills seeded from its mined estate; intake per §Pattern-Pack Seeding below, then the same authoring recipes and gates as the other two callers.
+
+## Two Channels (ADR-1)
+
+Shipped nexus skills live in the plugin's version-keyed cache — not editable from a consuming project.
+
+> **Dev-repo carve-out (ADR-1).** In the plugin *source* repo itself, this inverts: shipped skills are authored and fixed **directly** in `plugins/{plugin}/skills/` and the skill's own lint is the done-condition — and a **new** shipped skill runs the full New-Skill recipe here, including its Judgment Gate (below). The feedback-file channel below is the *consuming-project* path (where the cache is read-only) — don't route a dev-repo fix to it. The in-repo edit itself follows `edit-shipped-plugin-skill` — the coherent-edit recipe (smallest-coherent-edit scoping, the enumeration/adjacent-surface sweeps, two-surface reconciliation, the skill-lint E9/E7/E6 traps). Authoring a **new** mine-family member or program-home pipeline skill additionally follows `mine-member-authoring` (`nexus-miner`; the family-authoring specialization), on top of the New-Skill recipe.
+
+- **Fix to a shipped (plugin) skill** → append to the portable feedback file `docs/plugin-feedback/nexus-{plugin-version}-{date}.md` (same entry format as improve-flow: suggested target = the skill + section, action, evidence, condensed lesson); commit it as `agents-workflow.md` § All Agents says. Never edit the cache.
+- **Fix to a project-local skill** (one that lives in this project's `.claude/skills/`) → apply directly **as a consolidating pass**: read the SKILL.md fully, fold the fix into the section it belongs to — net complexity flat or down, never additive patching. A skill that only ever grows becomes unreadable and stops being followed. Check the fix against `references/proven-patterns.md` — especially AP2 (sweep every normative surface the rule lives on, not just where it was reported) and AP3 (one owner per fact).
+- **Skill gap** → decide the home:
+  - **Project-specific pattern** (this codebase's stack/structure) → scaffold a **project-local** skill in `.claude/skills/{name}/` (a consumer project legitimately owns its local skills).
+  - **Pipeline-generic pattern** (useful to every nexus consumer) → feedback-file entry proposing a new plugin skill; don't scaffold locally.
+
+## Pattern-Pack Seeding (Reference-Model Entry Point)
+
+The third caller (above): a campaign or repo seeds a **pattern pack** — pattern-teaching skills
+authored from its already-mined, already-elected estate — instead of paying that authoring as a
+per-campaign hand cost. This section is the **intake contract only**; authoring routes to the
+existing recipes below, unchanged.
+
+**Inputs (fail-closed disclosure — a missing input is named in the pack report, never silently
+skipped):**
+
+- **`docs/reference-model.md`** — rows with verdict **CONFIRMED** and portability **`portable` |
+  `adapt`** seed pattern-skill authoring (an `adapt` row seeds **together with its translation
+  note**). `not-portable` rows and non-CONFIRMED rows never seed.
+- **The ratified conventions charter** (`docs/conventions/coding-conventions.md`, F27) **when
+  present** — charter-elected patterns seed by disposition, following F27's three-way vocabulary:
+  - `keep` and `aspire` rows seed.
+  - a `replace` row's **banned old idiom never seeds** (it lives under `§ Banned`); its **named
+    successor** seeds via the reference-model channel when it appears there — a successor that
+    lives **only** in saved research is **disclosed as unseedable in the pack report**, never
+    silently dropped.
+  - No charter present → reference-model-only seeding, disclosed in the pack report.
+- **`docs/skill-gaps/registry.md` `## Anti-patterns (do-not-propagate)`** **when present** — a
+  **kill filter**: a candidate matching an anti-pattern row is dropped, citing the row id.
+
+**Pack manifest checkpoint.** Before any authoring, one **batched owner confirmation** — a single
+manifest listing, per candidate skill: its seed row ids, its home (per §Two Channels), and its
+archetype (per `references/skill-recipe.md`). No skill is authored before the manifest is confirmed.
+
+**Authoring = the existing recipes, unchanged.** A project-local skill → §For New Project-Local
+Skills; a shipped pack (dev-repo carve-out) → the New-Skill recipe **including** its Judgment Gate.
+This section adds **no** authoring rules — one owner per fact; do not restate them here.
+
+**Provenance.** Each authored skill's changelog/backlog entry **cites its seed row ids**, so a
+pack skill traces back to the reference-model (and charter) rows it was grown from.
+
+**Two legs.** Campaign-side authoring is **project-local first**; promotion of a proven pattern
+skill to a **shipped** pack rides the existing dev-repo carve-out at campaign close — no new
+promotion machinery is introduced here.
+
+## For New Project-Local Skills
+
+1. **Verify the gap is real:**
+   - Check the skills already surfaced in your context (plugin skills are listed there — directory globbing under-reports them) AND grep the project's own `.claude/skills/` — confirm no existing skill covers it.
+   - Check that reference files mentioned in the lesson still exist.
+   - Confirm the pattern is repeatable — will be needed again, not a one-off.
+2. **Ground the design in the authoritative sources — design against them, not from memory:**
+   - **Domain reference** — consult the canonical reference for the skill's *subject* before
+     writing the recipe (e.g. invoke `claude-api` for a prompt/LLM skill, the relevant stack
+     skill for a framework skill). A skill *about* X must reflect X's authoritative source.
+   - **`references/proven-patterns.md`** — design the recipe against the P1–P11 mechanisms that
+     earned their keep (state-first writing, deterministic post-conditions, …) and the AP1–AP7
+     anti-patterns to design out.
+   - **`references/skill-recipe.md`** — consult it for the **archetype decision** (pick heavy vs
+     light *first*) and the **reusable-element menu**, before matching structure to existing
+     skills below. Applies to both authoring paths — a project-local skill and, under the
+     dev-repo carve-out above, a new shipped skill.
+   - **2–3 existing skills** closest in type (project-local, or shipped from your context) —
+     match their structure.
+3. **Scaffold:** `.claude/skills/{skill-name}/SKILL.md` (add `workflows/` or `references/` only if variant-aware or template-bearing, or `scripts/` when a post-condition is deterministically checkable (P1)).
+4. **Write SKILL.md born compliant** — frontmatter first (see `references/skill-recipe.md`
+   §frontmatter cheat-sheet for the full field semantics — applies to both authoring paths):
+   - `name:` — must equal the folder name.
+   - `description:` — what it does AND when to use it; this line is the auto-invocation trigger, so name the situations ("Use when …"), not just the topic.
+   - Decide `user-invocable:` (should a human trigger it as `/{name}`?) and, for side-effecting skills, whether `disable-model-invocation: true` is safer.
+   Then the body: `# {Skill Name}`, `## Steps` (concrete, actionable), `## Arguments` if applicable.
+5. **Extract the real pattern from the codebase** — read the reference files from the gap description; don't invent abstract instructions.
+6. **Register it** — if the project keeps a skills index (a README or list under `.claude/skills/`), add the row. A skill that isn't listed isn't discoverable.
+
+## Write Discipline (encoding)
+
+Write `SKILL.md` and reference files with the **Write tool — UTF-8 without BOM**. Never create them via shell redirection (`Out-File`, `>`): the default Windows-shell encoding prepends a BOM that breaks frontmatter parsing, and the skill silently stops loading (measured incident class — three skills registered broken, found weeks later).
+
+## Deterministic Gate (both paths — the done-condition)
+
+Every fix and every scaffold ends by running the lint that ships with this skill:
+
+```bash
+node {improve-skills folder}/scripts/skill-lint.mjs .claude/skills/{name}
+```
+
+`scripts/skill-lint.mjs` sits next to this SKILL.md; in a consuming project resolve it via the plugin cache (glob `~/.claude/plugins/cache/**/skills/improve-skills/scripts/skill-lint.mjs`, highest version). It checks: SKILL.md exists, no BOM, frontmatter valid, `name` matches the folder, `description` present, and cited reference files exist — `references/`/`workflows/` (any shape) plus file-shaped `scripts/`/`assets/` paths, resolved skill-relative or at the repo root. It also warns (never errors) on an oversized body (over 500 lines), on a reference that itself cites another reference, and — for a stack-extension skill (plugin dir suffix `-dotnet`/`-flutter`/`-cpp`/`-php`) — on a missing `## Assumes` block (W5) or a description lacking a `use when` trigger (W6), per skill-recipe §4.
+
+**Exit 0 is the done-condition.** (For a **new** skill, see the Judgment Gate below.) Fix every ERROR before reporting the item complete; WARNs are advice. A prose rule no machine executes decays silently — this gate is the machine. (If node is genuinely unavailable, walk the checklist above by hand and say so in the report.)
+
+## Judgment Gate (new skills — on top of the lint)
+
+The lint checks *form*; a well-formed bad skill passes it (ADR-23). **Done is the lint exiting 0**,
+with the prose **Quality Gate** below read against the new skill.
+
+Where the `evaluate-skill` skill (`nexus-pro`) is in your skill list, for every **new** skill —
+project-local or a shipped skill authored under the dev-repo carve-out — also run it on the new
+skill folder after the lint exits 0, and resolve its findings: fold every CRITICAL/HIGH finding
+back through this skill as a consolidating pass (net complexity flat or down — never additive
+patching), re-run the lint, and waive a finding only with a reason in the report. It runs the
+rubric's judgment layers (job fitness, repeatability, no-overlap, concrete steps, capability
+overlays) the lint structurally cannot, and runs the Quality Gate as an actual pass, not an
+eyeball. It costs an extra agent pass; a defect in a new skill propagates into every skill that
+follows, which is why a new skill is worth it. (Fixes to an existing skill keep the lint alone as
+their done-condition.)
+
+## Skill Backlog
+
+Log every action to `docs/skill-backlog.md` (create if absent). Entry format:
+
+```markdown
+### {Skill Name}
+- **Status:** Created | Fixed | Routed-to-plugin | Deferred
+- **Type:** Gap | Fix
+- **Source:** {Feature name} lessons
+- **Description:** {What it covers, what was fixed, or what was routed to the feedback file}
+- **Date:** {YYYY-MM-DD}
+```
+
+Group entries under `## Skills Created`, `## Skills Fixed`, and `## Routed to Plugin`.
+
+## Quality Gate (before creating any new skill)
+
+- The pattern is **repeatable** — it will be needed again.
+- **No existing skill** covers it, even partially (context-surfaced + project-local).
+- The **reference files** mentioned in the gap still exist.
+- The steps are **concrete and actionable** — not abstract guidance.
+- Project-local skills may bake in project specifics; a skill proposed for the **plugin** must be generic — placeholders (`{Name}`, `{Svc}`), no project paths.
+- A **stack-extension** skill (a plugin dir suffixed `-dotnet`/`-flutter`/`-cpp`/`-php`) meets skill-recipe §4 — it opens with an `## Assumes` block and its `description` names the step-shapes plans use.
+- **No anti-pattern from `references/proven-patterns.md`** — especially AP1 (every MUST names its executor), AP4 (glob, don't enumerate), AP5 (every named path/tool verified to exist), AP6 (multi-phase producers ship a finalize path).
+
+If the gate fails, log the gap to the backlog with status `Deferred` and the reason.
+
+## Changelog Maintenance
+
+When fixing a **project-local** skill, append to its `CHANGELOG.md` under `## [Unreleased]` — one bullet per meaningful change with the evidence citation (feature slug). Create the file if absent. (Shipped-skill changelogs are the plugin repo's concern — the feedback entry carries the evidence instead.)
+
+## Cross-Reference Lint
+
+Before renaming or deleting a project-local skill, grep the project's docs and config for references to the old name. Update or remove stale references first.
+
+## What This Skill Does NOT Do
+
+- Classify items — the learner already did that (in direct mode, the user's request is the classification).
+- Modify CLAUDE.md, conventions, or rule files — that's `improve-flow`.
+- Edit shipped plugin skills — those route to the feedback file.
+- Write application code.
+- Tag items as [APPLIED] — the learner handles tagging.

@@ -1,0 +1,37 @@
+{
+  "stack": "cpp",
+  "_comment": [
+    "F52 W3-4 doctor manifest, discovered BY CONVENTION at {adapter-skill}/tools/doctor-manifest.json.",
+    "NOTE the adjacency: this skill ALSO ships toolchain/, which is the Docker BUILD CONTEXT",
+    "(Dockerfile, mull.yml.template, CMakeLists.*, exit_wrap.cpp, index_slice.py) and is a different",
+    "thing entirely — the runner mounts it. The manifest path is tools/, stack-independent, so the",
+    "doctor's discovery convention stays exactly one string across every adapter.",
+    "Fix hints CITE the Toolchain bringup section of this skill's SKILL.md; they do not replace it.",
+    "Everything here runs INSIDE Docker — nothing is compiled on the host — so the probes check the",
+    "host-side prerequisites (docker itself, then the built image)."
+  ],
+  "checks": [
+    {
+      "name": "Docker daemon reachable",
+      "command": "docker",
+      "args": ["info", "--format", "{{.ServerVersion}}"],
+      "severity": "BLOCK",
+      "fixHint": "start Docker — the C/C++ arm compiles nothing on the host; see the Toolchain bringup section of this skill's SKILL.md"
+    },
+    {
+      "name": "mvc-probe image built",
+      "command": "docker",
+      "args": ["image", "inspect", "mvc-probe", "--format", "{{.Id}}"],
+      "severity": "BLOCK",
+      "fixHint": "docker build -t mvc-probe {this-skill-dir}/toolchain (clang-15 + mull-15 + GoogleTest + libclang, ~1.2 GB) — step 1 of Toolchain bringup"
+    },
+    {
+      "name": "mull-15 present inside the image",
+      "command": "docker",
+      "args": ["run", "--rm", "mvc-probe", "bash", "-lc", "mull-runner-15 --version"],
+      "severity": "BLOCK",
+      "expect": "15",
+      "fixHint": "the image built but does not carry mull-15 — rebuild from toolchain/Dockerfile; on Ubuntu jammy the Cloudsmith repo pins clang/mull to 15"
+    }
+  ]
+}

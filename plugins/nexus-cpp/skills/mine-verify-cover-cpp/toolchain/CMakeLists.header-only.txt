@@ -1,0 +1,24 @@
+# CMake template — HEADER-ONLY slice (.h/.hpp). The SUT is instantiated into the test TU; mull scopes
+# mutation to the header via mull.yml includePaths. No lib target, no exit-wrap unless the header calls exit().
+cmake_minimum_required(VERSION 3.16)
+project(mvc_cover CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_BUILD_TYPE Debug)
+
+option(MULL "Compile with the mull IR pass plugin" OFF)
+if(MULL)
+  add_compile_options(-O0 -g -grecord-command-line -fpass-plugin=/usr/lib/mull-ir-frontend-15)
+endif()
+
+enable_testing()
+find_package(GTest REQUIRED)
+
+file(GLOB COVER_TESTS tests/*.cpp)
+add_executable(cover_tests ${COVER_TESTS})
+target_include_directories(cover_tests PRIVATE src)
+target_link_libraries(cover_tests PRIVATE GTest::gtest GTest::gtest_main)
+
+include(GoogleTest)
+gtest_discover_tests(cover_tests)

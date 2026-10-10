@@ -1,0 +1,36 @@
+{
+  "name": "claude-nexus",
+  "owner": {
+    "name": "ldumit"
+  },
+  "metadata": {
+    "description": "Nexus — a multi-agent team pipeline for Claude Code.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "nexus",
+      "source": "./plugins/nexus"
+    },
+    {
+      "name": "nexus-dotnet",
+      "source": "./plugins/nexus-dotnet"
+    },
+    {
+      "name": "nexus-flutter",
+      "source": "./plugins/nexus-flutter"
+    },
+    {
+      "name": "nexus-cpp",
+      "source": "./plugins/nexus-cpp"
+    },
+    {
+      "name": "nexus-php",
+      "source": "./plugins/nexus-php"
+    },
+    {
+      "name": "nexus-channels",
+      "source": "./plugins/nexus-channels"
+    }
+  ]
+}

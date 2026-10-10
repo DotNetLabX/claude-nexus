@@ -1,0 +1,61 @@
+# .claude/access.yaml — what may ground an answer, per corpus.
+#
+# Copy this file to `.claude/access.yaml` at the repo root and replace every {placeholder} with a
+# value the repo owner supplies. Never invent a server, a tool or a path, and never carry one over
+# from another repo: a plausible-looking wrong value is worse than a missing one, because the
+# session-start check cannot tell it from a real one.
+#
+# Delete the entries you do not need. Every corpus needs a `kind`; what else it needs depends on it.
+# Full contract: the `access-declaration` skill's `references/access-schema.md`.
+#
+# This same file, prefilled with the values you keep reusing and kept in your Claude config directory
+# (`CLAUDE_CONFIG_DIR` when that is set, otherwise `~/.claude`), serves as your per-machine defaults:
+# the guided setup drafts from it in any repo that received no template of its own.
+#
+# Validate before committing:
+#   node "{plugin root}/hooks/scripts/inject-access.js" --check
+#   exit 0 = clean, 1 = findings or an unresolved corpus, 2 = no declaration file.
+
+corpora:
+
+  # A PRIVATE corpus exists only as the copy in this repo. It resolves to that copy, and it may
+  # declare no remote — a remote would contradict what "private" means.
+  {handbook}:
+    kind: private
+    path: {docs/handbook}
+
+  # A PUBLISHED corpus has an authoritative source elsewhere. Declare the manifest and the two
+  # version keys below and the agent decides per session: the local copy while its stamp matches the
+  # source, the remote when they differ. Leave them out and it resolves to the remote if one is
+  # declared, otherwise to the local copy, disclosed as currency-unverified.
+  #
+  # The last key of each block below — `hash_key`, and the `fetch_tool`/`fetch_key` pair — is
+  # optional and belongs to a CONSUMING extension, not to this one: this reader validates each and
+  # never acts on it. Delete them unless an extension that reads them is installed.
+  {catalog}:
+    kind: published
+    path: {docs/catalog}
+    manifest:
+      path: {docs/catalog/manifest.json}   # the file carrying the stamp
+      commit_key: {source_commit}          # the key whose value is the stamp — read and shown
+      hash_key: {content_hash}             # the key holding this corpus's per-file content hashes
+    remote:
+      server: {catalog_server}
+      tools: [{search}, {fetch}]           # the tools the agent may call for this corpus
+      version_tool: {version}              # the tool that answers this corpus's version at the source
+      version_key: {kb.gitCommit}          # which value in that answer is this corpus's version
+      fetch_tool: {get_file}               # the tool that fetches ONE file of this corpus
+      fetch_key: {rel_path}                # which ARGUMENT of that tool takes the file's path
+
+  # A SPLIT corpus has two real arms; the skill that uses it picks per operation. Both are required.
+  # `deny` names tools that must NOT be callable here — the matching `permissions.deny` line goes in
+  # `.claude/settings.json`, proposed to the owner and added only on their confirmation.
+  {atlas}:
+    kind: split
+    path: {docs/atlas}
+    remote:
+      server: {atlas_server}
+      tools:
+        - {query}
+        - {describe}
+    deny: [mcp__{atlas_server}__{write}]

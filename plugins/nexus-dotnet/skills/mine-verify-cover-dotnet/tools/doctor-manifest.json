@@ -1,0 +1,33 @@
+{
+  "stack": "dotnet",
+  "_comment": [
+    "F52 W3-4 doctor manifest, discovered BY CONVENTION at {adapter-skill}/tools/doctor-manifest.json",
+    "— deliberately NOT a named ADR-60 adapter capability (the capability contract pins exactly five,",
+    "in order, parsed from literal headings in all four adapters).",
+    "Fix hints CITE the prose runbooks in this skill's SKILL.md; they do not replace them.",
+    "Run: tools/doctor.mjs from the base directory the loaded mine-verify-cover skill announced, with --skill {this-skill-dir}"
+  ],
+  "checks": [
+    {
+      "name": ".NET SDK present",
+      "command": "dotnet",
+      "args": ["--version"],
+      "severity": "BLOCK",
+      "fixHint": "install the .NET SDK — the Cover arm cannot build or run the mined test project without it"
+    },
+    {
+      "name": "Stryker.NET dotnet-tool available",
+      "command": "dotnet",
+      "args": ["stryker", "--version"],
+      "severity": "BLOCK",
+      "fixHint": "dotnet tool install -g dotnet-stryker (or restore the local tool manifest) — Stryker is capability 3, the mutation tool"
+    }
+  ],
+  "_not_probed": [
+    "The test-project scaffold is deliberately NOT a check here. Doctor v1 probes the ENVIRONMENT and",
+    "takes no target-repo path, so any 'is the test project scaffolded' probe it could run would pass",
+    "wherever the SDK exists — a check that cannot fail is no check, which is the exact vacuity this",
+    "wave exists to remove. The scaffold stays an operator prerequisite in the prose runbook, and the",
+    "Stryker fix hint above points at it."
+  ]
+}

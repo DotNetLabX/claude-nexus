@@ -1,0 +1,65 @@
+---
+name: kb-entry-schema
+description: Standard section order for knowledge-base entries under docs/kb/. Load when writing or updating a KB entry so headings stay consistent for agents and lint checks.
+---
+
+# KB Entry Schema
+
+Standard section order for all `docs/kb/` entries. Use these headings exactly — agents and lint checks rely on consistent naming.
+
+## Species boundary
+
+Two species live in this neighborhood, and they are not the same thing. **KB entries** — vocabulary,
+saved research write-ups, general concept documentation — stay under `docs/kb/`, following this schema.
+The mined/merged **rule registry** (Mine→Verify/Merge output) is a different species: it lives at
+`docs/business-rules/<area>/<unit>.md`, and its row grammar (`source:`, `status:`, `criticality:`,
+`last_verified:`) is defined in the `nexus-miner` plugin's `mine-verify-cover` skill's `## The rule registry` section —
+the shipped reference, never the tech-spec or an ADR number. This schema's sections (`Key Files`,
+`Edge Cases`, `Source`, etc.) still apply to a registry file, but only as its non-row context body,
+sitting below the rule rows.
+
+## Required Sections
+
+```markdown
+# {Concept Name}
+
+## Rules
+Business rules that govern this concept — the "why" that code doesn't explain.
+One rule per bullet. Each rule should be falsifiable (you could write a test for it).
+
+## Key Files
+- `path/to/file` — what it contains relevant to this concept
+
+## Edge Cases
+- {condition}: {what happens and why}
+
+## Relationships
+- {ConceptA} → {ConceptB}: {nature of relationship}
+```
+
+## Optional Sections
+
+```markdown
+## Status
+Deprecated | Active (omit section if Active — only needed when deprecated)
+Reason: {why deprecated, what replaced it}
+
+## Source
+Which spec section, domain rule, or external system defines this concept.
+```
+
+## Rules
+
+- Section order must match the schema above. Agents scan by heading name.
+- `## Rules` captures business invariants. `## Edge Cases` captures boundary conditions. Don't mix them.
+- `## Key Files` paths must be relative to the repo root (e.g., `src/.../Aggregates/{Concept}.cs` — use the project's actual layout).
+- Keep entries to ~60 lines total. If an entry grows beyond 80 lines, split into sub-entries.
+- When deprecating: add `## Status: Deprecated` at the top, keep all other sections intact.
+
+## Consumers
+
+| Agent | Uses | Impact |
+|-------|------|--------|
+| Architect | Rules, Relationships | Plans without KB context miss invariants |
+| Developer | Key Files, Edge Cases | Faster file discovery, correct boundary handling |
+| Reviewer | Rules, Edge Cases | Verifies implementation enforces documented rules |

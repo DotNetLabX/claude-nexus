@@ -1,0 +1,195 @@
+---
+name: create-implementation-plan
+description: Creates implementation plans with mandatory skill mapping per step. Ensures plan steps reference skills instead of restating patterns. Owns the plan.md format.
+user-invocable: true
+---
+
+# Create Implementation Plan (Architect Reference)
+
+This skill is for the **architect agent**. It produces `docs/specs/{slug}/delivery/plan.md` — the implementation plan that the developer executes. Each step either references a skill or explicitly justifies inline detail. No freeform plans.
+
+## Purpose
+
+Generate `docs/specs/{slug}/delivery/plan.md` with a structural guarantee that each step either references a skill or explicitly justifies inline detail. **This skill owns the plan format** — `references/plan-template.md` is its definition, and the coordination protocol (`rules/on-demand/agents-workflow.md` § Artifact Formats) points here rather than defining a second one.
+
+## When to use
+
+After a feature spec exists (`docs/specs/{slug}/definition/spec.md` with `Status: Ready`). Replaces freeform plan writing.
+
+## Reading protocol
+
+Before writing, ensure you have:
+
+1. **Grep the feature name before authoring** — grep the feature name / slug keywords across `docs/proposals/`, `docs/specs/`, and `docs/backlog.md`. A same-name or same-topic artifact found is **surfaced in the plan's Context** (stale? superseded? already covering part of the scope?) — never silently re-planned. (Measured near-miss: a stale same-name proposal was nearly re-planned.)
+2. **Feature spec** — read `docs/specs/{slug}/definition/spec.md` (or `epic.md` / `bug.md` depending on slug type)
+3. **Architecture doc** — read for system shape and existing decisions
+4. **Skill inventory** — if the architecture doc has a Skill Inventory section, use it; otherwise build one from **the skills surfaced in your context** (plugin skills live in the version-keyed cache — globbing `.claude/skills/` under-reports them) plus the project's own `.claude/skills/`.
+5. **Existing plans** — read `docs/specs/*/delivery/plan.md` for format consistency
+
+## Steps
+
+1. **Pre-fill from conversation context.** The architect has typically been discussing the feature before invoking this skill. Pull every answer you can from the existing conversation. Do not re-ask what the user already said.
+
+2. **Run the reading protocol.** Grep for prior same-name/same-topic artifacts, then read the feature spec, architecture doc, skill inventory, and existing plans.
+
+3. **Draft the implementation steps.** Each step is one focused task with full file paths.
+
+4. **Build the Skill Mapping** — for each step, determine the disposition:
+   - **Follow** — a skill covers this pattern. Provide only feature-specific inputs (entity names, file paths, property types). Do NOT restate how the pattern works.
+   - **Find or build** — a skill covers this pattern but relies on something not in sight (a helper, a base class, a shared component). The step names what was looked for — the repo's helper list, then the shared libraries, modules and packages the project can reach — and, when nothing was found, where it is built once (→ agents-workflow.md § Skill Authority); then the skill is followed.
+   - **None** — no skill covers this step. Describe what to accomplish + acceptance criteria. Since the developer has no skill to invoke, also include key domain constraints (type names, case sensitivity, important values) and pattern references (point to existing code). Do NOT write method-body logic flows (sequential pseudo-code under a single method). The developer decides internal decomposition. Route the gap to `lessons.md` `## Skill Gaps` per `lessons-format` — the plan's `Gap?` column stays a plan-local marker, not the record.
+
+   **Skill verification before setting None:** For each step, list the actions it performs (throws exceptions, registers services, queries data, creates endpoints, configures persistence). Match each action against skill frontmatter descriptions. Only set None after confirming no frontmatter description matches. If a frontmatter is ambiguous, read the skill's When to Use section before deciding.
+
+   **TDD marking (every step, every plan):** alongside the disposition, set the step's `TDD` column — `yes` for testable behavior (domain logic, endpoint request/response, business rules), `no` for pure wiring (DI, config, migrations). This is a *process-skill* mapping, independent of the pattern-skill disposition: a `Skill: None` step can still be `TDD: yes`, and the developer invokes the `tdd` skill on every `yes` step.
+
+5. **Anti-pattern check.** Scan the draft for:
+   - The word "adapted" or "adapt" near a skill reference — violation. Either `Follow` or `Find or build`, never Adapt.
+   - A skill dismissed as "too simple" or "not needed for this case" — violation. Skills ensure consistency; complexity is not the criterion.
+   - Implementation pattern details restated when a skill exists — over-specification. Delete and reference the skill.
+   - A mapped skill whose step text lacks the disposition keyword — violation. Write `Follow {name}` / `Find or build {x}, then follow {name}`, never a bare skill name with a parenthetical scope. The keyword is the developer's binding invocation trigger (measured failure: a plan dropped it and 9 mapped steps shipped with zero invocations).
+   - In-repo code references on a Follow step that point at the *structural pattern* the skill teaches — violation. Developers measurably imitate cited code and skip the skill. On Follow steps, cite code only for feature-specific surfaces (a route to mirror, a type to extend).
+   
+   **Over-specification test for Follow steps:** Read the skill's SKILL.md. For each detail in the plan step, ask: "Does the skill already cover this?" If yes, delete it from the plan step. What remains should be ONLY feature-specific inputs the skill can't know:
+   - Entity/type names and their properties ✓
+   - Business rules and computation logic ✓
+   - File paths ✓
+   - Route paths, API shapes ✓
+   - References to existing code for feature-specific patterns ✓
+   
+   Delete from Follow steps — the skill already covers these:
+   - File placement rules ✗
+   - DI registration instructions ✗
+   - Constructor injection patterns ✗
+   - Record/class structural syntax ✗
+   - Boilerplate that the skill's template generates ✗
+   
+   **Content budget:** A Follow step should be ~5-15 lines of feature-specific inputs + a skill reference. If a Follow step exceeds 30 lines, it likely over-specifies. The developer invokes the skill via the Skill tool to get structural patterns — duplicating them in the plan causes the developer to skip skill invocation entirely.
+
+6. **Write the plan** following `references/plan-template.md`. Output: `docs/specs/{slug}/delivery/plan.md`.
+
+   **`Satisfies:` traceability (per step).** Each plan step *may* carry a
+   one-line `Satisfies:` annotation citing the acceptance criterion it delivers (`Satisfies: AC-3`), or
+   — for an ad-hoc pass with no spec ACs — the **ADR unit** it satisfies (`Satisfies: ADR-26
+   RESEARCH-stage`), or — when the slug has a rule list — a **`{ruleName}`** referent that resolves to a
+   row in `docs/specs/{slug}/definition/spec-rules.md` (`Satisfies: credit-limit-boundary-inclusive`). This is the
+   lightweight SDD requirement→task link (the research's chosen weight, a one-line annotation, not a full
+   requirement-ID chain), and it is the defense against intent drift (code that runs but does the wrong
+   thing). For acceptance criteria and ADR units it is **additive and optional** — a step may
+   omit it, and existing plans predate it; **never** write it as a blanket "every step must carry
+   `Satisfies:`" mandate. **The one narrowing:
+   where the slug has a rule list and the mining skills (`nexus-miner`) are installed, every `kind: behaviour`
+   row is cited by a step's `Satisfies:` or sits in the plan's `Not delivered by this feature` list with
+   its reason** (a sub-list under `## Scope`; a list with no `kind` column reads as all-behaviour); a
+   behaviour rule with neither is a plan gap the plan critic can see.
+   Without them, a rule list left by an earlier install is not joined: the plan names it in one line with the install line, `/plugin install nexus-miner@claude-nexus-miner`, and no row needs citing.
+   A step that cites rules lists them
+   under its `Satisfies:` line, one per line, as `{ruleName} — {one-line statement}` and nothing more —
+   no citation, no evidence. That is how the rules reach the developer; the dispatch stays a path
+   pointer. Where a step carries it, the architect done-check confirms the cited
+   AC/ADR-unit/`ruleName` is real and the reviewer verifies the code traces to it (both "where present",
+   not a new hard gate).
+
+7. **Apply the auto-approve gate** — owned by the coordination roles, not by a rule file: `team-lead.md` § Plan Approval and `architect.md` § Phase 2 (always auto-approve once the review passes with no open questions; a plan that needs build slices carries its `**Build slices:**` line — § Build Slices). Message team lead, never developer directly.
+
+## Arguments
+
+Pass the feature name: `create-implementation-plan Sprint`
+
+## Required Reading
+
+Before invoking this skill, ensure you have read:
+- `docs/specs/{slug}/definition/spec.md` — feature requirements to plan against
+- `docs/architecture/index.md` — system shape and existing decisions (read it if present — nothing is auto-loaded)
+- The skill inventory (context-surfaced plugin skills + project `.claude/skills/`) — needed for the Skill Mapping table
+- `docs/specs/*/delivery/plan.md` (1-2 recent examples) — format consistency
+- Plus the reading-protocol **grep-the-feature-name** collision check (grep the feature name across `docs/proposals/`, `docs/specs/`, `docs/backlog.md`) — see `## Reading protocol` item 1; this list and the reading protocol must not silently diverge
+
+## Anti-patterns
+
+- **Writing method-body plans.** Describing sequential logic steps (1. do X, 2. do Y, 3. do Z) instead of operation + acceptance criteria. This over-specifies and leads the developer to skip skill invocation. Describe *what* to accomplish, not *how* to implement it internally.
+- **Omitting skill mapping for steps that have a matching skill.** Setting disposition to None without running the skill verification test ("list all actions → match each against skill frontmatter"). A step that creates an endpoint, adds a domain event handler, or configures persistence almost always has a matching skill.
+- **Restating pattern details alongside a Follow skill reference.** If the skill already covers file placement, DI wiring, or record structure — delete it from the plan step. Keep only feature-specific inputs the skill can't know. Over-specification causes the developer to skip the skill entirely.
+- **Dropping the disposition keyword from a mapped step.** A bare skill name (`persistence-patterns` (seed-data section)) instead of `Follow persistence-patterns` removes the developer's binding invocation trigger — the measured result was 9 mapped steps implemented with zero skill invocations. Every mapped step's text carries `Follow` or `Find or build …, then follow`.
+- **Structural-pattern code references on Follow steps.** When a Follow step also cites in-repo code implementing the same pattern, the developer imitates the cited code and never opens the skill (measured across 11 plans: skills were consumed only on steps with no in-repo precedent). Cite code on Follow steps only for feature-specific surfaces — the structural pattern is the skill's job.
+- **Leaving a Follow step's branched done-condition unpinned.** When the mapped skill's done-condition depends on the artifact being new vs existing (e.g. a new shipped skill pulls in a mandatory judgment gate that a fix to an existing one does not), an unqualified `Follow X` hides the branch — the developer either misses the heavier half or runs a gate the plan never scoped. State which branch applies and pin its full acceptance in the step.
+- **Bloated plans are a read-cost multiplier.** A plan is read by 4+ agents across the run, and every KB is paid in each of their contexts. Keep the whole file lean — acceptance criteria over restated detail; target well under ~40KB, and past that trim restated detail rather than let one file bloat. A plan stays one document: build slices divide the build, never the file.
+
+## Build Slices
+
+Each slice is built by a fresh developer, so the `**Build slices:**` header line (`{a}–{b} · {c}–{d} · …; why: {one line}`, shown in `references/plan-template.md`) is where you decide how much one developer's conversation carries.
+
+- **When the line is required:** the plan has more than 8 steps a developer builds, or you judge a step heavy — a large move, or a step that must read a whole subsystem before it can build. Otherwise omit it; the whole plan is one slice.
+- **Which steps it covers:** every step a developer builds. A step the plan marks `Owner: close` or `Owner: operator` (a registry promotion, an operator's live run) sits outside the slices and does not count toward the 8.
+- **Size:** up to 8 steps per slice by default; fewer where steps are heavy — a judgment call.
+- **Where cuts fall:** only between unrelated steps — steps that build on each other stay together (a contract and the move onto it; a move and its follow-up). One exception: a declared developer boundary (the `**Developers:**` line) is always a cut, even between a contract and its consumer — the contract is that split's handover.
+- **When no clean cut exists** — a chain of related steps longer than a slice — cut at the least-coupled boundary inside the chain and name it in `why:`. A cut that splits related steps is legal only there, and never silently. A line holding a single range is not valid: where no cut is wanted, omit the line, and the size limit the team lead checks at every hand-back is the only guard.
+- **With a `**Developers:**` line:** slices nest inside the declared ranges and never cross one; one developer's range may hold several slices. A plan that declares developers and carries no slice line has one slice per declared developer.
+- **What the plan review checks.** Mechanically: the line holds more than one range; the ranges cover every developer-built step exactly once, in plan order, inside the declared developer ranges; and the line is present where the plan has more than 8 developer-built steps. Checked by judgment, and stated as judgment in the review: each slice is sized for its steps, and no cut splits related steps.
+
+## Plan Grounding & Deviation Rules
+
+These apply to every plan, feature or refactor.
+
+- **Declare which surfaces are binding and which are the developer's call.** Public/wire identifiers (routes, serialized property names, contract type names) are binding; internal names are free unless the plan says otherwise. Name the known convention forks (e.g. an alternate migration startup project) as sanctioned variants, and when a plan point is genuinely developer judgment, say so explicitly. This converts a would-be "deviation" into a pre-sanctioned decision the done-check resolves in one line instead of escalating.
+
+- **A hedge in a plan is a deferred read.** Every "may", "if needed", "either…or" that is resolvable from on-disk state (a model snapshot, a DI registration, an installed-package list) must be resolved while writing the plan — reserve hedges for genuine runtime unknowns. Any count the plan cites ("N early returns", "8 call sites") comes from a grep run at plan time, never from memory of a read. And when a step carries a field across a module or contract boundary, trace the field back to its *actual source type* on disk before making it a key or a required member — the source DTO may not have it.
+
+- **Every pinned acceptance command is executed at plan time — grep, test runner, or generator — and its expected result written from the actual run, never asserted from memory.** Write each grep-gate's expected-hits whitelist from the executed grep's real output; when a step carries multiple whitelist bullets over overlapping greps, a carve-out granted in one is repeated in every sibling. A first-of-kind consumer of shared machinery (a generator, a hard-coded registry, a lint suite) executes that machinery against a fixture at plan time — a usage line in a doc is not a capability claim — and so does any **scheduling mechanism** a step's execution banks on (a copied or isolated tree, an env or argv override, a background batch): run it once in its intended shape, where a dry-run counts and a description does not. Harden the patterns for the environment: separator/escape hardening (e.g. `[\\/]`) goes on *both* gates of a positive/negative pair, prose-file greps are phrased structure-independent (content anchors, never line counts — markdown re-wraps silently), and any line count comes from `wc -l` / `(Get-Content $f).Count`, never `Measure-Object -Line` (it skips blank lines). A token-sweep gate spans **every file type** in its scoped tree — never `--include="*.md"`; a foreign token hides as easily in a `.sql`, `.cs`, or `.json` sibling (the gate is only as wide as its file filter). And run accept-greps that expect zero hits as separate commands (or append `; true`) — a zero-match `grep`/`grep -c` exits 1 and silently kills the rest of an `&&`-chain. The execution rule covers every plan-time **evidence claim**, not only acceptance commands: Context/evidence blocks, carve-out lists, echo-check dispositions, and named *expectations* are all pasted from real runs — "expected: X and Y — verify, don't assume" is an assumption dressed as a hedge; if a step names targets, the grep runs at plan time. And a **verbatim-adoption or relocation** step's acceptance is a mechanical `diff` against the source (or the adopted text is byte-spliced from it, making the gate pass by construction), never token greps — greps prove tokens present, not text identical. And a plan-mandated verbatim literal is authored **on one line**, or its accept made whitespace-tolerant — prose estates hard-wrap, and a correct-but-wrapped literal fails a single-line `grep -F` as a false Fail.
+
+- **A pointer, reuse, or wiring claim is verified by grepping its *target* for the claimed content — existence is not carriage.** "X already owns this discipline", "tool Y is reusable here", "workflow Z runs check W", "see sibling F's precedent" are content claims about another artifact: before a step inherits one, grep the target for the content itself (the invoker for the invokee, the tool's selection loop for its actual coverage, the cited section for the discipline). A resolved-Unresolved note in a proposal, a README wiring sentence, and a sibling plan's planned-but-unbuilt shape are exactly where a dead pointer ships from — a *planned* shape is citable only as planned. And a pointer across injection surfaces is a **reachability** claim on top of a content claim: confirm the target actually loads for the citing surface's audience (a rule file reaches every agent; an agent file reaches only its own agent, ADR-2) — content present at a target the reader never loads is still a dead pointer. The reviewer-side mirror for prose artifacts: one grep per cross-reference the new text makes.
+
+- **A change to a counted or membered fact sweeps every consumer echo, enumerated from a plan-time grep.** When a step changes a count that other files restate (a family-table row count, an "all N members" phrase, a numbered list), enumerate the echo sites by grep and fold the sync into the same step — and sweep all four echo shapes: the count word, any **enumerated member list** sitting near it (a count-based grep is structurally blind to a stale name list), any prose sentence that *summarizes* the list, and any quantifying label or policy-asserting comment beside the changed fact. Prefer replacing a fragile prose subset with a count-word pointer ("all N members") or a bare see-the-owner reference so no subset is left to go stale, and watch ordinal anaphora ("the latter two") when inserting into an enumerated list. The same discipline covers **canonical terms**, not just counts and lists: never gloss a term or list another artifact defines — point at the defining artifact instead of paraphrasing it; a paraphrase (or a SKILL.md summary of its own references) silently narrows the definition exactly as a prose subset narrows a list. It also covers a changed **rule**: when a step changes a contract other files restate (a classification list, a marker vocabulary, a status grammar), grep the estate for the rule's distinctive literals — marker names, status values — not just the count word; the restatement most often sits in a stack adapter where no number moves. Scope floor for any estate sweep: the full estate **plus every file the plan's own steps edit** — the file a step edits is the echo site most often skipped.
+
+- **A measured numeric Accept target names its provenance and baseline.** A byte size, count, or threshold inherited from a prior audit or a cross-repo census states *what was measured, at which commit*, and is re-verified against the current baseline before dispatch (`git show {commit}:{path}` the audited artifact) — an intervening pass may have already banked part of the estimate, leaving a target no execution can reach. When the measured source is still being written (an active file in another repo), write the acceptance as the **invariant** ("rows == the source's top-level entries, counted at implementation time"), never a frozen integer.
+
+- **Line-number cites stale under the plan's own edits.** When one step writes a `{file}:NN` cite into a file that another step of the same plan (or the same wave) edits, cite by content or stable section anchor instead — or order the steps so the cite resolves last. The staling is invisible to every cross-file sweep because the cite and the line shift live in different files. And label every anchor from the cited line's **actual** enclosing section, re-derived at plan time, never from memory of the file's layout — a right line number under a wrong label costs the developer a stop-or-proceed judgment call on an otherwise unambiguous instruction.
+
+- **A port/generalization step carries a Keep/Change/Scrub list and a census-derived token gate.** When a step ports or generalizes from a source bigger than the consumer's need, the step names what is kept, changed, and scrubbed — a bare "port from the live file" is the same defect class as an unscoped "replace all X." Build the forbidden-token list mechanically from a census of the source tree (id-shaped patterns, dates, tool paths, and literal numeric fingerprints — a vocabulary regex cannot see numbers), then subtract the sanctioned set; a list authored from memory misses whole classes. Prefer re-authoring a fresh consumer contract over copy-then-strip on a drifting source — the zero-hit gate, not the source's snapshot counts, is the contract.
+
+- **Shipped text is self-contained.** A step that edits a shipped skill or agent file must never resolve a load-bearing definition through a dev-repo-only document (a delivery artifact, an internal doc) — inline the definition in exactly one shipped file and point the other shipped surfaces at it.
+
+- **Pre-author the operator-owed fallback for any step needing a live connection or credential.** If a step's primary path needs a resource that may be unavailable at build time (a prod read account, a rotation-gated credential), the plan names the fallback up front: a provisional value, a committed operator helper script, and the `OPERATOR ACTION REQUIRED` documentation owed in implementation.md. A pre-authored fallback that fires resolves as `Deviated (valid reason)` in one line at done-check; an un-authored one becomes an escalation.
+
+- **A step needing a tool the implementing agent's surface lacks is operator-owed *by construction* — mark it `Owner: operator` up front.** A developer (or any) subagent has no `Workflow` / `agent` / `parallel` primitives, so a "validate by launching the workflow" or "run the live harness" step cannot execute in-pipeline however the developer tries — naming it operator-owed in the plan turns a mid-build dead-end into a one-line `Deviated (valid reason)` at done-check instead of an escalation. The companion rule for any **build-only increment** whose value only lands at the operator's run: its acceptance line states **what a PASS does *not* yet prove** ("syntax + offline sandbox green; the live launch is the operator's arm"), so the gap is structural, not a done-check afterthought. Note that `node --check` proves JS syntax *only* — it cannot catch a Workflow-tool runtime constraint (meta-first statement, pure-literal `description`, no static imports, no `Date`/`Math.random`), so a "runnable" claim on a Workflow script needs a real launch, never just `node --check`.
+
+- **Pair every prompt-only LLM obligation with an enforcement.** When a step grounds an LLM's output via prompt text ("only use X", "must filter Y", "never reference Z"), the same step (or a named sibling) carries a post-generation fail-closed validator OR an explicitly documented backstop (retry loop, execution-time guard). A prompt instruction is a request, not an enforcement — and a conformance review cannot catch a missing enforcement the plan never required.
+
+- **On any revision pass, re-ground every step whose execution surface or reference data changed** — re-verify its factual claims and cited acceptance against code even when its governing answer is "unchanged." A surface flip silently invalidates claims in steps nobody re-opened ("unchanged answer" ≠ "unchanged correctness"); a revision's failures cluster in exactly the steps not re-grounded.
+
+- **Write each acceptance line as the *mechanism* that proves it, not the surface outcome.** A done-check should be grep-and-confirm, not read-and-judge — so per load-bearing claim, name the test file + assertion shape (or the exact grep target). Two traps recur: **(i)** where local auth is a *stub that authenticates everyone*, assert the **structural** gate (the policy attribute is present **and** a Prod boot throws without it), never a local `401` — the stub returns `200`, so the surface assertion is unprovable locally; **(ii)** a "no literal `X` in the runtime output" gate must be phrased as the **output/test** assertion, not a **source** grep — a source grep matches the substitution table's own definition of `X` and self-flags. Mechanism-aware acceptance is what makes a done-check deterministic instead of judgmental.
+
+## Refactoring & Type-Move Plan Rules
+
+Refactoring passes (rename, extract, relocate, delete, type-move) fail in ways feature plans don't. Encode these in the plan, not in the developer's memory. (Stack-specific carve-out examples belong in the stack extension plugin's skills, not here — these are the stack-agnostic principles.)
+
+- **A create→extend scope correction carries a disposition table in the plan.** When a plan's scope flips from "create X" to "extend an existing X" (a test suite, script, skill estate, doc set), the de-duplication boundary — which source-catalog/brief items already exist, which are net-new, which are deferred and why — is a **plan artifact**, not the architect's working memory. Add a table mapping every source item to `covered (where)` / `new (step)` / `deferred (why)`; it pre-resolves Phase-1 questions and stops the developer re-creating something that already exists.
+
+- **A "fix/split/replace every file matching pattern P" step must derive its file list from the *exact* grep used in its acceptance criterion** — the step's enumerated files and the acceptance grep must be the same query, never hand-curated separately or assembled from memory of files you happened to read. Use a **definition-line** grep (matches where the symbol is *declared*), not a usage grep — a usage grep also matches references and undercounts or overcounts. Hand-curated lists drift from the check and miss files. Two hardening notes from measured misses: a definition-line grep tolerates alignment whitespace (`\s*=\s*`, never a single-space literal — aligned config blocks silently escape it, and a wrong grep that is both the enumeration and the gate fails twice); and when a step's table transcribes the grep's file list, paste the executed output — a hand-retyped table drops files from its own source query.
+
+- **Enumerate ALL consumers from a grep before planning a removal — not just the obvious one.** When a step removes or renames a public symbol, grep the name across the **whole** project (every registration site, secondary entry points, generated bindings, global imports) and list every site in the plan step. The indirect consumer nobody remembered is the one that breaks the build mid-implementation. Method hiding is part of this sweep: when the change targets a shared base-class method, also grep for `new`-hidden redeclarations (`public new {Method}`) and overrides across all derived types, and confirm the call sites' *static* types — a `new`-hidden base method can have **zero** reachable callers, and any verification step written against it tests a path the change cannot reach.
+
+- **"grep before delete" is a hard, numbered verification sub-step — not a soft note in prose.** A buried "remember to grep" sentence gets skipped. Make it `Step N: grep for remaining references to {symbols}; zero hits required` so the done-check can mark it Missing. Better still: move shared types in an **earlier** step with all consumers updated — phased plans split by feature cluster rarely align with the type-ownership graph.
+
+- **"Replace all X" is dangerous when X has a non-call homonym — spell out the carve-out with file:line + DO-NOT-TOUCH.** Distinguish "this is a *call/usage* of the thing being replaced" from "this is a literal, constant, or unrelated symbol that happens to match the same text." Name every known non-match with its `file:line` and a DO-NOT-TOUCH directive; never rely on a blanket replace-all.
+
+- **Type-move / rename passes need an explicit old→new rename table + the wire-stability invariants stated as binding rules.** Give a byte-checkable `OldName → NewName` table so the done-check is a deterministic field-by-field read instead of a judgment call. State what must NOT change as a rule with a diff-based accept: anything that keys a serialized/wire contract (field order, serialized property names, route strings) survives a code-level rename only if the wire-visible parts are untouched — and when a rename DOES change a serialized name, every hand-written consumer of that contract must change in the same plan. Wire-only envelope types stay at the boundary — never mirror them into the domain or list them in the domain rename table.
+
+- **A refactor/regeneration plan states its Must-NOT-change invariants as a table — `invariant | pinned by | disposition` (the plan template owns the shape) — and every row names the mechanical check that pins it:** a test assertion, or the diff-based accept of the bullet above. An unpinnable row is either given a new test by a numbered step or explicitly declared an accepted gap; a prose claim alone is not a safety contract. Measured: a data-wipe ordering invariant had **zero** pins tree-wide — the gated suite's only scenario left the order unobserved, so every suite the plan scheduled would have passed a silent order swap, and only a code-grounded critic pass caught it.
+
+- **Before planning a dependency removal, grep the *dependent* modules' global imports and all property/field/return-type signatures — not just the declared dependency list.** A transitive import or a type used only in a signature breaks the removal even when no direct call exists.
+
+## Downstream Consumers
+
+| Agent | What they use | Impact if incomplete |
+|-------|--------------|---------------------|
+| Developer | All steps (implements against them) | Gaps in plan steps cause skipped implementation or wrong approach |
+| Architect | Skill Mapping, plan structure (Step 1 done check) | Done check can't verify conformance without clear acceptance criteria |
+| Reviewer | Step descriptions (Step 2 conformance check) | Reviewer can't verify plan was followed without clear per-step requirements |
+
+## What this skill does NOT do
+
+- Write code. Implementation is the developer's job.
+- Make architectural decisions — those come from the architecture doc.
+- Override the coordination protocol (`rules/on-demand/agents-workflow.md`) — this skill owns the plan format only; it does not replace the pipeline.
+- Replace the architect's judgment about step ordering, scope, or complexity classification.
