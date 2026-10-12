@@ -81,6 +81,15 @@
  *      allows, while a `ruling:` there leaves the deny standing until it is re-written; the close
  *      procedure is the rule, this gate its backstop. Flat slugs only, as in (4) and (5). The deny
  *      names each file and row id and the tree it read.
+ *   8) Fix-list follow-up (F221, ADR-144). A `## Step 2 — Fix list, cycle {N}` section whose follow-up
+ *      line reads `due` while its rows hold no CRITICAL/HIGH (a contested range reaching HIGH counts),
+ *      no missing or failed step and no skill slip is Blocked: such a round is never re-read
+ *      (review-format § Fix list, ADR-131). Unlike (2), an edit is judged on the file as it will be
+ *      after the edit, and only a section the write adds or changes is judged — a committed file with
+ *      a past violation stays editable. The deny needs a positive parse: a follow-up line, at least one
+ *      row, and every list or table line above the follow-up line read as a leveled row (a `[LEVEL]`
+ *      bracket, or a table cell holding a bare level), a step or a slip; any other shape, a missing file or an absent `old_string` allows. Hand-up lists are
+ *      outside it.
  *
  * REMOVED — invariant (3), state-file integrity (blocking a pipeline subagent's write to
  * .claude/.pipeline-state): the only callers it could ATTRIBUTE (data.agent_type is present
@@ -182,6 +191,15 @@ process.stdin.on('end', () => {
       'review.md marks APPROVED while an unresolved CRITICAL or HIGH finding is present. A CRITICAL/HIGH ' +
       'forces REQUEST CHANGES and a developer fix cycle — change the verdict, or only mark the finding ' +
       'resolved after the fix is verified.'
+    );
+  }
+
+  // (8) Fix-list follow-up: a `due` follow-up line over a list that holds nothing that makes it due.
+  if (/\/review\.md$/.test(fp) && dueFollowUpWithoutCause(root, fp, tool, ti)) {
+    return deny(
+      'the fix list\'s follow-up is due only for a CRITICAL/HIGH, a missing or failed step, or a skill slip — ' +
+      'write `Follow-up review: none due`. Where the list does hold one of those in a form this check did not ' +
+      'read, write it as a numbered `{n}. [HIGH] …` row.'
     );
   }
 
@@ -618,6 +636,123 @@ function approvedWithOpenHighSev(text) {
     if (!RESOLVED.test(window)) return true;
   }
   return false;
+}
+
+const FOLLOW_UP = /\bFollow-up(?: review)?:/;
+const FIX_LIST_HEADING = /^## Step 2 — Fix list, cycle \d+\s*$/;
+
+function dueFollowUpWithoutCause(root, fp, tool, ti) {
+  const after = contentAfterWrite(root, fp, tool, ti);
+  if (after === null) return false;
+  const prior = fixListSections(readLf(path.resolve(root, fp)) || '');
+  for (const [key, section] of fixListSections(after)) {
+    if (prior.get(key) === section) continue;
+    if (dueWithoutCause(section)) return true;
+  }
+  return false;
+}
+
+function readLf(file) {
+  try { return fs.readFileSync(file, 'utf8').replace(/\r/g, ''); } catch { return null; }
+}
+
+// The file as it will read after this write. An edit whose `old_string` is absent would fail at the
+// tool, so it allows; the function form of `replace` keeps `$&` and its kin literal.
+function contentAfterWrite(root, fp, tool, ti) {
+  const lf = (s) => String(s == null ? '' : s).replace(/\r/g, '');
+  if (tool === 'Write') return lf(ti.content);
+  const edits = tool === 'Edit' ? [ti] : (Array.isArray(ti.edits) ? ti.edits : null);
+  let text = readLf(path.resolve(root, fp));
+  if (!edits || text === null) return null;
+  for (const e of edits) {
+    const oldS = lf(e && e.old_string);
+    const newS = lf(e && e.new_string);
+    if (!oldS || !text.includes(oldS)) return null;
+    text = e.replace_all ? text.split(oldS).join(newS) : text.replace(oldS, () => newS);
+  }
+  return text;
+}
+
+// `## Step 2 — Fix list, cycle {N}` sections, keyed by heading and occurrence; a section ends at the
+// next `## ` heading.
+function fixListSections(text) {
+  const out = new Map();
+  const seen = new Map();
+  let key = null;
+  let buf = [];
+  const flush = () => { if (key) out.set(key, buf.join('\n')); };
+  for (const line of text.split('\n')) {
+    if (/^## /.test(line)) {
+      flush();
+      key = null;
+      buf = [];
+      if (FIX_LIST_HEADING.test(line)) {
+        const h = line.trim();
+        seen.set(h, (seen.get(h) || 0) + 1);
+        key = `${h}#${seen.get(h)}`;
+      }
+    }
+    if (key) buf.push(line);
+  }
+  flush();
+  return out;
+}
+
+// Denies only on a positive parse: a due follow-up line, at least one row above it, every list or
+// table line above it recognised, and no row that makes the follow-up due.
+function dueWithoutCause(section) {
+  const lines = section.split('\n').slice(1);
+  const at = lines.findIndex((l) => FOLLOW_UP.test(l));
+  if (at < 0) return false;
+  const rest = lines[at].slice(lines[at].search(FOLLOW_UP)).replace(FOLLOW_UP, '').replace(/^[*\s]+/, '');
+  if (!/^due\b/i.test(rest)) return false;
+  const TABLE_RULE = /^\s*\|[\s:|-]+\|?\s*$/;
+  let rows = 0;
+  for (let k = 0; k < at; k++) {
+    const line = lines[k];
+    let content = null;
+    if (/^\s*\|/.test(line)) {
+      if (TABLE_RULE.test(line) || (k + 1 < at && TABLE_RULE.test(lines[k + 1]))) continue;
+      content = line;
+    } else {
+      const item = /^\s*(?:\d+[.)]|[-*+])\s+(.*)$/.exec(line);
+      if (item) content = item[1];
+    }
+    if (content === null) continue;
+    const kind = fixRowKind(content);
+    if (kind === null || kind === 'qualifies') return false;
+    rows++;
+  }
+  return rows > 0;
+}
+
+// 'qualifies' — a CRITICAL/HIGH level (or a contested range reaching one), a missing or failed step, a
+// skill slip; 'row' — any other level, or a test slip; null — a shape this check does not read. Each
+// cause is read on its own, so a level in the row never hides a slip or a step beside it.
+function fixRowKind(text) {
+  const t = text.replace(/\*\*/g, '');
+  const severe = (l) => l === 'CRITICAL' || l === 'HIGH';
+  const levels = rowLevels(t);
+  if (levels.some(({ level, range }) => severe(level) || (range && (severe(range[1]) || severe(range[2]))))) return 'qualifies';
+  if (/\bstep\s+\d+[a-z]?\s*[—–-]+\s*(?:missing|failed)\b/i.test(t) || /\bskill slip\b/i.test(t)) return 'qualifies';
+  if (levels.length || /\btest slips?\b/i.test(t)) return 'row';
+  return null;
+}
+
+// The leftmost `[LEVEL…]` bracket, and in a table row every cell holding a bare level, with any
+// contested range beside it.
+function rowLevels(t) {
+  const contested = (s) => /contested\s+([A-Z]+)\s*\/\s*([A-Z]+)/.exec(s || '');
+  const out = [];
+  const bracket = /\[\s*(CRITICAL|HIGH|MEDIUM|LOW)\b([^\]]*)\]/.exec(t);
+  if (bracket) out.push({ level: bracket[1], range: contested(bracket[2]) });
+  if (/^\s*\|/.test(t)) {
+    for (const cell of t.split('|')) {
+      const bare = /^\s*(CRITICAL|HIGH|MEDIUM|LOW)(?:\s*\((.*)\))?\s*$/.exec(cell);
+      if (bare) out.push({ level: bare[1], range: contested(bare[2]) });
+    }
+  }
+  return out;
 }
 
 function deny(reason) {

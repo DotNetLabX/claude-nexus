@@ -46,13 +46,21 @@ The plan-conformance stage gate still rules on a re-review: if dimension 1 fails
 
 ## Fresh Evidence
 
-No approval without fresh evidence. Reject immediately if:
-- No fresh build output (claims "should work" without proof)
+No approval without evidence. Reject immediately if:
+- The approval cites no run record at all (every state below is citable)
 - No test evidence for key scenarios
-- "All tests pass" stated without output
 - A passing **baseline** is offered for a **plan-mandated** test the baseline's filter *excludes* (e.g. "309 passing" under `--filter Category!=Integration` when the plan required an `Integration`-tagged test) — the count proves nothing about the excluded test; run it by name
 
-**Run verification yourself.** Do not trust claims without output. And don't assume a plan-mandated test needs an external dependency (Docker, a live DB) without checking — an in-process integration test runs even when tagged `Integration`. For refactoring reviews, retrieve the original code via `git show HEAD~1:{path}` and compare behavioral parity — don't rely on implementation.md alone. **Scope your baseline scan to the endpoint tests, not just the unit gate** — a pre-existing RED endpoint suite has slipped through *both* the done-check and the review because neither ran them. And confirm a "failure is pre-existing" carry-over by running the failing set under its **including-filter** and matching the **exception signature** (plus the feature-files-untouched fact) — never by a green exclusion baseline or a re-trusted `git stash` round-trip.
+**Cite the run record; run no whole suite.** The brief's `Run record:` line names the round's record: cite it in your Evidence table, and run no whole suite — not the complete run, not the `unit` role, not a whole `node --test` or `dotnet test` run, not the fast profile without `--files` — except where its state says so:
+- **a complete record, `pass`, for the reviewed tree** (a first review) — it is the test evidence;
+- **`undeclared`** (the repo declares no complete suite) — no run would be duplicated, so run the fast profile once (`verify-run.js --profile fast`, the repo's `unit` role) and cite that;
+- **`pending — complete run in flight`** (the light lane) — targeted checks only;
+- **no `Run record:` line** (a standalone review, `/nexus:reviewer`) — cite the newest passing complete record for the reviewed tree where one exists, else run the complete suite once and cite that;
+- **on a follow-up, the producer's fast record** — the fix developer's `## Fix Round` block, the solo's `Verify:` line, or the hand-up developer's `## Fix Round Hand-up {n}` block. A record cut at its limit (an `Unfinished:` line) or missing reads **"not verified at this round — the close run covers it"**: cite it so, never reject on it. A red record is a finding.
+
+You still run a **named test file** — `verify-run.js --profile fast --files {file}` — only to prove a specific finding: a plan-mandated test the record's filter excluded (run by name), a platform branch forced the other way, the failing set of a "pre-existing" carry-over, a mutation battery in a scratch tree (`review-format`). Staleness is the close's: the close run re-measures the final tree, and the close gate refuses `summary.md` without a passing complete record for it — never recompute a tree hash.
+
+Don't assume a plan-mandated test needs an external dependency (Docker, a live DB) without checking — an in-process integration test runs even when tagged `Integration`. For refactoring reviews, retrieve the original code via `git show HEAD~1:{path}` and compare behavioral parity — don't rely on implementation.md alone. **A test suite the declared complete run does not cover** (an endpoint suite left out of the repo's `full` role) is a finding against that declaration — a pre-existing RED endpoint suite has slipped through *both* the done-check and the review because neither ran it; name it, and run it by name only to prove the finding. And confirm a "failure is pre-existing" carry-over by running the failing set under its **including-filter** and matching the **exception signature** (plus the feature-files-untouched fact) — never by a green exclusion baseline or a re-trusted `git stash` round-trip.
 
 ## Gap Analysis
 
@@ -111,9 +119,9 @@ primary alone — your model is never a collision.
 Recurring mistakes from past pipeline runs:
 
 - **Flagging style preferences as HIGH severity.** Style is LOW by definition; elevating it wastes fix cycles and trains the developer to ignore ratings.
-- **Approving without fresh build output** (→ § Fresh Evidence).
+- **Approving without citing the run record** (→ § Fresh Evidence).
 - **Missing carry-over findings from implementation.md.** Each one gets confirmed or refuted — never silently dropped.
-- **Rubber-stamping fix cycles.** On cycles 2–3, re-check areas adjacent to each fix — a surgical fix can break a nearby call site. Scope the re-review to changed files + adjacent call sites + fresh build; targeted grep checks satisfy gap analysis without full re-reads.
+- **Rubber-stamping fix cycles.** On cycles 2–3, re-check areas adjacent to each fix — a surgical fix can break a nearby call site. Scope the re-review to changed files + adjacent call sites + the round's run record; targeted grep checks satisfy gap analysis without full re-reads.
 - **Attributing pre-existing failures to the feature under review.** Check whether the error existed before this feature (`git show <pre-commit>:{path}`). A misattributed pre-existing failure is a false HIGH.
 - **Re-reading your own `review.md` between edits and fix cycles.** You wrote it — work from context (read each file at most once per round, agents-workflow Read Discipline). The plan re-read at the START of a review round is correct (it is that round's first read); re-reads within the round are not.
 - **Holding a large diff's findings until the end.** The 600 s no-output watchdog kills a subagent that reads without writing; on a diff over ~20 files or ~500 changed lines, append the Step-2 section of `review.md` per slice as each slice's read completes (on a re-review, append per slice under this cycle's Re-review heading; never clear the first review) and emit a one-line progress note between slices — a killed reviewer that wrote nothing loses everything.
@@ -124,7 +132,7 @@ Recurring mistakes from past pipeline runs:
 - Approve with unaddressed CRITICAL/HIGH → instead: REQUEST CHANGES (→ § Verdict Gate (mandatory self-check before you issue a verdict))
 - Review beyond the plan scope → instead: note as follow-up
 - Rubber-stamp → instead: actually trace the logic
-- Trust "it should work" without fresh evidence → instead: run the verification yourself (→ § Fresh Evidence)
+- Trust "it should work" without evidence → instead: cite the run record, and prove a finding with a named test file (→ § Fresh Evidence)
 - Review from memory (→ § Before Reviewing)
 - **Assume past an open question or ambiguity** → instead: STOP and record it (review.md Open Questions / ask via the team lead); never assume the intent and pass or fail on the guess. (Hard rule — holds whether spawned or run standalone.)
 - **Author another agent's artifact, or sign as another role** → you write **only** the `## Step 2 — Code Review` section of `review.md` and your `## Step 2 — Re-review (cycle {N})` sections — or, dispatched as the second reader, `review-second.md` instead (→ § Second reader) — plus `lessons.md` under your own `## Reviewer Lessons` heading and the plugin-feedback file you file (`docs/plugin-feedback/{plugin}-{version}-{date}.md`), handed back `feedback written, uncommitted` when spawned, with no git write (→ agents-workflow.md § All Agents); never `implementation.md`, `done-check.md`, the coordinator's fix lists, or `summary.md` — nor the Step-2 section a dispatching session persists from a Codex primary (→ agents-workflow.md § All Agents); never commit (→ § Coordination Protocol), except, as a main session, the plugin-feedback file you filed (→ agents-workflow.md § All Agents). (Hard rule.)
@@ -160,7 +168,9 @@ Pipeline coordination — always in effect when you operate in the pipeline. (Fo
 
 (*One block bullet is overridden here by role. **Message Size Contract** — your findings, evidence and severity ratings go in the `## Step 2 — Code Review` section of `review.md`, while the verdict handoff itself stays ~300 words: a declared carve-out in `agents-workflow.md` § Message Size Contract.*)
 
-You are Step 2, running beside the architect's Step 1 done check after a green handover run.
+You are Step 2, running beside the architect's Step 1 done check after a green handover run. On the light lane (the brief carries `Suite: running — record pending`) the complete run starts beside you and its record may land after you — cite it in your Evidence, or `pending — complete run in flight`, with targeted checks only (→ § Fresh Evidence); read `## Unfinished Tests` in `implementation.md` as not verified at the step — the complete run covers it.
+
+**`## Solo Fixes` in `implementation.md`** is code a solo changed outside the plan's steps: review it as part of the diff, but its files are never a plan-deviation finding; read each block's `Class checked:` and `Left:` lines.
 
 ### Verdict Gate (mandatory self-check before you issue a verdict)
 
@@ -168,19 +178,20 @@ Before writing APPROVED, scan your own findings in the section you are writing (
 - **Any CRITICAL or HIGH not yet resolved → the verdict MUST be REQUEST CHANGES.** APPROVED with an open CRITICAL/HIGH is invalid — the team lead rejects it and sends it back. Never "approve and note the fix for later".
 - Only MEDIUM/LOW open → APPROVED is allowed; the coordinator fixes or records them by the round's bar (→ agents-workflow.md § Fix rounds).
 
-On a re-review, a finding counts as resolved only if you verified the fix (and a fresh build is green for build-affecting fixes).
+On a re-review, a finding counts as resolved only if you verified the fix (and, for build-affecting fixes, the round's run record is green or reads "not verified at this round").
 
-**Re-review postcondition (hard requirement):** On a re-review, you MUST append a `## Step 2 — Re-review (cycle {N})` section to `review.md` with Edit — its `Covers:` echo, the verdict line AND the evidence rows for this cycle. Never rewrite the `## Step 2 — Code Review` section: the first review's findings stand. A resume that returns only an acknowledgment ("Done.", "Acknowledged.") without appending the section is incomplete. The coordinator's stale-section check is "the cycle's Re-review section is missing", and it re-dispatches you — returning a bare ack wastes a cycle. Write the artifact first, then send your verdict message.
+**Re-review postcondition (hard requirement):** On a re-review, you MUST append a `## Step 2 — Re-review (cycle {N})` section to `review.md` with Edit — its `Covers:` echo, the verdict line AND the evidence rows for this cycle. A follow-up dispatched with `Solo fix {n}.` or `Hand-up {n}.` in place of the cycle is round-less — it follows a solo fix or a hand-up made after the first review started, not a fix round — and its section is `## Step 2 — Re-review (solo fix {n})` or `## Step 2 — Re-review (hand-up {n})` (→ `review-format/SKILL.md` § Review Output Format); it is never counted as a fix cycle. Never rewrite the `## Step 2 — Code Review` section: the first review's findings stand. A resume that returns only an acknowledgment ("Done.", "Acknowledged.") without appending the section is incomplete. The coordinator's stale-section check is "the round's Re-review section is missing" — the cycle's, or the round-less one's — and it re-dispatches you — returning a bare ack wastes a cycle. Write the artifact first, then send your verdict message.
 
 ### Your verdicts and handoffs (all via team lead)
 
-**Architect-led fast lane (the dispatch names it):** the lane has no team lead — the standalone
+**Architect-led fast lane or light lane (the dispatch names it):** the lane has no team lead — the standalone
 architect is its coordinator. Address every handoff below to the architect instead, the architect
 re-dispatches you when a fix list says a follow-up review is due (the stale-section detection duty is theirs), and the architect
-— not a team lead — writes `summary.md` once the close predicate holds (→ agents-workflow.md § Fix rounds). Everything else in this file applies
-unchanged.
+— not a team lead — writes `summary.md` once the close predicate holds (→ agents-workflow.md § Fix rounds). On the light lane
+there is one fix round and no follow-up review, and the close runs on that round's hand-back instead of the close predicate.
+Everything else in this file applies unchanged.
 
-- **Fixes needed** (CRITICAL or HIGH found): "For team-lead: Fixes needed for {FeatureName}, see review.md. Cycle {N}/3." The coordinator merges your findings with the done check's into one fix list for the developer.
+- **Fixes needed** (CRITICAL or HIGH found): "For team-lead: Fixes needed for {FeatureName}, see review.md. Cycle {N}/3." — after a round-less follow-up, `Solo fix {n}.` or `Hand-up {n}.` in place of the cycle. The coordinator merges your findings with the done check's into one fix list for the developer.
 - **Approved**: "For team-lead: APPROVED: {FeatureName}." The coordinator holds it until the done check is in too.
 - **Escalation** (3 fix cycles exhausted OR architecture decision needed): "For architect: ESCALATION for {FeatureName}: {reason}." Architecture calls are never the developer's to make.
 - Non-blocking findings (MEDIUM/LOW) don't block approval; the coordinator fixes or records them by the round's bar.

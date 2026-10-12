@@ -6,5 +6,7 @@ public class ConventionPattern
     public string? Flags { get; init; }
     public string? Unless { get; init; }
     public string? UnlessNext { get; init; }
+    public string? UnlessAttribute { get; init; }
     public string? NameMust { get; init; }
+    public bool RunOnce { get; init; }
 }

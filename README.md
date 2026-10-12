@@ -11,7 +11,7 @@
 - **It auto-learns.** What the team learns on every feature becomes your conventions and your skills.
 - **It works in your stack.** Packs for .NET and Vue, Flutter, C++ and PHP — or the language of your choice.
 
-Stack extensions teach it your stack; four paid plugins add extras for shaping, review and reporting, rule mining, data analysis and meeting-notes search.
+Stack extensions teach it your stack; six paid plugins add extras for shaping, review and reporting, rule mining, data analysis, meeting-notes search, building several features side by side while you are away, and a digital you that learns how you decide.
 
 ## And there is more
 
@@ -104,10 +104,10 @@ Update with `claude plugin marketplace update claude-nexus`, then `claude plugin
 
 ## Paid plugins
 
-Four more plugins build on the core. Each lives in its own private repository, which is its own marketplace, and each repository's README carries its install lines.
+Six more plugins build on the core. Each lives in its own private repository, which is its own marketplace, and each repository's README carries its install lines.
 
-- `DotNetLabX/claude-nexus-pro` — `nexus-pro`: eight extras for the core's own pipeline.
-  - **Brainstorm mode.** Rounds of ideas before the questions start, every idea kept in a file beside the spec.
+- `DotNetLabX/claude-nexus-pro` — `nexus-pro`: nine extras for the core's own pipeline.
+  - **Brainstorm mode.** A source's own fixes critiqued first, then rounds of ideas that run straight into the critique, three topics a turn; every idea kept in a file beside the spec.
   - **Panel mode.** A second model argues your design question on its own; you get one merged answer and what the two still disagree on.
   - **Research.** An open fact is researched once, on the web or through Codex, saved with its sources and reused.
   - **Conventions review.** A separate advisory review of a change against your own conventions, architecture and patterns.
@@ -115,9 +115,12 @@ Four more plugins build on the core. Each lives in its own private repository, w
   - **Slow-test tagging.** Your suite is timed and its slow tests are tagged, so the quick run leaves them out; every close re-times the tests that changed.
   - **Token report.** Which agent used the most tokens in a run, and why.
   - **Usage record.** A numbers-only record of each feature's tokens, times and models, committed at its close.
+  - **Live agent view.** Each agent's row in the agents panel shows its role, and a developer's the step it is building.
 - `DotNetLabX/claude-nexus-miner` — `nexus-miner`: 95%+ test coverage backed by rules mined from your code, old code rewritten in the architecture you choose, a map of your system and a skills package for your agents.
 - `DotNetLabX/claude-nexus-analytics` — `nexus-analytics`: it mines your database and builds your semantic model for you, then answers business questions in plain words with numbers you can defend.
 - `DotNetLabX/claude-nexus-notes` — `nexus-notes`: every decision from your meetings in front of whoever writes the spec, and a record of which note fed which feature.
+- `DotNetLabX/claude-nexus-factory` — `nexus-factory`: a list of ready features built side by side while you are away, each by its own team on its own branch, with one report at the end.
+- `DotNetLabX/claude-nexus-digital-you` — `nexus-digital-you`: a profile of how you decide, learned from your own sessions and handed to every agent, with a hidden guess at every question you answer and an honest weekly score.
 
 **Get access:** the paid repositories are private. Ask the owner through the [DotNetLabX organisation on GitHub](https://github.com/DotNetLabX).
 

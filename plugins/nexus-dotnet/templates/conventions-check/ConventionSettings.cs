@@ -21,6 +21,7 @@ public class ConventionSettings
     public List<string> Roots { get; init; } = [];
     public List<string> LibraryRoots { get; init; } = [];
     public string ListsFile { get; init; } = "docs/conventions/project-lists.md";
+    public string? Report { get; init; }
 
     public static ConventionSettings Read(string path) =>
         File.Exists(path) ? JsonSerializer.Deserialize<ConventionSettings>(File.ReadAllText(path), Options) ?? new() : new();

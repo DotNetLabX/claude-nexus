@@ -94,6 +94,16 @@ public class ConventionScanner(IReadOnlyCollection<string> _loggingClasses)
                     continue;
                 }
 
+                if (pattern.UnlessAttribute is not null && AttributeNames(lines, i).Any(Pattern(pattern.UnlessAttribute, null).IsMatch))
+                {
+                    continue;
+                }
+
+                if (pattern.RunOnce && i > 0 && Pattern(pattern.Pattern, pattern.Flags).IsMatch(lines[i - 1]))
+                {
+                    continue;
+                }
+
                 var name = match.Groups["name"];
                 if (pattern.NameMust is not null && name.Success && Pattern(pattern.NameMust, null).IsMatch(name.Value))
                 {
@@ -332,6 +342,121 @@ public class ConventionScanner(IReadOnlyCollection<string> _loggingClasses)
         }
 
         return text.ToString();
+    }
+
+    // A section followed by anything but another section or the declaration (a collection expression closed by
+    // `];`) is not an attribute, so the names gathered before it are dropped.
+    private static List<string> AttributeNames(string[] lines, int index)
+    {
+        var above = new List<string>();
+        var open = 0;
+        for (var i = index - 1; i >= 0; i--)
+        {
+            var line = lines[i];
+            var closes = line.Count(character => character == ']');
+            var opens = line.Count(character => character == '[');
+            if (open == 0 && line.Trim().Length > 0 && !AttributeLine.IsMatch(line) && closes <= opens)
+            {
+                break;
+            }
+
+            above.Insert(0, line);
+            open = Math.Max(0, open + closes - opens);
+        }
+
+        above.Add(lines[index]);
+        var text = string.Join('\n', above);
+        var declaration = text.Length - lines[index].Length;
+        var names = new List<string>();
+        var k = 0;
+        while (k < text.Length)
+        {
+            if (char.IsWhiteSpace(text[k]))
+            {
+                k++;
+            }
+            else if (text[k] == '[')
+            {
+                k = AttributeSection(text, k, names);
+            }
+            else if (k >= declaration)
+            {
+                break;
+            }
+            else
+            {
+                names.Clear();
+                k++;
+            }
+        }
+
+        return names;
+    }
+
+    private static int AttributeSection(string text, int start, List<string> names)
+    {
+        var paren = 0;
+        var angle = 0;
+        var expectName = true;
+        var k = start + 1;
+        while (k < text.Length)
+        {
+            var character = text[k];
+            if (paren == 0 && angle == 0)
+            {
+                if (character == ']')
+                {
+                    return k + 1;
+                }
+
+                if (character == ',')
+                {
+                    expectName = true;
+                    k++;
+                    continue;
+                }
+
+                if (expectName && (char.IsLetter(character) || character == '_'))
+                {
+                    var end = k;
+                    while (end < text.Length && (char.IsLetterOrDigit(text[end]) || text[end] is '_' or '.'))
+                    {
+                        end++;
+                    }
+
+                    names.Add(text[k..end]);
+                    expectName = false;
+                    k = end;
+                    continue;
+                }
+            }
+
+            if (character == '(')
+            {
+                paren++;
+            }
+            else if (character == ')')
+            {
+                paren = Math.Max(0, paren - 1);
+            }
+            else if (paren == 0 && character == '<')
+            {
+                angle++;
+            }
+            else if (paren == 0 && character == '>')
+            {
+                angle = Math.Max(0, angle - 1);
+            }
+
+            if (!char.IsWhiteSpace(character))
+            {
+                expectName = false;
+            }
+
+            k++;
+        }
+
+        return k;
     }
 
     private static string NextNonBlank(string[] lines, int index)

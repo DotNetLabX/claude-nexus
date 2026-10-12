@@ -91,3 +91,4 @@ Pass the concern's name: `/create-building-blocks-package Messaging`
 - Add the reference to the services that will use it — the developer does, with the feature that needs it.
 - Create an application-specific library — a shared library knows no application.
 - Create a module's contracts — `create-module`.
+- Change an app's copy of a shared library's source — `change-copied-library`.

@@ -7,7 +7,7 @@ description: Format spec for docs/specs/{slug}/delivery/summary.md — written b
 
 Written after approval: `docs/specs/{slug}/delivery/summary.md`. Its existence means the pipeline completed successfully. **Producers** (below) covers who writes it.
 
-**Producers.** Two: the team lead (pipeline runs), or the standalone architect at the close of an Architect-Led Fast Lane run (`architect.md`) — the lane's mode-scoped ownership exception. The fast-lane variant carries a header-adjacent provenance line `Mode: architect-led fast lane`, for human readers and disambiguation. Consumers (the learner-cadence hook, the team-lead idempotency gate) treat both as a completed run — they check the file's existence, not its producer or content; the provenance line is not a machine contract.
+**Producers.** Two: the team lead (pipeline runs), or the standalone architect at the close of an Architect-Led Fast Lane run (`architect.md`) — the lane's mode-scoped ownership exception. The fast-lane variant carries a header-adjacent provenance line `Mode: architect-led fast lane`; a light lane run (the fast lane with its checks turned down, `architect.md`) carries `Mode: architect-led fast lane (light)`, and a plan-only definition built with the full checks carries `Mode: architect-led fast lane (plan only)`. Consumers (the learner-cadence hook, the team-lead idempotency gate) treat both as a completed run — they check the file's existence, not its producer or content. A reader of the closed run's record matches the phrase `architect-led fast lane`, so a lane variant keeps that phrase and adds a qualifier.
 
 **The `**Full suite:**` line is required in EVERY summary.md** — including one for a repo that
 declares no suite, where it reads `undeclared`. An absent line and a disclosed absence are different
@@ -65,7 +65,7 @@ inserted above it.
 - [Build status]
 - **Full suite:** pass | fail | undeclared — {duration} (recorded {ts}; complete red on a fast-green tree: yes | no | not measured; filtered: yes | no)
 - **Map delta:** {the meter's headline line verbatim} | none | unavailable
-- **Rules:** {n} listed behaviour rules without a disposition · {n} `tested` rules whose named test does not exist (the done-check's report-only count, from the newest footed check in `done-check.md`; omit the line when the plan listed no rules). In an architect-led fast lane, also the close's rulings, one per row: `{unit} {row id}: {ruling}`
+- **Rules:** {n} listed behaviour rules without a disposition · {n} `tested` rules whose named test does not exist (the done-check's report-only count, from the newest footed check in `done-check.md` — any completion footer counts, a Codex check's `*Status: COMPLETE — Codex, persisted by {session}, {date}*` included; omit the line when the plan listed no rules). In an architect-led fast lane, also the close's rulings, one per row: `{unit} {row id}: {ruling}`
 - [Review verdict and cycle count]
 
 ## Deviations from Plan

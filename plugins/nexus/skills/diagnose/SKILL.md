@@ -102,7 +102,7 @@ After each probe:
    - What was the root cause?
    - What would have prevented this?
    - Is there an architectural improvement needed? (flag for architect)
-4. **Verification** — one call of `verify-run.js --profile fast` (it runs `roles.unit` from `.claude/verify.json`) passes — the narrowest command covering the files this fix changed — 30 seconds, never the whole suite; where the repo declares none, that same narrowest command, per the project's build conventions (`docs/conventions/coding-conventions.md`, if defined)
+4. **Verification** — one call of `verify-run.js --profile fast` (it runs `roles.unit` from `.claude/verify.json`) passes — the narrowest command covering the files this fix changed — within the repo's step limit (`stepLimitSeconds`, 90 s when unset), never the whole suite; where the repo declares none, that same narrowest command, per the project's build conventions (`docs/conventions/coding-conventions.md`, if defined)
 
 ## Integration with Circuit Breaker
 

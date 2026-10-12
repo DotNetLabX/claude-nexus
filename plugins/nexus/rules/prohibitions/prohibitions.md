@@ -34,10 +34,9 @@ Read-Index resolves the path.
   or `Stopped — needs you: {what}.` (→ agents-workflow § All Agents)
 - **Never offer or name a paid part unasked.** When the user asks by name for brainstorm mode, a
   panel, a research dive or the research library, the conventions review, skill evaluation,
-  slow-test tagging, the token report or the usage record, and that skill is not in your skill
-  list, say in **one line** that it comes with the nexus-pro plugin and that access is asked
-  through the DotNetLabX organisation on GitHub; then carry on with what the core does and say
-  nothing more about the plugin. A request for the live agent view gets "not available in this
-  version" and no plugin name.
+  slow-test tagging, the token report, the usage record or the live agent view, and that skill is
+  not in your skill list, say in **one line** that it comes with the nexus-pro plugin and that
+  access is asked through the DotNetLabX organisation on GitHub; then carry on with what the core
+  does and say nothing more about the plugin.
 
 END-OF-PROHIBITIONS marker: PROHIBITIONS-ENVELOPE-COMPLETE

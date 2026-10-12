@@ -4,7 +4,7 @@ Use this template for every `docs/specs/{slug}/delivery/plan.md` file. **This te
 
 **Section map (targeting index).** `plan.md`'s fixed top-level headings — the set agents target for a section read (ADR-22 Extended): `## Context`, `## Scope`, `## Skill Mapping`, `## Domain Model Changes`, `## Data Model Changes`, `## Implementation Steps`, `## Cross-Service Changes`, `## Migration Notes`, `## Must-NOT-Change`, `## Testing Strategy`, `## KB Impact`, `## Decisions`, `## Open Questions`. Grep `^##` for live line numbers, then `Read` with `offset/limit` around the section you need rather than the whole file.
 
-**The `Developers` header line is optional and usually absent** — keep it only where the content divides by kind of work (the rule is the architect's Plan Writing Rules). **The `Build slices` header line is optional too** — required only above 8 developer-built steps or for a heavy step, omitted otherwise (the rule is this skill's § Build Slices).
+**The `Developers` header line is optional and usually absent** — keep it only where the content divides by kind of work (the rule is the architect's Plan Writing Rules). **The `Build slices` header line is optional too** — required only above 8 developer-built steps or for a heavy step, omitted otherwise (the rule is this skill's § Build Slices). **The `Lane` header line is optional as well** — written on every plan-only plan, by the architect, before the plan's review: the check level it picked from the finished plan, `light` or `full`, with a one-line why (the rule is the architect's Plan-Only Definition); omit it where the plan has a spec or an ADR-collapsed definition.
 
 ---
 
@@ -15,6 +15,7 @@ Use this template for every `docs/specs/{slug}/delivery/plan.md` file. **This te
 **Model:** {your own model's exact id, self-reported from your system context — write "unknown" if unstated, never the model you were dispatched as; see agents-workflow.md § Artifact Formats}
 **Developers:** {n} — {kind} (steps {a}–{b}) · {kind} (steps {c}–{d}); boundary: {what separates them} | omit this line — one developer builds the plan
 **Build slices:** {a}–{b} · {c}–{d} · …; why: {one line} | omit this line — the whole plan is one slice
+**Lane:** light — {why} | full — {why} | omit this line — the plan has a spec or an ADR-collapsed definition
 
 ## Context
 What problem this solves. Which service(s) impacted and why.

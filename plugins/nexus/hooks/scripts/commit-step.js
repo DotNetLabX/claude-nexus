@@ -36,6 +36,12 @@
  * cannot see — so the one refusal that happens AFTER staging (git itself rejecting the commit, e.g.
  * a repo pre-commit hook) undoes its own staging first, and undoes only what it added.
  *
+ * A UNIT MARKER MAY NAME THE BRANCH. Where the tree holds `.claude/.campaign-unit`, written by a
+ * campaign runner, and that marker names the current branch and this slug — as its unit or as one of
+ * its stories — the branch is accepted without naming the slug: an epic's story is committed on the
+ * epic's branch. The marker is trusted as written, so outside a campaign a marker somebody wrote by
+ * hand lets this helper accept a branch that does not name the slug — never the default branch.
+ *
  * WHAT IT WILL NEVER DO: `git add -A` or any unscoped stage; `--amend`; `push`; `reset`; `rebase`;
  * `stash`; a branch change; a commit on the default branch. Those are the coordinating session's or
  * nobody's.
@@ -89,6 +95,16 @@ function withTrailer(message, slug, step) {
   const body = message.replace(/\s+$/, '');
   if (new RegExp(`(^|\\n)${trailer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`).test(body)) return `${body}\n`;
   return `${body}\n\n${trailer}\n`;
+}
+
+// True only where the tree's unit marker names this branch and this slug, each matched whole. An
+// absent or unparseable marker, another branch or another slug: false, and the slug rule decides.
+function unitMarkerNames(root, branch, slug) {
+  let marker;
+  try { marker = JSON.parse(fs.readFileSync(path.join(root, '.claude', '.campaign-unit'), 'utf8')); }
+  catch { return false; }
+  if (!marker || typeof marker !== 'object' || marker.branch !== branch) return false;
+  return marker.unit === slug || (Array.isArray(marker.stories) && marker.stories.includes(slug));
 }
 
 function main() {
@@ -156,7 +172,7 @@ function main() {
   // `on` would "match" the slug F12-SessionRecovery, and the cost of that mistake here is a
   // commit on someone else's branch. Case-folded, and `/` segments come along for free because this
   // is a plain substring test on the whole name.
-  if (!branch.toLowerCase().includes(slug.toLowerCase())) {
+  if (!branch.toLowerCase().includes(slug.toLowerCase()) && !unitMarkerNames(root, branch, slug)) {
     return refuse(
       `the current branch (${branch}) does not name the slug (${slug}) — a step commit goes on the ` +
       "feature's own branch",

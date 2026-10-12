@@ -210,7 +210,8 @@ Before invoking this skill, ensure you have:
   repo declares in `.claude/verify.json` under `roles` (`build` / `unit` / `full` / `mutation`); an
   implementation subagent is handed the resolved call at spawn, and a standalone session reads the
   path from its plugin-paths block. `unit` is the **narrowest** command covering the change this step
-  makes — 30 seconds, never the whole suite — run in a single
+  makes — within the repo's step limit (`stepLimitSeconds`, 90 s when unset), never the whole
+  suite — run in a single
   invocation — where the stack needs a build first, that invocation chains build and test rather than
   splitting the cycle into two calls. If the repo declares
   none, use the narrowest command covering the files this step changed, and reach for a separate `build` call

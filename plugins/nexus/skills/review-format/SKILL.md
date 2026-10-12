@@ -7,12 +7,12 @@ description: Format spec for the review artifact — severity ratings, verdict, 
 
 The two checks after a build run **at the same time**, so each writes its own file:
 
-- **`done-check.md`** — the architect's done check (Step 1): step dispositions, process slips and one PASS/FAIL verdict per check. Only the architect writes it.
+- **`done-check.md`** — the architect's done check (Step 1): step dispositions, process slips and one PASS/FAIL verdict per check. Only the architect writes it, or its dispatcher persists a Codex check (→ codex-dispatch.md § Done check).
 - **`review.md`** — the reviewer's code review (Step 2) and its re-reviews, plus the coordinator's fix list for each round. Severity findings and one APPROVED/REQUEST CHANGES verdict per review section.
 
 Five sibling verdict files are sanctioned beside `review.md` and no others (`plan-review.md` does NOT exist): `done-check.md` at the architect's seat; `review-codex.md` and `review-second.md` at the reviewer seat; `review-critic.md` and `review-critic-codex.md` at the critic seat. The critic writes no file; the persona persists its message to `review-critic.md` under the critic-round layout (→ agents-workflow.md § Critic rounds).
 
-**Section map (targeting index).** The fixed top-level headings agents target for a section read (ADR-22 Extended): in `done-check.md`, `## Step 1 — Done-Check` with one `### Check {k}` block per check; in `review.md`, `## Step 2 — Code Review` (the first review), `## Step 2 — Re-review (cycle {N})`, `## Step 2 — Fix list, cycle {N}` and `## Step 2 — Merge, no fix round`. Grep `^##` for live line numbers, then `Read` with `offset/limit` around the section you need rather than the whole file.
+**Section map (targeting index).** The fixed top-level headings agents target for a section read (ADR-22 Extended): in `done-check.md`, `## Step 1 — Done-Check` with one `### Check {k}` block per check; in `review.md`, `## Step 2 — Code Review` (the first review), `## Step 2 — Re-review (cycle {N})` (and its round-less forms, `(solo fix {n})` and `(hand-up {n})`), `## Step 2 — Fix list, cycle {N}` (and `## Step 2 — Fix list, hand-up {n}`) and `## Step 2 — Merge, no fix round`. Grep `^##` for live line numbers, then `Read` with `offset/limit` around the section you need rather than the whole file.
 
 The team lead greps **named sections**, not bare `Verdict:` lines, to avoid stacked-verdict ambiguity.
 
@@ -32,9 +32,9 @@ The team lead greps **named sections**, not bare `Verdict:` lines, to avoid stac
 - Referenced patterns and skills were followed
 - Naming conventions match coding standards
 - Comment noise: narration/rationale comments that restate what the code shows, or history in a comment (feature or bug ids, review rounds, dates) — LOW, MEDIUM when pervasive; exempt: constraint comments, `[{unit} BR-n]` tags, tooling suppressions (e.g. `// Stryker disable`), conventions-mandated forms.
-- Build passes (fresh output, not assumed)
-- Platform-conditional check: **a green suite proves the code works on your platform, nothing more.** Grep the diff for `process.platform` (or any OS/filesystem-conditional) in shipped code; for each hit, force the branch to the other side and re-run the affected suite before approving — tests that spawn the script inherit the author's OS and cannot tell "correct" from "correct here". Authoring-side mirror worth filing as a finding: a platform-conditional normaliser's consumers must each declare which side they need — folding is right against well-known names, wrong against paths the user supplied, and the two must not share a helper silently
-- Concurrent-append discipline: **a read-before-write rule makes your read atomic with your write, never with the other agent's** — so two agents can each obey it and still collide. Two measured shapes: a string-anchored `Edit` resolving *inside* another checker's still-open block, and a sequential id claimed from a shared register that a peer commits first. Re-read the file's true end immediately before appending; prefer one `## Pass {X}` region per checker, else serialize appends through the team lead. In practice no shipped checker shares this file — the done check and the second reader each write their own sibling, and a Codex verdict is persisted by the session that dispatched it — so the rule guards a future same-file case rather than a live one. Reordering afterwards is not the fix, it edits another checker's artifact
+- The run record the brief names is cited in its state — a complete `pass` for the reviewed tree, `undeclared`, `pending`, or a follow-up's producer record (`not verified at this round` when cut or missing); never re-run the whole suite to stand in for it
+- Platform-conditional check: **a green suite proves the code works on your platform, nothing more.** Grep the diff for `process.platform` (or any OS/filesystem-conditional) in shipped code; for each hit, force the branch to the other side and re-run the affected test files by name (`--files`) before approving — tests that spawn the script inherit the author's OS and cannot tell "correct" from "correct here". Authoring-side mirror worth filing as a finding: a platform-conditional normaliser's consumers must each declare which side they need — folding is right against well-known names, wrong against paths the user supplied, and the two must not share a helper silently
+- Concurrent-append discipline: **a read-before-write rule makes your read atomic with your write, never with the other agent's** — so two agents can each obey it and still collide. Two measured shapes: a string-anchored `Edit` resolving *inside* another checker's still-open block, and a sequential id claimed from a shared register that a peer commits first. Re-read the file's true end immediately before appending; prefer one `## Pass {X}` region per checker, else serialize appends through the team lead. No two shipped checkers share this file — the done check and the second reader each write their own sibling, and a Codex verdict is persisted by the session that dispatched it — but the coordinator's fix list now lands while checks are still running, so the case is live for it: the coordinator writes the fix list only after the primary's Step-2 section is complete. Reordering afterwards is not the fix, it edits another checker's artifact
 - Plan-mandated tests are executed under a filter that *includes* them — a green baseline that *excludes* a required test (e.g. a `--filter Category!=Integration` run when the plan mandates an `Integration`-tagged test) says nothing about that test and can hide it shipping RED. Run the mandated test by name; and verify a tagged test's *actual* dependency before deeming it un-runnable (an in-process integration test with no live dependency still runs)
 - No new patterns invented
 - Business/domain rules enforced at the architectural layer the project's conventions specify (not leaked into transport/handler code)
@@ -104,12 +104,12 @@ at full severity or losing it.
 
 The done check writes `docs/specs/{slug}/delivery/done-check.md`; the code review, each re-review and the coordinator's fix list write `docs/specs/{slug}/delivery/review.md` — with one carve-out: a reviewer dispatched as a **second reader** (the first review, or a follow-up whose `Covers:` lists steps) writes the same Step-2 content to `review-second.md` instead, appending a new `## Verdict:` section per round, and the coordinator merges every reader's findings into the fix list. A second reader promoted to primary after Codex dropped writes that round's `review.md` section itself and re-heads its own `review-second.md` section to `## Promoted to primary — round {n}`. Where Codex is the code review's primary, the reviewer is always that second reader, and the session that dispatched Codex writes the Step-2 section from Codex's verdict (below).
 
-**`done-check.md` (architect writes):** one `## Step 1 — Done-Check` heading, then one `### Check {k}` block per check, newest last. The newest block **with a completion footer** is the current verdict; a block without one is still in flight. A re-check re-checks only what the check it names failed.
+**`done-check.md` (architect writes):** one `## Step 1 — Done-Check` heading, then one `### Check {k}` block per check, newest last. The newest block **with a completion footer** is the current verdict; a block without one is still in flight. A re-check re-checks only what the check it names failed — except a re-check after a hand-up, which scores the steps built or redone and the plan change its dispatch names, so an earlier PASS never leaves it empty. A Codex check — where a repo names Codex as its done check — carries three lines of its own, written by the session that dispatched it: `**Model:** codex`, `Checker: Codex — persisted by {session}`, and the footer `*Status: COMPLETE — Codex, persisted by {session}, {date}*`; its form is in codex-dispatch.md § Done check.
 
 ```
 ## Step 1 — Done-Check
 
-### Check {k} — {date} — {after the build | after fix cycle {N}}
+### Check {k} — {date} — {after the build | after fix cycle {N} | after hand-up {n}}
 
 **Model:** {your own model's exact id, self-reported from your system context — write "unknown" if unstated, never the model you were dispatched as; see agents-workflow.md § Artifact Formats}
 **Re-checks:** check {j}        ← a re-check only
@@ -131,7 +131,7 @@ The done check writes `docs/specs/{slug}/delivery/done-check.md`; the code revie
 *Status: COMPLETE — architect, {date}*
 ```
 
-**Fix list (coordinator writes, in `review.md`):** once both checks are in, the coordinator appends one section per round. Every item is a numbered list row — never a `### [SEVERITY]` heading, which the verdict-integrity gate reads as an open finding — naming its source or sources (`done check`, `reviewer`, `second reader`, `Codex`); an item several readers reported is listed once. Failed steps first, then process slips, then review findings. The `Bar:` line under the heading names the round's bar (→ agents-workflow.md § Fix rounds): only the items that reach it are numbered above the follow-up line. Where readers disagree on a finding's level, its row carries the settlement in the level brackets with a one-line reason — `[MEDIUM — contested LOW/MEDIUM: {reason}]`. The in-bar rows close with the **follow-up line**, the one place both pipelines decide whether a follow-up review is owed:
+**Fix list (coordinator writes, in `review.md`):** the coordinator opens one section per round when the round opens (→ agents-workflow.md § Fix rounds), after the primary's Step-2 section. Every item is a numbered list row — never a `### [SEVERITY]` heading, which the verdict-integrity gate reads as an open finding — naming its source or sources (`done check`, `reviewer`, `second reader`, `Codex`); an item several readers reported is listed once. Failed steps first, then process slips, then review findings. The `Bar:` line under the heading names the round's bar (→ agents-workflow.md § Fix rounds): only the items that reach it are numbered above the follow-up line. Where readers disagree on a finding's level, its row carries the settlement in the level brackets with a one-line reason — `[MEDIUM — contested LOW/MEDIUM: {reason}]`. The in-bar rows close with the **follow-up line**, the one place both pipelines decide whether a follow-up review is owed:
 
 ```
 ## Step 2 — Fix list, cycle {N}
@@ -144,7 +144,7 @@ Bar: {all | MEDIUM | HIGH}
 5. [MEDIUM — contested LOW/MEDIUM: {reason}] {finding title} — `path/to/file:line` (Codex, reviewer)
 ...
 
-Follow-up review: due — covers steps {list | none}
+Follow-up review: due — covers steps {list | none}    (or: Follow-up review: none due)
 
 **Under the bar — recorded, not fixed:**
 6. [LOW] {finding title} — `path/to/file:line` (second reader)
@@ -153,7 +153,11 @@ Follow-up review: due — covers steps {list | none}
 
 Items below the bar follow the follow-up line, under the bold line `**Under the bar — recorded, not fixed:**` — a bold line, never a heading, so it stays out of the section map — as numbered rows `{n}. [LEVEL] title — file:line (source)` that continue the list's numbering. The developer reads the block and never fixes it; open questions keep their own place and never go in it. Omit the block when nothing sits under the bar.
 
-The follow-up is **due** when the list holds a failed step or a skill slip (a step built or redone in the round), or the review asked for changes; the line then names the built or redone steps, or `none`. It reads `Follow-up review: none due` when the round's done-check items are test slips only and the review approved. "The review asked for changes" means a `REQUEST CHANGES` — a CRITICAL or HIGH open: a round whose items are all leveled findings below that, with no step built or redone, reads `none due` whichever check raised them, a COMMENT or a Codex NO-GO over MEDIUMs included. Any merge that leaves nothing in the round's bar is a `## Step 2 — Merge, no fix round` section instead, carrying the merged verdicts; it may carry the under-bar block.
+**The list is written in instalments.** Rows a check that lands after the round opened adds go under the bold line `**Added when {check} came in:**` — a bold line, never a heading, so it stays out of the section map and every reader that counts the file's headings — continuing the list's numbering; a raised level is edited in its own row, in the contested form; an item the working-tree check found already fixed goes to the under-bar block as `fixed in round` — a CRITICAL or HIGH excepted, which stays a row marked `fixed in round` and keeps the follow-up due — and is listed in the summary's Notes as fixed, never in the carry-over row. The follow-up line and the under-bar block are written last, when the round ends; until then the list has neither, and the developer works every row.
+
+The follow-up is **due** when the list holds a failed step or a skill slip (a step built or redone in the round), or the review asked for changes; the line then names the built or redone steps, or `none`. A row whose contested range reaches HIGH counts as HIGH, and `pipeline-gate.js` refuses `due` where none of these conditions holds. It reads `Follow-up review: none due` when the round's done-check items are test slips only and the review approved. "The review asked for changes" means a `REQUEST CHANGES` — a CRITICAL or HIGH open: a round whose items are all leveled findings below that, with no step built or redone, reads `none due` whichever check raised them, a COMMENT or a Codex NO-GO over MEDIUMs included. Any merge that leaves nothing in the round's bar is a `## Step 2 — Merge, no fix round` section instead, carrying the merged verdicts; it may carry the under-bar block.
+
+**A hand-up fix list** — the coordinator's one-item list carrying an architect's ruling on a solo hand-up (a solo's `too big`, or any other case the coordinator forwards to the architect that way) — is headed `## Step 2 — Fix list, hand-up {n}`, holds the single row `1. solo fix {n} — ruling questions.md Q{m}` and no `Bar:` line, and is never counted against the fix-round cap. When `review.md` does not exist yet (a hand-up before the first code review), the coordinator creates it holding just this section; the first code review later adds its own section by its normal append.
 
 **Re-review (reviewer writes — or, on the Codex pair, the dispatching session):** every re-review is appended as its own section, with Edit, never by rewriting the file — the first review's findings stand, and a whole-file write would put them beside a later APPROVED:
 
@@ -167,6 +171,8 @@ Covers: the round's changes; steps built or redone: {list | none}.
 
 {findings, evidence and footer in the Code Review layout below}
 ```
+
+**A round-less follow-up.** A follow-up review that no fix round preceded — a solo fix, or a hand-up developer's work, made after the first review started — is dispatched `Re-review after fixes. Solo fix {n}. Covers: …` (or `… Hand-up {n}. Covers: …`) and appended — by the reviewer or, on the Codex pair, the dispatching session — as `## Step 2 — Re-review (solo fix {n})` (or `## Step 2 — Re-review (hand-up {n})`) in the same layout. It is never counted as a fix cycle; the cycle form stays for every fix round. A solo fix made for a red at the close's complete run — or a hand-up after it — takes no follow-up review: the re-run decides, and `summary.md` Notes lists the fix as fixed at the close run, not reviewed.
 
 `## Step 2 — Code Review` is the first review and is never rewritten.
 
@@ -205,13 +211,15 @@ Covers: the round's changes; steps built or redone: {list | none}.
 ## Evidence
 | Check | Result | Command | Output |
 |-------|--------|---------|--------|
-| Build | pass/fail | [per docs/conventions/coding-conventions.md, if defined] | [summary] |
+| Run record | pass/fail/undeclared/pending/not verified at this round | the record the brief names | {path · verdict · when} |
+| {test file} | pass/fail | `verify-run.js --profile fast --files {file}` — one row per named file run to prove a finding | [summary] |
 
 *Status: COMPLETE — reviewer, {date}*
 ```
 
 **Completion footer.** Each writer ends its own block with `*Status: COMPLETE — {role}, {date}*`
-when it is done — the architect each `### Check {k}` block, the reviewer the Code Review section
+when it is done — the architect each `### Check {k}` block (a Codex check's dispatcher writes
+`*Status: COMPLETE — Codex, persisted by {session}, {date}*` in its place), the reviewer the Code Review section
 and each Re-review section. The
 footer is how the artifact **self-certifies**: the team lead trusts the footer, not the
 completion message, so a stranded message costs nothing (ADR-17).
@@ -220,7 +228,7 @@ completion message, so a stranded message costs nothing (ADR-17).
 
 - **Findings without file:line evidence.** Every CRITICAL or HIGH finding must cite an exact file path and line number. "The handler doesn't validate input" is not a finding — `src/area/Thing.ext:42` is.
 - **Severity inflation.** Style preferences, naming choices, and minor inconsistencies are LOW by definition. Flagging them as HIGH inflates the fix burden and trains the developer to ignore severity ratings. When in doubt, write it as LOW or move to Open Questions.
-- **Approving without fresh build output.** "Should work" is not evidence. Every approval must include a build check row in the Evidence table with actual command output. Claiming the build passes without running it is grounds for REQUEST CHANGES on the review itself.
+- **Approving without citing the run record.** "Should work" is not evidence. Every approval cites the run record the brief names in the Evidence table; an approval citing none is grounds for REQUEST CHANGES on the review itself. Re-running the suite is not evidence the record lacks — it is the duplicate run the record exists to remove.
 - **Rubber-stamping fix cycles.** On cycles 2 and 3, re-check the areas adjacent to each fix — not just the exact lines changed. A fix that introduces a regression in a nearby call site is still a failed review.
 - **Writing a critic verdict to review.md.** The critic returns findings by message only — it does not write to any file. Do not create `plan-review.md` — that file does not exist in the Nexus artifact model.
 - **Writing the done check into review.md.** The done check has its own file; the architect never writes `review.md` as done-check author (a past feature's in-file section is read, never extended).
@@ -230,7 +238,8 @@ completion message, so a stranded message costs nothing (ADR-17).
 
 | Agent | What they read | Action taken |
 |-------|---------------|-------------|
-| Developer | The `## Step 2 — Fix list, cycle {N}` section (failed steps, slips, findings) | Fixes each numbered row above the follow-up line, notes in implementation.md |
+| Developer | The `## Step 2 — Fix list, cycle {N}` section (failed steps, slips, findings) | Fixes each numbered row above the follow-up line, every row while there is none yet, notes in implementation.md |
 | Architect (done check) | Writes `done-check.md` | Adds a `### Check {k}` block: dispositions, slips, PASS/FAIL |
+| Dispatcher of a Codex done check (team lead, or the fast-lane architect) | The Codex job's collected output | Persists it as a `### Check {k}` block in the Codex form (→ codex-dispatch.md § Done check) |
 | Architect (escalation) | Step 2 findings and the fix lists | Decides plan wrong vs code wrong |
 | Team Lead | `done-check.md`'s newest footed check for its verdict and any `Missing` marker; the Code Review / newest Re-review section for its verdict line | Writes the fix list and routes one round to the developer when an item reaches the round's bar, or closes on the close predicate |

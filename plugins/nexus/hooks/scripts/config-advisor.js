@@ -17,18 +17,22 @@
  * forever with a green test sitting over it. The one closed list is `FAMILIES`, the four Claude model
  * families: a seat's value is compared by the family it names (`claude-opus-5-5` reads as `opus`),
  * and a name outside the four is its own family — kept, compared and suggested like any other. The
- * job checks below use the same list, since a job value must be one of the four.
+ * job checks below use the same list, since a job value must be one of the four — save one value:
+ * `codex` at `doneCheck`, where a repo may name Codex as its done check; at every other job `codex`
+ * draws the same outside-the-families line, and it is never listed as a family.
  *
  * TWO NAMED FAMILIES NEVER SUGGESTED, AND WHY THAT IS NOT A BREACH OF IT. `NEVER_SUGGESTED` and
  * `NOT_A_CHECKER` are not permitted-model lists and not judgments about what any seat is configured to
  * — a user may still set any seat to either. The premium family is never suggested by this advisory:
- * its one automatic pick is the reader-pair list's unattended stand-in for Codex, made at spawn
+ * its one automatic pick is the early-failure stand-in for a Codex down in its first 6 minutes, made at spawn
  * (`agents-workflow.md` § Critic rounds), and `haiku` is in no pair, so the advisory suggests neither.
  *
  * NO SECOND ADVISORY. On per-agent entries only the PAIRING is reported. A producer seat may name any
- * model — policing the value would re-impose exactly what the reversal freed. The one exception is
+ * model — policing the value would re-impose exactly what the reversal freed. One exception is
  * the `jobs` and `codex` blocks: their keys and values are closed lists, so a typo there is worth one
- * line each. A per-agent `effort` key draws one line too, saying what it does, never that it is wrong.
+ * line each. A further exception is the top-level `fullChecks` key, the path patterns the architect
+ * reads to pick a plan's check level: a value that is not a list of non-blank strings draws one line.
+ * A per-agent `effort` key draws one line too, saying what it does, never that it is wrong.
  *
  * `modelRanking` default is `['fable', 'opus', 'sonnet']`, the ordering the prose already states
  * (`team-lead.md` § Pre-Flight, item 4b). It feeds this advisory only — no checker is picked from it —
@@ -71,6 +75,7 @@ const OWN_JOBS = ['discovery', 'audit', 'secondReader', 'doneCheck'];
 const RESEARCH_TIERS = ['routine', 'highStakes'];
 const CHECKER_JOBS = ['secondReader', 'doneCheck'];
 const PANEL_PEERS = ['fable', 'opus'];
+const CODEX = 'codex';
 const CODEX_EFFORTS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 
 // The family a model value reads as: a family named as a whole word ('claude-opus-5-5', 'opus[1m]'),
@@ -124,6 +129,7 @@ function checkJobs(jobs, cfg) {
       }
       continue;
     }
+    if (key === 'doneCheck' && typeof v === 'string' && v.trim().toLowerCase() === CODEX) continue;
     const f = exactFamily(v);
     if (!f) { out.push(valueLine(key, v)); continue; }
     if (f === NOT_A_CHECKER && CHECKER_JOBS.includes(key)) {
@@ -158,6 +164,9 @@ function checkCodex(codex) {
   }
   return out;
 }
+
+// An empty array is a deliberate "none", so it counts as a list.
+const isPatternList = (v) => Array.isArray(v) && v.every((p) => typeof p === 'string' && /\S/.test(p));
 
 let input = '';
 process.stdin.setEncoding('utf8');
@@ -209,11 +218,16 @@ process.stdin.on('end', () => {
     }
     if (isObject(cfg.jobs)) out.push(...checkJobs(cfg.jobs, cfg));
     if (isObject(cfg.codex)) out.push(...checkCodex(cfg.codex));
+    // `in` throws on a scalar config, which would silence the collision lines already gathered.
+    if (isObject(cfg) && 'fullChecks' in cfg && !isPatternList(cfg.fullChecks)) {
+      out.push(`${PREFIX} fullChecks is ${show(cfg.fullChecks)}, not a list of path patterns — the architect reads it as unset.`);
+    }
     const perAgentEffort = Object.entries(cfg)
-      .some(([key, v]) => key !== 'jobs' && key !== 'codex' && isObject(v) && 'effort' in v);
+      .some(([key, v]) => !['jobs', 'codex', 'fullChecks'].includes(key) && isObject(v) && 'effort' in v);
     if (perAgentEffort) {
-      out.push(`${PREFIX} a per-agent effort value is a line in the dispatch prompt only — the Agent tool ` +
-        `takes no effort, and an agent's reasoning effort comes from the agent's frontmatter.`);
+      out.push(`${PREFIX} a per-agent effort value is a line in the dispatch prompt only — it is never ` +
+        `passed as the Agent tool's per-spawn effort, so an agent's reasoning effort comes from the ` +
+        `agent's frontmatter.`);
     }
     if (out.length) process.stdout.write(JSON.stringify({ systemMessage: out.join('\n') }));
   } catch { /* fail silent — advice must never wedge a config edit */ }

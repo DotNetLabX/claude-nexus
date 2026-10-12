@@ -20,6 +20,8 @@ Mirror the main project's `Features/` folder structure.
 
 - Test class: `{ClassUnderTest}Tests`
 - Test method: `Should_{ExpectedBehavior}_When_{Condition}`
+- A test method is exempt from the `Async` ending: its name says the behaviour it checks. An async helper in a test
+  class still ends in `Async`, and every other rule of form binds test code as it binds production code.
 - The class under test: `_sut`
 
 ### Slices

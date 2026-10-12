@@ -21,7 +21,7 @@ It ships a coordinated team of specialized agents, always-on behavioral rules, r
 1. **Subagent (native)** — the pipeline spawns agents via the Task tool. The team-lead orchestrates; agents hand off through files (`docs/specs/{slug}/...`) and route messages hub-and-spoke.
 2. **Persona (`/nexus:<agent>`)** — the main thread *adopts* a role for the session (e.g. `/nexus:architect`). The command records the role per-session in `.claude/.personas.json` (keyed by session id, so concurrent sessions don't collide). `restore-agent` restores the role on `/compact` via a cap-safe pointer (role identity + agent-file path + re-read instruction + re-grounding block: context duties, summary-content-is-a-claim — the full body exceeds the platform's 10K hook-output cap, ADR-85) — the one event that drops it; `/clear` exits the persona, and entries older than 16h are pruned automatically.
 
-Pipeline entry points: `backlog` (triage) → `team-lead` (orchestrate) → `architect` (plan) → `developer` (implement) → `architect` done-check and `reviewer` (code review), side by side. `solo` is the lightweight path for 1–3 file changes. `po` shapes specs; `critic` cross-checks specs/plans; `learner` consolidates lessons.
+Pipeline entry points: `backlog` (triage) → `team-lead` (orchestrate) → `architect` (plan) → `developer` (implement) → `architect` done-check and `reviewer` (code review), side by side. `solo` is the lightweight path for 1–3 file changes, and inside a feature's run the first stop for a failing test or a bug. `po` shapes specs; `critic` cross-checks specs/plans; `learner` consolidates lessons.
 
 ## Design: where conventions live
 

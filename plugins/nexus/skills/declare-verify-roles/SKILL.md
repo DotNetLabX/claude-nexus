@@ -23,7 +23,7 @@ facts. This recipe writes them, once, attended.
    | role | means | bound |
    |---|---|---|
    | `build` | an **incremental** build of what changed, used only in a compile-fix loop | never a clean or forced full rebuild — that guarantee belongs to CI and to the close |
-   | `unit` | the **narrowest** command covering the step's change; where the repo's convention chains build and test, chain them here (`… && …`) rather than dropping the build | **30 seconds**; never the whole suite, and never the full command minus a filter clause — the slow-test exclusion below is added to a `unit` already scoped this way and never scopes it |
+   | `unit` | the **narrowest** command covering the step's change; where the repo's convention chains build and test, chain them here (`… && …`) rather than dropping the build | **the `stepLimitSeconds` you declare** (step 5); never the whole suite, and never the full command minus a filter clause — the slow-test exclusion below is added to a `unit` already scoped this way and never scopes it |
    | `full` | everything, the suite the close gate runs once (it may take minutes) | **once, at close, from the main session** — never in a subagent |
 
    - `mutation` — only if the repo has a mutation runner; otherwise omit the key.
@@ -63,7 +63,9 @@ facts. This recipe writes them, once, attended.
      invocation of a chained `unit` — and exits 2 naming the reason when it cannot join. On `node`,
      first run `node "{plugin}/hooks/scripts/lib/compose-test-command.js" node-skip-pattern`: `false`
      means this Node lacks the skip flag — declare `slow` and skip the exclusion.
-3. **Run each role command once through the runner** — `verify-run.js --role {r}`, and for `full`
+3. **Run each role command once through the runner** — `verify-run.js --role {r}`; for `unit`
+   `verify-run.js --role unit --timeout-ms 110000`, since no step limit is set yet and the bare form
+   would cut at the 90 s default; and for `full`
    `verify-run.js --role full --slug declare-verify-roles` (the session's plugin-paths block carries
    the runner's resolved path). The runner reads the roles from `.claude/verify.json`, so write the
    proposed `roles` block there first (Write tool) and correct it in place as you go; step 5
@@ -74,8 +76,9 @@ facts. This recipe writes them, once, attended.
    you keep is the joined command's. Paste, for each role, **its exit code and how long it took** (the record's
    `verdict` and `duration_ms`) — the elapsed time is half the result, and a recipe that never asks
    for it is how an over-broad declaration gets written in good faith. A role that fails here must not be declared
-   as-is: fix the command or leave the key out and say why. **A proposed `unit` command that
-   measures over 30 seconds is re-proposed narrower before it is written** — cut the path, the
+   as-is: fix the command or leave the key out and say why. **A proposed `unit` command cut
+   at 110 s (`reason: "timeout"`) or measuring over 110 s is re-proposed narrower before it is
+   written** — cut the path, the
    filter or the project set, and time it again. The user may override the bound; when they do, say
    so in the reply along with the measured number, so the choice is visible in the transcript
    instead of buried in the file.
@@ -97,6 +100,23 @@ facts. This recipe writes them, once, attended.
    is a durable home for the number, so a session-start check can warn about a per-step command that
    was never timed by reading the declaration alone — running nothing. State that the nudge stops on
    the next session start.
+
+   **The step limit.** Propose a top-level `"stepLimitSeconds"` beside `roles`: the time one step
+   close may take — the fast profile, or `verify-run.js --role unit` — in whole seconds. Unset, it is
+   90 s; above 110 s the runner clamps it to 110 s, under the Bash tool's 120 s cap; anything but a
+   whole number above 0 is ignored, with one stderr line. The architect's light lane runs at
+   `min(limit, max(15 s, limit / 2))`, `limit` being the value after the clamp — so a value set under
+   15 s stays as set. Propose **three times `measured.unit.ms`, rounded up to the next 15 s and
+   capped at 110 s**; the light half then stays above the measured time while that time is under
+   55 s, and above it a light-lane close may be cut:
+
+   ```json
+   "stepLimitSeconds": 75
+   ```
+
+   A step close cut at this limit records `reason: "timeout"`. Where the repo declares `roles.full`,
+   the developer reads that as *not finished* rather than red — the complete run at close covers the
+   tests that were cut — and without `roles.full` it stays red. Say so when you propose the value.
 6. **Do not commit** unless the user asks — the files are theirs; name them in your reply.
    Where the `tag-slow-tests` skill (`nexus-pro`) is in your skill list and `slow` was declared, end
    the reply by inviting "tag slow tests": that pass times the suite and tags its slow tests, which

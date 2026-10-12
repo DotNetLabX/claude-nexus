@@ -135,7 +135,8 @@ that belongs to one style says so. Where a rule allows a listed exception, the l
   or a handler, which receive it from the framework. Every library and model defaults to the long name, so the
   convention check holds the name.
 - **The token is always passed on,** except where the called library takes none.
-- **Every async method ends in `Async`,** private steps included; names a framework fixes (`Handle`, `Consume`) apart.
+- **Every async method ends in `Async`,** private steps included; names a framework fixes (`Handle`, `Consume`) apart,
+  and a test method is the exception (→ testing.md § Naming, the backend one).
 - **No `.ConfigureAwait(false)`** in services, modules or shared libraries — a web service has nothing it protects.
 - **`ct.ThrowIfCancellationRequested()`** — don't silently return on cancellation.
 - **`throw;` not `throw ex;`** — it keeps the original stack trace.

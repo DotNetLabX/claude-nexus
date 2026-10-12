@@ -1,6 +1,40 @@
 # nexus-dotnet — Changelog
 
 
+## [2.0.2] — 2026-10-11
+- PATCH bump.
+  - skill change (frontend-review)
+  - estate raise: plugins/nexus-dotnet/skills/frontend-review/SKILL.md 4227→4419 B — F220-ReviewTestRuns: reviewers cite the run record; no rerun after a fix round
+
+## [2.0.1] — 2026-10-11
+- F219-DotnetSettingsAndCheck — PATCH, from knowledge-gateway's 2.0.0 feedback. In plain words, for a consuming repo:
+  - **The conventions check can size the work before you adopt it:** a `report` setting writes totals per check
+    (switched-off checks included), counts per project and every finding. A documentation comment now counts once,
+    not once per line, and a test method no longer needs the `Async` ending. **Re-copy the template files.**
+  - **The settings skill** teaches derived settings classes, unique names within one host, a section that is always
+    required, and the markers that make nested values validate; the sample `GetRequiredOptions` now validates what it
+    reads — **update a copied `OptionsExtensions`.**
+  - **New skill `change-copied-library`:** what to do when a copied shared library does not fit, and the hand-over
+    file that carries the fix back.
+  Detail, by file:
+  - plugin.json metadata change
+  - plugin payload (conventions/csharp.md)
+  - plugin payload (conventions/testing.md)
+  - skill change (add-conventions-check)
+  - skill change (create-building-blocks-package)
+  - skill change (service-infra-conventions)
+  - plugin payload (templates/conventions-check/ConventionChecks.g.cs)
+  - plugin payload (templates/conventions-check/ConventionPattern.cs)
+  - plugin payload (templates/conventions-check/ConventionScanner.cs)
+  - plugin payload (templates/conventions-check/ConventionSettings.cs)
+  - plugin payload (templates/conventions-check/RepositoryScan.cs)
+  - skill change (change-copied-library)
+  - plugin payload (templates/conventions-check/ConventionReport.cs)
+  - estate raise: plugins/nexus-dotnet/skills/add-conventions-check/SKILL.md 6237→8335 B — F219 fix round 1: conventions-check skill (attribute list, re-copy remedy), settings skill sample and re-wrap
+  - estate raise: plugins/nexus-dotnet/skills/change-copied-library/SKILL.md 0→3597 B — F219 fix round 1: conventions-check skill (attribute list, re-copy remedy), settings skill sample and re-wrap
+  - estate raise: plugins/nexus-dotnet/skills/create-building-blocks-package/SKILL.md 5299→5380 B — F219 fix round 1: conventions-check skill (attribute list, re-copy remedy), settings skill sample and re-wrap
+  - estate raise: plugins/nexus-dotnet/skills/service-infra-conventions/SKILL.md 15599→19274 B — F219 fix round 1: conventions-check skill (attribute list, re-copy remedy), settings skill sample and re-wrap
+
 ## [2.0.0] — 2026-10-09
 - F195-DotnetSkillsFromReference — MAJOR. The skills now teach 113 settled .NET rules, and every code sample obeys
   the rules it teaches. In plain words, what changes for a consuming repo:

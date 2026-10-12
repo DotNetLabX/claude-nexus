@@ -20,7 +20,7 @@
 | `discovery` | helpers that locate or sketch — codebase discovery dives, options-panel sketches, the learner's scan | `sonnet` |
 | `audit` | `general-purpose` helpers that review or verify — substitute review passes, finder passes, the registry verifier, the reviewer's fan-out helpers | `sonnet` |
 | `secondReader` | the round-1 second reader at the critic and reviewer seats | Sonnet, or Opus beside a Sonnet primary (→ agents-workflow.md § Critic rounds) |
-| `doneCheck` | the Step-1 done check and its re-checks, each a fresh architect spawn | the architect's resolved model — its per-agent entry, else its frontmatter |
+| `doneCheck` | the Step-1 done check and its re-checks, each a fresh architect spawn, or a read-only Codex job where the value is `codex` | the architect's resolved model — its per-agent entry, else its frontmatter |
 
   The same block carries three miner keys — `minerGenerator`, `minerJudge` and `minerMechanical` —
   which are authored in the miner's own doctrine (`mine-family-core.md` § Kickoff checklist, in the
@@ -37,7 +37,9 @@
 
   **Values, and a value that cannot be used.** A value is a Claude model family — `fable`, `opus`,
   `sonnet` or `haiku` — matched ignoring case and surrounding spaces. Every job in the table takes a
-  string. A value that cannot be used is read as unset, with one disclosure line in the spawning
+  string. `codex` is a value at `doneCheck` alone, used where it is the effective value — an explicit
+  owner-directed spawn parameter still outranks it (→ codex-dispatch.md § Done check); at any other
+  job it is read as unset, with the disclosure line below. A value that cannot be used is read as unset, with one disclosure line in the spawning
   turn naming the job, the value and the value taken — never a halt: an unknown family, a job name
   no table declares, `haiku` at `secondReader` or `doneCheck` (`haiku` is never a checker). One job
   exists to add a family, so a setting that would lose it is read as unset too: a `secondReader`
@@ -49,7 +51,9 @@
   second reader in an `[UNATTENDED]` run — surface only at the spawn's disclosure line.
 
   **`codex` — one setting for every Codex job.** `codex.timeLimitMinutes` is a positive number, the
-  total time a Codex job may run from its start (unset: 25). `codex.effort` is the effort a Codex
+  total time a Codex job may run from its start (unset: 25); a review job with other readers in its
+  round runs until the later of that and the last of them finishing (→ codex-dispatch.md § Time limit and fallback).
+  `codex.effort` is the effort a Codex
   dispatch may send, one of `none`, `minimal`, `low`, `medium`, `high`, `xhigh` (unset: none is sent,
   and the user's own Codex config decides). Every Codex job reads it, through the Codex job helper
   (→ codex-dispatch.md § Time limit and fallback).
@@ -94,6 +98,25 @@
   everything else keep the rule above**: the reader-pair list reaches checker seats only — there it
   picks the main reader whether or not a collision occurred — and it never changes an agent's
   configured `effort`.
+
+## Effort in the light lane
+
+On the light lane every checker runs one effort level below its baseline (→ architect.md § Light Lane (standalone only)). This section is the rule's one home.
+
+- **Who:** the critic, the code reviewers, every second reader and the done check — never the
+  developer and never the planning architect.
+- **Claude readers:** the baseline is the agent's frontmatter `effort`, which is what actually runs;
+  the per-agent `effort` key in `.claude/nexus-agents.json` is a dispatch-prompt line, not a baseline.
+  One step down the ladder `max → xhigh → high → medium → low`, floor `low`, passed as the Agent
+  tool's per-spawn `effort` parameter.
+- **Codex:** one level below the repo's `codex.effort` on the ladder `xhigh → high → medium → low`,
+  floor `low`, sent with the Codex job helper's `--effort`. Where the repo sets it at `low` or below
+  (`minimal`, `none`), no `--effort` is passed, the configured value stays, and the round's record
+  says Codex was not lowered. Where the repo sets no `codex.effort`, no `--effort` is passed either —
+  no baseline is known, the user's own Codex config decides, and the record says so.
+- **A model substitution still never changes effort:** the seat's lowered level travels with
+  whichever model the reader-pair list or a pairing ask puts in it.
+
 ## Pipeline role ownership
 
 - **Nexus agents own the pipeline** — for feature pipeline roles (architect, developer, reviewer,
@@ -102,7 +125,11 @@
   2026-09-30):** where Codex reads — a spec, plan, code or promotion review — it *replaces* the nexus
   critic or reviewer as that review's primary, dispatched read-only through the Codex job helper,
   with a nexus second reader beside it (→ agents-workflow.md § Critic rounds). The session that
-  dispatched it persists its verdict.
+  dispatched it persists its verdict. The exception extends to the done check where a repo sets
+  `jobs.doneCheck` to `codex`: a read-only Codex job, persisted by its dispatcher
+  (→ codex-dispatch.md § Done check). Where Codex fails inside its early window in a typed-marker
+  unattended run, the stand-in is a nexus reader on Fable — pair 2, the reader-pair list's one
+  automatic Fable pick (→ codex-dispatch.md § Time limit and fallback).
 - **Third-party specialist agents are fine for standalone tasks** outside the pipeline (e.g. a dedicated debugger, security reviewer, or designer) — just not as replacements for the pipeline roles themselves.
 
 ## Output Size Constraint

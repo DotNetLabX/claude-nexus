@@ -68,9 +68,9 @@ Review checklist for Vue 3 + TypeScript + Tailwind CSS v4 code. Supplements the 
 
 ## Stage 7: Build Evidence
 
-- [ ] `npm run build` from `client/` passes (runs `vue-tsc -b` + Vite)
-- [ ] Build output provided (not assumed or claimed)
-- [ ] No TypeScript errors in build output
+- [ ] The run record the brief names covers the client build (`npm run build` from `client/`, which runs `vue-tsc -b` + Vite) and is cited — not assumed or claimed
+- [ ] Where the repo's complete run does not build the client, that is a finding against the declaration, proven by one `npm run build` run
+- [ ] No TypeScript errors in the cited build output
 
 ## Stage 8: Gap Analysis
 

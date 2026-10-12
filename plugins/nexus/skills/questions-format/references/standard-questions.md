@@ -458,19 +458,50 @@ Learner approval gate, routine: {the count} lessons are ready for {which files}.
 They would add {the measured growth}.
 ```
 
-### build lane
+### plan only
 
-**When asked:** asked after a standalone plan is approved, to settle who builds it.
+**When asked:** asked when a request with no spec reaches a standalone architect and is judged a scoped change, in a repo that declares its complete test run.
 **Surfaces:** question box.
 **Options:**
 
 | label | consequence | offered when |
 |---|---|---|
-| build it in this session | the planner implements it now, with its own review at the end | the plan declares no developer split |
-| hand it to the full pipeline | separate roles build and review it | always |
+| plan it now | the plan alone defines it; I pick lighter or full checks from the finished plan, and you can change that at approval | always |
+| shape a spec first | a written spec comes first, then the plan and the full checks | always |
+| small enough for Solo | one session makes the change with no plan and no separate review | the change fits Solo's scope |
+
+**Recommended:** plan it now, where the change is scoped and easy to undo; a spec first where a wrong call about what to build would be costly to reverse.
+**With the owner away:** shape a spec first; a plan-only definition is never chosen without you. Typed marker: the same.
+**Long form:**
+
+```
+A plan alone starts sooner, and a written spec settles what to build before anything is planned.
+The request is {its intent class}, has no spec, and would change {what it changes}.
+How should this change be defined?
+```
+
+**This run:**
+
+```
+Plan only, routine: the request is {its intent class}, has no spec, and would change {what it changes}.
+```
+
+### build lane
+
+**When asked:** asked after a standalone plan is approved, to settle who builds it; on a plan-only plan, these options: build it, lighter checks · build it, full checks · re-plan for the full pipeline · stop after the plan.
+**Surfaces:** question box.
+**Options:**
+
+| label | consequence | offered when |
+|---|---|---|
+| build it in this session | the planner implements it now, with its own review at the end | the plan declares no developer split and is not a plan-only plan |
+| hand it to the full pipeline | separate roles build and review it | the plan is not a plan-only plan |
+| build it, lighter checks | it is built now, then checked once at lower effort, with one round of fixes | the plan is a plan-only plan and declares no developer split |
+| build it, full checks | it is built now with the full checks — up to three review and fix rounds, each fix re-read where due; on a plan reviewed light, its review first continues | the plan is a plan-only plan and declares no developer split |
+| re-plan for the full pipeline | the plan is set aside for a spec and the full checks before anything is built | the plan is a plan-only plan |
 | stop after the plan | nothing is built; the plan waits | always |
 
-**Recommended:** this session for a plan of up to 8 steps with no declared developer split; the full pipeline for more than 8 steps or a declared split.
+**Recommended:** this session for a plan of up to 8 steps with no declared developer split; the full pipeline for more than 8 steps or a declared split; on a plan-only plan of more than 8 steps or with a declared developer split, re-plan for the full pipeline; on any other plan-only plan, the level its `**Lane:**` header names.
 **With the owner away:** the lane you would have recommended. Typed marker: the same.
 **Long form:**
 

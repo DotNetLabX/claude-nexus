@@ -154,22 +154,39 @@ A middleware lives in the `Middlewares` folder and takes only injected services.
 
 - **One helper binds and validates.** Every settings class is bound through the bind-and-validate helper: it binds
   the section named after the class, runs the attribute validation, and fails at start-up when the section is
-  missing or a value is wrong. Settings are consumed as `IOptions<T>`. No `configuration["…"]` reads, and no hand
-  `GetSection(…)` binding outside registration code.
+  missing or empty or a value is wrong. Settings are consumed as `IOptions<T>`. No `configuration["…"]` reads, and
+  no hand `GetSection(…)` binding outside registration code.
 - **A settings class is data only.** Named `{Subject}Options`, one class per file, no methods and no static members,
   no section-name constant — the section in the settings file carries the class's name. A value is `init`, and
   `required` when it has no default; a required value is never `string?` and never `= string.Empty` as a
   placeholder (`= null!` only where a binder needs it). Validation is by attributes; a rule that spans two settings
   lives in one validator class (`IValidateOptions<T>`) beside them, in the project that binds them. Connection
   strings stay under `ConnectionStrings`.
+- **Nested values are validated only when marked.** A nested settings class is marked `[ValidateObjectMembers]` and
+  a list of them `[ValidateEnumeratedItems]`; unmarked, validation never looks inside, and a wrong nested value
+  passes start-up.
 - **One section, one class, bound once.** Settings classes sit at the project root or in an `Options` folder —
   never in a feature folder or the Persistence project.
+- **A second group of one shape is a derived class.** Where a service needs two groups of the same settings (two
+  mail servers, two stores), the second is an empty class derived from the first, named for its use and bound to
+  its own section; a class that adds settings to a base derives from it the same way (`file-storage-patterns` does
+  this for a second file store). Either works only where the consumer is written against the derived type or is
+  generic over the settings type: a consumer asking for the base type reads the base's section, so a value is never
+  set in two sections.
+- **Names are unique within one host.** Where a host composes several services or modules into one settings file,
+  every settings class name is unique within it — the section carries the name. Where two uses need one shape, the
+  second is a derived class named for its use.
+- **A section is always required, its values written out.** The settings file carries every section the service
+  binds, with every value written out, defaults included: a missing section is most likely a forgotten one, and the
+  file is where a reader looks for the values. An empty section counts as missing.
 - **Injected and read once.** A class takes `IOptions<T>` in its constructor and passes on only the value it needs.
   A setting that must change while the service runs is the exception: it is read through `IOptionsMonitor<T>`, and
   the class is listed in `project-lists.md` § Run-time settings in the same change.
 - **Renaming an existing section is a deployment change:** the deployed settings move in the same change.
 
 ```csharp file=OptionsExtensions.cs
+using Microsoft.Extensions.Options;
+
 public static class OptionsExtensions
 {
     public static IServiceCollection AddAndValidateOptions<TOptions>(this IServiceCollection services, IConfiguration configuration)
@@ -188,9 +205,16 @@ public static class OptionsExtensions
     }
 
     public static TOptions GetRequiredOptions<TOptions>(this IConfiguration configuration)
-        where TOptions : class =>
-        configuration.GetSection(typeof(TOptions).Name).Get<TOptions>()
+        where TOptions : class
+    {
+        var value = configuration.GetSection(typeof(TOptions).Name).Get<TOptions>()
             ?? throw new InvalidOperationException($"The settings section {typeof(TOptions).Name} is missing.");
+        var result = new DataAnnotationValidateOptions<TOptions>(string.Empty).Validate(string.Empty, value);
+        if (result.Failed)
+            throw new OptionsValidationException(string.Empty, typeof(TOptions), result.Failures);
+
+        return value;
+    }
 
     public static string GetRequiredConnectionString(this IConfiguration configuration, string name) =>
         configuration.GetConnectionString(name)
@@ -199,9 +223,12 @@ public static class OptionsExtensions
 ```
 
 `GetRequiredOptions` and `GetRequiredConnectionString` are for registration code that needs a value while it
-registers (a client's address, a data context's connection); every other reader takes `IOptions<T>`. A missing
-value is a configuration fault, so this shared helper is where its framework error is thrown — a service's own
-registration never throws one (`error-handling` § Exception Hierarchy).
+registers (a client's address, a data context's connection); every other reader takes `IOptions<T>`.
+`GetRequiredOptions` runs the same validation `ValidateDataAnnotations()` runs, nested markers included, so a value
+read at registration is never used unchecked; a class that is both read at registration and injected keeps its
+`AddAndValidateOptions` registration as well. A missing value is a configuration fault, so this shared helper is
+where its framework error is thrown — a service's own registration never throws one
+(`error-handling` § Exception Hierarchy).
 
 ```csharp file=JwtOptions.cs
 using System.ComponentModel.DataAnnotations;
@@ -232,6 +259,72 @@ public class RabbitMqOptions
 
     [Required]
     public required string Password { get; init; }
+}
+```
+
+A nested group and a list are marked, so validation reaches inside them:
+
+```csharp file=ShippingOptions.cs
+using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Options;
+
+public class ShippingOptions
+{
+    [Required]
+    public required string BaseAddress { get; init; }
+
+    [ValidateObjectMembers]
+    public RetryOptions Retry { get; init; } = new();
+
+    [ValidateEnumeratedItems]
+    public List<WebhookOptions> Webhooks { get; init; } = [];
+}
+```
+
+A second group of one shape, and a class that adds settings, each derive from the base and bind their own section;
+the consumer is generic over the settings type, so each registration hands it its own group:
+
+```csharp file=MailOptions.cs
+using System.ComponentModel.DataAnnotations;
+
+public class MailOptions
+{
+    [Required]
+    public required string Host { get; init; }
+
+    public int Port { get; init; } = 25;
+}
+```
+
+```csharp file=AlertMailOptions.cs
+public class AlertMailOptions : MailOptions;
+```
+
+```csharp file=BulkMailOptions.cs
+using System.ComponentModel.DataAnnotations;
+
+public class BulkMailOptions : MailOptions
+{
+    [Range(1, 1000)]
+    public int BatchSize { get; init; } = 100;
+}
+```
+
+```csharp file=MailSender.cs
+using Microsoft.Extensions.Options;
+
+public class MailSender<TOptions>(IOptions<TOptions> _options)
+    where TOptions : MailOptions
+{
+    public string Server => $"{_options.Value.Host}:{_options.Value.Port}";
+}
+```
+
+```json
+{
+  "MailOptions": { "Host": "mail.internal", "Port": 25 },
+  "AlertMailOptions": { "Host": "alerts.internal", "Port": 25 },
+  "BulkMailOptions": { "Host": "bulk.internal", "Port": 587, "BatchSize": 100 }
 }
 ```
 

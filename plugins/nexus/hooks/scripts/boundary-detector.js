@@ -19,7 +19,9 @@
  *   - a role writing another role's artifact: plan.md=architect, done-check.md=architect,
  *     review.md=reviewer|team-lead (the team lead writes its fix list; the architect is absent because
  *     it writes done-check.md, and its fast-lane fix list is a main-session write this detector skips),
- *     implementation.md=developer, summary.md=team-lead (lessons.md is shared by design)
+ *     implementation.md=developer, summary.md=team-lead (lessons.md is shared by design). A Codex
+ *     done check's done-check.md block is a main-session write, which this detector skips, so a
+ *     spawned coordinator hands that check back and never writes the block itself
  *   - ANY subagent writing .claude/.pipeline-state (the team lead owns it, main-session only)
  *   - ANY subagent spawning a pipeline-role agent via Agent/Task (ADR-21: delegated
  *     self-advancement — the F16 incident vector: a developer commissioned done-checks, a

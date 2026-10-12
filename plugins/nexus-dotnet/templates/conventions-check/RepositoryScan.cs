@@ -61,10 +61,20 @@ public class RepositoryScan
             var hits = files
                 .SelectMany(file => scanner.Scan(
                     Encoding.UTF8.GetString(File.ReadAllBytes(file)),
-                    Path.GetRelativePath(repositoryRoot, file).Replace('\\', '/'),
+                    InRepositoryName(repositoryRoot, file),
                     file.EndsWith(".cs", StringComparison.Ordinal) ? "cs" : "project",
                     libraryRoots.Any(root => IsUnder(file, root))))
                 .ToList();
+            if (settings.Report is not null)
+            {
+                var reportPath = InRepository(repositoryRoot, settings.Report);
+                var failure = WriteReport(reportPath, repositoryRoot, settings, files, hits);
+                if (failure is not null)
+                {
+                    return Failed(settingsPath, $"the report could not be written to {reportPath}: {failure}");
+                }
+            }
+
             return new RepositoryScan { SettingsPath = settingsPath, Settings = settings, Hits = hits };
         }
         catch (Exception problem) when (problem is InvalidOperationException or System.Text.Json.JsonException or IOException or UnauthorizedAccessException or ArgumentException)
@@ -75,6 +85,68 @@ public class RepositoryScan
 
     private static RepositoryScan Failed(string settingsPath, string reason) =>
         new() { SettingsPath = settingsPath, Failure = $"The convention check could not run: {reason.TrimEnd('.')}. Settings: {settingsPath}." };
+
+    private static string? WriteReport(string reportPath, string repositoryRoot, ConventionSettings settings, List<string> files, List<ConventionHit> hits)
+    {
+        try
+        {
+            var withFindings = hits.Select(hit => hit.File).ToHashSet(StringComparer.Ordinal);
+            var projectOfFolder = new Dictionary<string, string>(PathComparer);
+            var projects = files
+                .Select(file => (Name: InRepositoryName(repositoryRoot, file), Folder: Path.GetDirectoryName(file)!))
+                .Where(file => withFindings.Contains(file.Name))
+                .ToDictionary(file => file.Name, file => ProjectOf(file.Folder, repositoryRoot, projectOfFolder));
+            var text = ConventionReport.Render(ConventionChecks.All, settings.Off, hits, projects);
+            var folder = Path.GetDirectoryName(reportPath);
+            if (!string.IsNullOrEmpty(folder))
+            {
+                Directory.CreateDirectory(folder);
+            }
+
+            File.WriteAllText(reportPath, text, new UTF8Encoding(false));
+            return null;
+        }
+        catch (Exception problem) when (problem is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return problem.Message;
+        }
+    }
+
+    private static string ProjectOf(string start, string repositoryRoot, Dictionary<string, string> known)
+    {
+        var visited = new List<string>();
+        var project = ConventionReport.NoProject;
+        for (var folder = new DirectoryInfo(start); folder is not null; folder = folder.Parent)
+        {
+            if (known.TryGetValue(folder.FullName, out var found))
+            {
+                project = found;
+                break;
+            }
+
+            visited.Add(folder.FullName);
+            if (folder.Exists && folder.EnumerateFiles("*.csproj").Any())
+            {
+                project = InRepositoryName(repositoryRoot, folder.FullName);
+                break;
+            }
+
+            if (PathComparer.Equals(folder.FullName.TrimEnd('/', '\\'), repositoryRoot.TrimEnd('/', '\\')))
+            {
+                break;
+            }
+        }
+
+        foreach (var folder in visited)
+        {
+            known[folder] = project;
+        }
+
+        return project;
+    }
+
+    private static string InRepositoryName(string repositoryRoot, string path) =>
+        Path.GetRelativePath(repositoryRoot, path).Replace('\\', '/');
 
     private static string? ProjectFolderFrom(string start)
     {

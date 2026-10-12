@@ -8,7 +8,9 @@ translate. None of them appears in an ask's header, its question text, an option
 description; the writer says the plain thing instead ("a second reader" for a checker seat, "the rule
 for a matching model family" for the pairing rule). The one exception is the catalogue name on a
 routine ask's first line: the names in `standard-questions.md` are the owner's handles for the
-plugin's fixed questions, and are meant to be recognised rather than read.
+plugin's fixed questions, and are meant to be recognised rather than read. A word coined during the
+run is on neither list and is banned all the same
+(→ research-before-asking.md § The owner-question contract, "Asked from the owner's side").
 
 **Pointer phrases** send the owner outside the ask for a fact instead of carrying it. An ask carries
 its facts or does not need them: "rows repeat inside the section, which you ruled on 26 August"

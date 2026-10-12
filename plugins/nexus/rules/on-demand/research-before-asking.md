@@ -37,6 +37,47 @@ a plain description — or from no source at all. On every point you can decide,
 recommendation**, with gap-finding and critique; ask questions of your own only on what the owner
 alone can decide.
 
+- **Critique every fix the source proposes, starting in your first turn.** A fix is a solution the
+  source names together with what it is for. For each one: what holds, the hole if there is one, the
+  alternative, and your confidence — one short line each, in prose, never a table. End each such
+  turn leaving the owner to object, or to say next.
+- **No move forward while a fix is uncritiqued.** Before you propose or ask for anything that moves
+  past the source — taking the work on, a feature name, an intake, a plan, a build — list the
+  source's fixes and check that each one has been critiqued. Until every one has, propose and ask for
+  none of these. A feature name you would propose comes in a later turn than the last critique.
+- **Three topics per turn — count them before you send.** A topic is one thing the owner has to take
+  in: a fix critiqued, a question answered, an item that asks for nothing acknowledged in one line, a
+  decision put to the owner. Count the turn's topics, answers and acknowledgements included; more
+  than three, keep the rest for the next turn. Critiques start in your first turn; a
+  question box asks only about that turn's own topics. The next three come after the owner reacts to
+  these (keep, change, drop, "ok", "next" — the reactions a `read, object if needed` topic accepts).
+  A short opening list naming every topic is not itself a topic; it opens with the index line:
+  `Index only — each topic comes up in its own turn; nothing here needs an answer yet.`
+- **Say what each topic asks of the owner.** The test is one question — does the owner's silence
+  settle it? Each topic in a turn opens with its tag: a fix critiqued → `read, object if needed`
+  (silence leaves the critique standing; the owner objects, or says next); a question answered —
+  the premise or the codebase decides it, or it is decided by recommendation — and an item
+  acknowledged → `read only` (reply only to overrule); a decision only the owner makes, or one of
+  the two cases you always ask → `your decision` (silence settles nothing; the recommendation is
+  already in it). A skill may add a tag for a kind of topic it runs. Each topic starts with one
+  bold title line holding its number, its title and its tag, the topic's text starting on the next
+  line, never on the title line: `**1. Where the new plan lives — read only.**`
+- **Every turn on a source ends with the topic line**, in bold — after it only a closing line a
+  skill adds, your role's footer, or a wait or stop line: `**Topics: {covered} of {total} covered · this turn: {the topics, by name} · reply needed on: {names, or nothing — say next} · {left} follow.**`
+  `{total}` counts every topic of the source, answers and acknowledgements included; `this turn`
+  names at most three. `reply needed on:` names the turn's `your decision` topics, and any a skill's
+  tag asks a reply on, or reads `nothing — say next` when the turn holds none. Write the line first
+  in your head, then the turn that fits it — a turn whose line would name four topics is two turns.
+  When nothing is left, the line ends `· none follow.`
+- **A later question gets its own answer, not the next topics.** A question the owner asks
+  mid-conversation is answered at the level it was asked, and the reply still ends with the topic
+  line, `this turn` reading `your question`; take up no further topic in reply to it. A reply that reacts and also asks gets the question
+  answered first, then the next topics — that answer counts as one of the three. An explicit request
+  to move on ("start the critique now", "just ask me") is acted on, not answered.
+- **Say it, never point at it.** In every turn on a source — the list of topics, an answer, a
+  critique, a question — never use a point number, a file name, an identifier or a finding without
+  saying in plain words what it is, in the same sentence. Check before sending: could the owner react
+  without opening any file?
 - **A topic that asks for a fact is looked up first** ("investigate whether X supports Y", "check
   what Z does"), whatever else it contains, as any fact you do not know (§ A fact you do not know);
   then take the topic as the lookup leaves it.
@@ -58,9 +99,13 @@ alone can decide.
 - **Spawned by the team lead**, there is no owner to reply. A question you resolved — case (a) or
   (c) — is written as a decision, the plan's `## Decisions` row or the spec's decision record, and
   listed in your hand-back; an owner-only one — case (b) — goes to `questions.md`, your
-  recommendation first.
+  recommendation first. The critique of every fix is written whole into the hand-back's gap list,
+  and into the plan's `## Decisions` where it decides something.
 - **In an owner-away run**, case (b) goes to the run's open-point list
-  (→ agents-workflow.md § Owner-away runs); case (c) is decided as in an attended run.
+  (→ agents-workflow.md § Owner-away runs); case (c) is decided as in an attended run; the critique
+  of every fix goes whole onto that list.
+- **Three topics per turn, the tags, the `reply needed on:` clause and the wait for a reaction bind
+  attended turns only** — spawned or owner away, nothing waits.
 
 ## The owner-question contract
 
@@ -178,6 +223,16 @@ on a routine line (→ § Routine questions). A consuming project that reads one
 own plain English allows it for itself under `askWords.allow` in `.claude/nexus-agents.json`, and is
 not refused on it.
 
+**Asked from the owner's side.** The question sentence names what changes for the owner — what they
+get, lose, pay or have to do — never how your own mechanism works. A word you coined during the run
+is on no list and is banned all the same: a label for your own idea, a nickname for a proposal or a
+term you introduced in the conversation never appears in the header, the question text, an option's
+label or its description; say the thing it stands for.
+"How should the fallback ladder treat a stale lane?" becomes
+"When the reviewer's model is unavailable, should the review wait or run on another model?". If the
+plain version does not fit the limits above, you are not ready to ask — rethink the question, never
+compress it.
+
 **One decision per question; at most three questions per call.** Several questions in one call are
 welcome. A question bundling two decisions is two questions, and a fourth question is a second call.
 Where the `research` skill (`nexus-pro`) is in your skill list, a research companion counts as one
@@ -269,7 +324,8 @@ a routine ask's lack of one; admission (could the owner answer from the question
 alone?); the relaxed wording, semicolons included; the reply test (do the options answer the
 question?), the concrete-first grammar of an option's label and the wording of its description; the
 confidence clause's own line and a description's length in characters; one decision per question; which form a
-catalogued question is asked in; and where the recommendation came from. Two counts the
+catalogued question is asked in; the owner's side of the question sentence and the ban on a word
+coined during the run; and where the recommendation came from. Two counts the
 platform already enforces are not re-checked here either: the header's twelve characters and the two
 to four options. The explain re-ask
 (→ § Routine questions) is invisible to the boundary too — it sees requests, never answers. It fails

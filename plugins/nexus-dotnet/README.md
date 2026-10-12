@@ -7,7 +7,7 @@ It ships **no agents, rules, commands, or hooks** — those come from `nexus`. I
 
 | Component | Count | Notes |
 |-----------|-------|-------|
-| **Skills** | 39 | The .NET/Vue stack code-pattern skills (services, modules, aggregates, CQRS, EF, gRPC, Vue, Pinia, Tailwind, …). The process + artifact-format skills come from `nexus`. |
+| **Skills** | 40 | The .NET/Vue stack code-pattern skills (services, modules, aggregates, CQRS, EF, gRPC, Vue, Pinia, Tailwind, …). The process + artifact-format skills come from `nexus`. |
 | **Conventions** | 5 | `csharp`, `ef-core`, `vue`, `testing`, `coding-conventions` — scaffold source for the Read-Index pattern; copied again after each update. |
 | **Templates** | 3 | `templates/CLAUDE.md` — a .NET/Vue project starter; `templates/project-lists.md` — the repo's lists file, copied once and never again; `templates/conventions-check/` — the optional conventions check (`add-conventions-check`). |
 
