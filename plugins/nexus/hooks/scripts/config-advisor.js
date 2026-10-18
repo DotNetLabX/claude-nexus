@@ -226,8 +226,9 @@ process.stdin.on('end', () => {
       .some(([key, v]) => !['jobs', 'codex', 'fullChecks'].includes(key) && isObject(v) && 'effort' in v);
     if (perAgentEffort) {
       out.push(`${PREFIX} a per-agent effort value is a line in the dispatch prompt only — it is never ` +
-        `passed as the Agent tool's per-spawn effort, so an agent's reasoning effort comes from the ` +
-        `agent's frontmatter.`);
+        `passed as the Agent tool's per-spawn effort; an agent's baseline effort is its agent file's ` +
+        `effort, or at the critic and reviewer seats the effort-by-model table's value; an explicit ` +
+        `per-spawn effort takes precedence.`);
     }
     if (out.length) process.stdout.write(JSON.stringify({ systemMessage: out.join('\n') }));
   } catch { /* fail silent — advice must never wedge a config edit */ }

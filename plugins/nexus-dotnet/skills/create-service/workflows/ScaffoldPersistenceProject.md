@@ -89,7 +89,8 @@ No table configurations and no migrations.
 
 The API's start-up file migrates in its InitData region (`app.Migrate<{Name}DbContext>()`) and seeds test data in
 development only (`app.SeedTestData()`) — `service-registration` § Program.cs Structure (self-hosted service); both
-helpers are sampled in `persistence-patterns` § Migrations at Start-up and § Seed Data (Dual Pattern).
+helpers are sampled in `persistence-patterns` § Migrations at Start-up and § Seed Data (Dual Pattern). In a service a
+host runs, both calls move into the service's `Init{Name}DataAsync`, which the host calls (`create-host`).
 
 ## After this step
 

@@ -45,7 +45,8 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
      through a contracts project;
    - **modules selectively** — only the modules the service runs on, each by its contracts project where it has one;
    - **only the shared libraries the service needs** — a reference is added when the first line using it is written;
-   - **no project references an API project.**
+   - **no project references an API project** — a host project apart, which references the API project of each
+     service or module it runs (`create-host`).
 4. **Scaffold the API project** — `workflows/ScaffoldApiProject.md`. It holds its features, its usings and its
    registration, nothing else. Generic web parts — rate limiting, security headers, the origin check,
    request-failure logging, readiness checks — are shared pieces: found in the repo's shared libraries, or built
@@ -91,3 +92,4 @@ Pass the service name: `/create-service Inventory`. The folder `src/Services/Inv
 - No API gateway route — added by hand where external clients must reach the service.
 - No migrations — `dotnet ef migrations add InitialCreate` after the first aggregate.
 - No edit to the repo-root `CLAUDE.md` service table.
+- No host — the service hosts itself; `create-host` converts it when a host runs it.

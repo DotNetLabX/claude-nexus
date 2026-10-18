@@ -33,7 +33,8 @@ context and the table configuration.
 
 ## Migrations
 
-- `dotnet ef migrations add {Name} -p {Svc}.Persistence -s {Svc}.API` (project paths as the repo lays them out).
+- `dotnet ef migrations add {Name} -p {Svc}.Persistence -s {Svc}.API` (project paths as the repo lays them out); in a service a host
+  runs, the start-up project is the host, `-s {Host}` (`create-host`).
 - `dotnet ef migrations remove --force` works cleanly while the migration is not applied to a database.
 - When `dotnet ef migrations add` fails because the host cannot start (a FastEndpoints service with no endpoints yet),
   add an `IDesignTimeDbContextFactory` in the Persistence project.

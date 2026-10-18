@@ -52,7 +52,7 @@ function excluded(p) {
   return PIPELINE_DIRS.some((d) => rest.startsWith(d)) || PIPELINE_FILES.has(rest) || PERSONAS_TMP.test(rest);
 }
 
-function treeHash(tree) {
+function hashedPaths(tree) {
   let listing;
   try {
     listing = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
@@ -61,13 +61,44 @@ function treeHash(tree) {
   } catch {
     return null;
   }
-  const paths = listing.split('\0').filter((p) => p && !excluded(p)).sort();
+  return listing.split('\0').filter((p) => p && !excluded(p)).sort();
+}
+
+// Both forms from one read of each file: `{hash, files}`, or null outside git.
+function hashTree(tree) {
+  const paths = hashedPaths(tree);
+  if (paths === null) return null;
   const hash = crypto.createHash('sha256');
+  const files = {};
   for (const p of paths) {
     hash.update(`${p}\0`);
-    try { hash.update(fs.readFileSync(path.join(tree, p))); } catch { hash.update('deleted'); }
+    let content;
+    try { content = fs.readFileSync(path.join(tree, p)); } catch { content = null; }
+    hash.update(content === null ? 'deleted' : content);
+    files[p] = content === null ? null : crypto.createHash('sha256').update(content).digest('hex');
   }
-  return hash.digest('hex');
+  return { hash: hash.digest('hex'), files };
+}
+
+function treeHash(tree) {
+  const both = hashTree(tree);
+  return both && both.hash;
+}
+
+// The per-file form, over the same paths: path → content digest (`null` for a listed file that cannot
+// be read). `null` where `treeHash` is `null`.
+function fileHashes(tree) {
+  const both = hashTree(tree);
+  return both && both.files;
+}
+
+// One file's content digest; `null` for a file that is not there, so a removal is a hash of its own.
+function fileHash(tree, rel) {
+  try {
+    return crypto.createHash('sha256').update(fs.readFileSync(path.join(tree, rel))).digest('hex');
+  } catch {
+    return null;
+  }
 }
 
 // A record's `tree` is spelled by whoever typed `--tree`; the gate's is the published target string. No
@@ -77,4 +108,4 @@ function sameTree(a, b) {
   return path.resolve(a) === path.resolve(b);
 }
 
-module.exports = { treeHash, sameTree };
+module.exports = { treeHash, fileHashes, hashTree, fileHash, sameTree, isExcluded: excluded };

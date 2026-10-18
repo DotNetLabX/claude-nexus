@@ -32,7 +32,8 @@ Documentation, specs, plans, agent and skill files, front-end build configuratio
 - **No `.gitkeep` files** — empty directories are not tracked.
 - **No secrets in commits or artifacts.** Never commit, include or reference a file holding secrets (`.env`,
   `credentials.json`, API keys, connection strings, tokens); if a file seems to hold one, warn the user instead.
-- **No project references an API project,** and a service never references another service's projects.
+- **No project references an API project,** except a host project, which references the API project of each service
+  or module it runs — `create-host`. A service never references another service's projects.
 
 ## Boy Scout Guardrails
 

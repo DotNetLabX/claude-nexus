@@ -74,7 +74,7 @@ Each feature in `Features/` has a static `Map` method; `Map{Name}Endpoints` call
 ### FastEndpoints or Carter
 
 No `Map{Name}Endpoints`: the framework finds the module's endpoints in the assemblies the host names
-(`service-registration` § Composing services into one host). Leave no stub file — the host's composition is where the
+(`create-host` § Registered Once, by the Host). Leave no stub file — the host's composition is where the
 assembly is named.
 
 ## After this step

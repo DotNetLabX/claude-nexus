@@ -1201,15 +1201,16 @@ function modeMetrics(flags, root, records) {
     const tagTally = `fold ${tally.fold} · round-n miss ${tally.miss} · other ${tally.other}`;
     const citation = rankable === 0 ? 'n/a' : `${Math.round((cited / rankable) * 100)}%`;
 
-    let secondAt = -1;
-    for (let i = start; i < end; i += 1) {
-      if (/^## Second reader — round \d+/.test(lines[i])) {
-        secondAt = i;
-        break;
-      }
-    }
-    const readers = [['primary', ledgerFigures(lines, start, secondAt >= 0 ? secondAt : end)]];
-    if (secondAt >= 0) readers.push(['second', ledgerFigures(lines, secondAt, end)]);
+    // Each reader's section runs to the next reader's heading: primary, then second, then the third
+    // reader a gear adds to round 1.
+    const headingAt = (re) => {
+      for (let i = start; i < end; i += 1) if (re.test(lines[i])) return i;
+      return -1;
+    };
+    const marks = [['primary', start], ['second', headingAt(/^## Second reader — round \d+/)], ['third', headingAt(/^## Third reader — round \d+/)]]
+      .filter(([, at]) => at >= 0)
+      .sort((a, b) => a[1] - b[1]);
+    const readers = marks.map(([reader, at], k) => [reader, ledgerFigures(lines, at, k + 1 < marks.length ? marks[k + 1][1] : end)]);
 
     for (const [reader, fig] of readers) {
       // `n/a` where there is no ledger at all — a zero would be indistinguishable from a reader who

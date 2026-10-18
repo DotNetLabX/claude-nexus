@@ -20,7 +20,7 @@ After a feature spec exists (`docs/specs/{slug}/definition/spec.md` with `Status
 
 Before writing, ensure you have:
 
-1. **Grep the feature name before authoring** — grep the feature name / slug keywords across `docs/proposals/`, `docs/specs/`, and `docs/backlog.md`. A same-name or same-topic artifact found is **surfaced in the plan's Context** (stale? superseded? already covering part of the scope?) — never silently re-planned. (Measured near-miss: a stale same-name proposal was nearly re-planned.)
+1. **Grep the feature name before authoring** — grep the feature name / slug keywords across `docs/proposals/`, `docs/specs/`, and `docs/backlog.md`. A same-name or same-topic artifact found is **surfaced in the plan's Context**, or a light plan's `Related:` line (→ § Light Plan Format) — stale? superseded? already covering part of the scope? — never silently re-planned. (Measured near-miss: a stale same-name proposal was nearly re-planned.)
 2. **Feature spec** — read `docs/specs/{slug}/definition/spec.md` (or `epic.md` / `bug.md` depending on slug type)
 3. **Architecture doc** — read for system shape and existing decisions
 4. **Skill inventory** — if the architecture doc has a Skill Inventory section, use it; otherwise build one from **the skills surfaced in your context** (plugin skills live in the version-keyed cache — globbing `.claude/skills/` under-reports them) plus the project's own `.claude/skills/`.
@@ -41,13 +41,15 @@ Before writing, ensure you have:
 
    **Skill verification before setting None:** For each step, list the actions it performs (throws exceptions, registers services, queries data, creates endpoints, configures persistence). Match each action against skill frontmatter descriptions. Only set None after confirming no frontmatter description matches. If a frontmatter is ambiguous, read the skill's When to Use section before deciding.
 
+   **Several skills per step, where the plan carries `**Skills per step:** on`** (the architect writes the line when the repo's switch is on; → architect.md § Plan Writing Rules): a step names every pattern skill whose description covers one of its actions, not only the first that fits — several in the full format's Skill cell, comma-separated, and several in the light step line (`Follow {skill}, {skill}`). The Disposition cell holds their shared keyword; where the dispositions differ, it holds each skill's own in the Skill cell's order, and the step text — or the light step line — carries one disposition each (`Follow {skill}; Find or build {what}, then follow {skill}`). Process skills keep their own column (`tdd`), and the five preloaded format skills are never named (`implementation-format`, `questions-format`, `review-format`, `lessons-format`, `summary-format`). A skill the session's skill list shows without a description is matched on the description in its own `SKILL.md` frontmatter. Without the line, the mapping is as above: one skill per step.
+
    **TDD marking (every step, every plan):** alongside the disposition, set the step's `TDD` column — `yes` for testable behavior (domain logic, endpoint request/response, business rules), `no` for pure wiring (DI, config, migrations). This is a *process-skill* mapping, independent of the pattern-skill disposition: a `Skill: None` step can still be `TDD: yes`, and the developer invokes the `tdd` skill on every `yes` step.
 
 5. **Anti-pattern check.** Scan the draft for:
    - The word "adapted" or "adapt" near a skill reference — violation. Either `Follow` or `Find or build`, never Adapt.
    - A skill dismissed as "too simple" or "not needed for this case" — violation. Skills ensure consistency; complexity is not the criterion.
    - Implementation pattern details restated when a skill exists — over-specification. Delete and reference the skill.
-   - A mapped skill whose step text lacks the disposition keyword — violation. Write `Follow {name}` / `Find or build {x}, then follow {name}`, never a bare skill name with a parenthetical scope. The keyword is the developer's binding invocation trigger (measured failure: a plan dropped it and 9 mapped steps shipped with zero invocations).
+   - A mapped skill whose step text lacks the disposition keyword — violation. Write `Follow {name}` / `Find or build {x}, then follow {name}`, never a bare skill name with a parenthetical scope. The keyword is the developer's binding invocation trigger (measured failure: a plan dropped it and 9 mapped steps shipped with zero invocations). Under `**Skills per step:** on` a list takes one keyword: one disposition keyword binds every skill in its list, so `Follow a, b` — or one disposition each where they differ — is the sanctioned form, never this violation.
    - In-repo code references on a Follow step that point at the *structural pattern* the skill teaches — violation. Developers measurably imitate cited code and skip the skill. On Follow steps, cite code only for feature-specific surfaces (a route to mirror, a type to extend).
    
    **Over-specification test for Follow steps:** Read the skill's SKILL.md. For each detail in the plan step, ask: "Does the skill already cover this?" If yes, delete it from the plan step. What remains should be ONLY feature-specific inputs the skill can't know:
@@ -80,7 +82,7 @@ Before writing, ensure you have:
    `Satisfies:`" mandate. **The one narrowing:
    where the slug has a rule list and the mining skills (`nexus-miner`) are installed, every `kind: behaviour`
    row is cited by a step's `Satisfies:` or sits in the plan's `Not delivered by this feature` list with
-   its reason** (a sub-list under `## Scope`; a list with no `kind` column reads as all-behaviour); a
+   its reason** (a sub-list under `## Scope`, or the header line of a light plan; a list with no `kind` column reads as all-behaviour); a
    behaviour rule with neither is a plan gap the plan critic can see.
    Without them, a rule list left by an earlier install is not joined: the plan names it in one line with the install line, `/plugin install nexus-miner@claude-nexus-miner`, and no row needs citing.
    A step that cites rules lists them
@@ -119,13 +121,28 @@ Before invoking this skill, ensure you have read:
 
 Each slice is built by a fresh developer, so the `**Build slices:**` header line (`{a}–{b} · {c}–{d} · …; why: {one line}`, shown in `references/plan-template.md`) is where you decide how much one developer's conversation carries.
 
-- **When the line is required:** the plan has more than 8 steps a developer builds, or you judge a step heavy — a large move, or a step that must read a whole subsystem before it can build. Otherwise omit it; the whole plan is one slice.
+- **When the line is required:** the plan has more than 8 steps a developer builds, or you judge a step heavy — a large move, or a step that must read a whole subsystem before it can build. Otherwise omit it; the whole plan is one slice. One exception: where a plan review's fold finds the work dividing by kind while the owner's lane is built in the architect's own session, the line cuts at that boundary in place of a developer split (the architect's Check Level and Plan Size rules).
 - **Which steps it covers:** every step a developer builds. A step the plan marks `Owner: close` or `Owner: operator` (a registry promotion, an operator's live run) sits outside the slices and does not count toward the 8.
 - **Size:** up to 8 steps per slice by default; fewer where steps are heavy — a judgment call.
-- **Where cuts fall:** only between unrelated steps — steps that build on each other stay together (a contract and the move onto it; a move and its follow-up). One exception: a declared developer boundary (the `**Developers:**` line) is always a cut, even between a contract and its consumer — the contract is that split's handover.
+- **Where cuts fall:** only between unrelated steps — steps that build on each other stay together (a contract and the move onto it; a move and its follow-up). One exception: a declared developer boundary (the `**Developers:**` line) is always a cut, even between a contract and its consumer — the contract is that split's handover — and so is the boundary of work a fold found dividing (the exception above).
 - **When no clean cut exists** — a chain of related steps longer than a slice — cut at the least-coupled boundary inside the chain and name it in `why:`. A cut that splits related steps is legal only there, and never silently. A line holding a single range is not valid: where no cut is wanted, omit the line, and the size limit the team lead checks at every hand-back is the only guard.
 - **With a `**Developers:**` line:** slices nest inside the declared ranges and never cross one; one developer's range may hold several slices. A plan that declares developers and carries no slice line has one slice per declared developer.
-- **What the plan review checks.** Mechanically: the line holds more than one range; the ranges cover every developer-built step exactly once, in plan order, inside the declared developer ranges; and the line is present where the plan has more than 8 developer-built steps. Checked by judgment, and stated as judgment in the review: each slice is sized for its steps, and no cut splits related steps.
+- **What the plan review checks.** Mechanically: the line holds more than one range; the ranges cover every developer-built step exactly once, in plan order, inside the declared developer ranges; and the line is present where the plan has more than 8 developer-built steps. Checked by judgment, and stated as judgment in the review: each slice is sized for its steps, and no cut splits related steps but a declared developer boundary or a fold's divide (the exception above) — a slice line cut there replaces a split and is no finding.
+
+## Light Plan Format
+
+A shorter plan for a plan built at the light check level — a standalone plan, or one a gear builds with lighter checks (→ architect.md § Light Lane (standalone only)); its template is the light block in `references/plan-template.md`. Draft it when you expect the light level or when the owner picked the light plan. Under a gear, draft it when the gear names a light plan. **A light format is valid only under a light level — standalone, or picked by a gear; the full format is valid under either.** A plan made full — by the level pick or the owner — is expanded into the full format before its review starts or continues, or its build starts; a plan lowered to light keeps the format it was written in. A refactoring plan always uses the full format, for its Must-NOT-Change table. A one-sentence fix is solo's, not a light plan.
+
+A light plan holds:
+- **The header** as in the full format, `**Size:**` and `**Lane:**` included.
+- **A `Related:` line** on every light plan — the same-name or same-topic artifacts the reading protocol's grep found, each with its state, or `none`.
+- **A goal** — on a plan-only definition, 2–4 lines and an out-of-scope line, in place of Context and Scope; a spec'd plan points to its spec instead.
+- **Steps**, each a `### Step N — {outcome}` heading (the step count and the handover recheck read these headings) and one body line: `Accept:` the test file and what it asserts, or an exact grep or command · `Files:` each file the step creates or modifies, in backticks · `Follow {skill}` — under `**Skills per step:** on`, every skill step 4 names, as `Follow {skill}, {skill}` — or `None` · `TDD: yes` where the step is test-first · `Risk: risky — {why}` on a risky step only, a safe step carrying no risk field. Where a rule list is joined, the step's `Satisfies:` rule lines follow its line (step 6's grammar), and the *Not delivered by this feature* list is a header line.
+- **A where-to-look list** — per step, the file and the class, method, document section or configuration key the developer starts from; for a new file, the existing file it follows or `no precedent`; never a line number.
+- **`## Decisions`**, which may read the one-line None sentence, **`## Decisions and why`**, which may read its own one-line None sentence, and **`## Open Questions`**.
+- **`## Cut candidates`**, only when a part qualifies (→ architect.md § Check Level and Plan Size), laid out as in the full format; a light plan expanded to the full format keeps it.
+
+Left out: the Skill Mapping table (each step's skill and `TDD` mark move into its line, chosen as step 4 says), Domain and Data Model Changes, Cross-Service Changes, Migration Notes, Must-NOT-Change, Testing Strategy and KB Impact. Build slices, the KB update step (owed wherever a `docs/kb/` entry needs updating), the registry steps and the close- and operator-owned steps keep their rules.
 
 ## Plan Grounding & Deviation Rules
 
@@ -184,7 +201,7 @@ Refactoring passes (rename, extract, relocate, delete, type-move) fail in ways f
 | Agent | What they use | Impact if incomplete |
 |-------|--------------|---------------------|
 | Developer | All steps (implements against them) | Gaps in plan steps cause skipped implementation or wrong approach |
-| Architect | Skill Mapping, plan structure (Step 1 done check) | Done check can't verify conformance without clear acceptance criteria |
+| Architect | Skill Mapping (on a light plan, each step line), plan structure (Step 1 done check) | Done check can't verify conformance without clear acceptance criteria |
 | Reviewer | Step descriptions (Step 2 conformance check) | Reviewer can't verify plan was followed without clear per-step requirements |
 
 ## What this skill does NOT do

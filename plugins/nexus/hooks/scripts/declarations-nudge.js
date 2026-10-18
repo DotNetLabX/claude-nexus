@@ -34,20 +34,31 @@
  * Warn-only. The clause forms belong to lib/compose-test-command.js; this file imports the
  * predicate and holds no list of its own.
  *
+ * THE GEAR LINE, BESIDE THE LADDER. A repo with no `gear` in `.claude/nexus-agents.json` hears one
+ * line naming the gear command; a `gear` that resolves to nothing (lib/gears.js decides) hears one
+ * naming it. Any gear that resolves, `off` included, ends it. Its opt-out is its own:
+ * `"gearNudge": false` silences the gear line and nothing else, `"declarationsNudge": false` the
+ * verify-roles lines and nothing else.
+ *
  * OWN CAP. A separate hook output, capped by the platform independently of the kernel envelope —
- * this line costs the kernel budget nothing. NOTHING HERE WRITES.
+ * these lines cost the kernel budget nothing. NOTHING HERE WRITES.
  */
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
 const { isFilteredFull } = require('./lib/compose-test-command');
+const { resolveGear } = require('./lib/gears');
 
 const RELAY = 'Tell the user once, in your first reply, in your own words, keeping the quoted phrase exactly as written: ';
 const NUDGE = RELAY + 'This repo hasn\'t declared its verify roles (the build / unit / full test commands in .claude/verify.json) — until it does, the developer speed features stay off: every run rediscovers the build and test commands, and the close cannot prove the full suite ran. Say "declare verify roles" and I will set them up from this repo\'s conventions, or silence this with "declarationsNudge": false in .claude/nexus-agents.json.';
 const BROKEN = (why) => RELAY + 'This repo\'s .claude/verify.json exists but does not parse (' + why + ') — the verify gate is running on its detection fallback and the declared roles are unread. Say "declare verify roles" and I will repair it.';
 const FILTERED_FULL = RELAY + 'This repo\'s "full" verify role in .claude/verify.json carries a filter clause, so the suite the close runs once is not the whole suite — the tests the clause leaves out run at no gate. Slow tests belong in the "unit" exclusion instead: the complete run at handover already covers them. Say "declare verify roles" and I will re-propose "full" without the clause, or silence this with "declarationsNudge": false in .claude/nexus-agents.json.';
 const UNMEASURED = RELAY + 'This repo declared its verify roles but never timed them: .claude/verify.json records no measurement for the "unit" role, the command a step close runs, so nothing shows whether it fits inside the step limit ("stepLimitSeconds", 90 seconds when unset) or is really the whole suite. This is a one-time re-measure after an upgrade, not a fault report. Say "declare verify roles" and I will time the declared commands and record the numbers, or silence this with "declarationsNudge": false in .claude/nexus-agents.json.';
+
+const GEAR_OPT_OUT = ', or silence this with "gearNudge": false in .claude/nexus-agents.json.';
+const NO_GEAR = RELAY + 'This repo has no pipeline gear set, so every feature asks its process questions — how detailed the plan is, whether a critic reads it, who reads the code, who builds it — as before. Run "/nexus:gear" to see the gears side by side and set one ("off" keeps every question)' + GEAR_OPT_OUT;
+const MISSING_GEAR = (name) => RELAY + 'This repo\'s gear "' + name + '" (the "gear" key in .claude/nexus-agents.json) names no gear that exists here — deleted, mistyped, or a custom gear whose plugin is not installed — so the pipeline runs as if no gear were set. Run "/nexus:gear" to see the gears and set one' + GEAR_OPT_OUT;
 
 function resolveRoot(evt) {
   const fromEnv = process.env.CLAUDE_PROJECT_DIR;
@@ -93,11 +104,22 @@ function inspect(root) {
   return { state: 'absent', filtered };
 }
 
-function silenced(root) {
+function readAgentsConfig(root) {
   try {
     const cfg = readJson(path.join(root, '.claude', 'nexus-agents.json'));
-    return cfg && cfg.declarationsNudge === false;
-  } catch { return false; }
+    return cfg && typeof cfg === 'object' && !Array.isArray(cfg) ? cfg : {};
+  } catch { return {}; }
+}
+
+/** The gear line this repo owes, or null — never throws. */
+function gearLine(root, cfg) {
+  if (cfg.gearNudge === false) return null;
+  const gear = cfg.gear;
+  if (gear === undefined || gear === null || gear === '') return NO_GEAR;
+  try {
+    if (typeof gear === 'string' && resolveGear(gear, { root, config: cfg }).gear) return null;
+  } catch { return null; }
+  return MISSING_GEAR(String(gear).slice(0, 60));
 }
 
 function inject(text) {
@@ -111,13 +133,17 @@ function main(evt) {
   const source = evt && evt.source;
   if (source === 'compact' || source === 'resume') return process.exit(0);
   const root = resolveRoot(evt);
-  if (silenced(root)) return process.exit(0);
-  const r = inspect(root);
+  const cfg = readAgentsConfig(root);
   const lines = [];
-  if (r.state === 'broken') lines.push(BROKEN(r.why));
-  else if (r.state === 'unmeasured') lines.push(UNMEASURED);
-  else if (r.state === 'absent') lines.push(NUDGE);
-  if (r.filtered) lines.push(FILTERED_FULL);
+  if (cfg.declarationsNudge !== false) {
+    const r = inspect(root);
+    if (r.state === 'broken') lines.push(BROKEN(r.why));
+    else if (r.state === 'unmeasured') lines.push(UNMEASURED);
+    else if (r.state === 'absent') lines.push(NUDGE);
+    if (r.filtered) lines.push(FILTERED_FULL);
+  }
+  const gear = gearLine(root, cfg);
+  if (gear) lines.push(gear);
   if (lines.length === 0) return process.exit(0);
   return inject(lines.join('\n'));
 }
@@ -135,4 +161,4 @@ if (require.main === module) {
   if (process.stdin.isTTY) { try { main({}); } catch { process.exit(0); } }
 }
 
-module.exports = { inspect, NUDGE, UNMEASURED, FILTERED_FULL, RELAY };
+module.exports = { inspect, NUDGE, UNMEASURED, FILTERED_FULL, RELAY, NO_GEAR, MISSING_GEAR };

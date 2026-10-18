@@ -10,7 +10,7 @@ This skill is for the **PO agent** (primary owner; the architect may consume it 
 
 ## Audience & voice
 
-This document is read by the **PO, architect, and the human stakeholder** — not the Developer. The Developer reads the plan, never this file.
+This document is read by the **PO, architect, and the human stakeholder**. The Developer reads the plan and, of this file, only its `## Decisions and why` section — the why behind the owner's rulings, which every build agent reads.
 
 Write in **domain / product language**. Describe what the user does and what the system guarantees — not how the code implements it. A reader with no codebase access should understand every section.
 
@@ -82,9 +82,11 @@ Pass the feature name: `create-feature-spec Sprint`
 
 | Agent | What they use | Impact if spec is incomplete |
 |-------|--------------|------------------------------|
-| Architect | All sections (plans against the spec) | Plan steps miss requirements; gaps discovered only during implementation |
+| Architect | All sections (plans against the spec); `## Decisions and why` also settles a question it would put to the owner | Plan steps miss requirements; gaps discovered only during implementation |
 | Critic (Mode 1) | All sections (validates spec vs `docs/product/index.md`) | Critic can't find gaps in an incomplete spec; architectural misalignments reach the plan stage |
-| Developer | Never reads spec directly — reads the plan | Indirect: spec gaps become plan gaps, which become implementation gaps |
+| Developer | The plan, plus this file's `## Decisions and why` only | Spec gaps become plan gaps; a missing entry leaves a build-time question answered from the outcome alone |
+| Reviewer | `## Decisions and why` (with the plan's) | Reviews a build choice without the owner's reason behind it |
+| Team Lead | `## Decisions and why`, when settling an owner-away run's open points | An open point the owner already ruled on is presumed or left waiting |
 
 ## What this skill does NOT do
 

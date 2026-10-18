@@ -39,13 +39,15 @@
  *
  * One state file per developer (F176), .claude/audit/dev-steps/{agentId}.json —
  * `{ name, range: {from, to} | null, phase: "analyze" | "review-fixes" | "fixes" | null, step | null,
- * cycle?, phaseDone?, ts }` — kept for a renderer of the agents list, which cannot afford to
+ * total?, cycle?, phaseDone?, ts }` — kept for a renderer of the agents list, which cannot afford to
  * scan this log every few seconds (none ships with this plugin):
  *   - an unnamed developer spawn (the Agent result carries `agentId`) writes it: the name is the
  *     description's first word, `phase: "analyze"` when the prompt opens with `Analyze`,
  *     `phase: "review-fixes"` with `cycle: "N/M"` when it carries `Fix round for … Cycle N/M`, and the
  *     range comes from the prompt (`Your slice: a–b` beats `Your steps: a–b`; `Build {slug}, steps
- *     a–b`; `Implement. Steps: a–b`; en dash or hyphen);
+ *     a–b`; `Implement. Steps: a–b`; en dash or hyphen); `total` is the plan's highest step
+ *     number, every step counted — read from the `Plan:` path the prompt names, else `docs/specs/{slug}/delivery/plan.md` (under its `Tree:` when named), and
+ *     left out when no plan is found; a resume keeps it;
  *   - a SendMessage to an id that has a file replaces the range when the message carries one,
  *     `Implement. Steps:` clears the phase, a fix-round line sets `review-fixes`, and any other
  *     resume of a developer whose range is finished sets `fixes`; every resume clears `phaseDone`;
@@ -69,7 +71,10 @@
  *
  * `--report` prints, per agent, each handback -> next-resume latency in ms plus the per-round
  * total, and separately, per session, each turn-end -> next-user-resume gap (the human-wait
- * section) plus the per-session total.
+ * section) plus the per-session total. A later turn-end of the same session and the same non-empty prompt id
+ * supersedes an earlier one no resume closed: dropped, neither counted nor left open, so the wait runs from the
+ * last stop of the prompt. A refused stop (whose turn-end is still written) is one source; a notification wake-up
+ * turn, which carries its owner prompt's id, is the other.
  *
  * THREE PLATFORM ASSUMPTIONS, ALL UNVERIFIED — the live probe is operator-owed:
  *   1. That PostToolUse fires for `SendMessage` at all. If it does not, the resume leg is silent and
@@ -234,6 +239,32 @@ function parseResponse(resp) {
   return resp && typeof resp === 'object' ? resp : {};
 }
 
+// The plan a dispatch names: its `Plan:` path, else the slug's default plan, under the dispatch's
+// `Tree:` when it names one, else the session root.
+function planPaths(root, prompt) {
+  const explicit = /\bPlan:\s*`?([^\s`]+\.md)/.exec(prompt);
+  const slug = /^\s*(?:Analyze|Fix round for)\s+([A-Za-z0-9][\w.-]*?)\.?(?:\s|$)/.exec(prompt)
+    || /\bBuild\s+([A-Za-z0-9][\w.-]*),\s*steps\b/.exec(prompt);
+  const rel = explicit ? explicit[1] : slug ? `docs/specs/${slug[1]}/delivery/plan.md` : '';
+  if (!rel) return [];
+  if (path.isAbsolute(rel)) return [rel];
+  const tree = /\bTree:\s*`?([^\s`]+)/.exec(prompt);
+  return [tree && tree[1], root].filter(Boolean).map((base) => path.join(base, rel));
+}
+
+// The plan's highest whole-numbered step heading — every step counts, close-owned ones included,
+// so the total matches the plan the reader opens.
+function planTotal(root, prompt) {
+  for (const file of planPaths(root, prompt)) {
+    let text;
+    try { text = fs.readFileSync(file, 'utf8'); } catch { continue; }
+    const ids = [...text.matchAll(/^#{2,4}\s+Step\s+(\d+)\b/gm)].map((m) => Number(m[1]));
+    const max = Math.max(0, ...ids);
+    return max > 0 ? String(max) : null;
+  }
+  return null;
+}
+
 function onDevSpawn(root, ti, resp) {
   if (resolveRole(ti.subagent_type) !== 'developer') return;
   const id = String((resp && resp.agentId) || '');
@@ -242,7 +273,10 @@ function onDevSpawn(root, ti, resp) {
   const name = description.trim().split(/\s+/)[0] || '';
   const cycle = fixRound(prompt);
   const phase = cycle ? 'review-fixes' : /^Analyze\b/.test(prompt.trimStart()) ? 'analyze' : null;
-  writeDevState(root, id, { name, range: parseRange(prompt), phase, step: null, ...(cycle ? { cycle } : {}) });
+  const total = planTotal(root, prompt);
+  writeDevState(root, id, {
+    name, range: parseRange(prompt), phase, step: null, ...(total ? { total } : {}), ...(cycle ? { cycle } : {}),
+  });
 }
 
 // --report: pair each handback with the next resume/spawn that names that agent, and total per
@@ -325,10 +359,14 @@ function printReport() {
   for (const r of rows) {
     if (r.event === 'turn-end') {
       const session = String(r.session || '');
-      const gap = { session, at: Date.parse(r.ts), ms: null };
-      turnGaps.push(gap);
+      const prompt = String(r.prompt_id || '');
+      const gap = { session, prompt, at: Date.parse(r.ts), ms: null };
       if (!openTurns.has(session)) openTurns.set(session, []);
-      openTurns.get(session).push(gap);
+      const queue = openTurns.get(session);
+      const superseded = prompt ? queue.findIndex((g) => g.prompt === prompt) : -1;
+      if (superseded !== -1) turnGaps.splice(turnGaps.indexOf(queue.splice(superseded, 1)[0]), 1);
+      turnGaps.push(gap);
+      queue.push(gap);
       continue;
     }
     if (r.event === 'user-resume') {

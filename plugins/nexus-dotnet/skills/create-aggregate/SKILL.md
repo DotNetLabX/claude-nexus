@@ -51,7 +51,8 @@ Not preferences — an aggregate that breaks one is wrong here (`domain-patterns
 3. **Write its value objects** where a value has a rule — `workflows/ValueObject.md`.
 4. **Write its domain events** — `workflows/DomainEvent.md`.
 5. **EF Core: write the table configuration and the repository** (in `workflows/AggregateEfCore.md`), and add the
-   migration: `dotnet ef migrations add Add{Name} -p {Svc}.Persistence -s {Svc}.API`.
+   migration: `dotnet ef migrations add Add{Name} -p {Svc}.Persistence -s {Svc}.API` — in a service a host runs,
+   `-s {Host}` (`create-host`).
 6. **Verify** — build, then search the domain project for what must not be there:
    ```bash
    dotnet build

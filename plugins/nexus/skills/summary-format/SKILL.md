@@ -7,7 +7,7 @@ description: Format spec for docs/specs/{slug}/delivery/summary.md — written b
 
 Written after approval: `docs/specs/{slug}/delivery/summary.md`. Its existence means the pipeline completed successfully. **Producers** (below) covers who writes it.
 
-**Producers.** Two: the team lead (pipeline runs), or the standalone architect at the close of an Architect-Led Fast Lane run (`architect.md`) — the lane's mode-scoped ownership exception. The fast-lane variant carries a header-adjacent provenance line `Mode: architect-led fast lane`; a light lane run (the fast lane with its checks turned down, `architect.md`) carries `Mode: architect-led fast lane (light)`, and a plan-only definition built with the full checks carries `Mode: architect-led fast lane (plan only)`. Consumers (the learner-cadence hook, the team-lead idempotency gate) treat both as a completed run — they check the file's existence, not its producer or content. A reader of the closed run's record matches the phrase `architect-led fast lane`, so a lane variant keeps that phrase and adds a qualifier.
+**Producers.** Two: the team lead (pipeline runs), or the standalone architect at the close of an Architect-Led Fast Lane run (`architect.md`) — the lane's mode-scoped ownership exception. **Every** `summary.md` carries one mode line, right under its title: `Mode: team pipeline ({definition})` from the team lead, or `Mode: architect-led fast lane ({level}, {definition})` from the architect, where `{level}` is `light` (the fast lane with its checks turned down, `architect.md`) or `full`, and `{definition}` is `spec`, `bug` or `epic` (the file under `definition/`: `spec.md`, `bug.md` or `epic.md`), else `ADR` (an ADR-collapsed definition), else `plan only`. A summary written before this grammar keeps the line it has. Consumers (the learner-cadence hook, the team-lead idempotency gate) treat both as a completed run — they check the file's existence, not its producer or content — the pipeline gate also requires the mode line at write. A reader of the closed run's record matches the phrase `architect-led fast lane`, so the architect's line always keeps that phrase.
 
 **The `**Full suite:**` line is required in EVERY summary.md** — including one for a repo that
 declares no suite, where it reads `undeclared`. An absent line and a disclosed absence are different
@@ -54,6 +54,8 @@ inserted above it.
 
 ```
 # {Feature Name} — Summary
+Mode: team pipeline ({definition}) | architect-led fast lane ({level}, {definition})
+Gear: {gear} — {campaign | switch | repo} | none — at the spec review: {gear | none}, only where it differed
 
 ## Status: COMPLETE
 
@@ -66,6 +68,7 @@ inserted above it.
 - **Full suite:** pass | fail | undeclared — {duration} (recorded {ts}; complete red on a fast-green tree: yes | no | not measured; filtered: yes | no)
 - **Map delta:** {the meter's headline line verbatim} | none | unavailable
 - **Rules:** {n} listed behaviour rules without a disposition · {n} `tested` rules whose named test does not exist (the done-check's report-only count, from the newest footed check in `done-check.md` — any completion footer counts, a Codex check's `*Status: COMPLETE — Codex, persisted by {session}, {date}*` included; omit the line when the plan listed no rules). In an architect-led fast lane, also the close's rulings, one per row: `{unit} {row id}: {ruling}`
+- **Risky steps:** {the line of `review.md`'s risky-steps section, verbatim} — the light lane only
 - [Review verdict and cycle count]
 
 ## Deviations from Plan
@@ -73,7 +76,11 @@ inserted above it.
 
 ## Notes
 - [Anything the user should know before committing]
-- **Under the bar:** {the rows, one per line, `[LEVEL] title — file:line (source)`} | none — **Carry-over row:** {row id} | none (no MEDIUM) | no backlog (this list is the record)
+- **Under the bar:** {the rows, one per line, `[LEVEL] title — file:line (source)`} | none — **Carry-over row:** {row id} | none (no MEDIUM) | no backlog (this list is the record) | none ({gear} gear — not fixed, this list is the record)
 ```
 
-**The `**Under the bar:**` line** is the union of every under-bar block in `review.md` — each fix list's (the block after the follow-up line, `review-format`) and each `## Step 2 — Merge, no fix round` section's — keeping the rows that no later round fixed, deduped by file:line and title — the items the fix-round bar left recorded but unfixed (→ agents-workflow.md § Fix rounds). `none` when no block left any. Its **Carry-over row** field names the backlog row the close wrote for the MEDIUMs among them, by its id — the gate that writes it is `team-lead.md` § Close Gate, the carry-over-row item, cited and not restated. It reads `none (no MEDIUM)` when the union holds LOWs only, and `no backlog (this list is the record)` in a repo with no backlog file.
+**The `Gear:` line** sits under the mode line in every summary: the gear the plan header names (`gear.js fix` printed it), or `none`, and — only where it differed — the gear in force at the spec review, from the spec's `**Gear at review:**` line (→ agents-workflow.md § Gears).
+
+**The `**Under the bar:**` line** is the union of every under-bar block in `review.md` — each fix list's (the block after the follow-up line, `review-format`) and each `## Step 2 — Merge, no fix round` section's — keeping the rows that no later round fixed, deduped by file:line and title — the items the fix-round bar left recorded but unfixed (→ agents-workflow.md § Fix rounds). `none` when no block left any. Its **Carry-over row** field names the backlog row the close wrote for the MEDIUMs among them, by its id — the gate that writes it is `team-lead.md` § Close Gate, the carry-over-row item, cited and not restated. It reads `none (no MEDIUM)` when the union holds LOWs only, `none ({gear} gear — not fixed, this list is the record)` under a gear that leaves those findings unfixed, and `no backlog (this list is the record)` in a repo with no backlog file.
+
+**The `**Risky steps:**` line** appears on a light-lane run only (mode line level `light`), or a team pipeline run on the light path under a gear: it transcribes the one line of `review.md`'s `## Step 2 — Risky steps` section verbatim, the failed-recheck form included, so the close record says which steps had the second reader's full read (`review-format`); on a light-lane run whose plan carries `**Skills per step:** on`, that reader also ran the skills check over every other step (→ architect.md § Light Lane (standalone only)). Every other summary omits it.

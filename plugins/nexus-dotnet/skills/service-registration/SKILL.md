@@ -1,6 +1,6 @@
 ---
 name: service-registration
-description: Within-service registration — one DependencyInjection class per layer (API, Application, Persistence), what goes where, the one-line registration forms and lifetimes, settings bound first, the start-up file's three regions and middleware order, and how a host composes several services. Use when registering a dependency, choosing its layer or lifetime, writing or ordering a start-up file, or composing services into one host.
+description: Within-service registration — one DependencyInjection class per layer (API, Application, Persistence), what goes where, the one-line registration forms and lifetimes, settings bound first, the start-up file's three regions and middleware order, and how a host composes several services. Use when registering a dependency, choosing its layer or lifetime, writing or ordering a start-up file, or composing services into one host - the host itself is create-host.
 user-invocable: true
 ---
 
@@ -56,12 +56,15 @@ the repo has modules, they have their own composition, called by the host the sa
 - gRPC clients and the gRPC server (`create-grpc-contract`); typed HTTP clients (`add-typed-client`)
 - File storage, e-mail and other outside systems
 - In a service with no Application project: the bus and the event publisher too
+- In a service a host runs, the endpoint framework, the OpenAPI document and sign-in are registered by the host
+  (`create-host`)
 
 ### Application layer (`AddApplicationServices`)
 
 - The mediator, its handlers and its open behaviours in order: identity stamp, validation, logging
 - The validators
-- The bus and its consumers; the domain-event publisher
+- The service's consumers — in a self-hosted service with the bus; in a hosted service the host registers the bus
+  and calls the service's `Add{Service}Consumers` (`create-host`); the domain-event publisher
 - Factories of per-call objects (a state machine factory, `add-state-machine`); the resource access checker
 
 ### Persistence layer (`AddPersistenceServices`)
@@ -147,11 +150,14 @@ services.AddMassTransit(bus =>
 });
 ```
 
+A self-hosted service registers the bus as shown; a hosted one contributes `Add{Service}Consumers` instead.
+
 ## Options Validation
 
 All settings of a service are bound in one method, `ConfigureApiOptions`, called first and as its own statement; it
 returns nothing. It sits in the registration of the service whose settings they are. The form matters little; the
 point is that settings come first and in one place.
+`ConfigureApiOptions` is called by the service's composing class (§ Composing services into one host).
 
 ```csharp file=OptionsRegistration.cs
 public static class OptionsRegistration
@@ -182,7 +188,6 @@ registration or an extension.
 var builder = WebApplication.CreateBuilder(args);
 
 #region Add
-builder.Services.ConfigureApiOptions(builder.Configuration);
 builder.Services.AddOrdersServices(builder.Configuration);
 #endregion
 
@@ -218,22 +223,26 @@ and the serializer's JSON settings (`service-infra-conventions` § 6. HTTP JSON 
 ## Composing services into one host
 
 Where one host runs several services, each service keeps one composing class, called by the host — the one place a
-registration is named for its service. It calls the service's layers in order and nothing else:
+registration is named for its service. It binds the service's settings first, then calls the service's layers in
+order, and nothing else:
 
 ```csharp file=OrdersRegistration.cs
 public static class OrdersRegistration
 {
-    public static IServiceCollection AddOrdersServices(this IServiceCollection services, IConfiguration configuration) =>
-        services
+    public static IServiceCollection AddOrdersServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.ConfigureApiOptions(configuration);
+
+        return services
             .AddApiServices(configuration)
             .AddApplicationServices(configuration)
             .AddPersistenceServices(configuration);
+    }
 }
 ```
 
-A FastEndpoints host that runs services from several class libraries names their assemblies once, where it registers
-the framework's discovery:
-`services.AddFastEndpoints(options => options.Assemblies = [typeof(OrdersRegistration).Assembly, …])`.
+The host itself — its project, its start-up file, the registrations it owns and the start-up order — is
+`create-host`'s.
 
 ## Naming Conventions
 
@@ -242,13 +251,12 @@ the framework's discovery:
 | Registration class | `DependencyInjection` (one per project) or `{Subject}Registration` (a provider or concern) — never `…Module` |
 | Layer methods | `AddApiServices`, `AddApplicationServices`, `AddPersistenceServices` — named for the layer, never the service |
 | Settings | `ConfigureApiOptions`, returns nothing |
+| Bus contribution | `Add{Service}Consumers` extends `IBusRegistrationConfigurator` — the one registration method on a type other than `IServiceCollection` |
 | A registration class holds | only `Add…` and `Configure…` methods; nothing calls it at run time, and it never takes the environment |
 | `Use…` and `Map…` | in a separate `Extensions` class, extending the narrowest type (`IApplicationBuilder`, `IHost`, `IEndpointRouteBuilder`) — never `WebApplication` |
 | Parameters | `(this IServiceCollection services, IConfiguration configuration)` — `configuration`, never `config`, which collides with the libraries' own lambda parameter |
 | Return type | `IServiceCollection`, for chaining (`ConfigureApiOptions` apart) |
 | A middleware's request parameter | `context`; `httpContext` when the method also takes a second context object; never an abbreviation |
-
-The layer rules hold in any repo; the composing class is needed only where one host runs several services.
 
 ## When to Load This Skill
 

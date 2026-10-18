@@ -7,7 +7,7 @@ comments. Reference direction:
 - Domain references nothing of the service; Persistence references Domain; Application (where present) references
   Persistence; API references Application, or Persistence where there is no Application project.
 - A shared or contracts project is referenced by the layer whose code uses it, and only once that code exists.
-- Never another service's projects; never an API project.
+- Never another service's projects; never an API project — only a host references one (`create-host`).
 
 ## Domain
 

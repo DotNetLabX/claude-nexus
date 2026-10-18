@@ -16,7 +16,10 @@
  *      with no passing `role:"full"` record in the audit trail means the close gate's suite never
  *      ran. Blocked. The record must name the ROUND KEY — the slug taken from the summary.md path
  *      being written — as well as matching the round's token or session; an unsigned record
- *      discharges nothing. Numbered 4 because 3 is retired below and is never reused.
+ *      discharges nothing. Numbered 4 because 3 is retired below and is never reused. Under a plan
+ *      header gear whose complete run runs once beside the reviewers, a stale or red latest record
+ *      can still discharge it on the gear's evidence (lib/gear-close.js); the deny names what is not
+ *      covered.
  *   5) Lessons evidence (F99, ADR-100 K5). "Write lessons before you close" was the one affirmative
  *      duty the always-on prohibitions envelope carried, and the W4 subagent probes measured it at
  *      0.000 — the prose was carrying nothing. The duty leaves the envelope and becomes observed:
@@ -90,6 +93,13 @@
  *      row, and every list or table line above the follow-up line read as a leveled row (a `[LEVEL]`
  *      bracket, or a table cell holding a bare level), a step or a slip; any other shape, a missing file or an absent `old_string` allows. Hand-up lists are
  *      outside it.
+ *   9) Summary mode line (ADR-148). Every summary.md names the lane that built it, so a later
+ *      reader can tell a team run from the architect's lane, and the level and definition it ran on. A
+ *      `Write` of a docs/specs/{slug}/delivery/summary.md (a nested issue's included) whose content
+ *      holds no line beginning `Mode: ` is Blocked; the deny names the summary-format grammar. Only a
+ *      `Write` is judged: an `Edit` or `MultiEdit` carries part of the file, and every close writes the
+ *      summary whole. It runs last among the summary invariants — (9) after (4)–(7) — so a write
+ *      another one refuses keeps that refusal. Foreground writers only, as (4)–(7).
  *
  * REMOVED — invariant (3), state-file integrity (blocking a pipeline subagent's write to
  * .claude/.pipeline-state): the only callers it could ATTRIBUTE (data.agent_type is present
@@ -135,6 +145,7 @@ const { execFileSync } = require('child_process');
 const { isCodeFile } = require('./lib/is-code-file');
 const { resolveDeclaredTree } = require('./lib/worktree-target');
 const { treeHash, sameTree } = require('./lib/tree-hash');
+const { closeGear, closeEvidence } = require('./lib/gear-close');
 const { isNonRegistry } = require('./lib/registry-stamp');
 
 // The calibration script, addressed from this file. `hooks/` and `skills/` are siblings under the
@@ -214,10 +225,12 @@ process.stdin.on('end', () => {
     // one place that unambiguously names which feature this close belongs to.
     const slug = summaryMatch[1];
     const tree = resolveDeclaredTree(root, data.session_id);
-    const cause = fullSuiteDeclared(tree) ? fullSuiteDenyCause(tree, root, data, slug) : null;
-    if (cause) {
+    const denial = fullSuiteDeclared(tree) ? fullSuiteDenial(tree, root, data, slug) : null;
+    if (denial) {
+      const { cause, gear, files } = denial;
+      const gloss = gear ? `under the ${gear} gear, ${GEAR_CAUSES[cause]}${files.length ? `: ${files.join(', ')}` : ''}` : DENY_CAUSES[cause];
       return deny(
-        `summary.md needs a passing full-suite record for ${slug} (cause: ${cause} — ${DENY_CAUSES[cause]}). ` +
+        `summary.md needs a passing full-suite record for ${slug} (cause: ${cause} — ${gloss}). ` +
         'This repo declares .claude/verify.json → roles.full. Run:\n' +
         `  node "${path.join(__dirname, 'verify-run.js')}" --profile complete --slug ${slug}` +
         `${data.session_id ? ` --session ${data.session_id}` : ''}\n` +
@@ -257,6 +270,16 @@ process.stdin.on('end', () => {
   if (summaryMatch && !data.agent_type) {
     const reason = unruledRegistryRows(resolveDeclaredTree(root, data.session_id), summaryMatch[1]);
     if (reason) return deny(reason);
+  }
+
+  // (9) Summary mode line: a whole-file Write of summary.md carries a line beginning `Mode: `.
+  if (criticMatch && !data.agent_type && tool === 'Write' && !/^Mode: /m.test(String(ti.content || ''))) {
+    return deny(
+      `summary.md for ${criticMatch[1]} has no mode line. Put one right under its title, in the ` +
+      'summary-format grammar (its Producers paragraph): `Mode: team pipeline ({definition})` from the ' +
+      'team lead, or `Mode: architect-led fast lane ({level}, {definition})` from the architect — ' +
+      '{level} is light or full, {definition} is spec, bug, epic, ADR or plan only — then write summary.md again.'
+    );
   }
 
   return allow();
@@ -510,8 +533,16 @@ const DENY_CAUSES = {
   failing: 'the latest record for this tree state did not pass',
 };
 
+// The gear's evidence fell short; the files are named after the gloss, and the re-run still discharges.
+const GEAR_CAUSES = {
+  'not-completed': 'the latest record was cut or crashed, or its failures cannot all be named, so it cannot stand for the close',
+  unrepaired: 'no green, unfiltered run by name of the feature\'s slug stands for the content these hold now since the latest record failed them',
+  uncovered: 'no green tied run holds these files at their current hash since the latest record',
+};
+
 /**
- * Why does the LATEST in-scope full-suite record not discharge this close? `null` when it does.
+ * Why does the LATEST in-scope full-suite record not discharge this close? `{cause}` — plus `gear` and
+ * `files` when a gear's evidence fell short — or `null` when it does.
  *
  * Latest, not any. The audit file is append-only, so a run/fix/re-run cycle leaves several
  * full-suite records for one round; "any pass discharges" would let an early green shadow the red
@@ -546,7 +577,7 @@ const DENY_CAUSES = {
  * A missing, empty or unparseable verdict file yields no records and therefore denies — that is
  * invariant (4)'s sanctioned exception, not an oversight (see the header).
  */
-function fullSuiteDenyCause(tree, root, data, slug) {
+function fullSuiteDenial(tree, root, data, slug) {
   let token = '';
   try { token = fs.readFileSync(path.join(tree, '.claude', '.pipeline-state'), 'utf8').trim(); } catch { /* no token */ }
   const session = String(data.session_id || '');
@@ -557,14 +588,17 @@ function fullSuiteDenyCause(tree, root, data, slug) {
     // tree — verify-run.js makes the same measure-there/write-here split, so one log home holds
     // every record and the token-scoped queries keep working.
     lines = fs.readFileSync(path.join(root, '.claude', 'audit', 'verify-verdict.json'), 'utf8').split('\n');
-  } catch { return 'missing'; }
+  } catch { return { cause: 'missing' }; }
 
+  const records = [];
   let latest = null;
+  let index = -1;
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
     let rec;
     try { rec = JSON.parse(trimmed); } catch { continue; } // per-line tolerance, as every reader of this file has
+    if (rec) records.push(rec);
     if (!rec || rec.role !== 'full') continue;
     // Factor 1: the round key. An absent or empty slug fails here — never compared as '' === '',
     // which would make every unsigned record match every close.
@@ -573,15 +607,21 @@ function fullSuiteDenyCause(tree, root, data, slug) {
     // token must not match an empty token, or one unscoped record would discharge every close.
     if (!inThisRound(rec, token, session)) continue; // an out-of-scope record never displaces this round's answer, in either direction
     latest = rec; // append-only: the last in-scope record wins
+    index = records.length - 1;
   }
-  if (!latest) return 'missing';
-  if (!sameTree(latest.tree, tree)) return 'wrong-tree';
+  if (!latest) return { cause: 'missing' };
+  if (!sameTree(latest.tree, tree)) return { cause: 'wrong-tree' };
   // The hash factor fails open on one condition only: a tree git cannot list has no hash, so the factor
   // is skipped whole — a record without `tree_hash` included — while the tree and verdict still bind.
   const hash = treeHash(tree);
-  if (hash !== null && latest.tree_hash !== hash) return 'stale';
-  if (latest.verdict !== 'pass') return 'failing';
-  return null;
+  let cause = null;
+  if (hash !== null && latest.tree_hash !== hash) cause = 'stale';
+  else if (latest.verdict !== 'pass') cause = 'failing';
+  if (!cause) return null;
+  const gear = closeGear(slug, { tree, root });
+  if (!gear) return { cause };
+  const evidence = closeEvidence({ records, index, tree, slug });
+  return evidence.ok ? null : { cause: evidence.cause, gear, files: evidence.files };
 }
 
 function writtenContent(tool, ti) {

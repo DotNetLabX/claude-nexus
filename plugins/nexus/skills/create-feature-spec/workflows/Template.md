@@ -72,6 +72,27 @@ Numbered list. Each rule is enforceable and testable. State rules in domain lang
 1. {Rule}
 2. {Rule}
 
+## Decisions and why
+
+*Keep this section in `spec.md` and `epic.md`; leave it out of `bug.md`.*
+
+The why behind this document's decisions — the owner's reasons, what was turned down and the fact each decision rests on — so a run without the owner decides as the owner would, and stops where a decision no longer holds. When an agent follows or stops on an entry is `rules/on-demand/agents-workflow.md` § Decision entries; this section owns only the entry's shape.
+
+Two kinds of entry: an **owner ruling** (`By: owner`), and a **writer's decision** — a question the PO or architect resolved itself by recommendation, still listed for the owner as today, its `By` naming the role that decided and never presented as the owner's.
+
+An owner ruling gets an entry when (a) the owner gave a reason in words, (b) the owner chose something other than the recommendation — another listed option or an answer of their own, (c) a discussion settled it, or (d) it changes a decision that already has an entry, even by a plain pick. A plain pick of the recommendation with no words gets no entry: the document's text already carries the outcome.
+
+Entries are numbered `D1`, `D2`, … (`P1`, `P2`, … in a plan), and every reference names its document with the id — `spec D3`, `plan P2`, `epic D1`. A changed decision adds a new entry and sets the old one's State to `replaced by {reference}`; no entry is ever deleted. With no entry, the section reads exactly `None — no ruling carried the owner's reason.` The owner is never asked to review this section.
+
+### D1 — {decision}
+- **By:** `owner`, or the role that decided (`PO`, `architect`)
+- **Decided:** the outcome, in one line
+- **Why:** an owner ruling quotes the owner verbatim; where the owner gave no reason, the writer's explanation, marked `PO's reading` or `architect's reading`; a writer's decision gives the writer's reasoning — never an invented owner reason
+- **Turned down:** each option not taken, with its reason in a few words where one was given — or `none offered` where there were no alternatives
+- **Rests on:** the fact that, if it changes, reopens the decision — or `none — a preference` where nothing outside the owner's preference supports it
+- **Source:** the question's number in the feature's `questions.md`, the date of the discussion, or the architecture decision record a ruling of wider reach was routed to
+- **State:** `current`, or `replaced by {reference}`
+
 ## Acceptance Criteria
 
 Checklist format. Each item is an observable outcome — something a tester can verify from the outside without reading source code. Name endpoints and HTTP status codes, not classes or methods.

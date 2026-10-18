@@ -1,5 +1,264 @@
 # nexus — Changelog
 
+## [2.4.38] — 2026-10-18
+- Skills per step (F264), behind the new `features.skillsPerStep` switch (off unless `true`): the architect writes `**Skills per step:** on` in the plan header and names every pattern skill each step's actions touch, several per step in both plan formats; the plan critic checks each step's changed files against the skills it names; the code reviewer, as primary or second reader, checks each step's code against those skills; on the light lane the line also spawns the second code reader when no step is risky; the developer opens and the done check scores each named skill. Off, every role reads a plan as before (ADR-158)
+  - agent instruction/behavior change
+  - shipped command changed
+  - skill change (create-implementation-plan, summary-format)
+  - estate raise: plugins/nexus/agents/architect.md 219767→221533 B — F264-SkillsPerStep: skills per step behind features.skillsPerStep
+  - estate raise: plugins/nexus/agents/critic.md 31180→31663 B — F264-SkillsPerStep: skills per step behind features.skillsPerStep
+  - estate raise: plugins/nexus/agents/developer.md 50829→50927 B — F264-SkillsPerStep: skills per step behind features.skillsPerStep
+  - estate raise: plugins/nexus/agents/reviewer.md 29840→30389 B — F264-SkillsPerStep: skills per step behind features.skillsPerStep
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 36420→37821 B — F264-SkillsPerStep: skills per step behind features.skillsPerStep
+  - estate raise: plugins/nexus/skills/create-implementation-plan/references/plan-template.md 15490→16874 B — F264-SkillsPerStep: skills per step behind features.skillsPerStep
+  - estate raise: plugins/nexus/skills/summary-format/SKILL.md 8229→8419 B — F264-SkillsPerStep: skills per step behind features.skillsPerStep
+
+## [2.4.37] — 2026-10-18
+- Verdicts in prose (F263): the interview opens with a new rule — a request for your judgement on a source (is it valid, worth building, who should build it) is answered first in prose, a verdict per item with no table, title lines, progress line or question box; the walk starts when the owner asks to shape, plan or build, each undisputed verdict standing as that fix's critique; the "No move forward" bullet binds the walk; the owner-question contract treats a choice asked in prose while shaping as a discussion turn; the architect's and PO's interview paragraphs point at it
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 219378→219767 B — F263: a request for judgement on a source is answered in prose first; brainstorm idea rounds laid out in prose (example, gain, cost) and picked by reply
+  - estate raise: plugins/nexus/agents/po.md 73576→73965 B — F263: a request for judgement on a source is answered in prose first; brainstorm idea rounds laid out in prose (example, gain, cost) and picked by reply
+  - estate raise: plugins/nexus/rules/on-demand/research-before-asking.md 39669→41608 B — F263: a request for judgement on a source is answered in prose first; brainstorm idea rounds laid out in prose (example, gain, cost) and picked by reply
+
+## [2.4.36] — 2026-10-18
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - skill change (create-implementation-plan)
+  - skill change (questions-format)
+  - estate raise: plugins/nexus/agents/architect.md 213983→219378 B — F233-PlanCutCandidates: cut candidates behind the features.planCutCandidates switch - marking, reader verdicts, the keep-or-defer questions
+  - estate raise: plugins/nexus/agents/critic.md 30402→31180 B — F233-PlanCutCandidates: cut candidates behind the features.planCutCandidates switch - marking, reader verdicts, the keep-or-defer questions
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 36234→36420 B — F233-PlanCutCandidates: cut candidates behind the features.planCutCandidates switch - marking, reader verdicts, the keep-or-defer questions
+  - estate raise: plugins/nexus/skills/create-implementation-plan/references/plan-template.md 13940→15490 B — F233-PlanCutCandidates: cut candidates behind the features.planCutCandidates switch - marking, reader verdicts, the keep-or-defer questions
+  - estate raise: plugins/nexus/skills/questions-format/references/standard-questions.md 28412→30283 B — F233-PlanCutCandidates: cut candidates behind the features.planCutCandidates switch - marking, reader verdicts, the keep-or-defer questions
+
+## [2.4.35] — 2026-10-18
+- Pipeline gears (F258): a repo picks a gear — `fast`, `normal`, `quality` or `off` — with `/nexus:gear`, and the pipeline stops asking the process questions it answers (plan type, review mode, reader pair, build lane); `off` keeps every question, and a repo with no gear set behaves exactly as before. A gear also sets the fix rounds and their bar, the checker and Codex effort, the readers (`quality` adds Fable as a third reader), the test runs (`fast` runs only the tests tied to each step's change and the complete run once beside the reviewers) and the close's evidence; the team lead can run the light path under a gear. Shipped gears are fixed; `next {gear}` switches the next feature only. Known gap BUG-60: under `fast`, a red complete run whose declared command hides a wrapper behind an unquoted glob can close over a stage that never ran (ADR-156; ledger R-2026-10-18-F258A1-A6)
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - skill change (critic-calibration)
+  - estate raise: plugins/nexus/agents/architect.md 213518→213983 B — F258-PipelineGears fix round 1: a gear pair below the repo's per-agent checker entry, the slug on every fast call, the close's repair rule
+  - estate raise: plugins/nexus/agents/developer.md 50637→50829 B — F258-PipelineGears fix round 1: a gear pair below the repo's per-agent checker entry, the slug on every fast call, the close's repair rule
+  - estate raise: plugins/nexus/agents/learner.md 61020→61188 B — F258-PipelineGears fix round 1: a gear pair below the repo's per-agent checker entry, the slug on every fast call, the close's repair rule
+  - estate raise: plugins/nexus/agents/po.md 73408→73576 B — F258-PipelineGears fix round 1: a gear pair below the repo's per-agent checker entry, the slug on every fast call, the close's repair rule
+  - estate raise: plugins/nexus/agents/team-lead.md 231153→231618 B — F258-PipelineGears fix round 1: a gear pair below the repo's per-agent checker entry, the slug on every fast call, the close's repair rule
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 111127→111424 B — F258-PipelineGears fix round 1: a gear pair below the repo's per-agent checker entry, the slug on every fast call, the close's repair rule
+
+## [2.4.34] — 2026-10-17
+- adhoc-CodeReviewSkillInvocable: the architect and developer instructions no longer say an agent cannot invoke Claude Code's built-in `/code-review` skill — it starts from the main session and from a spawned helper (measured on Claude Code 2.1.301). It is still never the first-round review's required mechanism; `/deep-research` and `/review` stay listed as user-invocable only.
+  - agent instruction/behavior change
+  - shipped command changed
+
+## [2.4.33] — 2026-10-17
+- F257-SuiteTimeWatch: a complete test run knows its usual time and waits its turn. `verify-run.js` takes the median of the last 10 passing complete runs of the same command (at least 5) as the usual time, writes one warning line while a run passes 1.5× it, and puts `usual_ms` and `slow` on the record; a slow run is never stopped. Complete runs now queue across every repo on the machine: at most `NEXUS_COMPLETE_RUNS_AT_ONCE` at once (default 2, 0 turns it off), each holding its own claim file under `~/.nexus/run-slots` with a heartbeat; a further run waits (`waited_ms`, `others` on its record), a dead claim is skipped and swept a day after it expires, a run started inside another complete run takes no turn, and a broken queue never blocks a run (`slot: "unavailable"`). The team lead's close names a slow run's ratio in its report.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - estate raise: plugins/nexus/agents/team-lead.md 221150→221365 B — F257-SuiteTimeWatch: the close names a slow complete run (team-lead.md Close Gate item 5)
+
+## [2.4.32] — 2026-10-17
+- Brainstorm one click (F255): every interview turn with the owner takes one topic and ends in one question box — a four-column topic table (Decide topics, then Read topics), a title line naming each topic's type, one Read turn for everything that asks nothing (skipped when there is none), one closing turn holding the process questions (name, review mode, plan type, Options Panel offer — at most three), and a `Step {n} of {total}` line; the question check accepts several leading recommended options in a multi-select; the end-of-turn critique check reads interview turns only and refuses a Read topic that declares a change
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - skill change (questions-format)
+  - estate raise: plugins/nexus/agents/architect.md 205178→205331 B — F255 one topic per turn
+  - estate raise: plugins/nexus/rules/on-demand/research-before-asking.md 39134→39669 B — F255 one topic per turn
+  - estate raise: plugins/nexus/skills/questions-format/references/standard-questions.md 27085→27285 B — F255 one topic per turn
+
+## [2.4.31] — 2026-10-17
+- The full test run stops at 10 minutes by default, instead of 30; a repo sets its own limit with fullLimitSeconds in .claude/verify.json, and a run cut at its limit names that setting (owner, 2026-10-17)
+  - hook behavior/enforcement change
+  - skill change (declare-verify-roles)
+  - estate raise: plugins/nexus/skills/declare-verify-roles/SKILL.md 10755→11560 B — adhoc-FullSuiteLimitSetting: the full test run's limit becomes a repo setting, default 10 minutes (owner, 2026-10-17)
+
+## [2.4.30] — 2026-10-17
+- Unattended panels and brainstorms (F252): in a run the owner has left, the PO and the architect take hard open points to a two-voice panel and run owed brainstorms themselves, within 5 panels and 3 brainstorms per feature, every away choice recorded and listed for the owner
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 204492→205517 B — F252 unattended panels and brainstorms: the PO and the architect run panels and owed brainstorms in a run the owner has left
+  - estate raise: plugins/nexus/agents/learner.md 57867→57870 B — F252 unattended panels and brainstorms: the PO and the architect run panels and owed brainstorms in a run the owner has left
+  - estate raise: plugins/nexus/agents/po.md 69609→70331 B — F252 unattended panels and brainstorms: the PO and the architect run panels and owed brainstorms in a run the owner has left
+  - estate raise: plugins/nexus/agents/team-lead.md 219965→221150 B — F252 unattended panels and brainstorms: the PO and the architect run panels and owed brainstorms in a run the owner has left
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 101194→103549 B — F252 unattended panels and brainstorms: the PO and the architect run panels and owed brainstorms in a run the owner has left
+
+## [2.4.29] — 2026-10-17
+- F247-TestsThroughRunnerOnly: the test-entry gate (`test-entry-gate.js`) now refuses a raw test command from a developer or solo seat in the background too, naming the runner call, and every `test-entry` line it logs carries `blocked: true` — a PreToolUse deny is honoured for a background subagent at Claude Code 2.1.301 (dropped through 2.1.273). The done check's test-entry wording follows, and the passages saying a background deny is dropped carry a dated qualifier; the other gates' background behaviour is unchanged. Limit: on a client that drops a background deny, a raw run would now go unseen.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 204418→204492 B — F247-TestsThroughRunnerOnly: the done-check sentence on a refused test-entry row, and the dated platform-version qualifier on the seven background-deny passages
+  - estate raise: plugins/nexus/agents/team-lead.md 219422→219965 B — F247-TestsThroughRunnerOnly: the done-check sentence on a refused test-entry row, and the dated platform-version qualifier on the seven background-deny passages
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 100927→101194 B — F247-TestsThroughRunnerOnly: the done-check sentence on a refused test-entry row, and the dated platform-version qualifier on the seven background-deny passages
+
+## [2.4.28] — 2026-10-17
+- adhoc-SuiteNormalPriorityCap: `verify-run.js` no longer lowers a test run to below-normal priority (reverses 2.4.23's priority part). On a busy laptop a lowered suite starved its timing-dependent tests: every complete run after 2.4.23 failed (14 of 14, against about 1 in 4 before), and an alternating trial failed 2 of 2 lowered against 1 of 2 at normal. The run keeps its caller's priority; a repo that must leave room for other work caps its own parallelism in the command it declares (this repo's close suite now runs a third of the logical CPUs' test files at a time).
+  - hook behavior/enforcement change
+
+## [2.4.27] — 2026-10-17
+- F256-CheckerEffortByModel: the critic and reviewer seats take their effort from the model in the seat — Sonnet `high`, Opus and Fable `xhigh`, any other model the agent file's `effort` — so 2.4.25's Sonnet-only drop to `high` no longer lowers Opus (second reader where Codex is missing) or Fable (the early stand-in for a stalled Codex). A new synchronous PreToolUse hook, `checker-effort.js` (`Agent|Task`), fills a critic or reviewer spawn's `effort` from the table when the call passes none; an explicit per-spawn effort (the light lane, an owner direction) still wins, and the light lane steps down from the table's value. It never emits a permission decision and fails open. Needs Claude Code 2.1.292 or later; probed live on 2.1.302. The "a model swap never changes effort" rule now holds outside these two seats only (ADR-154).
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 204172→204418 B — F256: checker effort by model — table section, amended effort-substitution rule
+  - estate raise: plugins/nexus/agents/critic.md 30276→30402 B — F256: checker effort by model — table section, amended effort-substitution rule
+  - estate raise: plugins/nexus/agents/learner.md 57745→57867 B — F256: checker effort by model — table section, amended effort-substitution rule
+  - estate raise: plugins/nexus/agents/po.md 69487→69609 B — F256: checker effort by model — table section, amended effort-substitution rule
+  - estate raise: plugins/nexus/agents/team-lead.md 218909→219422 B — F256: checker effort by model — table section, amended effort-substitution rule
+  - estate raise: plugins/nexus/rules/on-demand/pipeline-guardrails.md 10801→13071 B — F256: checker effort by model — table section, amended effort-substitution rule
+
+## [2.4.26] — 2026-10-17
+- BUG-37-CodexJobLostWorkerTestTiming: the Codex job helper's process lookup holds on a busy machine — each lookup gets 5 seconds instead of 3, and a lookup with no answer is tried once more before it counts as no answer, so a live worker is still found and stopped. Its tests use a process id no process ever gets, so a reused id can no longer fool them. On an idle machine nothing changes.
+  - hook behavior/enforcement change
+
+## [2.4.25] — 2026-10-17
+- adhoc-SonnetHighReplay: the critic and the reviewer run at `high` effort instead of `xhigh`. A blind replay of 24 past reviews (12 in this repo, 12 in a .NET service) found `high` 44% faster per review, with serious findings nearly even (62 against 66.5 of 89) and about 11 points fewer findings overall; Codex reads beside it. The light lane's one-step-lower rule now puts them at `medium`.
+  - agent instruction/behavior change
+
+## [2.4.24] — 2026-10-16
+- F242-CritiqueChangeCheck: every critique on a source ends with `Change: none` or `Change: {what it adds, removes or replaces}`, and a synchronous end-of-turn check (`critique-check.js`, core `Stop` hook) refuses an architect's or PO's turn — once per owner prompt — whose `read only` topic declares a change, or whose declared changes outnumber the questions its question boxes asked; it fails open on anything it cannot read or pair. The hand-off tracker's human-wait report lets a later stop of the same prompt supersede an earlier unclosed one. Limit: a false `Change: none` is not caught.
+  - hook behavior/enforcement change (new Stop hook `critique-check.js`; `handoff-tracker.js` report pairing)
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 203919→204172 B — F242-CritiqueChangeCheck: the Change line in the interview rule, the architect and PO interview sections and the brainstorm skill; the end-of-turn critique check
+  - estate raise: plugins/nexus/agents/po.md 69234→69487 B — F242-CritiqueChangeCheck: the Change line in the interview rule, the architect and PO interview sections and the brainstorm skill; the end-of-turn critique check
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 100638→100927 B — F242-CritiqueChangeCheck: the Change line in the interview rule, the architect and PO interview sections and the brainstorm skill; the end-of-turn critique check
+  - estate raise: plugins/nexus/rules/on-demand/research-before-asking.md 37036→37317 B — F242-CritiqueChangeCheck: the Change line in the interview rule, the architect and PO interview sections and the brainstorm skill; the end-of-turn critique check
+
+## [2.4.23] — 2026-10-16
+- adhoc-TestRunDetectorAndPriority: the test runner (`verify-run.js`) lowers its own priority to below normal before it starts a suite, and every test process inherits it — the machine stays responsive during a complete run at no cost in time (F244, priority part; the test-concurrency cap is not in this release). The test-run detector no longer counts a PowerShell process listing that filters or groups on a test command (`Where-Object`, `Group-Object`) as a raw test run (BUG-52).
+  - hook behavior/enforcement change
+
+## [2.4.22] — 2026-10-16
+- adhoc-CritiqueChangeAsks: a critique that changes the source's fix (adds, removes or replaces any part of it) is now `your decision` — the change asked in the question box in the turn it comes up; silence or "next" adopts nothing and the source's fix stands until the owner rules. A critique that finds the fix sound is `read only`. The `read, object if needed` tag is retired (ADR-145 amended).
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 203686→203919 B — adhoc-CritiqueChangeAsks: a critique that changes a fix is asked, not settled by silence
+  - estate raise: plugins/nexus/agents/po.md 68992→69234 B — adhoc-CritiqueChangeAsks: a critique that changes a fix is asked, not settled by silence
+  - estate raise: plugins/nexus/rules/on-demand/research-before-asking.md 36824→37036 B — adhoc-CritiqueChangeAsks: a critique that changes a fix is asked, not settled by silence
+
+## [2.4.21] — 2026-10-16
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - skill change (create-implementation-plan)
+  - skill change (questions-format)
+  - estate raise: plugins/nexus/agents/architect.md 200596→203686 B — F240: the plan type after the interview, the lane after the plan
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 35579→36088 B — F240: the plan type after the interview, the lane after the plan
+  - estate raise: plugins/nexus/skills/create-implementation-plan/references/plan-template.md 13258→13585 B — F240: the plan type after the interview, the lane after the plan
+  - estate raise: plugins/nexus/skills/questions-format/references/standard-questions.md 25657→26852 B — F240: the plan type after the interview, the lane after the plan
+
+## [2.4.20] — 2026-10-16
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - skill change (questions-format)
+  - estate raise: plugins/nexus/skills/questions-format/references/standard-questions.md 25263→25657 B — adhoc-BuildLaneSpeedLabels: build-lane options name their speed and benefit
+
+## [2.4.19] — 2026-10-15
+- Decisions and why: specs, epics and plans keep the owner's reasons; build agents follow a current entry and stop on a changed one
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - skill change (create-feature-spec)
+  - skill change (create-implementation-plan)
+  - skill change (questions-format)
+  - estate raise: plugins/nexus/agents/architect.md 199076→200596 B — F237: Decisions and why — section, follow/stop rule, writer duties, reader pointers
+  - estate raise: plugins/nexus/agents/critic.md 29540→30277 B — F237: Decisions and why — section, follow/stop rule, writer duties, reader pointers
+  - estate raise: plugins/nexus/agents/developer.md 49613→49887 B — F237: Decisions and why — section, follow/stop rule, writer duties, reader pointers
+  - estate raise: plugins/nexus/agents/po.md 66443→68992 B — F237: Decisions and why — section, follow/stop rule, writer duties, reader pointers
+  - estate raise: plugins/nexus/agents/reviewer.md 28957→29183 B — F237: Decisions and why — section, follow/stop rule, writer duties, reader pointers
+  - estate raise: plugins/nexus/agents/solo.md 33035→33283 B — F237: Decisions and why — section, follow/stop rule, writer duties, reader pointers
+  - estate raise: plugins/nexus/agents/team-lead.md 218664→218909 B — F237: Decisions and why — section, follow/stop rule, writer duties, reader pointers
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 97242→100638 B — F237: Decisions and why — section, follow/stop rule, writer duties, reader pointers
+  - estate raise: plugins/nexus/rules/on-demand/research-before-asking.md 36747→36824 B — F237: Decisions and why — section, follow/stop rule, writer duties, reader pointers
+  - estate raise: plugins/nexus/skills/create-feature-spec/SKILL.md 7049→7532 B — F237: Decisions and why — section, follow/stop rule, writer duties, reader pointers
+  - estate raise: plugins/nexus/skills/create-feature-spec/workflows/Template.md 4033→6488 B — F237: Decisions and why — section, follow/stop rule, writer duties, reader pointers
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 35504→35579 B — F237: Decisions and why — section, follow/stop rule, writer duties, reader pointers
+  - estate raise: plugins/nexus/skills/create-implementation-plan/references/plan-template.md 12199→13258 B — F237: Decisions and why — section, follow/stop rule, writer duties, reader pointers
+  - estate raise: plugins/nexus/skills/questions-format/SKILL.md 10033→10319 B — F237: Decisions and why — section, follow/stop rule, writer duties, reader pointers
+
+## [2.4.18] — 2026-10-15
+- F232-LightPlanPath: small-to-medium features take a faster light path. A light plan is short (each step an outcome and its acceptance test, a light template in create-implementation-plan) and is expanded to the full format whenever the plan is made full; the architect reads less before it (a verified registry row or a fresh code map stands in for the code); each step is rated safe or risky, by a built-in sensitive-path list (migrations, login and security, secrets, dependencies) plus judgement, and the new risk-recheck.js re-derives the risky steps from what the build changed before review; the main code reader reads the whole change while the second reader reads only the risky steps and joins only when one exists; the done check grades a light step on outcome and acceptance evidence. ADR-150; a lint pins the new contracts.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - skill change (create-implementation-plan, implementation-format, review-format, summary-format)
+  - rule change (agents-workflow, codex-dispatch)
+  - estate raise: plugins/nexus/agents/architect.md 193585→199076 B — F232: light plan path — light format, light reading, per-step risk and readers
+  - estate raise: plugins/nexus/agents/developer.md 48351→49613 B — F232: light plan path — light format, light reading, per-step risk and readers
+  - estate raise: plugins/nexus/agents/learner.md 57233→57745 B — F232: light plan path — light format, light reading, per-step risk and readers
+  - estate raise: plugins/nexus/agents/po.md 65931→66443 B — F232: light plan path — light format, light reading, per-step risk and readers
+  - estate raise: plugins/nexus/agents/team-lead.md 218152→218664 B — F232: light plan path — light format, light reading, per-step risk and readers
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 96974→97242 B — F232: light plan path — light format, light reading, per-step risk and readers
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 27004→27248 B — F232: light plan path — light format, light reading, per-step risk and readers
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 32980→35504 B — F232: light plan path — light format, light reading, per-step risk and readers
+  - estate raise: plugins/nexus/skills/create-implementation-plan/references/plan-template.md 10568→12199 B — F232: light plan path — light format, light reading, per-step risk and readers
+  - estate raise: plugins/nexus/skills/implementation-format/SKILL.md 14562→15118 B — F232: light plan path — light format, light reading, per-step risk and readers
+  - estate raise: plugins/nexus/skills/review-format/SKILL.md 27892→30281 B — F232: light plan path — light format, light reading, per-step risk and readers
+  - estate raise: plugins/nexus/skills/summary-format/SKILL.md 7179→7606 B — F232: light plan path — light format, light reading, per-step risk and readers
+
+## [2.4.17] — 2026-10-15
+- F227-LaneForkCriteria: work forks between the lanes on size and shape, never on the spec. Every plan carries a Size line and every standalone plan a recommended check level (full past 8 developer-built steps or 15 files, on a protected file, with no declared complete run, or with the owner away); once the plan is approved the owner picks the lane from a ranked build-lane list, where size only orders the options and never removes one; the choice is recorded as a Build lane header line and holds to the close. A backlog feature with a plan reaches the team pipeline with or without a spec. Every summary.md carries a Mode line (team pipeline or architect-led fast lane, level, definition spec/bug/epic/ADR/plan only), and pipeline-gate refuses a summary Write without one. Solo takes work stated in one sentence and built in one pass. ADR-148.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - skill change (summary-format)
+  - estate raise: plugins/nexus/agents/architect.md 193495→193585 B — F227: check level for every standalone plan, size recommends, mode line at close
+  - estate raise: plugins/nexus/agents/team-lead.md 218085→218152 B — F227: check level for every standalone plan, size recommends, mode line at close
+  - estate raise: plugins/nexus/skills/summary-format/SKILL.md 7089→7179 B — F227: check level for every standalone plan, size recommends, mode line at close
+
+## [2.4.16] — 2026-10-14
+- adhoc-DevRowPlanTotal: the developer's step state now records `total`, the plan's step count, so the agents list counts against the whole plan again. Since plans were cut into build slices (2.1.2), a developer's range is its slice, and the row read `step 1/4` on a 13-step plan. At a developer's start, the tracker reads the plan from the dispatch's `Plan:` path, else `docs/specs/{slug}/delivery/plan.md`, under its `Tree:` when one is named. It takes the plan's highest step number, so close-owned steps count too and the total matches the plan the reader opens. When no plan is found, nothing is recorded and the row reads as before.
+  - hook behavior/enforcement change
+
+## [2.4.15] — 2026-10-14
+- adhoc-PlanOnlyReplanRule: a plan-only plan is no longer told to re-plan for the full pipeline because it has more than 8 steps. The build-lane question now recommends the check level its `**Lane:**` header names, whatever its size — full checks give a large plan the pipeline's review rounds, and build slices give each part a fresh developer. Re-planning is still recommended where the plan declares a developer split, which the fast lane never builds. The 8-step rule had come back through the recommendation although ADR-146 rejected a step-count threshold; ADR-146 Decision (2) is amended to match.
+  - agent instruction/behavior change
+  - shipped command changed
+  - skill change (questions-format)
+  - estate raise: plugins/nexus/agents/architect.md 191352→191455 B — adhoc-PlanOnlyReplanRule: plan-only build-lane recommendation drops the 8-step re-plan rule
+  - estate raise: plugins/nexus/skills/questions-format/references/standard-questions.md 25498→25499 B — adhoc-PlanOnlyReplanRule: plan-only build-lane recommendation drops the 8-step re-plan rule
+
+## [2.4.14] — 2026-10-13
+- F229-UnnamedSecondReaders: no pipeline agent is started with a spawn name any more, whatever its role. An agent started with a name runs as an in-process teammate, which Claude Code leaves out of its agents list — so a second reader, told until now to be started under a name, had no row there, and since Codex became the main code reviewer the plugin's own reviewer only ever ran that way. The agent's label (`dev-s1`, `critic-second`, `reviewer-second`, `solo-red1`) is the first word of the spawn's description for every role, as it already was for a developer; the rule is stated once in the spawn-tasking contract, and every dispatch line of the team lead, the architect, the PO and the learner follows it. An unnamed reviewer cannot see its own label, so the second reader's brief now always carries the line that says it is the second reader and where it writes — on the first review too, not only on a follow-up. A lint fails if an agent or rule file tells a coordinator to name a spawn again.
+
+## [2.4.13] — 2026-10-13
+- F226-CampaignTrialFixes: a Codex job a later session can find — review and done-check jobs start with a label the helper records (`codex-job.js start --label`, `jobs --label`), and a session missing a round's record looks it up before starting any reader, so a relaunch collects or falls back instead of starting a second job; the owner-away mark is written with the Write tool
+  - hook behavior/enforcement change
+
+## [2.4.12] — 2026-10-12
+- adhoc-InterviewAsksOwner: an architect or PO handed a source asks first, in the question box, what only the owner can decide — an owner-only decision and the persona's own questions are topics tagged `your decision`, taken ahead of the critiques, so the first turn ends with the box whenever there is one; one line under the topic list says the conversation is the interview; an answer stays prose. "No move forward while a fix is uncritiqued" bars a build, a name, an intake or a plan, not a question. Applies `nexus-2.4.10-2026-10-12#1`.
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 189022→190007 B — adhoc-InterviewAsksOwner: what only the owner can decide is asked first, in the question box; the persona's own questions are topics; one line says the conversation is the interview
+  - estate raise: plugins/nexus/agents/po.md 63839→64686 B — adhoc-InterviewAsksOwner: what only the owner can decide is asked first, in the question box; the persona's own questions are topics; one line says the conversation is the interview
+  - estate raise: plugins/nexus/rules/on-demand/research-before-asking.md 35053→36747 B — adhoc-InterviewAsksOwner: what only the owner can decide is asked first, in the question box; the persona's own questions are topics; one line says the conversation is the interview
+
+## [2.4.11] — 2026-10-12
+- BUG-35-CodexJobQueuedForever: a Codex job no longer stays `queued` with no process behind it. The Codex plugin starts its background worker before it saves the job, and a worker that read first exited; the job helper now makes the worker wait for its launcher (a new `codex-worker-wait.js`, loaded through `NODE_OPTIONS` on the start call only). A worker lost all the same is read as `failed` at once by `wait` and `collect`, in place of a 6-minute stall, and the stall check is unchanged. A shell without `CLAUDE_PLUGIN_DATA` (the PowerShell tool) is given the Codex plugin's data folder, so a job started from one shell is found from the other.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 188661→189022 B — BUG-35: the Codex job helper's lost-worker reading and its one job folder, two sentences in the Codex dispatch rule and its generated copies
+  - estate raise: plugins/nexus/agents/learner.md 55627→55988 B — BUG-35: the Codex job helper's lost-worker reading and its one job folder, two sentences in the Codex dispatch rule and its generated copies
+  - estate raise: plugins/nexus/agents/po.md 63478→63839 B — BUG-35: the Codex job helper's lost-worker reading and its one job folder, two sentences in the Codex dispatch rule and its generated copies
+  - estate raise: plugins/nexus/agents/team-lead.md 216197→216558 B — BUG-35: the Codex job helper's lost-worker reading and its one job folder, two sentences in the Codex dispatch rule and its generated copies
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 25784→26145 B — BUG-35: the Codex job helper's lost-worker reading and its one job folder, two sentences in the Codex dispatch rule and its generated copies
+
 ## [2.4.10] — 2026-10-12
 - adhoc-TopicTitleLine: an interview topic now opens on a bold line of its own carrying the topic's number, its title and the owner's part, and the topic's text begins below it — the owner found the part hard to spot inside the prose. Stated once in the core interview rule; the architect's and the PO's interview paragraphs carry the same words. The parts, the index line and the closing topic line are unchanged.
   - agent instruction/behavior change

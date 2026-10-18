@@ -1,6 +1,37 @@
 # nexus-dotnet — Changelog
 
 
+## [2.0.3] — 2026-10-13
+- PATCH bump.
+  - plugin.json metadata change
+  - plugin payload (conventions/coding-conventions.md)
+  - plugin payload (conventions/ef-core.md)
+  - skill change (add-integration-event)
+  - skill change (authorization-patterns)
+  - skill change (consumer-patterns)
+  - skill change (create-aggregate)
+  - skill change (create-domain-event-handler)
+  - skill change (create-grpc-contract)
+  - skill change (create-host)
+  - skill change (create-module)
+  - skill change (create-service)
+  - skill change (persistence-patterns)
+  - skill change (service-registration)
+  - estate raise: plugins/nexus-dotnet/skills/add-integration-event/workflows/Consumer.md 1789→1950 B — F21: create-host skill and the hosted-case pointers
+  - estate raise: plugins/nexus-dotnet/skills/authorization-patterns/SKILL.md 16395→16553 B — F21: create-host skill and the hosted-case pointers
+  - estate raise: plugins/nexus-dotnet/skills/consumer-patterns/SKILL.md 5724→5839 B — F21: create-host skill and the hosted-case pointers
+  - estate raise: plugins/nexus-dotnet/skills/create-aggregate/SKILL.md 7552→7613 B — F21: create-host skill and the hosted-case pointers
+  - estate raise: plugins/nexus-dotnet/skills/create-domain-event-handler/SKILL.md 7654→7967 B — F21: fix round 1
+  - estate raise: plugins/nexus-dotnet/skills/create-grpc-contract/workflows/Server.md 1891→2029 B — F21: create-host skill and the hosted-case pointers
+  - estate raise: plugins/nexus-dotnet/skills/create-host/SKILL.md 0→17484 B — F21: fix round 1
+  - estate raise: plugins/nexus-dotnet/skills/create-host/workflows/ComposeHost.md 0→3752 B — F21: fix round 1
+  - estate raise: plugins/nexus-dotnet/skills/create-host/workflows/ConvertService.md 0→3930 B — F21: fix round 1
+  - estate raise: plugins/nexus-dotnet/skills/create-service/SKILL.md 6291→6492 B — F21: fix round 1
+  - estate raise: plugins/nexus-dotnet/skills/create-service/workflows/ScaffoldCsprojFiles.md 4301→4348 B — F21: create-host skill and the hosted-case pointers
+  - estate raise: plugins/nexus-dotnet/skills/create-service/workflows/ScaffoldPersistenceProject.md 3479→3601 B — F21: create-host skill and the hosted-case pointers
+  - estate raise: plugins/nexus-dotnet/skills/persistence-patterns/SKILL.md 19590→19695 B — F21: fix round 1
+  - estate raise: plugins/nexus-dotnet/skills/service-registration/SKILL.md 12877→13386 B — F21: create-host skill and the hosted-case pointers
+
 ## [2.0.2] — 2026-10-11
 - PATCH bump.
   - skill change (frontend-review)

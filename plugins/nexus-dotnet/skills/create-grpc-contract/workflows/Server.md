@@ -40,6 +40,9 @@ services.AddCodeFirstGrpc(options => options.EnableDetailedErrors = false);
 app.MapGrpcService<CustomerDirectoryServer>();
 ```
 
+In a service a host runs, the `MapGrpcService` line sits in the service's `Map{Service}Endpoints`, which the host
+calls (`create-host`).
+
 ## Errors
 
 A missing record throws not-found through the lookup, as everywhere. gRPC has no HTTP error mapper: where the repo has

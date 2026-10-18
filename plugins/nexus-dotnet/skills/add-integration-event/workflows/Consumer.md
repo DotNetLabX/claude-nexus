@@ -12,7 +12,8 @@ A consumer goes in the project that registers the service's bus (`service-regist
 - a service **with** an Application project registers the bus there, so its consumers live there;
 - a service **without** one registers it in the API project, so its consumers live there.
 
-Place by the registration, never by how simple or rich the consumer is.
+Place by the registration, never by how simple or rich the consumer is. In a service a host runs, the consumers stay
+in that same project and the host registers the bus, calling the service's `Add{Service}Consumers` (`create-host`).
 
 ## Class shape
 

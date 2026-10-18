@@ -48,7 +48,10 @@ on the Recommendation without a user reply (unattended mode, or the user explici
 Answer block reads `presumed (proceed-default), not user-confirmed — {recommendation}` — **never**
 under a "user answered" attribution or an `Answers (user)` heading. A presumed default a later
 interview can flip must be findable as presumed; a false "user answered" record once forced a plan
-step to be rebuilt when the real interview reversed it. **That record carries the same parts the ask
+step to be rebuilt when the real interview reversed it. Where a current entry of the feature's
+`## Decisions and why` sections decides the question, the Answer block reads
+`answered from {document} {id}, not owner-confirmed — {answer}` instead — neither the owner's answer
+nor a presumed one (→ agents-workflow.md § Decision entries). **That record carries the same parts the ask
 would have carried** — the fact lines, or the routine line and at most one fact line, the question
 sentence, the options with the recommended one first, and the confidence clause in its field — so the
 human who audits it later reads the shape a live owner would have read:

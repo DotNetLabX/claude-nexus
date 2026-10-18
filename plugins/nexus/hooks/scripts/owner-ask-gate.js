@@ -13,13 +13,13 @@
  * run's facts}`, at most one more fact line, then the question sentence, one sentence per line.
  * Every line ends with a sentence end and runs at most 120 characters. Below the text sit two to
  * four options that answer it — the recommended one first, its label ending `(Recommended)`, its
- * description ending in the confidence clause — each description at most two sentences, one in a
- * routine ask.
+ * description ending in the confidence clause; a multi-select may recommend several, leading together,
+ * each with its own clause — each description at most two sentences, one in a routine ask.
  *
  * THE CHECK SET IS NOT THIS FILE'S TO EXTEND. F170 rule 13 names fourteen checks and declares the
  * set exhaustive; CHECK_NAMES and CHECK_ORDER are that list, in the letter order its refusals use.
- * The owner-away refusal below is not a fifteenth check: it refuses on the session's state, names
- * no check, and sits in neither list.
+ * The owner-away refusal and the gear refusal below are not further checks: each refuses on the
+ * session's state, names no check, and sits in neither list.
  *
  * POSTURE, mirroring prohibition-gate.js: deny in the FOREGROUND with a self-correcting reason that
  * names every failed check at once, so one rewrite fixes all; for a background subagent — where the
@@ -30,6 +30,13 @@
  * removes it on `off`), every FOREGROUND ask is denied with AWAY_REASON — write `off` and ask if the
  * owner is back, otherwise list the point and continue. No rewrite of the ask passes it. A spawned
  * agent is untouched by its session's mark.
+ *
+ * A GEAR ANSWERS ITS FOUR QUESTIONS: a FOREGROUND routine ask of a catalogue entry a gear answers
+ * (`plan type`, `review mode`, `reader pair`, `build lane` — the entries lib/gears-shipped.json names)
+ * is denied with GEAR_REASON while the session's active gear context gives that row a value other
+ * than `asked`, the reason naming the gear and the value. No active context, `off`, or a row reading
+ * `ask me` lets the ask through; so does a learner or solo session, whatever context survives from a
+ * paused feature. Any failure reading the state allows the call.
  *
  * REACH: the session's persona, one of the eight KNOWN_ROLES. A persona-less session and a
  * non-Nexus helper spawn (`Explore`, `general-purpose`) are untouched — allowed, unlogged — so the
@@ -61,6 +68,8 @@ const { readSessionPersona } = require('./lib/read-session-persona');
 const { readOwnerAway } = require('./lib/read-owner-away');
 const { readCatalogue, normalizeName } = require('./lib/standard-questions');
 const { readAskWords, readProjectAllowance, matchListed } = require('./lib/ask-words');
+const gears = require('./lib/gears');
+const { resolveDeclaredTree } = require('./lib/worktree-target');
 
 const TOOL = 'AskUserQuestion';
 
@@ -184,7 +193,8 @@ const REWORD_TAIL =
   'sentence, one sentence per line; every line ends with a sentence end and runs at most 120 ' +
   'characters, with no blank line, no bullet and no label; the options are the answers, the ' +
   'recommended one first with (Recommended) on its label and Confidence: high|medium|low — why at ' +
-  'the end of its description, and an option\'s description is at most two sentences, one in a ' +
+  'the end of its description — a multi-select may recommend several, listed first and together, each ' +
+  'closing with its own clause — and an option\'s description is at most two sentences, one in a ' +
   'routine ask, the confidence clause not counted; plain words only — no word from the vocabulary ' +
   'list except a catalogue name on a ' +
   'routine line, and no pointer phrase; no bare internal id anywhere, and no markdown emphasis or ' +
@@ -203,6 +213,37 @@ const AWAY_REASON =
   'session scratchpad, then ask again. Otherwise put the point on the list and continue — take the ' +
   'answer the open-point table gives, and let only the part that needs the owner wait ' +
   '(agents-workflow.md § Owner-away runs).';
+
+const GEAR_ROWS = new Map(gears.ROWS.filter((r) => r.catalogue).map((r) => [normalizeName(r.catalogue), r.row]));
+const GEAR_EXEMPT_ROLES = new Set(['learner', 'solo']);
+
+// A refusal on the session's state, like AWAY_REASON: no rewrite of the ask passes it.
+const GEAR_REASON = (hits) =>
+  `this feature runs under a gear, which answers ${hits.length === 1 ? 'this question' : 'these questions'}, ` +
+  `so ${hits.length === 1 ? 'it is' : 'they are'} not asked: ` +
+  hits.map((h) => `${h.name} — ${h.value} (the ${h.gear} gear)`).join('; ') +
+  '. Take that value, name it and the gear in the record, and continue (agents-workflow.md § Gears).';
+
+/** The gear refusal's reason for this call, or null. Never throws. */
+function gearRefusal(data, root, role) {
+  if (GEAR_EXEMPT_ROLES.has(role)) return null;
+  try {
+    const session = data.session_id;
+    const tree = resolveDeclaredTree(root, session);
+    const hits = [];
+    for (const q of data.tool_input.questions) {
+      const first = typeof (q && q.question) === 'string' ? q.question.split(/\r?\n/)[0] : '';
+      const routine = ROUTINE_LINE_RE.exec(first);
+      const row = routine ? GEAR_ROWS.get(normalizeName(routine[1])) : undefined;
+      if (row === undefined) continue;
+      const v = gears.valueOf({ setting: row, root, tree, session, env: process.env });
+      if (v.gear && v.value !== 'asked') hits.push({ name: normalizeName(routine[1]), gear: v.gear, value: v.value });
+    }
+    return hits.length ? GEAR_REASON(hits) : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Does this call need inspecting at all? Pure and exported; in `main` only the owner-away mark's
@@ -365,30 +406,42 @@ function checkQuestion(q, catalogue, lists) {
   // Fail open per check: an array holding no option this gate can READ — plain strings, or an empty
   // array — is skipped, exactly as `options` under another name is. Only the array's TYPE was
   // checked before, so a payload whose options were strings failed a check never really evaluated.
-  // (d) the clause belongs to ONE option's description, so a clause in the header or the question
+  // (d) the clause belongs to a recommended option's description, so a clause in the header or the question
   // text is wrong whatever the options look like — this half needs no readable option to decide.
   const boxElsewhere = [q.header, text];
   if (optionsLegible) {
     const flagged = options.filter((o) => RECOMMENDED_RE.test(String((o && o.label) || '')));
-    if (flagged.length !== 1) add('recommended', `(${flagged.length} of 1)`);
-    else if (flagged[0] !== options[0]) add('recommended', '— it is not listed first');
-    // Checks (d) and (i) still need one option to read even when (c) just failed, so an ask that is
-    // already wrong on the label gets its remaining reasons in the same refusal.
-    const recommended = flagged.length === 1 ? flagged[0] : options[0];
+    // A multi-select may recommend several options — its picks — when they lead, together. A
+    // single-choice question, or a multi-select with none flagged, keeps exactly one, first.
+    let recommended;
+    if (q.multiSelect === true && flagged.length > 0) {
+      if (!flagged.every((o, i) => options[i] === o)) {
+        add('recommended', flagged.length === 1 ? '— it is not listed first' : '— they are not listed first together');
+      }
+      recommended = flagged;
+    } else {
+      if (flagged.length !== 1) add('recommended', `(${flagged.length} of 1)`);
+      else if (flagged[0] !== options[0]) add('recommended', '— it is not listed first');
+      // Checks (d) and (i) still need one option to read even when (c) just failed, so an ask that is
+      // already wrong on the label gets its remaining reasons in the same refusal.
+      recommended = [flagged.length === 1 ? flagged[0] : options[0]];
+    }
 
-    // (d) the confidence clause closes the recommended option's description, and sits nowhere else
+    // (d) the confidence clause closes each recommended option's description, and sits nowhere else
     if (described) {
-      const clause = typeof recommended.description === 'string' ? recommended.description : '';
-      if (!CONFIDENCE_RE.test(clause.replace(/\s+$/, ''))) add('confidence');
+      for (const r of recommended) {
+        const clause = typeof r.description === 'string' ? r.description : '';
+        if (!CONFIDENCE_RE.test(clause.replace(/\s+$/, ''))) add('confidence');
+      }
 
-      // (n) the description's sentences. Only the recommended description is cut, and at the
+      // (n) the description's sentences. Only a recommended description is cut, and at the
       // clause's LABEL rather than at a well-formed clause, so a malformed clause stays (d)'s refusal
       // alone. An unterminated remainder is a sentence: the catalogue's consequences carry no stop.
       const cap = routineName !== null ? 1 : 2;
       for (const [n, o] of readable.entries()) {
         if (typeof o.description !== 'string') continue;
         let body = o.description;
-        if (o === recommended) {
+        if (recommended.includes(o)) {
           const at = body.search(/Confidence:(?![\s\S]*Confidence:)/i);
           if (at >= 0) body = body.slice(0, at);
         }
@@ -399,7 +452,7 @@ function checkQuestion(q, catalogue, lists) {
     }
     for (const o of readable) {
       boxElsewhere.push(o.label);
-      if (o !== recommended) boxElsewhere.push(o.description);
+      if (!recommended.includes(o)) boxElsewhere.push(o.description);
     }
 
     // (i) inside an option, the one admitted bracket pair is the `(Recommended)` label
@@ -514,6 +567,11 @@ function main(input) {
   const role = resolveRole(data.agent_type || readSessionPersona(data.session_id, root) || 'main');
   if (!KNOWN_ROLES.has(role)) return allow();
 
+  if (!background) {
+    const geared = gearRefusal(data, root, role);
+    if (geared) return deny(geared);
+  }
+
   const shipped = readAskWords();
   const lists = shipped
     ? { words: shipped.vocabulary, pointers: shipped.pointers, allow: readProjectAllowance(root) }
@@ -568,7 +626,7 @@ function allow() { process.exit(0); }
 module.exports = {
   needsInspection, bareIds, checkQuestion, evaluate,
   PREFIXED_ID_RE, SLUG_ID_RE, LEDGER_ID_RE, WELL_KNOWN_PREFIXES,
-  CHECK_NAMES, CHECK_ORDER, REWORD_TAIL, AWAY_REASON,
+  CHECK_NAMES, CHECK_ORDER, REWORD_TAIL, AWAY_REASON, GEAR_REASON,
 };
 
 if (require.main === module) {

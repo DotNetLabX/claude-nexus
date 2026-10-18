@@ -3,6 +3,7 @@
  * Nexus verify-run: the runner for a declared verify role (F81, KH feedback item 2).
  *
  *   node verify-run.js --profile fast [--files <test file>...] [--light] [--timeout-ms N] [--tree <path>] [--session <id>]
+ *   node verify-run.js --profile fast --tied --changed <file>... [--slug <slug>] [--light] …
  *   node verify-run.js --profile complete --slug <slug> [--timeout-ms N] [--tree <path>] [--session <id>]
  *   node verify-run.js --role <name> [--slug <slug>] …   (the same runs, addressed by role)
  *
@@ -11,14 +12,27 @@
  * line), else 90 s; those two are clamped to 110 s, and `--light` halves them (floor 15 s), while an
  * explicit `--timeout-ms` passes through as given. Its record carries
  * `limit_ms`. A cut run stays `verdict: "fail"`, `reason: "timeout"`, and never feeds `fast_green`.
+ * THE FULL-RUN LIMIT. A full run — `--profile complete`, or `--role full` — runs under `--timeout-ms`,
+ * else the repo's top-level `fullLimitSeconds` (read as `stepLimitSeconds` is), else 10 minutes, never
+ * clamped or halved; its record carries `limit_ms`, and a cut one names the limit and the setting.
  * Every other run defaults to 30 minutes.
  *
  * PROFILES ARE ALIASES, NEVER NEW KEYS: `fast` runs roles.unit (the step close) and
- * `complete` runs roles.full (the close gate's suite, 30 min default, --slug required). `--files`
+ * `complete` runs roles.full (the close gate's suite, 10 min default, --slug required). `--files`
  * runs only the named test files, composed by lib/compose-test-command.js for `slow.runner`, else for
  * the runner the declared unit invokes — never spliced into the declared unit string. The named files
  * run WHOLE, slow tests included: a developer names a file to see its tests, the tagged one it is
  * editing among them.
+ *
+ * `--tied --changed` runs the tests tied to the named changed files (lib/tied-tests.js), recorded with
+ * `files` (the tied test files or projects), `tied: true`, `changed` and `changed_hashes`; a change it
+ * cannot tie runs roles.unit whole, its record naming why in `tied_fallback`. An undeclared unit exits 3
+ * and writes nothing. A full record carries `file_hashes` (lib/tree-hash.js's per-file form) and `failed`: the test files or projects its output names as
+ * failing, `[]` when it passed, `null` when the run was cut or crashed, names a failure it cannot place,
+ * was aborted, or ran anything but the test runner invoked directly as its last stage, after setup stages only. A fast record with a slug, written after a full
+ * record of that slug on the same tree, carries `delta_base` (that record's `ts`) and `delta_hashes`
+ * (the files whose content then differed from its `file_hashes`, at their content then) — the content a
+ * gear's close repair ran at (lib/gear-close.js).
  *
  * EVERY RECORD CARRIES `tree_hash` (lib/tree-hash.js), and a `full` record adds `filtered` (its command
  * carries a filter clause) and `fast_green` (the latest whole fast record's verdict on the same tree at
@@ -49,6 +63,39 @@
  * shell, and the test runner under it ran on. So the command starts as the head of its own process
  * group (POSIX) or under a shell whose tree taskkill can walk (Windows), and the whole tree is ended
  * at the limit, on output overflow, and when this runner is itself interrupted.
+ *
+ * THE RUN KEEPS ITS CALLER'S PRIORITY. A suite lowered below normal on a busy machine fails its
+ * timing-dependent tests; a suite that must leave room for other work caps its own parallelism in
+ * the command the repo declares.
+ *
+ * A COMPLETE RUN KNOWS ITS USUAL TIME, AND A SLOW ONE IS REPORTED, NEVER STOPPED. The usual time is
+ * the median `duration_ms` of the last 10 passing complete runs of the same command in this log, from
+ * 5 such runs on. At 1.5x it the runner writes one stderr line while the run goes on, and the record
+ * carries `usual_ms` and `slow`, pass or fail. Stopping at 2x would have stopped about 1 in 20 healthy
+ * runs here, and a stopped run never enters a passing-only figure, so a lasting slowdown would stop
+ * every run after it.
+ *
+ * COMPLETE RUNS TAKE TURNS ACROSS THE MACHINE, BEST EFFORT. At most NEXUS_COMPLETE_RUNS_AT_ONCE (default
+ * 2; 0 turns it off) run at once over every repo, session and profile of the user; the rest wait, say
+ * so, and record `waited_ms` and `others` — the wait counts toward neither `duration_ms` nor the limit.
+ * `waited_ms` includes the settle period, so a run that never waited records about 500 ms; contention
+ * shows as `others` and the waiting line, never as `waited_ms` above zero.
+ * Each run publishes its own uniquely named claim in NEXUS_RUN_SLOTS_DIR (else ~/.nexus/run-slots),
+ * refreshes it every 10 s, settles, and starts when the started claims plus its place among the waiting
+ * ones (by claim time, then name) are under the limit. A claim is stale once its heartbeat is 60 s old,
+ * past its expiry (wait cap + the run's limit + 1 min), or unparsable; a claim kept on purpose because
+ * the command's tree could not be confirmed ended lives until that expiry. A stale claim is skipped,
+ * never renamed, rewritten or deleted by another run; only its owner deletes it, on release. Any run
+ * sweeps a file named like a claim once it is a day past its expiry, or unparsable and a day unwritten,
+ * ignoring any error. A run started inside a live claim
+ * (NEXUS_COMPLETE_RUN_CLAIM) takes no turn. A broken folder never blocks: the run goes ahead as
+ * `slot: "unavailable"` — also the record's slot when, after the turn, the claim can no longer be
+ * refreshed or released; at the wait cap (NEXUS_SLOT_WAIT_MS, 30 min) as `"waited out"`. Accepted gaps:
+ * a runner stalled past the settle period between its read and marking itself started can start beside
+ * one other run; a hard-killed runner's suite stops counting 60 s after its heartbeat stops; a run
+ * whose heartbeat stalled past a minute (a machine asleep) is uncounted until its next heartbeat; a
+ * hard-killed runner's claim stays in the folder until the sweep; a retained tree still alive past
+ * its expiry is a runaway and no longer counts.
  */
 'use strict';
 const fs = require('fs');
@@ -56,11 +103,14 @@ const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 const { resolveDeclaredTree } = require('./lib/worktree-target');
 const { filesCommand, inferRunner, isFilteredFull } = require('./lib/compose-test-command');
-const { treeHash, sameTree } = require('./lib/tree-hash');
+const { hashTree, fileHash, sameTree } = require('./lib/tree-hash');
+const { tiedSet, failedTargets, declaredFor } = require('./lib/tied-tests');
+const { deltaSince } = require('./lib/gear-close');
 
-// Above any measured suite (7.2 min in the consuming repo that prompted this) and above the Bash
-// tool's 600,000 ms cap, because this runs in the main session where that cap does not apply.
-// Overridable per run; the point is that the DEFAULT never truncates a legitimate suite.
+// The full run, from the main session where the Bash tool's cap does not apply: a repo whose suite
+// runs longer declares `fullLimitSeconds`, so the cut is never clamped.
+const FULL_TIMEOUT_MS = 600000;
+// Every bare role that is neither a step close nor the full run — a build, a mutation run.
 const DEFAULT_TIMEOUT_MS = 1800000;
 // The step close (`--profile fast` or `--role unit`) runs under, in order: `--timeout-ms`, the repo's
 // `stepLimitSeconds`, this default. The last two are clamped to the ceiling, below the Bash tool's
@@ -78,6 +128,19 @@ const EXCERPT_TAIL = 1200;
 // A process outside the ended tree can still hold the output pipes open; past this the runner closes
 // them itself rather than wait on it.
 const PIPE_GRACE_MS = 2000;
+const USUAL_WINDOW = 10;
+const USUAL_MIN_RUNS = 5;
+const SLOW_RATIO = 1.5;
+const DEFAULT_RUNS_AT_ONCE = 2;
+const HEARTBEAT_MS = 10000;
+// A claim whose heartbeat is older than this is stale; also the slack added to a claim's expiry.
+const CLAIM_STALE_MS = 60000;
+// How long past its expiry, or past its last write when unreadable, a claim file waits before any run
+// may delete it — long past any run that could still own it.
+const SWEEP_AFTER_MS = 24 * 3600000;
+const DEFAULT_SETTLE_MS = 500;
+const DEFAULT_POLL_MS = 2000;
+const DEFAULT_SLOT_WAIT_MS = 1800000;
 
 function startOptions(platform, cwd) {
   return { cwd, shell: true, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, detached: platform !== 'win32' };
@@ -104,10 +167,11 @@ function endTree(platform, pid, { run = runHidden, signal = (target, sig) => pro
 }
 
 let running = null;
+let releaseTurn = () => {};
 
 function endRunningOnSignal(sig, code) {
   process.once(sig, () => {
-    if (running) endTree(process.platform, running.pid);
+    releaseTurn(running ? endTree(process.platform, running.pid) : true);
     process.exit(code);
   });
 }
@@ -190,10 +254,10 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
     if (!flag.startsWith('--')) continue;
-    if (flag === '--files') {
-      const files = [];
-      while (argv[i + 1] !== undefined && !argv[i + 1].startsWith('--')) files.push(argv[++i]);
-      out.files = files;
+    if (flag === '--files' || flag === '--changed') {
+      const list = [];
+      while (argv[i + 1] !== undefined && !argv[i + 1].startsWith('--')) list.push(argv[++i]);
+      out[flag.slice(2)] = list;
       continue;
     }
     out[flag.slice(2)] = argv[i + 1] !== undefined && !argv[i + 1].startsWith('--') ? argv[++i] : true;
@@ -203,18 +267,24 @@ function parseArgs(argv) {
 
 const PROFILE_ROLES = { fast: 'unit', complete: 'full' };
 
+function readLog(root) {
+  let lines = [];
+  try { lines = fs.readFileSync(path.join(root, '.claude', 'audit', 'verify-verdict.json'), 'utf8').split('\n'); } catch { return []; }
+  const out = [];
+  for (const line of lines) {
+    try { out.push(JSON.parse(line)); } catch { /* a torn or blank line */ }
+  }
+  return out;
+}
+
 // "Was this tree fast-green when the complete run saw it?" — the latest whole-suite fast record on the
 // same tree at the same hash. A named-files record is a partial run, never a fast-green. Both hashes are
 // post-run, so this reads `none` forever in a repo whose complete suite rewrites a tracked file the hash
 // counts (lib/tree-hash.js) that the fast run leaves alone: a `0 / 0` tally is diagnosed there first.
 function fastGreen(root, tree, hash) {
   if (!hash) return 'none';
-  let lines = [];
-  try { lines = fs.readFileSync(path.join(root, '.claude', 'audit', 'verify-verdict.json'), 'utf8').split('\n'); } catch { return 'none'; }
   let latest = null;
-  for (const line of lines) {
-    let rec;
-    try { rec = JSON.parse(line); } catch { continue; }
+  for (const rec of readLog(root)) {
     if (!rec || rec.profile !== 'fast' || rec.files !== undefined) continue;
     if (!sameTree(rec.tree, tree) || rec.tree_hash !== hash) continue;
     latest = rec;
@@ -223,18 +293,259 @@ function fastGreen(root, tree, hash) {
   return latest.verdict === 'pass' || latest.verdict === 'fail' ? latest.verdict : 'none';
 }
 
+function median(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function usualTime(records, command) {
+  const runs = records.filter((r) => r && r.source === 'verify-run' && r.role === 'full' && r.command === command
+    && r.verdict === 'pass' && typeof r.duration_ms === 'number' && Number.isFinite(r.duration_ms));
+  if (runs.length < USUAL_MIN_RUNS) return null;
+  const window = runs.slice(-USUAL_WINDOW);
+  return { usual_ms: Math.round(median(window.map((r) => r.duration_ms))), last_ms: window[window.length - 1].duration_ms };
+}
+
+function slowField(durationMs, usual) {
+  if (!usual || !(durationMs >= SLOW_RATIO * usual.usual_ms)) return null;
+  return { ratio: Math.round((durationMs / usual.usual_ms) * 10) / 10, usual_ms: usual.usual_ms, last_ms: usual.last_ms };
+}
+
+function humanMs(ms) {
+  return ms >= 60000 ? `${(ms / 60000).toFixed(1)} min` : `${(ms / 1000).toFixed(1)} s`;
+}
+
+function slowLine(ratio, usual) {
+  return `verify-run: this complete run has reached ${ratio}x its usual time (${humanMs(usual.usual_ms)}; the last passing run took ${humanMs(usual.last_ms)}) — it goes on, nothing is stopped\n`;
+}
+
+function runsAtOnce(raw, note = () => {}) {
+  if (raw === undefined || raw === '') return DEFAULT_RUNS_AT_ONCE;
+  if (/^\d+$/.test(raw)) return Number(raw);
+  note(`NEXUS_COMPLETE_RUNS_AT_ONCE is ${JSON.stringify(raw)}, not a whole number >= 0 — using ${DEFAULT_RUNS_AT_ONCE}`);
+  return DEFAULT_RUNS_AT_ONCE;
+}
+
+function wholeMs(raw, fallback) {
+  return typeof raw === 'string' && /^\d+$/.test(raw) ? Number(raw) : fallback;
+}
+
+// Absolute, so a nested run started from another folder is handed a claim path that names this one.
+function slotsDir(env) {
+  return path.resolve(env.NEXUS_RUN_SLOTS_DIR || path.join(require('os').homedir(), '.nexus', 'run-slots'));
+}
+
+function removeQuietly(file) {
+  try { fs.unlinkSync(file); } catch { /* already gone, or another cleaner's */ }
+}
+
+// A reader or a virus scanner holding a file open makes an operation on it fail briefly on Windows.
+const SHARING = ['EPERM', 'EACCES', 'EBUSY'];
+function retrying(op) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return op();
+    } catch (e) {
+      if (attempt >= 5 || !SHARING.includes(e && e.code)) throw e;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+    }
+  }
+}
+
+// Only files of these shapes are ever swept from the folder; anything else in it is left alone.
+const CLAIM_NAME = /^\d+-\d+-[0-9a-f]{8}\.json$/;
+const TMP_NAME = /^\d+-\d+-[0-9a-f]{8}\.json\.tmp$/;
+
+function claimLive(claim, mtimeMs, now) {
+  if (!claim || typeof claim !== 'object') return false;
+  if (typeof claim.expires === 'number' && now > claim.expires) return false;
+  return claim.retained === true || now - mtimeMs < CLAIM_STALE_MS;
+}
+
+// A stale claim is skipped, never touched: its owner may still be alive (a machine asleep) and refresh
+// it. A file is swept only once no run can still own it — a claim a day past its expiry, or a claim or
+// temporary file that cannot be read as a claim and has not been written for a day. Sweeping never
+// changes what is counted, so its errors are ignored.
+function sweepable(file, claim, mtimeMs, now) {
+  if (TMP_NAME.test(file)) return now - mtimeMs > SWEEP_AFTER_MS;
+  if (!CLAIM_NAME.test(file)) return false;
+  if (claim && typeof claim === 'object' && typeof claim.expires === 'number') return now > claim.expires + SWEEP_AFTER_MS;
+  return !(claim && typeof claim === 'object') && now - mtimeMs > SWEEP_AFTER_MS;
+}
+
+// The live claims in the folder. A claim gone between the listing and its read is a normal race; any
+// other error listing the folder or reading a claim, once retried, throws, so a claim that cannot be
+// seen never silently stops counting.
+function readClaims(dir, {
+  now = Date.now(),
+  list = () => fs.readdirSync(dir),
+  read = (full) => ({ mtimeMs: fs.statSync(full).mtimeMs, text: fs.readFileSync(full, 'utf8') }),
+  remove = (full) => fs.unlinkSync(full),
+} = {}) {
+  const live = [];
+  const sweep = (full) => { try { remove(full); } catch { /* another run swept it, or it is held */ } };
+  for (const file of list()) {
+    const full = path.join(dir, file);
+    if (TMP_NAME.test(file)) {
+      try { if (sweepable(file, null, fs.statSync(full).mtimeMs, now)) sweep(full); } catch { /* gone */ }
+      continue;
+    }
+    if (!file.endsWith('.json')) continue;
+    let seen;
+    try {
+      seen = retrying(() => read(full));
+    } catch (e) {
+      if (e && e.code === 'ENOENT') continue;
+      throw e;
+    }
+    let claim = null;
+    try { claim = JSON.parse(seen.text); } catch { /* torn or foreign */ }
+    if (claimLive(claim, seen.mtimeMs, now)) live.push({ file, claim, mtimeMs: seen.mtimeMs });
+    else if (sweepable(file, claim, seen.mtimeMs, now)) sweep(full);
+  }
+  return live;
+}
+
+function mayStart(live, ownFile, n) {
+  const started = live.filter((c) => c.file !== ownFile && c.claim.started === true).length;
+  const waiting = live.filter((c) => c.file === ownFile || c.claim.started !== true)
+    .sort((a, b) => (Number(a.claim.claimed) - Number(b.claim.claimed)) || (a.file < b.file ? -1 : a.file > b.file ? 1 : 0));
+  const ahead = started + waiting.findIndex((c) => c.file === ownFile);
+  return { ok: ahead < n, ahead };
+}
+
+function claimFileLive(file, now = Date.now()) {
+  try {
+    const mtimeMs = fs.statSync(file).mtimeMs;
+    return claimLive(JSON.parse(fs.readFileSync(file, 'utf8')), mtimeMs, now);
+  } catch {
+    return false;
+  }
+}
+
+// Through a temporary file and a rename, so a reader never sees half a claim.
+function writeClaim(file, claim) {
+  const tmp = `${file}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(claim));
+  try {
+    retrying(() => fs.renameSync(tmp, file));
+  } catch (e) {
+    removeQuietly(tmp);
+    throw e;
+  }
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const CLAIM_IO = {
+  touch: (file) => { const t = new Date(); fs.utimesSync(file, t, t); },
+  write: writeClaim,
+  remove: (file) => fs.unlinkSync(file),
+};
+
+// Takes a turn in the machine-wide queue and resolves with the record fields and the held claim's path.
+// The fields object stays live: a heartbeat lost after the turn, or a release that fails, sets
+// `slot: "unavailable"` on it, and the caller writes it into the record after releasing.
+// `hold` receives `release(treeEnded)` as soon as a claim exists, so a signal during the wait releases
+// it too; release deletes the claim, or keeps it `retained` until its expiry when the command's tree
+// could not be confirmed ended.
+async function takeTurn({ env, n, settleMs, pollMs, waitCapMs, heartbeatMs = HEARTBEAT_MS, runLimitMs, info, say, hold = () => {}, io = {} }) {
+  const ops = { ...CLAIM_IO, ...io };
+  const t0 = Date.now();
+  const fields = {};
+  const name = `${process.pid}-${t0}-${require('crypto').randomBytes(4).toString('hex')}.json`;
+  let dir = '';
+  let file = '';
+  let claim = { pid: process.pid, started: false, claimed: t0, expires: t0 + waitCapMs + runLimitMs + CLAIM_STALE_MS, ...info };
+  let beat = null;
+  const lost = (line) => {
+    if (fields.slot === 'unavailable') return;
+    fields.slot = 'unavailable';
+    say(line);
+  };
+  const unavailable = (why) => {
+    clearInterval(beat);
+    if (file) removeQuietly(file);
+    hold(() => {});
+    say(`the queue folder ${dir || '(not found)'} cannot be used (${why}) — running without a turn`);
+    return { fields: Object.assign(fields, { slot: 'unavailable', waited_ms: Date.now() - t0 }), claimFile: null };
+  };
+  const cause = (e) => (e && e.code) || String(e);
+  try {
+    dir = slotsDir(env);
+    fs.mkdirSync(dir, { recursive: true });
+    file = path.join(dir, name);
+    ops.write(file, claim);
+  } catch (e) {
+    return unavailable(cause(e));
+  }
+  // A claim gone from the folder (cleared by hand, or swept after a machine slept a day) is written
+  // again, so a live run never stays uncounted. Before the turn the wait loop
+  // decides what a failure means; after it, a claim that can be neither touched nor written again no
+  // longer protects the run, and the record says so.
+  let admitted = false;
+  const refresh = () => {
+    try { ops.touch(file); return; } catch { /* gone or blocked: write it again */ }
+    try {
+      ops.write(file, claim);
+    } catch (e) {
+      if (admitted) lost(`the claim ${file} can no longer be refreshed (${cause(e)}) — the run goes on, no longer counted by other runs`);
+    }
+  };
+  beat = setInterval(refresh, Math.max(1, heartbeatMs));
+  beat.unref();
+  let released = false;
+  const release = (treeEnded) => {
+    if (released) return;
+    released = true;
+    clearInterval(beat);
+    try {
+      if (treeEnded === false) ops.write(file, { ...claim, retained: true });
+      else retrying(() => { try { ops.remove(file); } catch (e) { if (!(e && e.code === 'ENOENT')) throw e; } });
+    } catch (e) {
+      lost(treeEnded === false
+        ? `the claim ${file} could not be kept (${cause(e)}) — its place is freed a minute after its last heartbeat, though the command's tree may still run`
+        : `the claim ${file} could not be removed (${cause(e)}) — it holds a place until its heartbeat is a minute old`);
+    }
+  };
+  hold(release);
+  await sleep(settleMs);
+  let said = false;
+  for (;;) {
+    let live;
+    try { live = readClaims(dir); } catch (e) { return unavailable(cause(e)); }
+    if (!live.some((c) => c.file === name)) {
+      try { ops.write(file, claim); } catch (e) { return unavailable(cause(e)); }
+      live.push({ file: name, claim, mtimeMs: Date.now() });
+    }
+    if (fields.others === undefined) fields.others = live.length - 1;
+    const turn = mayStart(live, name, n);
+    if (turn.ok || Date.now() - t0 >= waitCapMs) {
+      claim = { ...claim, started: true };
+      try { ops.write(file, claim); } catch (e) { return unavailable(cause(e)); }
+      admitted = true;
+      if (!turn.ok) fields.slot = 'waited out';
+      fields.waited_ms = Date.now() - t0;
+      return { fields, claimFile: file };
+    }
+    if (!said) {
+      said = true;
+      say(`waiting for a turn — ${turn.ahead} complete run(s) ahead, at most ${n} at once on this machine (NEXUS_COMPLETE_RUNS_AT_ONCE)`);
+    }
+    await sleep(Math.max(1, Math.min(pollMs, waitCapMs - (Date.now() - t0))));
+  }
+}
+
 // `--timeout-ms` with no value parses to `true`, and Number(true) === 1 — which would cap a healthy
 // suite at ONE millisecond and record a green run as `reason: "timeout"`, a false red that then
 // blocks the close. Require an actual string before trusting the number.
-function timeoutFor(profile, rawTimeout, { role = '', stepLimitSeconds, light = false, note = () => {} } = {}) {
+function timeoutFor(profile, rawTimeout, { role = '', stepLimitSeconds, fullLimitSeconds, light = false, note = () => {} } = {}) {
   const explicit = typeof rawTimeout === 'string' && Number(rawTimeout) > 0 ? Number(rawTimeout) : null;
   if (explicit !== null) return explicit;
+  if (profile === 'complete' || role === 'full') return settingMs('fullLimitSeconds', fullLimitSeconds, FULL_TIMEOUT_MS, note);
   if (profile !== 'fast' && role !== 'unit') return DEFAULT_TIMEOUT_MS;
-  let limit = FAST_TIMEOUT_MS;
-  if (Number.isInteger(stepLimitSeconds) && stepLimitSeconds > 0) limit = stepLimitSeconds * 1000;
-  else if (stepLimitSeconds !== undefined) {
-    note(`stepLimitSeconds is ${JSON.stringify(stepLimitSeconds)}, not a positive whole number of seconds — using ${FAST_TIMEOUT_MS / 1000} s`);
-  }
+  let limit = settingMs('stepLimitSeconds', stepLimitSeconds, FAST_TIMEOUT_MS, note);
   if (limit > STEP_CEILING_MS) {
     note(`step limit ${limit / 1000} s clamped to ${STEP_CEILING_MS / 1000} s (the Bash tool's 120 s cap)`);
     limit = STEP_CEILING_MS;
@@ -243,8 +554,18 @@ function timeoutFor(profile, rawTimeout, { role = '', stepLimitSeconds, light = 
   return limit;
 }
 
-async function main() {
-  const args = parseArgs(process.argv.slice(2));
+function settingMs(name, seconds, fallbackMs, note) {
+  if (Number.isInteger(seconds) && seconds > 0) return seconds * 1000;
+  if (seconds !== undefined) {
+    note(`${name} is ${JSON.stringify(seconds)}, not a positive whole number of seconds — using ${fallbackMs / 1000} s`);
+  }
+  return fallbackMs;
+}
+
+let signalsWired = false;
+
+async function main(argv = process.argv.slice(2), { env = process.env, run = runCommand, out = (s) => process.stdout.write(s) } = {}) {
+  const args = parseArgs(argv);
   const profile = typeof args.profile === 'string' ? args.profile : '';
   if (args.profile !== undefined && !PROFILE_ROLES[profile]) {
     process.stderr.write('verify-run: --profile is fast or complete\n');
@@ -270,6 +591,19 @@ async function main() {
     process.stderr.write('verify-run: --files names no test file (the list is empty)\n');
     return 2;
   }
+  const tied = args.tied !== undefined;
+  const changed = args.changed || null;
+  if (tied || changed) {
+    let refusal = '';
+    if (profile !== 'fast') refusal = '--tied --changed <file>... runs only with --profile fast';
+    else if (!tied) refusal = '--changed <file>... is read only with --tied';
+    else if (files) refusal = 'pass --tied or --files, not both';
+    else if (!changed || changed.length === 0) refusal = '--tied needs --changed <file>... (the files this step changed)';
+    if (refusal) {
+      process.stderr.write(`verify-run: ${refusal}\n`);
+      return 2;
+    }
+  }
 
   // THE ROUND KEY. A token-or-session match alone is not round-scoped: a session outlives a feature,
   // and a repo with no .pipeline-state has no token at all, so two closes in one session could
@@ -287,14 +621,14 @@ async function main() {
 
   // Root resolution mirrors the hooks' (CLAUDE_PROJECT_DIR || cwd), then honours a session-matching
   // .worktree-target line. --tree is the explicit override for a caller that already knows.
-  const root = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const root = env.CLAUDE_PROJECT_DIR || process.cwd();
   // The harness exports CLAUDE_CODE_SESSION_ID (verified against a live environment). The shorter
   // CLAUDE_SESSION_ID is accepted as a secondary name only — do NOT rely on it alone: an env-var
   // name that is merely plausible yields an empty `session` on every run, which silently removes one
   // of the two scoping paths the close gate matches on.
   const session = typeof args.session === 'string'
     ? args.session
-    : String(process.env.CLAUDE_CODE_SESSION_ID || process.env.CLAUDE_SESSION_ID || '');
+    : String(env.CLAUDE_CODE_SESSION_ID || env.CLAUDE_SESSION_ID || '');
   const tree = typeof args.tree === 'string' ? args.tree : resolveDeclaredTree(root, session);
 
   let token = '';
@@ -322,6 +656,22 @@ async function main() {
       return 2;
     }
   }
+  // An undeclared unit writes no record: the developer's own fallback runs instead, and a tied record
+  // that ran nothing must never read as covering the change.
+  let tiedFields = null;
+  if (tied) {
+    if (commands.length === 0) {
+      process.stderr.write('verify-run: --tied: no roles.unit declared in .claude/verify.json — nothing ran and nothing is recorded; take the undeclared-unit fallback\n');
+      return 3;
+    }
+    const set = tiedSet({ repo: tree, changed, ...declaredFor(cfg) });
+    if (set.fallback) process.stderr.write(`verify-run: tied: ${set.fallback} — running roles.unit\n`);
+    else {
+      commands = set.commands;
+      relFiles = set.targets;
+    }
+    tiedFields = { tied: true, changed: set.changed, ...(set.fallback ? { tied_fallback: set.fallback } : {}) };
+  }
   const command = commands.join(' && ');
 
   // `slug` is omitted rather than written empty when absent: the gate treats a record with no slug as
@@ -329,7 +679,7 @@ async function main() {
   const base = {
     ts: new Date().toISOString(), source: 'verify-run', role,
     ...(profile ? { profile } : {}), ...(relFiles ? { files: relFiles } : {}), ...(slug ? { slug } : {}),
-    session, token, tree,
+    session, token, tree, ...(tiedFields || {}),
   };
 
   // The audit file is the RESOLVED ROOT's, even when the command ran in a redirected tree — same
@@ -337,17 +687,37 @@ async function main() {
   // working against one log home.
   // The hash is taken when the record is written, AFTER the command exits: a suite that rewrites a
   // tracked file records the tree it left behind, which is the tree the close gate will hash.
+  let usual = null;
+  let warned = false;
+  const warnSlow = (ratio) => {
+    if (warned) return;
+    warned = true;
+    process.stderr.write(slowLine(ratio, usual));
+  };
+  // The queue's fields are read when the record is written: a release or a heartbeat that failed
+  // after the turn was taken still reaches it.
+  let turn = { fields: {}, claimFile: null };
   const write = (fields) => {
-    const record = { ...base, tree_hash: treeHash(tree), ...fields };
+    const hashed = hashTree(tree);
+    const record = { ...base, ...turn.fields, tree_hash: hashed && hashed.hash, ...fields };
+    if (tiedFields) record.changed_hashes = Object.fromEntries(tiedFields.changed.map((f) => [f, fileHash(tree, f)]));
+    if (profile === 'fast' && slug) Object.assign(record, deltaSince({ records: readLog(root), tree, slug, files: hashed && hashed.files }));
     if (role === 'full') {
       record.filtered = isFilteredFull(record.command || '');
       record.fast_green = fastGreen(root, tree, record.tree_hash);
+      record.file_hashes = hashed && hashed.files;
+      if (usual) record.usual_ms = usual.usual_ms;
+      const slow = slowField(record.duration_ms, usual);
+      if (slow) {
+        record.slow = slow;
+        warnSlow(slow.ratio);
+      }
     }
     try {
       fs.mkdirSync(path.join(root, '.claude', 'audit'), { recursive: true });
       fs.appendFileSync(path.join(root, '.claude', 'audit', 'verify-verdict.json'), JSON.stringify(record) + '\n');
     } catch { /* an unwritable audit dir must not also lose the stdout record below */ }
-    process.stdout.write(JSON.stringify(record) + '\n');
+    out(JSON.stringify(record) + '\n');
   };
 
   if (!command) {
@@ -359,36 +729,73 @@ async function main() {
   const timeoutMs = timeoutFor(profile, args['timeout-ms'], {
     role,
     stepLimitSeconds: cfg && cfg.stepLimitSeconds,
+    fullLimitSeconds: cfg && cfg.fullLimitSeconds,
     light: args.light !== undefined,
     note: (line) => process.stderr.write(`verify-run: ${line}\n`),
   });
-  if (stepForm) base.limit_ms = timeoutMs;
+  if (stepForm || role === 'full') base.limit_ms = timeoutMs;
+  if (!signalsWired) {
+    signalsWired = true;
+    endRunningOnSignal('SIGINT', 130);
+    endRunningOnSignal('SIGTERM', 143);
+  }
+  if (role === 'full') {
+    const say = (line) => process.stderr.write(`verify-run: ${line}\n`);
+    const outer = process.env.NEXUS_COMPLETE_RUN_CLAIM;
+    const n = runsAtOnce(process.env.NEXUS_COMPLETE_RUNS_AT_ONCE, say);
+    if (n > 0 && outer && claimFileLive(outer)) turn.fields = { slot: 'nested' };
+    else if (n > 0) {
+      turn = await takeTurn({
+        env: process.env, n,
+        settleMs: wholeMs(process.env.NEXUS_SLOT_SETTLE_MS, DEFAULT_SETTLE_MS),
+        pollMs: wholeMs(process.env.NEXUS_SLOT_POLL_MS, DEFAULT_POLL_MS),
+        waitCapMs: wholeMs(process.env.NEXUS_SLOT_WAIT_MS, DEFAULT_SLOT_WAIT_MS),
+        heartbeatMs: wholeMs(process.env.NEXUS_SLOT_HEARTBEAT_MS, HEARTBEAT_MS),
+        runLimitMs: timeoutMs, info: { tree, ...(slug ? { slug } : {}) }, say,
+        hold: (release) => { releaseTurn = release; },
+      });
+    }
+    if (turn.claimFile) process.env.NEXUS_COMPLETE_RUN_CLAIM = turn.claimFile;
+    else if (turn.fields.slot !== 'nested') delete process.env.NEXUS_COMPLETE_RUN_CLAIM;
+    usual = usualTime(readLog(root), command);
+  }
   const started = Date.now();
-  endRunningOnSignal('SIGINT', 130);
-  endRunningOnSignal('SIGTERM', 143);
+  const slowTimer = usual ? setTimeout(() => warnSlow(SLOW_RATIO), Math.ceil(SLOW_RATIO * usual.usual_ms)) : null;
+  if (slowTimer) slowTimer.unref();
   for (const cmd of commands) {
     const remaining = Math.max(1, timeoutMs - (Date.now() - started));
-    const res = await runCommand(cmd, tree, remaining);
+    const res = await run(cmd, tree, remaining);
     if (!res.code && res.status === 0) continue;
     const captured = `${res.stdout}${res.stderr}`;
     const cause = failureCause(res);
     const ended = res.tree === null ? '' : res.tree ? '; process tree ended' : `; process tree NOT ended (pid ${res.pid})`;
+    const durationMs = Date.now() - started;
+    releaseTurn(res.tree !== false);
+    let raise = '';
+    if (cause === 'ETIMEDOUT' && role === 'full') {
+      const given = typeof args['timeout-ms'] === 'string' && Number(args['timeout-ms']) > 0 ? ' (from --timeout-ms)' : '';
+      raise = `the full run was cut at its limit of ${timeoutMs / 1000} s${given} — to give it longer, raise fullLimitSeconds in .claude/verify.json`;
+      process.stderr.write(`verify-run: ${raise}\n`);
+    }
     write({
       command,
       verdict: 'fail',
-      duration_ms: Date.now() - started,
+      duration_ms: durationMs,
       // ETIMEDOUT is surfaced as a plain `reason: "timeout"` as well as in the excerpt: the close
       // gate distinguishes "the suite is red" from "the suite never finished", and a reader should
       // not have to pattern-match an errno to tell them apart.
       reason: cause === 'ETIMEDOUT' ? 'timeout' : cause,
-      output_excerpt: excerpt(`${captured}\n[verify-run] command failed: ${cause}${ended}\n`),
+      ...(role === 'full' ? { failed: res.code || typeof res.status !== 'number' ? null : failedTargets({ output: captured, repo: tree, command }) } : {}),
+      output_excerpt: excerpt(`${captured}\n[verify-run] command failed: ${cause}${ended}\n${raise ? `[verify-run] ${raise}\n` : ''}`),
     });
     return 1;
   }
-  write({ command, verdict: 'pass', duration_ms: Date.now() - started });
+  const durationMs = Date.now() - started;
+  releaseTurn(true);
+  write({ command, verdict: 'pass', duration_ms: durationMs, ...(role === 'full' ? { failed: [] } : {}) });
   return 0;
 }
 
-module.exports = { timeoutFor, endTree, startOptions };
+module.exports = { main, timeoutFor, endTree, startOptions, usualTime, slowField, runsAtOnce, readClaims, mayStart, takeTurn };
 
 if (require.main === module) main().then((code) => process.exit(code));

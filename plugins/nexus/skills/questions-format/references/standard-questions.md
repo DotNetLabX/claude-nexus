@@ -37,6 +37,9 @@ the answer a run declared in the owner's own words takes, then the typed marker'
 is the one home of the words-declared answer, and the rule it serves is stated once
 (→ agents-workflow.md § Owner-away runs).
 
+Four entries carry an **Under a gear** line: the answer a feature's gear gives in place of the
+question, attended or away (→ agents-workflow.md § Gears).
+
 ## Entries
 
 #### Shared: the model-choice option set
@@ -57,7 +60,7 @@ models eligible to check is closed.
 
 ### slug confirmation
 
-**When asked:** asked before a spec is written, and again when an ad-hoc slug outgrows a solo change and is re-slugged.
+**When asked:** asked in the closing turn of a conversation on a source, else before a spec is written, and again when an ad-hoc slug outgrows a solo change and is re-slugged.
 **Surfaces:** question box; questions file.
 **Options:**
 
@@ -85,7 +88,7 @@ It is built from {the words it came from}.
 
 ### review mode
 
-**When asked:** asked before a spec goes Ready, before a plan is written, and at a technical definition checkpoint.
+**When asked:** asked in the closing turn of a conversation on a source; otherwise before a spec goes Ready, before a plan is written, and at a technical definition checkpoint when no closing turn asked it.
 **Surfaces:** question box; checkpoint report.
 **Options:**
 
@@ -96,24 +99,25 @@ It is built from {the words it came from}.
 
 **Recommended:** an independent critic where the work is complex or costly to get wrong, self-review otherwise.
 **With the owner away:** the option you would have recommended. Typed marker: self-review (`team-lead.md` § Unattended Mode).
+**Under a gear:** not asked; the gear's review is taken — self-review, Codex alone, or a critic — and named in the record with the gear; under `off`, or where the gear says ask me, it is asked as above.
 **Long form:**
 
 ```
 A gap found before the work starts costs a paragraph, and the same gap found mid-build costs a rewrite.
-This {artifact} was just written by {its author}, and it is {its size or intent class}.
+This {artifact} comes from {its author}, and it is {its size or intent class}.
 How should this {artifact} be reviewed?
 ```
 
 **This run:**
 
 ```
-Review mode, routine: this {artifact} was just written by {its author}.
+Review mode, routine: this {artifact} comes from {its author}.
 It is {its size or intent class}.
 ```
 
 ### options panel
 
-**When asked:** asked with the plan-review question, only when the cost-of-being-wrong gate trips.
+**When asked:** asked in the closing turn in the plan type's place, with the plan-review question, only when the cost-of-being-wrong gate trips; the plan type then follows in the panel's result turn when the panel is taken, and in the turn right after the closing turn when it is declined.
 **Surfaces:** question box; checkpoint report.
 **Options:**
 
@@ -228,6 +232,7 @@ This review allows {what it allows}.
 
 **Recommended:** the reader-pair list's first applicable pair (`agents-workflow.md` § Critic rounds) — the Codex option where it is offered; otherwise the first two-reader option, in the table's order, whose leading model is neither the author's family nor Fable. Either way, its second reader is replaced by the repo's `jobs.secondReader` model where that is set and usable, rendered under the option's concrete names — on the Codex option that is the reader beside Codex, at every review. Fable is never recommended, and where it is the configured checker its option is labelled as the configured model; the one exception is a repo-set Fable second reader in an attended run, which the recommended option names.
 **With the owner away:** the pairing check runs as attended — its precedence, its collision check and its second-reader rules unchanged — and takes its recommended option with no ask, recorded `presumed` (`team-lead.md` § Checker-Seat Pairing Check). Typed marker: that check's checker-resolution and unattended steps, steps 2 and 6.
+**Under a gear:** not asked; the gear's pair is taken, its second reader still the repo's `jobs.secondReader` where that is set and usable, and named in the record with the gear; under `off`, or where the gear says ask me, it is asked as above. A consolidation takes no gear, so the learner asks it as before.
 **Long form:**
 
 ```
@@ -460,17 +465,17 @@ They would add {the measured growth}.
 
 ### plan only
 
-**When asked:** asked when a request with no spec reaches a standalone architect and is judged a scoped change, in a repo that declares its complete test run.
+**When asked:** asked when a request with no spec reaches a standalone architect, in a repo that declares its complete test run.
 **Surfaces:** question box.
 **Options:**
 
 | label | consequence | offered when |
 |---|---|---|
-| plan it now | the plan alone defines it; I pick lighter or full checks from the finished plan, and you can change that at approval | always |
-| shape a spec first | a written spec comes first, then the plan and the full checks | always |
+| plan it now | the plan alone defines it; once it is written I recommend lighter or full checks, and you choose before its review | always |
+| shape a spec first | a written spec comes first, then the plan | always |
 | small enough for Solo | one session makes the change with no plan and no separate review | the change fits Solo's scope |
 
-**Recommended:** plan it now, where the change is scoped and easy to undo; a spec first where a wrong call about what to build would be costly to reverse.
+**Recommended:** plan it now, where the request has no product what to shape; a spec first where it has one.
 **With the owner away:** shape a spec first; a plan-only definition is never chosen without you. Typed marker: the same.
 **Long form:**
 
@@ -486,23 +491,52 @@ How should this change be defined?
 Plan only, routine: the request is {its intent class}, has no spec, and would change {what it changes}.
 ```
 
-### build lane
+### plan type
 
-**When asked:** asked after a standalone plan is approved, to settle who builds it; on a plan-only plan, these options: build it, lighter checks · build it, full checks · re-plan for the full pipeline · stop after the plan.
+**When asked:** asked in the closing turn, or in the Options Panel's result turn when a panel runs, or in the turn right after the closing turn when the panel was offered and declined, only when the architect expects a full plan; a plan it expects light is written light, and a refactoring plan always takes the full format.
 **Surfaces:** question box.
 **Options:**
 
 | label | consequence | offered when |
 |---|---|---|
-| build it in this session | the planner implements it now, with its own review at the end | the plan declares no developer split and is not a plan-only plan |
-| hand it to the full pipeline | separate roles build and review it | the plan is not a plan-only plan |
-| build it, lighter checks | it is built now, then checked once at lower effort, with one round of fixes | the plan is a plan-only plan and declares no developer split |
-| build it, full checks | it is built now with the full checks — up to three review and fix rounds, each fix re-read where due; on a plan reviewed light, its review first continues | the plan is a plan-only plan and declares no developer split |
-| re-plan for the full pipeline | the plan is set aside for a spec and the full checks before anything is built | the plan is a plan-only plan |
+| light plan | a short plan, reviewed in one round where you then pick the fastest build, and written out in full first for any other | always |
+| full plan | every section is written, so any way of building it can follow | always |
+
+**Recommended:** the plan the architect expects, which is `full plan`, since the question is asked only then.
+**With the owner away:** not asked; the plan takes the format the architect expects. Typed marker: the same.
+**Under a gear:** not asked; the plan takes the gear's plan detail, named in the record with the gear; under `off`, or where the gear says ask me, it is asked as above.
+**Long form:**
+
+```
+A short plan is written and reviewed sooner, and a full plan holds every section any way of building it needs.
+The change is {its intent class}, and I expect a full plan.
+It would have {its step count and the mix of step kinds}.
+How detailed should the plan be?
+```
+
+**This run:**
+
+```
+Plan type, routine: the change is {its intent class}, and I expect a full plan.
+It would have {its step count and the mix of step kinds}.
+```
+
+### build lane
+
+**When asked:** asked right after a standalone plan is written, before its review, to settle who builds it and how it is reviewed; the options are listed by preference, the recommended one first.
+**Surfaces:** question box.
+**Options:**
+
+| label | consequence | offered when |
+|---|---|---|
+| fastest — lighter checks | it is built now, then checked once at lower effort, with one round of fixes | the plan declares no developer split and the repo declares its complete test run (`roles.full` in `.claude/verify.json`) |
+| fast — full checks | it is built now in this session; every fix is re-read, up to three rounds, so fewer issues slip through | the plan declares no developer split |
+| thorough — full team | separate roles plan, build and review it; it catches the most and can run while you are away | always |
 | stop after the plan | nothing is built; the plan waits | always |
 
-**Recommended:** this session for a plan of up to 8 steps with no declared developer split; the full pipeline for more than 8 steps or a declared split; on a plan-only plan of more than 8 steps or with a declared developer split, re-plan for the full pipeline; on any other plan-only plan, the level its `**Lane:**` header names.
-**With the owner away:** the lane you would have recommended. Typed marker: the same.
+**Recommended:** `thorough — full team` for more than 8 developer-built steps or a declared developer split; otherwise the level the plan's `**Lane:**` header names — `fastest — lighter checks` for light, `fast — full checks` for full. The other offered options follow by preference: after `thorough — full team` — `fast — full checks`, then `fastest — lighter checks`; after `fast — full checks` — `thorough — full team`, then `fastest — lighter checks`; after `fastest — lighter checks` — `fast — full checks`, then `thorough — full team`; `stop after the plan` always last. The recommendation's reason says why in plain words — the plan's size, a developer split — and never names the `fullChecks` list.
+**With the owner away:** not asked; the lane you would have recommended from the finished plan, with `fast — full checks` in place of `fastest — lighter checks` — a lighter-checks build needs you. Typed marker: the same.
+**Under a gear:** not asked; the build takes the gear's lane, named in the record with the gear, and the away swap to `fast — full checks` above does not apply — a gear's lighter-checks build runs unattended too; under `off`, or where the gear says ask me, it is asked as above.
 **Long form:**
 
 ```
@@ -517,4 +551,36 @@ Who builds this plan?
 ```
 Build lane, routine: the plan is {its intent class} with {its step count and the mix of step kinds}.
 The available lanes are {which ones}.
+```
+
+### cut candidates
+
+**When asked:** asked at a standalone plan's approval, only where the repo turns the feature on (`features.planCutCandidates` in `.claude/nexus-agents.json`), one question per part offered for deferring, at most three questions to a box, every answer in before any part is cut; asked as written under any gear, since it asks what is built, not how; never under `stop after the plan`.
+**Surfaces:** question box.
+**Options:**
+
+| label | consequence | offered when |
+|---|---|---|
+| Keep it | it is built with the rest of the plan, as its steps say | always |
+| Defer it | it leaves this plan and becomes the backlog row {the proposed backlog row} | the repo keeps a backlog |
+| Defer it | it leaves this plan, and the plan and the approval message name it as cut | the repo keeps no backlog |
+
+A part's label runs to at most 40 characters and what deferring it loses to at most 35, so every line fits; the proposed backlog row is written as its id inside backticks, never bare.
+
+**Recommended:** `Defer it` only when two readers from two model families both say `safe to defer` at medium or better — and where the first round had more readers, every one of them; otherwise `Keep it`, which any `keep`, any low, a disagreement, a part changed after its verdicts or fewer than two verdicts gives.
+**With the owner away:** not asked; nothing is cut — the offered parts and their verdicts go on the run's list. Typed marker: the same.
+**Long form:**
+
+```
+A part built only for a rare case, a seldom-run flow or a second copy can often wait without anyone missing it.
+Deferring {the part} loses {what deferring it loses}.
+{each reader's verdict and confidence}.
+Keep {the part} in this plan, or defer it?
+```
+
+**This run:**
+
+```
+Cut candidates, routine: deferring {the part} loses {what deferring it loses}.
+{each reader's verdict and confidence}.
 ```

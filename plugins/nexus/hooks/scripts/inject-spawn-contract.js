@@ -35,7 +35,8 @@
  *
  * NOT A CONTAINMENT MECHANISM. This hook informs; it does not enforce. ADR-13 measured a synchronous
  * PreToolUse `deny` as DROPPED for a background subagent's tool call, so nothing in this plugin may
- * treat a hook as a gate. The boundary detector still logs the breach it always logged.
+ * treat a hook as a gate (dropped through Claude Code 2.1.273, honoured at 2.1.301: the test-entry
+ * gate now refuses every gated seat, the other gates are unchanged). The boundary detector still logs the breach it always logged.
  *
  * BUDGET. Deliberately smaller than the prohibitions envelope: this rides in EVERY spawn's context on
  * top of an agent body that can already be 90 KB. The deterministic gate is SPAWN_CONTRACT_BUDGET in

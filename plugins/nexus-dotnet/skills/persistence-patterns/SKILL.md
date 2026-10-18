@@ -39,7 +39,8 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
 - **The persistence project holds** the data context, the table configurations, the migrations, the repositories and
   read stores, the seeding, the cache loader and its registration — and declares no records, enums or settings of
   its own. It has `Repositories/` and `Data/` folders and one `DependencyInjection` class.
-- **No project references an API project,** and a service never references another service's projects.
+- **No project references an API project,** except a host project, which references the API project of each service
+  or module it runs (`create-host`). A service never references another service's projects.
 - **The repository or the data context is the unit of work.** Handlers call `SaveChangesAsync(ct)` once; the save
   interceptor sends the domain events on that save.
 - **Registration is explicit:** the generic repository by one open-generic line, each derived repository and read

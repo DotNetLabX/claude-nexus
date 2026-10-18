@@ -66,12 +66,14 @@
   it.
 ## Agent model overrides and pairing
 
-- **Never override specialized agent models — outside four sanctioned channels** — specialized
+- **Never override specialized agent models — outside four sanctioned channels, a gear riding the first** — specialized
   agents (architect, developer, reviewer, etc.) have their model baked into their definition
   frontmatter, and the prohibition on ad-hoc overrides stands. The four channels that may override
-  it: the **`.claude/nexus-agents.json` ladder — per-agent and per-job entries** — read at pre-flight
-  by the team lead and at a job's spawn by the agent that spawns it (a done check on its `doneCheck`
-  model is this channel, not an ad-hoc override); an
+  it: the **`.claude/nexus-agents.json` ladder — per-agent and per-job entries, then the repo's
+  gear** — read at pre-flight by the team lead and at a job's spawn by the agent that spawns it (a
+  done check on its `doneCheck` model is this channel, not an ad-hoc override). A spawned po,
+  architect, developer or team lead takes its model and effort from `gear.js value --setting 8|9
+  --role {agent}` (→ agents-workflow.md § Gears), whose order is the helper's; a main-session persona runs on the session model, outside the gear; an
   **explicit owner-directed spawn parameter**; the **reader-pair list**, applied by the pairing
   check (the bullet below — always on, at checker seats only, where it picks the main reader with or
   without a collision); and the **second reader** (→ agents-workflow.md § Critic rounds),
@@ -96,26 +98,70 @@
   the pipeline's **checker** seats (spec→critic, plan→critic, implementation→reviewer,
   promotion→critic) through that mechanism and no other. **Producer seats, non-checker spawns, and
   everything else keep the rule above**: the reader-pair list reaches checker seats only — there it
-  picks the main reader whether or not a collision occurred — and it never changes an agent's
-  configured `effort`.
+  picks the main reader whether or not a collision occurred. At the critic and reviewer seats a
+  substitution takes the effort of the model it puts in the seat
+  (→ pipeline-guardrails.md § Effort by model at the checker seats); at every other seat a
+  substitution never changes effort.
+
+## Effort by model at the checker seats
+
+The critic and reviewer seats take their reasoning effort from the model in the seat. This section is
+the table's one home.
+
+| Model family | Effort |
+|---|---|
+| sonnet | high |
+| opus | xhigh |
+| fable | xhigh |
+
+- **Who:** every `nexus:critic` and `nexus:reviewer` spawn — the primary, the second reader, the
+  fallback main, a promoted or fresh replacement, in every round. The done check and every other
+  agent keep their agent file's `effort`.
+- **The family** is the spawn's `model` parameter, else the agent file's `model`. A family not in
+  the table — Haiku included — takes the agent file's `effort`.
+- **A spawn's own `effort` wins:** a spawn that passes one keeps it — the light lane's lowered
+  level, an owner-directed effort. A per-agent `effort` entry in `.claude/nexus-agents.json` stays a
+  dispatch-prompt line and does not count as a spawn's own effort.
+- **Codex is outside the table:** its effort is the repo's `codex.effort`, or a gear's Codex effort,
+  which the Codex job helper resolves (→ codex-dispatch.md § Critic seat).
+- **Applied by a hook:** the `checker-effort.js` hook fills the spawn's `effort` from the table when
+  the call passes none — the spawner writes nothing. Where the hook cannot run (an error, a Claude
+  Code older than 2.1.292), the agent file's `effort` applies. The hook assumes this plugin's
+  `critic` and `reviewer` agent files: a consuming repo's same-named project agent, or a subagent
+  model the environment forces, is not detected.
+- **Under a gear:** a Sonnet seat takes the gear's checker effort (`gear.js value --setting 5`) in
+  place of the table, filled by the same hook from the spawning session's gear context — a spec
+  review's gear before the plan included (→ agents-workflow.md § Gears). `as today`, no gear, every
+  other family, and a learner or solo session keep the table. A repo has no other override: a
+  per-agent `effort` entry still does not count.
 
 ## Effort in the light lane
 
-On the light lane every checker runs one effort level below its baseline (→ architect.md § Light Lane (standalone only)). This section is the rule's one home.
+On the light lane every checker runs one effort level below its baseline (→ architect.md § Light Lane (standalone only)), save an effort a gear names (below). This section is the rule's one home.
 
 - **Who:** the critic, the code reviewers, every second reader and the done check — never the
   developer and never the planning architect.
-- **Claude readers:** the baseline is the agent's frontmatter `effort`, which is what actually runs;
-  the per-agent `effort` key in `.claude/nexus-agents.json` is a dispatch-prompt line, not a baseline.
-  One step down the ladder `max → xhigh → high → medium → low`, floor `low`, passed as the Agent
-  tool's per-spawn `effort` parameter.
+- **Claude readers:** the baseline is what runs when the spawn passes no effort — at the critic and
+  reviewer seats the table's value for the model in the seat, the agent file's `effort` for a model
+  outside the table (→ pipeline-guardrails.md § Effort by model at the checker seats), for the done
+  check and every other reader the agent file's `effort`; the per-agent `effort` key in
+  `.claude/nexus-agents.json` is a dispatch-prompt line, not a baseline. One step down the ladder `max → xhigh → high → medium →
+  low`, floor `low`, passed as the Agent tool's per-spawn `effort` parameter — an explicit value, so
+  the checker-effort hook leaves it alone.
 - **Codex:** one level below the repo's `codex.effort` on the ladder `xhigh → high → medium → low`,
   floor `low`, sent with the Codex job helper's `--effort`. Where the repo sets it at `low` or below
   (`minimal`, `none`), no `--effort` is passed, the configured value stays, and the round's record
   says Codex was not lowered. Where the repo sets no `codex.effort`, no `--effort` is passed either —
   no baseline is known, the user's own Codex config decides, and the record says so.
-- **A model substitution still never changes effort:** the seat's lowered level travels with
-  whichever model the reader-pair list or a pairing ask puts in it.
+- **A model substitution:** at the critic and reviewer seats the lowered level is one step below the
+  baseline of the model the substitution puts in the seat (its table value, else the agent file's
+  `effort`); at every other seat a substitution never
+  changes effort, and the seat's lowered level travels with whichever model the reader-pair list or a
+  pairing ask puts in it.
+- **Under a gear:** an effort the gear names — a Sonnet seat's checker effort, or Codex's — is never
+  stepped down: the spawner passes no effort and the hook, or the Codex job helper, fills the gear's
+  value; under `fast`, Codex runs at the repo's `codex.effort`, else at its own default. A setting
+  reading `as today`, and every other seat, takes the step down above.
 
 ## Pipeline role ownership
 

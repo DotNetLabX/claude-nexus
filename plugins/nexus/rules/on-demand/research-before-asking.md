@@ -37,75 +37,144 @@ a plain description — or from no source at all. On every point you can decide,
 recommendation**, with gap-finding and critique; ask questions of your own only on what the owner
 alone can decide.
 
-- **Critique every fix the source proposes, starting in your first turn.** A fix is a solution the
-  source names together with what it is for. For each one: what holds, the hole if there is one, the
-  alternative, and your confidence — one short line each, in prose, never a table. End each such
-  turn leaving the owner to object, or to say next.
+- **A request for your judgement on a source is answered first, in prose.** When the owner's own
+  request asks for your judgement of a source or its items — is it valid, are these real concerns, is
+  it worth building, what do you think, who should build it — the reply is one prose turn: a verdict
+  per item (it holds or not, it is worth it or not), each with its confidence, one line of why and
+  whether it would change the source's fix; a request with a single question ("is this for you or
+  for the PO?") gets a single answer. No topic table, no title lines, no progress line, no question
+  box, nothing asked. It may close with one recommended next move — shape, plan, build or drop it —
+  and never proposes a feature name or an intake. An explicit request to explore options instead
+  ("let's explore whether…") is not this case: the owner's word for how the work runs wins. The walk
+  — the table, the topics, the closing turn — starts on the owner's next message asking to shape,
+  plan or build it. Each verdict the owner did not dispute is then that fix's critique: it counts for
+  the "No move forward" bullet below, and its stated change, or none, sets its type, Decide or Read,
+  by the same test as any critique; its topic's turn in the walk carries the critique's `Change:` line.
+- **One topic per turn, in every stage.** On a source with the owner present, each turn takes up
+  exactly one topic. Two turns are the exceptions: the first turn, which shows the topic table and
+  the first topic after it, and the Read turn, which shows every Read topic. The verdict reply to a
+  request for judgement (the bullet above) is not a turn of the walk. A reply that reacts and
+  also asks something gets its answer first — the answer is not the turn's topic — and the next topic
+  follows in the same turn. An explicit request to move on ("start the critique now", "just ask me")
+  is acted on, not answered.
+- **The first turn shows the topic table.** Four columns, in this order: number, type, topic, why —
+  the why a few plain words. One row per topic, in the order the topics come up: the Decide rows,
+  then the Read rows. Find every topic before that turn: what would you need from the owner to write
+  the spec or the plan today? The first Decide topic follows the table in the same turn — or the
+  Read turn, when there is no Decide topic. A skill you run may add a type of its own and place its
+  rows and its first turn ahead of them. An offer due in that turn sits on the line directly above
+  the table.
+- **Two types, chosen by one test — does the owner's silence settle it?**
+  - `Decide` — a question only the owner can answer, with your recommendation: a decision only the
+    owner makes; a question of your own — a gap, an assumption or a scope call the source leaves
+    out; a critique that changes the source's fix — adds, removes or replaces any part of it; a bug
+    with reproduction steps. Silence or "next" adopts nothing: the source's fix stands as written
+    until the owner rules on the change.
+  - `Read` — your view on something, asking nothing of the owner: a critique that finds the fix
+    sound and changes nothing, a question you answer yourself, an item you only note. The owner
+    replies only to overrule.
+
+  A skill may add a type for a kind of topic it runs.
+- **Each topic opens with one bold title line** holding its table number, its title and its type,
+  the topic's text starting on the next line, never on the title line:
+  `**3. Moving the old links — Decide.**`
+- **Critique every fix the source proposes.** A fix is a solution the source names together with
+  what it is for. For each one: what holds, the hole if there is one, the alternative, and your
+  confidence — one short line each, in prose, never a table. A critique that changes the fix is a
+  Decide topic and asks that change in the question box, in its own turn; one that finds the fix
+  sound is a Read topic. Every critique ends with one line: `Change: none`, or
+  `Change: {what it adds, removes or replaces}`. A Read topic carries only `Change: none`; each change
+  a turn declares is asked in that turn's question box. An end-of-turn check refuses a turn that
+  breaks either.
 - **No move forward while a fix is uncritiqued.** Before you propose or ask for anything that moves
   past the source — taking the work on, a feature name, an intake, a plan, a build — list the
   source's fixes and check that each one has been critiqued. Until every one has, propose and ask for
-  none of these. A feature name you would propose comes in a later turn than the last critique.
-- **Three topics per turn — count them before you send.** A topic is one thing the owner has to take
-  in: a fix critiqued, a question answered, an item that asks for nothing acknowledged in one line, a
-  decision put to the owner. Count the turn's topics, answers and acknowledgements included; more
-  than three, keep the rest for the next turn. Critiques start in your first turn; a
-  question box asks only about that turn's own topics. The next three come after the owner reacts to
-  these (keep, change, drop, "ok", "next" — the reactions a `read, object if needed` topic accepts).
-  A short opening list naming every topic is not itself a topic; it opens with the index line:
-  `Index only — each topic comes up in its own turn; nothing here needs an answer yet.`
-- **Say what each topic asks of the owner.** The test is one question — does the owner's silence
-  settle it? Each topic in a turn opens with its tag: a fix critiqued → `read, object if needed`
-  (silence leaves the critique standing; the owner objects, or says next); a question answered —
-  the premise or the codebase decides it, or it is decided by recommendation — and an item
-  acknowledged → `read only` (reply only to overrule); a decision only the owner makes, or one of
-  the two cases you always ask → `your decision` (silence settles nothing; the recommendation is
-  already in it). A skill may add a tag for a kind of topic it runs. Each topic starts with one
-  bold title line holding its number, its title and its tag, the topic's text starting on the next
-  line, never on the title line: `**1. Where the new plan lives — read only.**`
-- **Every turn on a source ends with the topic line**, in bold — after it only a closing line a
-  skill adds, your role's footer, or a wait or stop line: `**Topics: {covered} of {total} covered · this turn: {the topics, by name} · reply needed on: {names, or nothing — say next} · {left} follow.**`
-  `{total}` counts every topic of the source, answers and acknowledgements included; `this turn`
-  names at most three. `reply needed on:` names the turn's `your decision` topics, and any a skill's
-  tag asks a reply on, or reads `nothing — say next` when the turn holds none. Write the line first
-  in your head, then the turn that fits it — a turn whose line would name four topics is two turns.
-  When nothing is left, the line ends `· none follow.`
-- **A later question gets its own answer, not the next topics.** A question the owner asks
-  mid-conversation is answered at the level it was asked, and the reply still ends with the topic
-  line, `this turn` reading `your question`; take up no further topic in reply to it. A reply that reacts and also asks gets the question
-  answered first, then the next topics — that answer counts as one of the three. An explicit request
-  to move on ("start the critique now", "just ask me") is acted on, not answered.
-- **Say it, never point at it.** In every turn on a source — the list of topics, an answer, a
-  critique, a question — never use a point number, a file name, an identifier or a finding without
-  saying in plain words what it is, in the same sentence. Check before sending: could the owner react
-  without opening any file?
+  none of these: they wait for the closing turn, a later turn than the last critique. A Decide topic
+  is no such move: it is asked in its own turn. This binds the walk: the verdict reply, which comes
+  before the walk, may close with its one recommended next move; once the walk starts the bullet
+  holds in full — no name, intake, plan or build is proposed again until the closing turn.
+- **The Decide turns, one topic each, in this order:** the owner's own decisions and your own
+  questions; then the critiques that would change the source's fixes; then the asks held for later —
+  a note claim, a permission, a decision met along the way. A Decide turn asks its topic's questions
+  in one question box, at most three (§ The owner-question contract), the facts and your
+  recommendation in prose above the box. A decision another answer already settles becomes a Read
+  topic instead, said in one line. A topic found later joins the table, said in one line, and comes
+  in a turn of its own; one left unanswered is asked again before the spec or the plan is written.
+- **The Read turn** comes after the last Decide turn. It runs only when there is a Read topic: a
+  conversation with none has no Read turn, and the total does not count one. A Read topic that
+  appears later — a decision another answer settled, an idea topic that closed with nothing chosen —
+  brings the Read turn in, the total growing by one, said in one line. It shows every Read topic, each with its title
+  line, one line of text and its `Change: none` line, and ends with one question: "Is there anything
+  here you disagree with?" — "Nothing — go on" recommended, or "Yes, some", the owner naming them in
+  the free-text answer. A topic the owner disagrees with becomes the next Decide turn.
+- **The closing turn** is the last turn of every conversation that ends in a spec or a plan, right
+  after the Read turn, or after the last Decide turn where there is none: one question box, at most
+  three questions, each with your recommendation and each asked as its catalogue entry — the
+  feature's name, where the work needs one; how the spec or the plan is reviewed (the PO and the
+  architect); the plan type (the architect, where a full plan is expected) — or, in its place, the
+  Options Panel offer (the architect, where the cost-of-being-wrong check flags the design), so the
+  box never holds more than three. When the Options Panel is taken, the plan type moves to the turn
+  that shows the panel's result; when it is declined, to the turn right after the closing turn. A change typed into the closing box shows the box once more, its recommendations
+  re-derived. Asking to write early never skips the closing turn, and a conversation that writes no
+  spec or plan has none. It is not a row of the table. Asks that decide whether the conversation runs
+  at all — overwrite or resume an existing plan, a plan with no spec — come before the table and are
+  not counted; asks that belong to the build — who builds it, branch or worktree, a pairing check —
+  stay after the writing, named in one line of the closing turn's prose.
+- **Every turn after the first ends with the progress line**, `Step {n} of {total}`: `n` is this
+  turn's place in the sequence, and the total counts every turn the sequence takes — each Decide
+  turn, the Read turn where there is one, the closing turn, and each turn a skill you run adds. The
+  title line keeps the topic's table number. The total grows when a topic or a turn is added — a
+  disagreement, a topic found later, a new source, the plan-type turn that follows an Options Panel
+  offer — and the turn says so in one line; it
+  never shrinks, and `n` never goes back. A counted turn that drops out — a decision another answer
+  settled — is skipped over: `n` jumps past it and the total stays. After the progress line come only
+  the wait-or-stop line, then your role's footer; a side notice — a setup nudge, a version reminder —
+  goes above the progress line, never above the table.
+- **A later question gets its own answer, not the next topic.** A question the owner asks
+  mid-conversation is answered at the level it was asked, and the reply takes up no further topic in
+  reply to it; it still ends with the progress line, `n` unchanged.
+- **A new source handed over mid-conversation:** the current turn's topic finishes; the next turn
+  shows the new source's rows as an added table, the numbers continuing, and the total grows by its
+  turns. Its Decide topics join the Decide turns and its Read topics the Read turn; a skill you run
+  places its own rows. The first-turn shape — the table with the first topic after it — is the first
+  source's only.
+- **Say it, never point at it.** In every turn on a source — the table, an answer, a critique, a
+  question — never use a point number, a file name, an identifier or a finding without saying in
+  plain words what it is, in the same sentence. Check before sending: could the owner react without
+  opening any file?
 - **A topic that asks for a fact is looked up first** ("investigate whether X supports Y", "check
-  what Z does"), whatever else it contains, as any fact you do not know (§ A fact you do not know);
-  then take the topic as the lookup leaves it.
+  what Z does"), whatever else it contains, as any fact you do not know (§ A fact you do not know) —
+  before the table is shown, so every row's type is known; then take the topic as the lookup leaves
+  it.
 - **A question the source puts to you is answered, never asked back** — "questions to settle",
   "should we…?", "what do you think?", "is it X or Y?", with or without candidate answers. An open
   question in an unresolved or open-questions section counts as put to you. Three cases, in this
   order:
   - (a) the source's premise or the codebase decides it — answer it; the answer stands unless the
     owner overrules it;
-  - (b) only the owner can decide it (preference, scope, authority) — give your recommendation; the
+  - (b) only the owner can decide it (preference, scope, authority) — give your recommendation and
+    ask it in the question box, as a Decide topic; the
     spec is not Ready and the plan not signed off on it until the owner replies;
   - (c) anything else still undecided — decide it by recommendation, record it as a decision, list
     it for the owner; it never holds Ready or sign-off.
 - **Two cases you always ask**, leading with your recommendation: the source tells you to ask ("ask
   me before…"), or acting on the answer needs the owner's permission (a write outside this repo, a
   one-way action).
-- **An answer or a recommendation is prose:** the answer, its confidence, one line of why — no
-  question box. The owner rules by reply; a low-confidence answer says so plainly.
+- **An answer is prose:** the answer, its confidence, one line of why — no question box; the owner
+  overrules by reply, and a low-confidence answer says so plainly. **A Decide topic is prose and a
+  question:** the facts and your recommendation in prose, its question in the box under them — the
+  owner rules by reply there.
 - **Spawned by the team lead**, there is no owner to reply. A question you resolved — case (a) or
-  (c) — is written as a decision, the plan's `## Decisions` row or the spec's decision record, and
+  (c) — is written as a decision, a writer's decision in the spec's or the plan's
+  `## Decisions and why` (with its `## Decisions` row where it meets that section's bar), and
   listed in your hand-back; an owner-only one — case (b) — goes to `questions.md`, your
   recommendation first. The critique of every fix is written whole into the hand-back's gap list,
   and into the plan's `## Decisions` where it decides something.
 - **In an owner-away run**, case (b) goes to the run's open-point list
   (→ agents-workflow.md § Owner-away runs); case (c) is decided as in an attended run; the critique
   of every fix goes whole onto that list.
-- **Three topics per turn, the tags, the `reply needed on:` clause and the wait for a reaction bind
-  attended turns only** — spawned or owner away, nothing waits.
+- **One topic per turn, the table, the progress line, the closing turn, the verdict reply and the
+  wait for a reaction bind attended turns only** — spawned or owner away, nothing waits.
 
 ## The owner-question contract
 
@@ -190,7 +259,9 @@ round-trip on a decision that is, by definition, blocking.
    most two short sentences in the relaxed form, one in the short form**. The recommended option is
    listed **first**, its label ends with `(Recommended)`, and its description ends with the
    confidence clause — on the question box on a line of its own, and never counted as a description
-   sentence. A cheaper or lighter option carries a reasoning line of the same weight. Evidence and
+   sentence. A single-choice question recommends exactly one option; a multi-select question may
+   recommend several, listed first and together, each marked and each closing with its own clause.
+   A cheaper or lighter option carries a reasoning line of the same weight. Evidence and
    history go in the durable artifact, never in the ask.
 2. **Gloss every internal ID** in the ask, in one phrase, at first mention — a rule tag, a row
    number, a section name, a run or wave identifier. Never assume the owner carries the numbering.
@@ -203,10 +274,11 @@ round-trip on a decision that is, by definition, blocking.
 5. **Register split, stated.** Agent-grade compression belongs in the durable artifacts; the human
    ask is a **translation layer** over them. Linking the artifact is complementary — never a
    substitute for the explanation.
-6. **The confidence clause has one home per surface.** On the question box it closes the recommended
+6. **The confidence clause has one home per surface.** On the question box it closes each recommended
    option's description, on a line of its own, and appears nowhere else — not in the question text,
-   not in the header, not on another option; on a `questions.md` question it is the `Confidence`
-   field; on a checkpoint report it closes the recommended action line. One clause, spelled
+   not in the header, not on an option that is not recommended; on a `questions.md` question it is the `Confidence`
+   field; on a checkpoint report it closes the recommended action line. One clause per recommended
+   option, spelled
    `Confidence: high | medium | low — {why}`, never re-arguing the option it sits on. The header
    carries the decision in a few words — never an internal id, never the word `routine`. On the
    question box the platform caps it at twelve characters; on a markdown surface it is the question's
@@ -256,7 +328,9 @@ these.
 2–4 headline metrics stay exactly as they are (the Checkpoint Report Format section in
 architect.md / developer.md / team-lead.md). What the contract binds is the part of that report
 where the owner must choose — the "Needs your attention" items and the action options — not the
-metrics above them.
+metrics above them. A choice asked in prose while shaping — a pick among ideas or a problem statement
+to work from — is a discussion turn, not a decision request, because nothing is built on it before a
+later ruling in the question box, or it is dropped; this contract does not bind it.
 
 **The same ask on each surface.** The parts above are the ask — its header, its fact lines, its
 question sentence and its options, in that order; what changes per surface is only where they sit.
@@ -305,15 +379,16 @@ one to fix first: (a) `line count` — at most four lines in an ordinary ask and
 ask, exactly one question mark, on the question sentence, which is the whole last line;
 (b) `line set` — no blank line, every line ending with a sentence end, a fact line of at most two
 sentences in an ordinary ask and one in a routine ask, and no line opening with a label, a marker
-word or a bullet, a routine line's `{catalogue name}, routine:` opening excepted; (c) `(Recommended) label` on exactly one option, listed first;
-(d) `confidence clause`, well-formed at the end of that option's description and nowhere else;
+word or a bullet, a routine line's `{catalogue name}, routine:` opening excepted; (c) `(Recommended) label` on exactly one option, listed first — in a multi-select
+question on one or more, listed first and together;
+(d) `confidence clause`, well-formed at the end of each recommended option's description and nowhere else;
 (e) `internal id` — in the question text, the header or an option; (f) `vocabulary word`;
 (g) `pointer phrase`; (h) `markdown emphasis` in the question text; (i) `bracket` — none in the
 question text, and in an option only the `(Recommended)` label; (j) `three questions per call`;
 (k) `header` — not an internal id and not the word `routine`; (l) `routine line` — only with a
 catalogued name, only as the first line, followed by at most one fact line, and the word nowhere else
 in the ask; (m) `line length` — no line of the question text over 120 characters;
-(n) `option description` — at most two sentences in an ordinary ask and one in a routine ask, the
+(n) `option description` — at most two sentences in an ordinary ask and one in a routine ask, each
 recommended option's confidence clause not counted. To the boundary an ask is routine exactly when
 its first line has the routine line's shape. A refused ask is rewritten in its own form — an ordinary
 ask in the relaxed form, a routine ask in the standard-question variant — and sent again; every

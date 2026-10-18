@@ -298,7 +298,8 @@ holds an id the hook cannot know; that is the exception, never the rule.
 Every service validates the bearer token the same way, through one registration: issuer and signing key are the
 trust boundary, the audience check is off for a system with one audience, and roles map from `ClaimTypes.Role`,
 which the resource gate reads. The token settings are bound and validated at start-up like any other settings
-(`service-infra-conventions` § 3. Options binding — fail fast at startup).
+(`service-infra-conventions` § 3. Options binding — fail fast at startup). In a service a host runs, the host calls
+`AddJwtAuthentication` once and binds `JwtOptions` once, and the service adds only its own policies (`create-host`).
 
 ```csharp file=JwtAuthenticationRegistration.cs
 using System.Security.Claims;

@@ -13,7 +13,8 @@ The samples use an ordering domain — a fulfilment service reacting to `OrderPl
 ## Assumes
 
 - **MassTransit** as the bus, registered by one call that finds the consumers (`service-registration` § Registration
-  Patterns).
+  Patterns); in a service a host runs, the host registers it and calls the service's `Add{Service}Consumers`
+  (`create-host`).
 - **The repository base** with `ExistsAsync`, `UpsertAsync` and the throwing lookups, and the queryable
   `SingleOrThrowAsync` (`persistence-patterns`); the error family (`error-handling`).
 - **The contract records** of the event (`add-integration-event`).

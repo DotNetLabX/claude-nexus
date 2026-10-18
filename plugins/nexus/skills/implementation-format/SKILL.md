@@ -16,7 +16,7 @@ tail (ADR-22 Extended):
 | Head | the title line, `**Model:**` | read the first few lines |
 | Solo fixes (only when a solo ran) | `## Solo Fixes`, right after the head, one `### Solo fix {n} — {date}` block per spawn | `grep '^### Solo fix '` |
 | Steps (variable) | `## Step N — {step name}`, one per plan step, in plan order | `grep '^## Step '` |
-| Tail (fixed) | `## Key Decisions`, `## Skills Used`, `## Carry-Over Findings`, `## KB Changes`, `## Unfinished Tests` (only when a step close was cut), `## Deviations from Plan`, `## Self-Review` (Fast lane only), the completion footer | `grep '^## '` — the step blocks match too; read past them |
+| Tail (fixed) | `## Key Decisions`, `## Skills Used`, `## Carry-Over Findings`, `## KB Changes`, `## Unfinished Tests` (only when a step close or a light acceptance run was cut), `## Deviations from Plan`, `## Self-Review` (Fast lane only), the completion footer | `grep '^## '` — the step blocks match too; read past them |
 
 Grep for the heading you need, then `Read` with `offset/limit` around it rather than reading the
 whole file. A crash-resume reads the **last step block** to find where work stopped.
@@ -37,8 +37,9 @@ verify it exists on a Fast run, so it is required there and absent everywhere el
 **Rules:** one entry per rule the step lists under `Satisfies:` — `{ruleName}: tested — {test file} › {test name}` | `{ruleName}: not testable here — {reason}` | `{ruleName}: disputed — Q{n}`; omit the line where the step lists none
 **Decisions:** implementation choices this step made that the plan did not specify — or `None`
 **Deviations:** what was done differently, and why — or `None`
-**Unfinished:** {files | whole unit run} — cut at {limit} s; only when this step's close was cut at its limit, else omit the line
+**Unfinished:** {files | whole unit run | {acceptance test file} (acceptance run)} — cut at {limit} s; only when this step's close, or its light acceptance run, was cut at its limit, else omit the line; one line per cut run
 **Bug found:** {the symptom} — {the failing test or record} — {where it was}; only when this step met a bug it did not cause, else omit the line; one line per occurrence, so a block may carry several
+**Risk raised:** {why} — light lane only: where this step turned out riskier than its plan line says, else omit the line
 
 ## Step 2 — {step name}
 ...
@@ -92,8 +93,10 @@ where they live.
 
 **A step close cut at its limit.** Where the repo declares a full suite, a step close whose record
 reads `reason: "timeout"` is not finished rather than red: the step block carries one `Unfinished:`
-line naming what was cut — the named files, or the whole unit run — and the limit it was cut at. At
-the end of the run the developer gathers every such line — a solo block's included — into
+line naming what was cut — the named files, or the whole unit run — and the limit it was cut at. On
+the light lane a cut acceptance run (`--files {the acceptance test file}`) writes its own `Unfinished:`
+line, naming that run, even when the step close passed. At
+the end of the run the developer gathers every such line — an acceptance run's and a solo block's included — into
 `## Unfinished Tests`, the way Key Decisions is gathered, without reopening an earlier block; the section is absent when nothing was
 cut. Its readers take each entry as not verified at the step — the complete run covers it.
 
@@ -182,7 +185,7 @@ Note cell opens `solo fix {n} —`, which names its source.
 - **Listing files without linking to plan steps.** A file belongs to the step block whose work touched it. If a file was touched that no plan step required, say why on that block's `Deviations:` line.
 - **Writing all at once at the end.** Update implementation.md after each step completes — not all at the end. Enables resume-from-timeout and gives architect incremental visibility.
 - **Re-opening the file to revise a finished block.** A completed step's block is done. Something learned later about an earlier step goes in the current step's block or a tail section — reworking old blocks is exactly the read-then-edit churn the step-block shape removes.
-- **Empty or missing Skills Used section.** Every step gets a row — the skill(s) actually invoked, or `None` with the plan's sanction (`TDD: no`, `Skill: None`) or a documented deviation reason. The architect's done-check verifies this table against the plan's Skill Mapping; a mapped skill silently skipped is a Fail finding.
+- **Empty or missing Skills Used section.** Every step gets a row — the skill(s) actually invoked, or `None` with the plan's sanction (`TDD: no`, `Skill: None`; on a light-format plan, the step line's `None` and no `TDD: yes`) or a documented deviation reason. The architect's done-check verifies this table against the plan's Skill Mapping — a light-format plan's step lines, where it has no table; a mapped skill silently skipped is a Fail finding.
 - **Missing operator-owed callout.** When a step fired a plan-sanctioned fallback (live connection/credential unavailable at build time), its step block carries an explicit `OPERATOR ACTION REQUIRED` note + the helper script path — the fallback is a valid deviation only with that documentation.
 
 ## Consumers

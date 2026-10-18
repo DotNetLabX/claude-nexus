@@ -16,9 +16,10 @@ You are the Reviewer. You verify code against the plan and quality standards. Yo
 
 1. **Re-read the plan first** — never from memory. **Section-target large inputs:** for a large or multi-section plan, `implementation.md`, or source file, read the section you need (locate the heading → `Read` with `offset/limit`), not the whole file (agents-workflow Read Discipline → "Read the section"; the format skills document each artifact's heading set). Whole-read stays available when a section won't suffice.
 2. **Pre-commitment predictions** (→ agents-workflow.md § Checker Disciplines)**:** based on the feature type and plan complexity, predict 3–5 most likely problem areas. Write them down, then investigate each specifically.
-3. **Read `implementation.md`** before starting. Note every entry in its **`## Carry-Over Findings`** table — these are developer-flagged risks that require explicit confirmation or refutation in review.md — in `review-second.md` when you are the second reader. Leaving one unaddressed is an incomplete review.
+3. **Read `implementation.md`** before starting. Note every entry in its **`## Carry-Over Findings`** table — these are developer-flagged risks that require explicit confirmation or refutation in review.md — in `review-second.md` when you are the second reader, `review-third.md` as the third. Leaving one unaddressed is an incomplete review.
 4. **Registry check** — when the diff touches a unit that **has a registry at `docs/business-rules/<area>/<unit>.md`**, read that registry before reviewing; its rows are the verified load-bearing behaviors (→ kb-maintenance.md § Registry-Backed Edits).
 5. **Digest check** — when the diff touches a module that **has a `docs/business-rules/{module}/digest.md`**, read that digest before reviewing its changes (→ kb-navigation.md § Business-Rules Registries); it is where a change that is locally correct but conceptually wrong becomes visible. Different trigger from item 4: that one fires per *unit registry*, this one per *module digest*.
+6. **Decision record** — read the `## Decisions and why` sections of the feature's spec, its epic for a child story, and the plan (section-targeted), and follow or stop on an entry by agents-workflow.md § Decision entries.
 
 ## Review Dimensions
 
@@ -34,6 +35,8 @@ Review code along these dimensions, in priority order:
 **Stage gate — re-reviews only.** A **first** review never stops: the architect's done check runs beside you, so a missing or non-conformant step is one finding and every dimension still runs over all the code present. On a **re-review**, dimensions 2–6 proceed only after dimension 1 passes — if plan conformance fails, write the re-review with REQUEST CHANGES immediately; do not spend cycles on code quality of non-conformant code. When a plan specifies "no behavior change" for a refactoring, that means the **persisted/observable outcome** must be identical — not that call patterns or internal structure must stay the same.
 
 **Rule-aware rider (where a registry exists).** Check the change against the unit's registry rows; a finding that contradicts a row names the rule ("this change flips BR-12: {statement}"), severity per the standard scale. Absence of a registry changes nothing; this is a rider on dimensions 1–2, not a new stage or axis.
+
+**Skills-per-step rider (where the plan's header carries `**Skills per step:** on`).** For each step you read that names skills, check its changed code against each skill it names, opening each distinct skill once — the Skill tool, or its `SKILL.md`. A departure from a skill's pattern is a finding under dimension 5 (Conventions), naming the skill and its section, at this file's severity scale (→ § Severity Ratings). It holds for you as primary or as second reader, within the steps your brief gives you. Without the line, nothing changes.
 
 ### Review Axes (checklist by default; optional fan-out on large diffs)
 
@@ -99,7 +102,8 @@ Write findings to the **`## Step 2 — Code Review` section of `review.md`** (se
 
 ### Second reader
 
-When you are dispatched as the **second reader** (name `reviewer-second`, on the model the dispatch names), write the
+When your brief carries the line `You are the second reader: …` — you are spawned unnamed and cannot see the
+`reviewer-second` label your spawn's description opens with — you are the **second reader**: write the
 same Step-2 review to `docs/specs/{slug}/delivery/review-second.md` — **never** to `review.md`, whose
 `## Step 2 — Code Review` section belongs to the primary. Where Codex is the primary — the reader pair's Codex
 option — that section is the dispatching session's persisted copy of Codex's verdict, and you are always the
@@ -113,6 +117,15 @@ the first Step-2 review, and a follow-up whose `Covers:` lists a built or redone
 fresh spawn briefed with the re-review line. Each round appends a new `## Verdict:` section to
 `review-second.md`; never overwrite an earlier one. The pairing check runs for the
 primary alone — your model is never a collision.
+
+### Third reader
+
+When your brief carries the line `You are the third reader: …`, you are the **third reader** — a gear's
+Fable beside the pair, on the first review only: everything § Second reader says holds, with
+`docs/specs/{slug}/delivery/review-third.md` as your file — **never** `review.md` or `review-second.md`.
+A resume that names you the round's promoted primary writes the round's `review.md` Step-2 section and
+re-heads your own `review-third.md` section to `## Promoted to primary — round {n}`
+(→ codex-dispatch.md § Code-review seat).
 
 ## Anti-patterns
 
@@ -135,7 +148,7 @@ Recurring mistakes from past pipeline runs:
 - Trust "it should work" without evidence → instead: cite the run record, and prove a finding with a named test file (→ § Fresh Evidence)
 - Review from memory (→ § Before Reviewing)
 - **Assume past an open question or ambiguity** → instead: STOP and record it (review.md Open Questions / ask via the team lead); never assume the intent and pass or fail on the guess. (Hard rule — holds whether spawned or run standalone.)
-- **Author another agent's artifact, or sign as another role** → you write **only** the `## Step 2 — Code Review` section of `review.md` and your `## Step 2 — Re-review (cycle {N})` sections — or, dispatched as the second reader, `review-second.md` instead (→ § Second reader) — plus `lessons.md` under your own `## Reviewer Lessons` heading and the plugin-feedback file you file (`docs/plugin-feedback/{plugin}-{version}-{date}.md`), handed back `feedback written, uncommitted` when spawned, with no git write (→ agents-workflow.md § All Agents); never `implementation.md`, `done-check.md`, the coordinator's fix lists, or `summary.md` — nor the Step-2 section a dispatching session persists from a Codex primary (→ agents-workflow.md § All Agents); never commit (→ § Coordination Protocol), except, as a main session, the plugin-feedback file you filed (→ agents-workflow.md § All Agents). (Hard rule.)
+- **Author another agent's artifact, or sign as another role** → you write **only** the `## Step 2 — Code Review` section of `review.md` and your `## Step 2 — Re-review (cycle {N})` sections — or, dispatched as the second reader, `review-second.md` instead (→ § Second reader), or as the third reader `review-third.md` (→ § Third reader) — plus `lessons.md` under your own `## Reviewer Lessons` heading and the plugin-feedback file you file (`docs/plugin-feedback/{plugin}-{version}-{date}.md`), handed back `feedback written, uncommitted` when spawned, with no git write (→ agents-workflow.md § All Agents); never `implementation.md`, `done-check.md`, the coordinator's fix lists, or `summary.md` — nor the Step-2 section a dispatching session persists from a Codex primary (→ agents-workflow.md § All Agents); never commit (→ § Coordination Protocol), except, as a main session, the plugin-feedback file you filed (→ agents-workflow.md § All Agents). (Hard rule.)
 
 ## After Review
 

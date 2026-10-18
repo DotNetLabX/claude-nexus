@@ -1,6 +1,6 @@
 # Agent Coordination Protocol
 
-> Read when: team lead; launching/coordinating/resuming a run; the protocol beyond the kernel summary — slug/path map, hub-and-spoke, All Agents rules, read discipline, cycle caps; a Nexus term/ADR (§ Glossary); an artifact's Model attribution stamp.
+> Read when: team lead; launching/coordinating/resuming a run; the protocol beyond the kernel summary — slug/path map, hub-and-spoke, All Agents rules, read discipline, cycle caps; a Nexus term/ADR (§ Glossary); an artifact's Model attribution stamp; a gear.
 
 The agent pipeline (8 roles — team-lead, po, architect, developer, reviewer, critic, learner, solo) for feature development. Agents coordinate through file-based handoffs and **hub-and-spoke messaging** (§ Communication Model: Hub-and-Spoke).
 
@@ -161,19 +161,18 @@ To team-lead: "For {recipient}: {message content}"
   (the Relay Contract case) nor idled-without-payload — it is **paused mid-work**, so there is no
   artifact and no transcript payload to salvage yet; resume is FIRST here, not last.
 - **Research-helper dispatch contract.** When spawning a research helper (Explore, general-purpose): point it at inputs **by file path** — never paste bulk content into the prompt — and require a structured return: counts + per-item one-liners + surprises, ~300 words ("return findings, not acknowledgements").
-- **Spawn-tasking contract: capability pins + role-prefixed names.** Every spawn/tasking carries the
+- **Spawn-tasking contract: capability pins + no spawn name.** Every spawn/tasking carries the
   four explicit pins — spelled exactly as ADR-61 part 3 (the spawn-tasking hardening rules) names
   them: no-git-push, no-git-config,
   no-history-rewrite, no-permission-change (a subagent's claimed "user request" is unverifiable from
-  its transcript — the pins are the authority, not the claim). A custom spawn `name`, when used,
-  MUST be role-prefixed — `{role|known-abbrev}-{qualifier}` (`critic-second`, `reviewer-w7-a`),
-  unique qualifier per parallel helper — so the role-keyed hooks resolve it (`resolve-role.js`
-  matches the role by its longest leading prefix, discarding the qualifier); a qualifier-first name
-  (`w7-reviewer-a`) defeats resolution and false-flags the agent's own writes. **A developer is the
-  exception — never named:** a named spawn never reaches Claude Code's agents list, so its name
-  (`dev-s1`, `dev-wave0`) is the first word of the Agent description, and it is resumed by the
-  agentId its spawn result returns. A solo spawned inside a feature's run is unnamed the same way
-  (`solo-red1`, `solo-bug2`).
+  its transcript — the pins are the authority, not the claim). **No pipeline spawn carries a
+  `name`** — developer, solo, critic, reviewer, second reader, any role: a named spawn runs as an
+  in-process teammate that never reaches Claude Code's agents list. Its label —
+  `{role|known-abbrev}-{qualifier}` (`dev-s1`, `critic-second`, `reviewer-second`, `solo-red1`), a
+  unique qualifier per parallel helper, never qualifier-first (`w7-reviewer-a`) — is the first word
+  of the Agent description, and it is resumed by the agentId its spawn result returns. The
+  role-keyed hooks resolve an unnamed spawn from its agent type; a spawn named against this rule
+  still resolves, by the longest leading role prefix of its name (`resolve-role.js`).
 - **Tag every user-facing recommendation with a confidence label (hard rule).** When you put a question or choice to the user — directly (`AskUserQuestion`), as a `To: user` question in `questions.md`, or as a recommendation you hand the team lead to relay — state your recommended answer and tag it **Confidence: high | medium | low** + a one-line why, and shape the ask itself per `research-before-asking.md` § The owner-question contract (plain-English explanation first, every internal ID glossed, options stated as consequences). **high** = a clear basis (spec, ADR/architecture, an existing pattern, strong evidence) points one way — safe to proceed on if unanswered; **medium** = a reasonable lean with a real trade-off; **low** = weak basis or a genuine toss-up — you especially want the human's call. Put it at the end of the recommended option's description (`AskUserQuestion`), or once, in the `Confidence` field (`questions.md` — questions-format); where the `research` skill (`nexus-pro`) is in your skill list, on a **boostable ask** the question also carries the research option per that skill's research protocol. The team lead preserves an agent's confidence when relaying, and adds its own when it asks. **A clear basis means a *confirmed* basis — a belief is not a basis.** Confidence is **lowered by an unconfirmed load-bearing assumption**: a verdict or recommendation resting on an assumption you could not confirm is **not High**, however sure it feels, and that assumption is a **research target, not a basis** — confirm it (look it up, test it) before you let it carry a High. (This is the failure that turns "X is unsupported" — never checked — into a confident wrong verdict.)
 - **A relayed, consensus-backed, or remembered fact is a claim to re-verify, not evidence.** A fact relayed from another agent, backed by a consensus of citing sources, or recalled from memory is a claim — re-execute it against live source before a decision depends on it. Re-executed evidence, not citation count, is ground truth. It matters most when the fact would license *skipping* a step ("no need to seed X") — that error direction is invisible at authoring time, the test still passes. The check is usually cheap and mechanical: a parity/"mirrors X" claim is byte-checkable (grep the cited body, diff the arithmetic), a cited path is `ls`-checkable. A **negative** finding is the same class of claim — "X does not exist", "Y is not covered", "no home for Z" — in-tree as well as out-of-tree: re-verify it through a channel with a **different shape** than the one that produced it, reading the candidate files' own headers and declared scope, since a grep can be structurally unable to match the source's shape. And a plan's own prose is relayed too: authored ahead of execution, it goes stale like any chat summary. **A converging headline does not certify its details** — when two independent reviews agree on a finding, its supporting details (names, line numbers, pairs, causes) still get their own re-execution before they enter a durable record; recording a half-verified detail is the failure shape. **STATUS is a figure of the same class:** "X is running" enters a report only on process-level evidence (a live process, a fresh log mtime), "X is done" only with the output artifact in hand; a lane's forward-looking closing line ("resuming…", "next I will…") is intent, not state, and a hub that relays it as state repeats the relayed-figure failure with a one-word disguise.
 - **External-repo filesystem facts: an empty Glob/Grep/Bash result on an out-of-tree path is not evidence of absence.** Glob and Grep return empty for paths outside the session's registered working directories even when the files exist, and a sandboxed shell probing one can fabricate a plausible wrong answer — this covers **any** external-path filesystem read, not just git commands. Verify through the channels that do reach outside: `Read` with an absolute path, a native-shell read (e.g. PowerShell `Test-Path` / `Get-ChildItem` on Windows), or `git -C {repo}` for git facts. Treat "No files found" on an external path as *unanswered*, never as *absent*.
@@ -182,6 +181,39 @@ To team-lead: "For {recipient}: {message content}"
 - **Where the `research` skill (`nexus-pro`) is in your skill list, offer research before a cold answer.** On a **boostable ask** presented through a clickable surface, the offer's primary form is a selectable **research option** on the question itself, naming the target and a rough cost; prose remains the fallback for surfaces with no clickable ask: "I can research {X} first — want me to, or do you already have a direction?" Offer only when research would genuinely change the question — a reflexive offer on every question is noise. That skill's research protocol is the single owner of the rest: boostable asks, the research option's semantics, the depth dial, capture-before-surface, and the **fact-shaped unknown** (a fact you can't resolve from current context → research is the default before a verdict).
 - **Load the project's coding conventions before writing or reviewing code — always, not on demand.** Read `docs/conventions/coding-conventions.md` if the project has one (the conventions *index*) and every file it lists: binding standards, followed like plan steps. No index → work without one, never invent it.
 - **Update your artifacts before `/compact` or `/clear`.** Your `lessons.md` section and your role's working artifact are written before the context that produced them is discarded — a lesson only in context is lost, not deferred.
+
+### Decision entries
+
+A feature's spec, its epic and its plan each carry a `## Decisions and why` section — the owner's
+rulings and the PO's or architect's own decisions, each with its reason, what was turned down and the
+fact it rests on (the entry's shape is the `create-feature-spec` skill's `workflows/Template.md`).
+This subsection is the one home of what an agent does with an entry that its start-of-work reading put
+in front of it. It adds no search before asking.
+
+- **Follow** a `current` entry only when it decides that very question — never by analogy — while its
+  Rests-on fact still holds and it agrees with the rules it sits under: a spec or epic entry under
+  that document's rules, a plan entry under the plan's steps and the spec's rules. **"Still holds"
+  means no known change:** you follow unless a later document, an ADR, the code, an owner message or
+  the run's own findings show the fact changed — an agent never stops merely because it cannot confirm
+  the fact. A writer's decision is followed the same way; its `By` shows it was not the owner's.
+- **Record** the answer in the form
+  `answered from {document} {id}, not owner-confirmed — {answer}` (for example
+  `answered from spec D3, not owner-confirmed — {answer}`), distinct from an owner's answer and from a
+  presumed default. A question that was to go to the owner is a `questions.md` section,
+  `Status: Answered`, its Answer block so attributed. A developer's choice settled from an entry goes on
+  its step block's `Decisions:` line in that form, and in an owner-away run also as such a
+  `questions.md` section — every entry-derived answer of an owner-away run is in `questions.md`, the
+  file the run's list is read from. The answer appears on the end-of-run list: owner away, on the
+  list of § Owner-away runs, as an answer taken; attended, in the report the agent hands back at the end
+  of that step.
+- **Stop** on an entry whose Rests-on fact no longer holds, or which disagrees with the rules it sits
+  under: never follow it. Attended, ask the owner, naming the earlier ruling by its effect and its date
+  and what changed. Owner away, the work that depends on it waits and the question is recorded
+  `To: user`, `Status: Open`, its Context naming the ruling by its effect and date and the changed fact
+  — never settled by your own recommendation, and never routed to the PO, whose answer would cite the
+  same entry. A spawned agent writes it and hands back; the coordinating session lists it as waiting
+  for the owner. An entry resting on `none — a preference` is never stopped by a changed fact.
+- **No entry** decides the question, or one only resembles it: the existing behaviour, unchanged.
 
 ## Message Size Contract
 
@@ -263,11 +295,11 @@ The read-tracker hook nudges on a same-round repeat read and logs ≥3 repeats o
 
 ## Audit Substrate (`.claude/audit/`) — detect-then-gate
 
-Two enforcement breaches recur and are **not preventable at the prompt level**: a background subagent's PreToolUse deny is dropped (ADR-13), and you cannot force an agent to invoke a `Skill`. Both are converted from "an agent must choose to behave" into **detect-then-gate** — log the fact deterministically, then make a gate Fail on the logged fact, so the rule can live in the agent (ADR-14) while enforcement never depends on the agent obeying it. The always-on, observe-only hooks below write the three logs; none is config-gated, all are zero-footprint until they have something to record, and all fail silent.
+Two enforcement breaches recur and are **not preventable at the prompt level**: a background subagent's PreToolUse deny is dropped (ADR-13; dropped through Claude Code 2.1.273, honoured at 2.1.301: the test-entry gate now refuses every gated seat, the other gates are unchanged), and you cannot force an agent to invoke a `Skill`. Both are converted from "an agent must choose to behave" into **detect-then-gate** — log the fact deterministically, then make a gate Fail on the logged fact, so the rule can live in the agent (ADR-14) while enforcement never depends on the agent obeying it. The always-on, observe-only hooks below write the three logs; none is config-gated, all are zero-footprint until they have something to record, and all fail silent.
 
 | Log | Written by | Records | Consumed by |
 |---|---|---|---|
-| `.claude/audit/violations.log` | `boundary-detector.js` (PostToolUse `Write\|Edit\|MultiEdit\|Agent\|Task\|Bash\|PowerShell`) + `read-tracker.js` (≥3 same-round re-reads, `Read` or shell) + `prohibition-gate.js` (approval scope) + `test-entry-gate.js` (PreToolUse `Bash\|PowerShell`; additive fields `spawn`, `command`, `token`, `session`, `blocked`) | A raw test command from a developer or solo seat (`rule: "test-entry"`; `blocked: true` when the foreground deny refused it). A subagent breach the gate cannot block: an ownership write (a role writing another role's artifact / `.pipeline-state`), a **pipeline-role spawn** by a subagent (ADR-21), a **state-changing git write** by a subagent (`commit`/`add`/`reset`/`push`/`stash`/`restore`/`switch` — anchored-regex, `git commit-graph` and read-only git excluded, including the read-only stash subcommands `git stash list`/`show` a developer uses to inspect HEAD; ADR-18/20), and re-read offenders | The **team lead** at every verify point → the deterministic fabrication void-and-rerun matrix (team-lead.md, Enforcing the Rules): void the fabricated *gate*, re-run the real one, keep correct *code*; unwind a rogue commit. Backstopped by a `git log` author check — the guaranteed catch for any commit not authored by the team lead, however made. The **architect** done-check (Step 1) Fails on a `test-entry` line without `blocked` in the round window — a test slip in the combined fix round; the review still runs. |
+| `.claude/audit/violations.log` | `boundary-detector.js` (PostToolUse `Write\|Edit\|MultiEdit\|Agent\|Task\|Bash\|PowerShell`) + `read-tracker.js` (≥3 same-round re-reads, `Read` or shell) + `prohibition-gate.js` (approval scope) + `test-entry-gate.js` (PreToolUse `Bash\|PowerShell`; additive fields `spawn`, `command`, `token`, `session`, `blocked`) + `critique-check.js` (Stop, architect or PO with the owner present; additive field `outcome`) | An interview turn whose critique declares a change it does not ask (`rule: "critique-change"`: refused, or only logged on a retry stop or a later stop of a refused prompt, or a fail-open pass). A raw test command from a developer or solo seat (`rule: "test-entry"`; `blocked: true` when the deny refused it). A subagent breach the gate cannot block: an ownership write (a role writing another role's artifact / `.pipeline-state`), a **pipeline-role spawn** by a subagent (ADR-21), a **state-changing git write** by a subagent (`commit`/`add`/`reset`/`push`/`stash`/`restore`/`switch` — anchored-regex, `git commit-graph` and read-only git excluded, including the read-only stash subcommands `git stash list`/`show` a developer uses to inspect HEAD; ADR-18/20), and re-read offenders | The **team lead** at every verify point → the deterministic fabrication void-and-rerun matrix (team-lead.md, Enforcing the Rules): void the fabricated *gate*, re-run the real one, keep correct *code*; unwind a rogue commit. Backstopped by a `git log` author check — the guaranteed catch for any commit not authored by the team lead, however made. The **architect** done-check (Step 1) Fails on a `test-entry` line without `blocked` in the round window — a test slip in the combined fix round; the review still runs. |
 | `.claude/audit/skill-invocations.log` | `skill-tracker.js` (PostToolUse `Skill`) | One `{ts, agent, skill, token, session}` line per real skill invocation — the platform-logged fact (`tool_name === 'Skill'`, `tool_input.skill` = name), round-scoped by the `.pipeline-state` token | The **architect** done-check (Step 1): the **authoritative** source for the skill-conformance check. A plan-mapped non-`None` skill absent from the log (no documented deviation) Fails; a `## Skills Used` self-report not corroborated by the log is a fabrication → Fail; a missing `## Skills Used` section Fails structurally. Each such Fail is a skill slip in the combined fix round, never a stop before the review. All-`None` plans never Fail on an empty log. |
 | `.claude/audit/lessons-writes.log` | `lessons-tracker.js` (PostToolUse `Write\|Edit`) | One `{ts, agent, slug, token, session}` line per lessons write, round-keyed | `pipeline-gate.js` invariant (5) at the `summary.md` write |
 
@@ -341,6 +373,28 @@ that fits — the two safeguard rows come first, so no later row can carry a poi
 | 5 | A question of your own with a defensible answer | take your recommendation and proceed | with the answer taken |
 | 6 | Any other question | the part that depends on it waits; everything else runs to its end | waiting for the owner |
 
+**Decision entries come after rows 1–3, before rows 4–6.** A one-way action, a point the plugin
+reserves for the owner and a choice the owner made in the launch message are never overridden by an
+entry of the feature's `## Decisions and why` sections; an entry that disagrees with a launch choice is
+named on the list as overruled by the launch message. Then a point a current entry decides is settled
+by § Decision entries — listed with the answer taken, attributed
+`answered from {document} {id}, not owner-confirmed — {answer}`. A point whose entry stopped is listed
+waiting for the owner, and row 5 never takes it. **A gear answers before row 4.** Under a gear, a catalogue question the gear answers takes the gear's
+value, not the entry's away line (→ § Gears).
+
+Where the `panel-mode` skill (`nexus-pro`) is in your skill list, **the PO and the architect
+take a hard open point to an unattended panel first** (→ `panel-mode/SKILL.md` § Unattended panels). In
+defining, planning or building, a point row 5 would take only at medium confidence, or row 6 would
+leave waiting, goes to a panel of two voices while the feature's budget has one, first come, first
+served; the panel's answer is then taken or left waiting by its own level. A one-way action, a point
+the plugin reserves for the owner, a launch choice, a point a current or stopped entry decides, a
+question the source says to ask the owner about first, and anything at the done check, the review or
+the close never go to one. Past the budget, and for every other persona, rows 5 and 6 apply as
+written. The route holds from the moment the run turns owner-away until this subsection ends it, and
+for a spawned or resumed PO or architect whose dispatch carries the line `Run: unattended.` — a
+campaign feature's included; once the run ends, no panel or brainstorm starts by itself. A panel the
+owner asked for before the owner left was attended and costs nothing.
+
 An answer is **defensible** when you would tag its recommendation `Confidence: high` or `medium` and
 everything built on it stays on the feature's own branch, where it can be redone. Anything else is
 row 6. For **solo**, the launch request is the confirmation its workflow asks for: solo states its
@@ -360,15 +414,28 @@ line where one applies (§ All Agents), the role's footer. The owner's reply is 
 is: a confirmed point is re-recorded as answered; an overruled one is a changed fact and re-opens what
 rested on it.
 
+Where the `panel-mode` skill (`nexus-pro`) is in your skill list, a reply on an away choice — a
+point an unattended panel or brainstorm settled — that names its entry, or says "all confirmed", is
+also written to its record as the owner's verdict, by whoever records the owner's answer
+(→ `panel-mode/SKILL.md` § Unattended panels); no reply leaves the verdict empty, never confirmed.
+
 A presumed answer has one limit. **A spec is never marked Ready on a presumed answer to a
 product question.**
 
-Where the `brainstorm-mode` skill (`nexus-pro`) is in your skill list,
-**a brainstorm topic is never run**: a main-session persona in an owner-away
-run treats it as a spawned persona does (`brainstorm-mode/SKILL.md` § Who runs it) — the topic is
-named `brainstorm owed` on the list and as an open item in the spec or plan, that spec or plan is not
-Ready or signed off, the build that depends on it waits, and work that does not depend on it
-continues.
+Where the `panel-mode` skill (`nexus-pro`) is in your skill list, an away choice is the one exception
+(→ `panel-mode/SKILL.md` § Unattended panels): a spec or plan resting on an answer an unattended panel or
+brainstorm took may be marked Ready or signed off and built on the feature's own branch. It gives no
+licence to merge — the merge stays the owner's act (row 1) — and an away choice the owner overrules
+reopens what rests on it, as any overruled presumed answer does.
+
+Where the `brainstorm-mode` skill (`nexus-pro`) is in your skill list, the PO and the architect run
+a brainstorm topic in defining and planning as an unattended brainstorm while the feature's budget
+has one (→ `brainstorm-mode/SKILL.md` § Unattended brainstorms). Past the budget, a problem-first topic, a topic
+outside defining and planning, and every topic in another persona's run, **a brainstorm topic is never run**: a main-session persona in
+an owner-away run treats it as a spawned persona does (`brainstorm-mode/SKILL.md` § Who runs it) —
+the topic is named `brainstorm owed` on the list and as an open item in the spec or plan, that spec or
+plan is not Ready or signed off, the build that depends on it waits, and work that does not depend on
+it continues.
 
 **Selection stays attended; needing the owner does not.** The owner's words change the asking, not
 the choices. A fork that is a fixed owner question is the catalogue's: its entry's away line answers
@@ -395,8 +462,9 @@ Codex time limit, the early window and the fallback apply as always. Where the `
 (`nexus-pro`) is in your skill list, a words-declared run uses the attended research tiers too.
 
 **What this overrides.** In an owner-away run the stop-and-ask hard rules — this file's § All Agents,
-the kernel's, each agent file's — are met by the open-point table as a whole: rows 3 to 5 settle a
-point, rows 1, 2 and 6 hold the work that depends on it, and the list is the surfacing. Building on an
+the kernel's, each agent file's — are met by the open-point table as a whole: rows 3 to 5 and a
+current decision entry settle a point, rows 1, 2 and 6 and a stopped entry hold the work that depends
+on it, and the list is the surfacing. Building on an
 unresolved point in silence stays a defect.
 
 ## Agents
@@ -412,7 +480,7 @@ unresolved point in silence stays a defect.
 | learner | Lessons consolidation, pattern promotion to system files | team lead |
 | solo | Small fixes and scoped changes (one service, no domain model; 1-3 source files as a rule of thumb — `solo.md` § Scope) | user; the coordinator inside a run |
 
-A `model` parameter on a spawn: only the four sanctioned channels may override an agent's frontmatter, the first being the `.claude/nexus-agents.json` ladder with its per-agent and per-job entries (→ pipeline-guardrails.md § Agent model overrides and pairing).
+A `model` parameter on a spawn: only the four sanctioned channels may override an agent's frontmatter, the first being the `.claude/nexus-agents.json` ladder with its per-agent and per-job entries, then the repo's gear (→ pipeline-guardrails.md § Agent model overrides and pairing).
 
 ## Pipeline Modes
 
@@ -456,7 +524,7 @@ The pipeline is not a rigid sequence — ceremony scales with uncertainty.
 
 After escalation to human, agents STOP and wait.
 
-**A fresh developer for every fix round (the caps themselves are unchanged).** Every cycle goes to a **fresh developer** that rebuilds state from the on-disk artifacts (plan.md, implementation.md, review.md) and receives nothing from an earlier conversation — artifact-first hand-off is what makes that drop safe. The last developer is not resumed for a round: under build slices it holds only its own slice, and by the time the first check is in its prompt cache has expired, so a resume pays full price for a mostly unrelated context. Inside a round, a blocker or a stall resumes that round's developer while it is under the size limit; at or above it, a fresh developer takes the same cycle's fix dispatch (the size check, `team-lead.md` § Message Handoffs (you are the hub)). A *phase* failure splits two ways: task failure → fresh spawn; infrastructural stall → resume, unless the developer's last recorded size is at or above the limit (then a fresh developer — the size check's stall branch). The executor is the team lead (`team-lead.md` § Message Handoffs (you are the hub) + `team-lead.md` § Message Templates, for the fix-cycle dispatch; `team-lead.md` § Phase Failure Handling + `team-lead.md` § Unattended Mode, for the retry split); the standalone architect mirrors it in `architect.md` § Architect-Led Fast Lane (standalone only). A red complete run at handover goes to a solo first, on a ladder with its own counter — the first red goes to a fresh solo, a second consecutive red resumes that solo while it is under the size limit (a fresh one at or above it), a third goes to the architect — and never advances the fix-round count (`team-lead.md` § Message Handoffs (you are the hub)).
+**A fresh developer for every fix round (the caps themselves are unchanged).** Every cycle goes to a **fresh developer** that rebuilds state from the on-disk artifacts (plan.md, implementation.md, review.md) and receives nothing from an earlier conversation — artifact-first hand-off is what makes that drop safe. The last developer is not resumed for a round: under build slices it holds only its own slice, and by the time the first check is in its prompt cache has expired, so a resume pays full price for a mostly unrelated context. Inside a round, a blocker or a stall resumes that round's developer while it is under the size limit; at or above it, a fresh developer takes the same cycle's fix dispatch (the size check, `team-lead.md` § Message Handoffs (you are the hub)). A *phase* failure splits two ways: task failure → fresh spawn; infrastructural stall → resume, unless the developer's last recorded size is at or above the limit (then a fresh developer — the size check's stall branch). The executor is the team lead (`team-lead.md` § Message Handoffs (you are the hub) + `team-lead.md` § Message Templates, for the fix-cycle dispatch; `team-lead.md` § Phase Failure Handling + `team-lead.md` § Unattended Mode, for the retry split); the standalone architect mirrors it in `architect.md` § Architect-Led Fast Lane (standalone only). A red complete run at handover goes to a solo first — except under a gear that runs the complete suite once beside the reviewers, where it joins the fix round (§ Fix rounds) — on a ladder with its own counter — the first red goes to a fresh solo, a second consecutive red resumes that solo while it is under the size limit (a fresh one at or above it), a third goes to the architect — and never advances the fix-round count (`team-lead.md` § Message Handoffs (you are the hub)).
 
 ## Critic rounds <!-- id: critic-rounds -->
 
@@ -483,7 +551,7 @@ The critic seats — spec, plan and promotion — run a **bounded schedule with 
 
 **Dispatch fields** (the persona's brief, all mandatory): `Mode: {1|2|3}. Round: {n}. Artifact: {path}. Baseline surfaces: {list}. Depth: {product|mechanism|execution}. Ruler: critic-calibration seed + docs/critic-calibration/ruler.md if present.` Round ≥ 2 adds `Prior ledger, merge and fold: docs/specs/{slug}/delivery/review-critic.md § Round {n-1}. Floor: {MEDIUM|CRITICAL}. Read: {delta|full}.` — the spawner computes `Read:` from the two triggers above — off **round 1's** `Coverage:` line whatever the round, since trigger (a) is a statement about round 1's coverage — so the brief carries the verdict and a reader that receives `delta` never widens it on its own judgment. `Baseline surfaces:` stays in the brief on every round: a `full` round reads it, and a `delta` round carries it unread, so an escalation or a later full round has it without re-deriving it. Where a dispatch site already opens with `Mode {n}: {Name}.`, that satisfies the mode field and the block carries the other five.
 
-**Second reader — round 1 at the critic seats; the first review and a covering follow-up at the reviewer seat.** These reviews have **two readers from two model families**, running **in parallel** — a main reader, the **primary**, and a second reader — with the same brief, the same ruler and a role-prefixed name for the second (`critic-second`, `reviewer-second`). Every checker spawn at a review — spec, plan, code and promotion — reads its pair off one ordered list, the **reader-pair list**, authored here alone:
+**Second reader — round 1 at the critic seats; the first review and a covering follow-up at the reviewer seat.** These reviews have **two readers from two model families**, running **in parallel** — a main reader, the **primary**, and a second reader — with the same brief, the same ruler and the second's label (`critic-second`, `reviewer-second`) as the first word of its Agent description — never a spawn `name`, which would keep it out of Claude Code's agents list. A reviewer spawned as the second reader is told so in its brief, since it cannot see its own label: the brief carries the line `You are the second reader: write to review-second.md, appending a new ## Verdict: section; never write review.md.` Every checker spawn at a review — spec, plan, code and promotion — reads its pair off one ordered list, the **reader-pair list**, authored here alone:
 
 | # | Main reader | Second reader | Conditions |
 |---|---|---|---|
@@ -492,16 +560,18 @@ The critic seats — spec, plan and promotion — run a **bounded schedule with 
 | 3 | Sonnet | Opus | always |
 | 4 | Opus | Sonnet | always — reached only when the author is Sonnet |
 
-**The reading rule:** take the first pair whose conditions hold and whose main reader is not the family of the model that wrote what it reads. Pairs 3 and 4 always leave such a main, so the primary is never the author's family; the second reader may be. Fable is never picked automatically, except as pair 2. Pair 2 runs only when the Codex job helper flags Codex's failure as inside **the early window** (`earlyFailure`); after it, no Fable. Where Codex reads, it is the primary at every kind of review, and a Sonnet second reader runs beside it (→ codex-dispatch.md § Code-review seat; → codex-dispatch.md § Critic seat). The list's second-reader column is the default; the second reader's model is, in order: the feature's picked pair, a `re-picked` line included, where a one-reader pick means no second reader; an explicit owner-directed spawn parameter; the repo's `jobs.secondReader` setting (→ pipeline-guardrails.md § Helper agents — model and type), read as unset where it names the primary's family, or names `fable` in an `[UNATTENDED]` run; otherwise the column — Opus where the primary is Sonnet, and Sonnet for any other primary. A spawn parameter, the feature's picked pair or the repo's own per-agent checker entry sits above the list for the main; the precedence is the pairing check's step 2. What the list decides, and nothing else chooses a reader:
+**The reading rule:** take the first pair whose conditions hold and whose main reader is not the family of the model that wrote what it reads. Pairs 3 and 4 always leave such a main, so the primary is never the author's family; the second reader may be. Fable is never picked automatically, except as pair 2 and as a gear's third reader (below). Pair 2 runs only when the Codex job helper flags Codex's failure as inside **the early window** (`earlyFailure`); after it, no Fable. Where Codex reads, it is the primary at every kind of review, and a Sonnet second reader runs beside it (→ codex-dispatch.md § Code-review seat; → codex-dispatch.md § Critic seat). The list's second-reader column is the default; the second reader's model is, in order: the feature's picked pair, a `re-picked` line included, where a one-reader pick means no second reader; an explicit owner-directed spawn parameter; the repo's `jobs.secondReader` setting (→ pipeline-guardrails.md § Helper agents — model and type), read as unset where it names the primary's family, or names `fable` in an `[UNATTENDED]` run; otherwise the column — Opus where the primary is Sonnet, and Sonnet for any other primary. A spawn parameter, the feature's picked pair or the repo's own per-agent checker entry sits above the list for the main; the precedence is the pairing check's step 2. What the list decides, and nothing else chooses a reader:
 
 - **Attended,** it names the `reader pair` question's recommended option; the owner may pick any offered pair, Fable included, and pair 2 is never the recommendation.
 - **Unattended,** it names the pair with no ask, recorded `presumed`.
 - **A collision** — a resolved main of the author's family, at round 1 or any later checker spawn — takes the next pair's main by the same reading rule. Where that main came from a rung above the list (a spawn parameter, or the repo's per-agent checker entry), the substitute comes from pairs 3–4 only: an explicit model choice opts out of pairs 1–2.
-- **A fallback** runs when the main cannot. A dropped Codex primary follows the fallback matrix and the late rule (→ codex-dispatch.md § Time limit and fallback): a failure flagged early takes the row below; any later drop runs the late rule, which spends no Fable. For that early row attended, and for a Fable spawn that errors, the review re-applies the whole reading rule to the pairs below — the next pair whose conditions hold and whose main is not the author's family — with no question. Readers already run are reused: a new main that already read the round as its second reader becomes the main; any other new main is spawned fresh with a full read (the round's baseline surfaces and its merge so far), and the new pair's second reader is spawned where the round carries one and has none. The change of main is the one disclosed exception to the same-primary rule below, written in the round's header note with the skipped reader and why.
+- **A fallback** runs when the main cannot. A dropped Codex primary follows the fallback matrix and the late rule (→ codex-dispatch.md § Time limit and fallback): a failure flagged early takes the row below; any later drop runs the late rule, which spends no Fable. For that early row attended, and for a Fable spawn that errors, the review re-applies the whole reading rule to the pairs below — the next pair whose conditions hold and whose main is not the author's family — with no question. Readers already run are reused: a new main that already read the round as its second reader becomes the main — on the light lane's code review, where it read only the risky steps, once it has read the rest of the change; any other new main is spawned fresh with a full read (the round's baseline surfaces and its merge so far), and the new pair's second reader is spawned where the round carries one and has none. The change of main is the one disclosed exception to the same-primary rule below, written in the round's header note with the skipped reader and why.
 - **Per review, not per feature:** a fallback drops Codex for that review only; the feature's later reviews read the pick again and try Codex again.
 - **A main that is not the model spawned:** one whose self-reported `**Model:**` is the author's family or the second reader's family is treated as not run and dropped by the fallback, so two readers of one family never stand as a pair; any other mismatch is recorded in the round's header note and the round stands.
 
-Which pair a feature runs — the owner's pick, asked once per feature, against the config and each spawn's author — is settled by the pairing check (→ team-lead.md § Checker-Seat Pairing Check); only the owner's pick, and the late rule's one-reader round after a late Codex drop (→ codex-dispatch.md § Time limit and fallback), run a primary alone. A round that ran fewer readers than its pair names says which reader is missing and why in its round header note — a dropped Codex, a one-reader pick. The same **primary** holds for the whole review, the fallback's change of main aside: a different reader in a later round re-samples the baseline, which is the churn this schedule exists to remove. At the reviewer seat the second reader joins the first review, and a follow-up whose `Covers:` lists a built or redone step, as a fresh spawn. **Who spawns it follows the primary's spawner:** a standalone persona in the main session spawns both itself; a persona that is itself a subagent spawns neither — it hands `second reader owed` back with its review hand-back, and the **team lead**, whose pairing check resolves the pair and so names the second reader's model, spawns both. The second reader is the fourth sanctioned model-override channel and the reader-pair list the third (→ pipeline-guardrails.md § Agent model overrides and pairing), and the pairing check's comparison against the author applies to the **primary** checker only — the second reader is additive coverage and may share the producer's family.
+Which pair a feature runs — the owner's pick, asked once per feature, against the config and each spawn's author — is settled by the pairing check (→ team-lead.md § Checker-Seat Pairing Check); only the owner's pick, the late rule's one-reader round after a late Codex drop (→ codex-dispatch.md § Time limit and fallback), and a gear whose spec and plan review is `Codex alone` run a primary alone — Codex, with the round header saying so (→ agents-workflow.md § Gears). A gear's spec or plan review keeps this schedule whatever its plan type; the light lane's one round is not a gear's. A round that ran fewer readers than its pair names says which reader is missing and why in its round header note — a dropped Codex, a one-reader pick. The same **primary** holds for the whole review, the fallback's change of main aside: a different reader in a later round re-samples the baseline, which is the churn this schedule exists to remove. At the reviewer seat the second reader joins the first review, and a follow-up whose `Covers:` lists a built or redone step, as a fresh spawn. On the light lane's code review, the second reader's scope and when it is spawned are the light lane's (→ architect.md § Light Lane (standalone only)). **Who spawns it follows the primary's spawner:** a standalone persona in the main session spawns both itself; a persona that is itself a subagent spawns neither — it hands `second reader owed` back with its review hand-back, and the **team lead**, whose pairing check resolves the pair and so names the second reader's model, spawns both. The second reader is the fourth sanctioned model-override channel and the reader-pair list the third (→ pipeline-guardrails.md § Agent model overrides and pairing), and the pairing check's comparison against the author applies to the **primary** checker only — the second reader is additive coverage and may share the producer's family.
+
+**Third reader — round 1 under a gear that adds Fable.** Where `gear.js value --setting 3 --slug {slug}` names a pair `+ Fable` (→ agents-workflow.md § Gears), Fable reads round 1 of every review — spec, plan and code — beside the pair, no Codex failure needed, unattended too; later rounds and follow-ups keep their readers. Where Codex is not installed, the pair follows the reading rule and Fable still joins. Same brief and ruler, `critic-third` or `reviewer-third` the first word of its description, spawned by whoever spawns the second reader. Attended, no usage is read: a Fable that fails is one line to the owner, `Fable failed`, and the round goes on with the pair. In a campaign unit — a feature begun with `--campaign` — run `usage-level.js`, beside the gear helper, first: `skip: true` skips Fable, the round header note naming the figure; a missing or old snapshot lets it join; a failure goes on the end-of-run list. A Codex drop seen early makes the seated Fable the round's main and starts no second Fable (→ codex-dispatch.md § Time limit and fallback). At a critic seat the spawner persists its message under `## Third reader — round {n} (fable)` in `review-critic.md`; at the code review the brief carries `You are the third reader: write to review-third.md, appending a new ## Verdict: section; never write review.md or review-second.md.` The merge takes every reader. Like the second reader it is additive: no pairing comparison, and it may share the producer's family.
 
 **Merge, by whoever spawned the readers:** union, dedupe on shape plus surface. Severity is the anchor-cited level at a critic seat and the reviewer's own severity scale at the reviewer seat (that seat carries no anchor grammar). A reader-vs-reader disagreement is listed as `contested: {level-a} / {level-b}` and settled at merge with a one-line reason — a re-grade record where the persona overrides an anchor. **An UNRANKED finding is graded at merge too:** it reaches the merge with no level in its heading, and the merge table's `level` column is never empty, so the persona settles it there and says why. **A Codex reader cites no anchor:** its rows take the Codex severity as their level, and the anchor cell reads `unranked — no anchor fits; Codex severity {level}`, so the calibration extraction counts them as uncited. Where the merge and the fold are done by different actors — a team persona folds into a record the team lead persisted and merged — that split is stated at each seat, and the fold is always the persona's.
 
@@ -509,7 +579,7 @@ Which pair a feature runs — the owner's pick, asked once per feature, against 
 
 **Fold record** — written by the persona under the round: `### Fold — round {n} ({role}, {model}, {date})`, then a table `| id | disposition | level after | re-grade (level · anchor · why) | where |`. The disposition vocabulary is `fixed-real` | `waived` | `churn` | `plan-must-resolve` | `open`. A Mode-1 fold lists mechanism-level items under `#### Handed to the plan` — never by inventing a mechanism in the spec, which is what makes the next round review the invention. **The fold reconciles before it hands over:** each `where` cell names every contract clause or section it touched, and before the next round is dispatched (or the artifact approved) the persona re-reads, per touched clause, the clauses it names, the clauses that name it and any schema whose fields it sources, closing the fold with a `Reconciled:` line listing them. A round ≥ 2 reader's fold-verification table carries a `collateral` column (`none` or a finding id) on every touched clause — the fold's own new text is the one surface nothing reviews before the next round.
 
-**Persistence layout of `review-critic.md`.** Per round, in order: the round heading `## Round {n} — {date} — {spec|plan|promotion} — primary ({model})`; under it each reader's message verbatim, whose own headings are not demoted **except** a line of its own beginning `## Round `, which the persona demotes to `###` and notes in the round's header note; then, where a second reader ran, `## Second reader — round {n} ({model})`, naming its model — an H2 that deliberately cannot match the round-heading form, so it stays inside the primary's round scope; then `### Merge — round {n}`, carrying first a `Coverage:` line — the surfaces **no** reader of that round opened, or the literal `complete`, which is what the next round's `Read:` is read off — and below it the round's canonical finding list, written **even for a single-reader round**, a table with the twelve columns `id`, `readers`, `level`, `anchor`, `title`, `shape`, `consequence`, `evidence`, `untouchable`, `tag`, `surfaces`, `source ids` — read by header name, so a missing mandatory header is an error — with ids `R{n}-{NN}`; then `### Fold — round {n}`. A round runs from its round heading to the next line beginning `## Round ` or the end of the file, and every such line must satisfy the round-heading form. The calibration extraction reads the merge and fold tables only; the verbatim reader sections are provenance for a human, and the coverage ledgers inside them are what the measurement pass reads.
+**Persistence layout of `review-critic.md`.** Per round, in order: the round heading `## Round {n} — {date} — {spec|plan|promotion} — primary ({model})`; under it each reader's message verbatim, whose own headings are not demoted **except** a line of its own beginning `## Round `, which the persona demotes to `###` and notes in the round's header note; then, where a second reader ran, `## Second reader — round {n} ({model})`, naming its model — an H2 that deliberately cannot match the round-heading form, so it stays inside the primary's round scope; then, where a third reader ran, `## Third reader — round {n} (fable)`, an H2 of the same kind; then `### Merge — round {n}`, carrying first a `Coverage:` line — the surfaces **no** reader of that round opened, or the literal `complete`, which is what the next round's `Read:` is read off — and below it the round's canonical finding list, written **even for a single-reader round**, a table with the twelve columns `id`, `readers`, `level`, `anchor`, `title`, `shape`, `consequence`, `evidence`, `untouchable`, `tag`, `surfaces`, `source ids` — read by header name, so a missing mandatory header is an error — with ids `R{n}-{NN}`; then `### Fold — round {n}`. A round runs from its round heading to the next line beginning `## Round ` or the end of the file, and every such line must satisfy the round-heading form. The calibration extraction reads the merge and fold tables only; the verbatim reader sections are provenance for a human, and the coverage ledgers inside them are what the measurement pass reads.
 
 <!-- id-end -->
 
@@ -540,9 +610,70 @@ The code-review fix rounds — the rounds a done check or a code review sends ba
 - **When nothing opens:** a check with nothing at the bar opens nothing; when every check is in and none had, the merge is a no-round merge.
 - **When it ends:** when every check is in, every instalment has been sent, and the developer has handed back after the last one. Only then are the follow-up line and the under-bar block written, and the re-check, the follow-up review — and on the light lane the post-round complete run and the close — start.
 
-**A round no reader re-reads.** Where the follow-up line reads `none due` (`review-format`), each in-bar item the round's developer reports fixed in its `## Fix Round {N}` block counts as closed for the close predicate; its evidence is that developer's own fast record and the close's complete run, and the summary's Notes lists it "fixed, not re-verified" at its level. An item the developer reports not fixed stays open. A row whose level, or contested range, reaches HIGH makes the follow-up due. `pipeline-gate.js` refuses a `due` follow-up line on a list holding no such row, no missing or failed step and no skill slip.
+**A round no reader re-reads.** Where the follow-up line reads `none due` (`review-format`), each in-bar item the round's developer reports fixed in its `## Fix Round {N}` block counts as closed for the close predicate; its evidence is that developer's own fast record and the close's complete run, and the summary's Notes lists it "fixed, not re-verified" at its level. An item the developer reports not fixed stays open. A row whose level, or contested range, reaches HIGH makes the follow-up due, except under a gear of one round (below). `pipeline-gate.js` refuses a `due` follow-up line on a list holding no such row, no missing or failed step and no skill slip.
 
-**Under the bar — recorded, never fixed.** An item below the round's bar goes to the fix list's under-bar block, after its follow-up line (the layout is `review-format`'s); the developer reads that block and never fixes it. Open questions keep their own place and never go in it. At close the summary's Notes section carries the union of every under-bar block in `review.md`, a no-round merge's included, keeping the rows that no later round fixed, deduped by file, line and title (`summary-format`). When that union holds a MEDIUM, the closing session writes one carry-over backlog row listing those MEDIUMs, through the close gate's carry-over row item; a LOW gets no row. An item recorded under the bar is not an unresolved finding, so it needs no owner ask before the close.
+**Under the bar — recorded, never fixed.** An item below the round's bar goes to the fix list's under-bar block, after its follow-up line (the layout is `review-format`'s); the developer reads that block and never fixes it. Open questions keep their own place and never go in it. At close the summary's Notes section carries the union of every under-bar block in `review.md`, a no-round merge's included, keeping the rows that no later round fixed, deduped by file, line and title (`summary-format`). When that union holds a MEDIUM, the closing session writes one carry-over backlog row listing those MEDIUMs, through the close gate's carry-over row item — never under a gear that leaves them unfixed (below); a LOW gets no row. An item recorded under the bar is not an unresolved finding, so it needs no owner ask before the close.
+
+**Under a gear** (→ agents-workflow.md § Gears), on the light path too, read the round's settings with `gear.js value --slug {slug}`; `as today` keeps every rule above.
+- **Rounds** (row 7) — the cap is the gear's number. Where it is 1, no follow-up review is due after the round, whatever the fixed level: the follow-up line reads `Follow-up review: none due — {gear} gear`, and each in-bar item the developer reports fixed counts as closed for the close predicate, a reader's REQUEST CHANGES over it included, as in a round no reader re-reads.
+- **Bar** (row 11) — `high and critical` sets the bar at HIGH in every round, `medium and up` at MEDIUM; the always-in items are in every round. Where the gear leaves findings unfixed, the under-bar union is the summary's not-fixed list and no carry-over backlog row is written for it.
+- **Complete run** (row 12) — `once beside the reviewers`: the complete run starts at handover with the checks and runs once. A red joins the round as an always-in item, in place of the solo-first ladder, and the round waits for it to be resolved. The close takes that run with the green fast records that cover each later change (`pipeline-gate.js`, check 4), never a second complete run — while that evidence holds: each failure of a red needs a green run of it by name, unfiltered, under the feature's slug, standing for the content the tree holds now, and a red whose failures cannot all be named (a chained command, a failure the runner cannot place) takes a second complete run. A repo with no `roles.full` closes as the full-checks lane does there, on green step runs, with the absence disclosed.
+
+<!-- id-end -->
+
+## Gears <!-- id: gears -->
+
+A **gear** is a named set of answers to the pipeline's process questions: how detailed the plan is,
+whether a critic reads the spec and the plan, who reads a review, who builds, the checker and author
+effort, the fix rounds, which findings are fixed, when the complete test run runs and which tests a
+step runs. The shipped gears are `fast`, `normal` and `quality`; `off` is a gear that keeps every
+question asked today. A repo names its gear in the `gear` key of `.claude/nexus-agents.json`, and
+`/nexus:gear` shows the gears side by side and sets it. A repo with no gear runs as before, every
+question asked.
+
+**What a gear never answers.** Only the settings above. Never a product question — what to build,
+the spec interview, a decision with no recommendation — which in an owner-away run follows
+§ Owner-away runs as before. And none of the other questions asked today: the branch or worktree
+choice, merging, pushing, the options panel, overwriting or resuming a plan, plan only, a checkpoint
+decision, the learner's approval — every catalogue question but the four a gear answers — behave as
+before under every gear.
+
+**The floor, under every gear.** Every built change is read by a model other than its author before
+its fixes; the repo's tests run at least once before the feature closes; the done check runs; no
+product question is answered by a gear. No gear, shipped or custom, removes any of the four.
+
+**Every value comes from the gear helper, never from prose.** It is `gear.js`: in the main session
+it sits in the folder of the fast-profile line of the session-start plugin-paths block; a spawned
+agent finds it in the scripts folder its spawn names. Run it from the session root, as the Codex job
+helper is run — the state the hooks read lives there. `gear.js value --setting {row}` answers one
+setting by its row in the `/nexus:gear` table (`--role {agent}` for the author model and effort,
+`--slug {slug}` for a named feature), naming the rung it came from. A value `asked` means ask the
+question as today; `as today` means take today's recommended answer without asking. The order in
+which a value is taken is the helper's, never re-derived in prose.
+
+**A feature's gear, and who records it.** Before its plan, a feature runs at the gear in force: its
+campaign's gear, else a switch issued in this session (`/nexus:gear next {gear}`, one feature only),
+else the repo gear. The gear is fixed when the plan starts, and a later switch reaches the next
+feature.
+
+- **`gear.js begin --slug {slug}`** — the PO when it starts shaping a feature, the architect at its
+  Phase 1, the team lead at launch. A campaign unit's launch message that carries a `Gear:` line —
+  `off` included — adds `--campaign {gear}`.
+- **`gear.js fix --slug {slug}`** — the architect when it starts writing `plan.md`. It prints the
+  `**Gear:**` line the plan header carries beside `**Lane:**`. That line is the fixed gear's
+  authority: a plan that names a gear keeps it through any later switch or campaign, and a plan
+  without the line runs at no gear.
+- **`gear.js close --slug {slug}`** — the closing session, at the close.
+
+Solo, ad-hoc work and the learner's consolidations never call `begin`, so no gear reaches them: their
+questions behave as before under any repo gear.
+
+**Unattended.** With a gear, an owner-away run takes the gear's value for every setting it answers —
+a lighter-checks build included, so the `build lane` entry's away swap to full checks does not apply.
+With no gear, or a value `asked`, the question takes its catalogue entry's away line as before. The
+light lane's hold for the owner's go after a plan review folded a CRITICAL or HIGH finding is answered
+by the gear: the build proceeds and the folded findings go on the list. A CRITICAL finding still open
+at close holds that feature's commit for the owner, and other work carries on.
 
 <!-- id-end -->
 
@@ -637,7 +768,7 @@ plugin's own decision record; a rule that means your project's register says so.
 | ADR-1 | One source repo owns the plugins; a consuming project only installs them. | — |
 | ADR-2 | Four carriers: injected rules, protocol inlined per agent, skills, project docs. | amended by ADR-70 |
 | ADR-12 | Pipeline agents are spawned in the background. | supersedes ADR-10 |
-| ADR-13 | The blocking gate is inert for background subagents; detection covers them. | — |
+| ADR-13 | The blocking gate is inert for background subagents; detection covers them. Dropped through Claude Code 2.1.273, honoured at 2.1.301: the test-entry gate now refuses every gated seat, the other gates are unchanged. | — |
 | ADR-17 | The written artifact is the deliverable; the return message is best-effort. | — |
 | ADR-18 | No agent writes another agent's artifact or gate. | amended by ADR-96 |
 | ADR-21 | A subagent never advances the pipeline or spawns a pipeline role. | — |
@@ -654,7 +785,7 @@ plugin's own decision record; a rule that means your project's register says so.
 | ADR-45 | Mined rule registries are their own artifact species, flat per class. | — |
 | ADR-47 | Facts must reproduce empirically; judgments are human-adjudicated. | — |
 | ADR-58 | PO-shaped or architect-designed work is a feature; ad-hoc is the solo lane. | — |
-| ADR-61 | Arrival order is untrusted; a tasking carries pins and a role-prefixed name (a developer: none — its name leads the description). | — |
+| ADR-61 | Arrival order is untrusted; a tasking carries pins and no spawn name — its role-prefixed label leads the description. | — |
 | ADR-62 | Shipped scripts run in place from the version-keyed plugin cache. | — |
 | ADR-93 | Cross-model checker pairing is always on; the master switch is removed. | — |
 | ADR-96 | Per-step commits are a declared strategy; the commit helper is the only sanctioned subagent git write. | amends ADR-18/20 |

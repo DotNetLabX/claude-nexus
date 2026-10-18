@@ -37,7 +37,7 @@ You → PO (spec) → Architect (plan) → Developer (build)
 ## The proof
 
 - **Scored against another agent.** Three AI judges scored how Nexus's agents are instructed, equipped, policed and coordinated against another open-source coding agent, on a scoring sheet fixed in advance: **4.2 out of 5 for Nexus, 2.6 for the other** — and **5 out of 5 on enforcement** from all three.
-- **Enforcement you can inspect.** The 30 hook commands run on 7 Claude Code events. They put the team's working rules in front of every session and every spawned agent, block dangerous commands, stop a role that may not write code from editing your source, and record the test result when an agent hands work back.
+- **Enforcement you can inspect.** The 31 hook commands run on 7 Claude Code events. They put the team's working rules in front of every session and every spawned agent, block dangerous commands, stop a role that may not write code from editing your source, and record the test result when an agent hands work back.
 - **The guard.** It blocks deleting a root or home folder, `sudo`, force-pushes, `git reset --hard`, piping a download into a shell, reading secret files and writing outside the project. A stricter mode for teams and CI also blocks every push, network install and network fetch.
 
 ## The plugins

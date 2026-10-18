@@ -86,7 +86,10 @@ A repo whose services use both buses types the interface with both markers
 (`public interface IDomainEvent : INotification, IEvent;`), so each service picks its publisher at registration.
 
 Register one publisher, one line, where the service registers its bus (`service-registration` § What Goes Where):
-`services.AddScoped<IDomainEventPublisher, MediatorDomainEventPublisher>()`.
+`services.AddScoped<IDomainEventPublisher, MediatorDomainEventPublisher>()`. In a service a host runs, the host
+registers the MassTransit bus for integration events, while the mediator and this publisher stay registered in that
+same project of the service; with FastEndpoints as the event bus, the host's endpoint registration finds the handlers
+in the assemblies it names (`create-host`).
 
 ## Decision 2 — dispatch trigger
 

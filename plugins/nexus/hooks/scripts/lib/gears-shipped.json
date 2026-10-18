@@ -1,0 +1,164 @@
+{
+  "gears": ["fast", "normal", "quality", "off"],
+  "rows": [
+    {
+      "row": 1,
+      "setting": "How detailed the plan is",
+      "catalogue": "plan type",
+      "allowed": ["light", "full", "as today", "ask me"],
+      "values": {
+        "fast": { "value": "light", "text": "light" },
+        "normal": { "value": "as today", "text": "as today (by size)" },
+        "quality": { "value": "full", "text": "full" },
+        "off": { "value": "ask me", "text": "ask me" }
+      }
+    },
+    {
+      "row": 2,
+      "setting": "Whether a critic reads the spec and the plan",
+      "catalogue": "review mode",
+      "allowed": ["self-review", "Codex alone", "a critic always", "as today", "ask me"],
+      "values": {
+        "fast": { "value": "Codex alone", "text": "Codex alone where installed, else self-review" },
+        "normal": { "value": "as today", "text": "as today (a critic for complex or costly work)" },
+        "quality": { "value": "a critic always", "text": "always a critic" },
+        "off": { "value": "ask me", "text": "ask me" }
+      }
+    },
+    {
+      "row": 3,
+      "setting": "Readers on a code review, and on a critic review where one runs",
+      "catalogue": "reader pair",
+      "allowed": [
+        "Codex + Sonnet", "Codex + Sonnet + Fable", "Fable + Sonnet", "Sonnet + Opus", "Sonnet + Opus + Fable",
+        "Opus + Sonnet", "Opus + Sonnet + Fable", "as today", "ask me"
+      ],
+      "values": {
+        "fast": { "value": "Codex + Sonnet", "text": "Codex + Sonnet" },
+        "normal": { "value": "Codex + Sonnet", "text": "Codex + Sonnet" },
+        "quality": { "value": "Codex + Sonnet + Fable", "text": "Codex + Sonnet, plus Fable while usage allows" },
+        "off": { "value": "ask me", "text": "ask me" }
+      }
+    },
+    {
+      "row": 4,
+      "setting": "Who builds",
+      "catalogue": "build lane",
+      "allowed": ["this session lighter checks", "this session full checks", "full team", "as today", "ask me"],
+      "values": {
+        "fast": { "value": "this session lighter checks", "text": "this session, lighter checks" },
+        "normal": { "value": "as today", "text": "as today (by size)" },
+        "quality": { "value": "as today", "text": "as today (by size)" },
+        "off": { "value": "ask me", "text": "ask me" }
+      }
+    },
+    {
+      "row": 5,
+      "setting": "Sonnet reviewer and critic effort",
+      "catalogue": null,
+      "allowed": ["medium", "high", "extra-high", "as today", "ask me"],
+      "values": {
+        "fast": { "value": "high", "text": "high" },
+        "normal": { "value": "as today", "text": "as today" },
+        "quality": { "value": "extra-high", "text": "extra-high" },
+        "off": { "value": "as today", "text": "as today" }
+      }
+    },
+    {
+      "row": 6,
+      "setting": "Codex effort",
+      "catalogue": null,
+      "allowed": ["low", "medium", "high", "extra-high", "as today", "ask me"],
+      "values": {
+        "fast": { "value": "not lowered", "text": "the repo's Codex setting, else Codex's own default, not lowered" },
+        "normal": { "value": "as today", "text": "as today" },
+        "quality": { "value": "as today", "text": "as today" },
+        "off": { "value": "as today", "text": "as today" }
+      }
+    },
+    {
+      "row": 7,
+      "setting": "Code-review fix rounds",
+      "catalogue": null,
+      "allowed": ["1", "2", "3", "as today", "ask me"],
+      "values": {
+        "fast": { "value": "1", "text": "1" },
+        "normal": { "value": "as today", "text": "as today (up to 3)" },
+        "quality": { "value": "as today", "text": "as today (up to 3)" },
+        "off": { "value": "as today", "text": "as today" }
+      }
+    },
+    {
+      "row": 8,
+      "setting": "Author model (PO, architect, developer, team lead)",
+      "catalogue": null,
+      "allowed": ["Opus", "Sonnet", "as today", "ask me"],
+      "values": {
+        "fast": { "value": "Opus", "text": "Opus" },
+        "normal": { "value": "Opus", "text": "Opus" },
+        "quality": { "value": "Opus", "text": "Opus" },
+        "off": { "value": "as today", "text": "as today" }
+      }
+    },
+    {
+      "row": 9,
+      "setting": "Author effort",
+      "catalogue": null,
+      "allowed": ["medium", "high", "extra-high", "as today", "ask me"],
+      "values": {
+        "fast": { "value": "high", "text": "high" },
+        "normal": { "value": "high", "text": "high" },
+        "quality": { "value": "high", "text": "high" },
+        "off": { "value": "as today", "text": "as today" }
+      }
+    },
+    {
+      "row": 10,
+      "setting": "Done check of the build against the plan",
+      "catalogue": null,
+      "allowed": ["runs"],
+      "values": {
+        "fast": { "value": "runs", "text": "runs" },
+        "normal": { "value": "runs", "text": "runs" },
+        "quality": { "value": "runs", "text": "runs" },
+        "off": { "value": "runs", "text": "runs" }
+      }
+    },
+    {
+      "row": 11,
+      "setting": "Which review findings are fixed",
+      "catalogue": null,
+      "allowed": ["high and critical", "medium and up", "as today", "ask me"],
+      "values": {
+        "fast": { "value": "high and critical", "text": "high and critical; the rest listed as not fixed" },
+        "normal": { "value": "as today", "text": "as today" },
+        "quality": { "value": "as today", "text": "as today" },
+        "off": { "value": "as today", "text": "as today" }
+      }
+    },
+    {
+      "row": 12,
+      "setting": "Complete test run",
+      "catalogue": null,
+      "allowed": ["once beside the reviewers", "as today", "ask me"],
+      "values": {
+        "fast": { "value": "once beside the reviewers", "text": "once, at hand-over, beside the reviewers" },
+        "normal": { "value": "as today", "text": "as today" },
+        "quality": { "value": "as today", "text": "as today" },
+        "off": { "value": "as today", "text": "as today" }
+      }
+    },
+    {
+      "row": 13,
+      "setting": "Tests run per step",
+      "catalogue": null,
+      "allowed": ["tied to the change", "as today", "ask me"],
+      "values": {
+        "fast": { "value": "tied to the change", "text": "the tests tied to the change" },
+        "normal": { "value": "as today", "text": "as today" },
+        "quality": { "value": "as today", "text": "as today" },
+        "off": { "value": "as today", "text": "as today" }
+      }
+    }
+  ]
+}

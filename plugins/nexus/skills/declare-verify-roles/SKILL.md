@@ -24,7 +24,7 @@ facts. This recipe writes them, once, attended.
    |---|---|---|
    | `build` | an **incremental** build of what changed, used only in a compile-fix loop | never a clean or forced full rebuild — that guarantee belongs to CI and to the close |
    | `unit` | the **narrowest** command covering the step's change; where the repo's convention chains build and test, chain them here (`… && …`) rather than dropping the build | **the `stepLimitSeconds` you declare** (step 5); never the whole suite, and never the full command minus a filter clause — the slow-test exclusion below is added to a `unit` already scoped this way and never scopes it |
-   | `full` | everything, the suite the close gate runs once (it may take minutes) | **once, at close, from the main session** — never in a subagent |
+   | `full` | everything, the suite the close gate runs once (it may take minutes) | **once, at close, from the main session** — never in a subagent; within the `fullLimitSeconds` you declare (step 5), 10 minutes when unset |
 
    - `mutation` — only if the repo has a mutation runner; otherwise omit the key.
 
@@ -66,7 +66,8 @@ facts. This recipe writes them, once, attended.
 3. **Run each role command once through the runner** — `verify-run.js --role {r}`; for `unit`
    `verify-run.js --role unit --timeout-ms 110000`, since no step limit is set yet and the bare form
    would cut at the 90 s default; and for `full`
-   `verify-run.js --role full --slug declare-verify-roles` (the session's plugin-paths block carries
+   `verify-run.js --role full --slug declare-verify-roles --timeout-ms 1800000`, since no full-run
+   limit is set yet and the bare form would cut at the 10-minute default (the session's plugin-paths block carries
    the runner's resolved path). The runner reads the roles from `.claude/verify.json`, so write the
    proposed `roles` block there first (Write tool) and correct it in place as you go; step 5
    completes the file. **Before timing `full`**, ask the composer whether it carries a filter clause:
@@ -117,6 +118,17 @@ facts. This recipe writes them, once, attended.
    A step close cut at this limit records `reason: "timeout"`. Where the repo declares `roles.full`,
    the developer reads that as *not finished* rather than red — the complete run at close covers the
    tests that were cut — and without `roles.full` it stays red. Say so when you propose the value.
+
+   **The full-run limit.** A full run — `--profile complete`, or `verify-run.js --role full` — is cut
+   at 10 minutes unless the repo declares a top-level `"fullLimitSeconds"` beside `stepLimitSeconds`,
+   in whole seconds; it is never clamped (the full run is a main-session run), and anything but a
+   whole number above 0 is ignored, with one stderr line. Propose it only when `measured.full.ms`
+   is over 5 minutes: **twice the measured time, rounded up to the next minute**. A full run cut at
+   its limit records `reason: "timeout"` and names this setting:
+
+   ```json
+   "fullLimitSeconds": 1200
+   ```
 6. **Do not commit** unless the user asks — the files are theirs; name them in your reply.
    Where the `tag-slow-tests` skill (`nexus-pro`) is in your skill list and `slow` was declared, end
    the reply by inviting "tag slow tests": that pass times the suite and tags its slow tests, which

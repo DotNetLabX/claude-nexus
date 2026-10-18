@@ -3,10 +3,14 @@
  * Nexus PreToolUse test-entry gate (SYNCHRONOUS — can block).
  *
  * A developer or solo seat runs tests through verify-run.js (`--profile fast`, or `--files` for the test
- * being written), never a raw test command. In the FOREGROUND a raw command is denied with the runner
- * call in the reason and logged `blocked: true`; for a background subagent — where the platform drops
- * a deny — it is logged to .claude/audit/violations.log with a systemMessage, and the architect's
- * done-check Fails on an unblocked line.
+ * being written), never a raw test command. On every gated seat, foreground or background, a raw
+ * command is denied with the runner call in the reason and logged to .claude/audit/violations.log with
+ * `blocked: true`; a subagent's row also carries `spawn`.
+ *
+ * A BACKGROUND DENY IS A PLATFORM FACT, BY VERSION: dropped for a background subagent up to the
+ * 2026-09-16 re-probe (Claude Code 2.1.273), honoured at 2.1.293 (ADR-135 P7) and at 2.1.301 (probe
+ * 2026-10-17). On a version that drops it — an older client, or a later one — the command runs while
+ * its row still reads `blocked: true`, and nothing here detects that.
  *
  * LATENCY: a synchronous hook on every shell call, so the first act is isRawTestCommand, a pure
  * string decision made before any registry or declaration read.
@@ -43,6 +47,7 @@ const TEST_FORM = /(?:^|[\s;&|(){}:/\\])(?:dotnet(?:\.exe)? test|node(?:\.exe)? 
 const READ_LEADS = new Set([
   'grep', 'rg', 'cat', 'head', 'tail', 'ls', 'find', 'sed', 'awk', 'type',
   'select-string', 'get-content', 'echo', 'write-host', 'write-output', 'git',
+  'where-object', 'group-object',
 ]);
 const EXEMPT = new Set(['verify-run.js', 'tag-slow-tests.mjs']);
 
@@ -93,26 +98,18 @@ function main(input) {
   // POSIX separators: the path is pasted into a command line, where a backslash is an escape.
   const runner = path.join(__dirname, 'verify-run.js').replace(/\\/g, '/');
   const call = `node "${runner}" --profile fast (for the test file you are writing: --profile fast --files <test file>...)`;
-  const background = Boolean(data.agent_type);
   const row = {
     agent: role,
-    ...(background ? { spawn: String(data.agent_type) } : {}),
+    ...(data.agent_type ? { spawn: String(data.agent_type) } : {}),
     tool: String(data.tool_name),
     path: tree,
     rule: 'test-entry',
     command: fold(ti.command).slice(0, COMMAND_EXCERPT),
     token,
     session: data.session_id,
-    ...(background ? {} : { blocked: true }),
+    blocked: true,
   };
   logViolation(root, row);
-
-  if (background) {
-    process.stdout.write(JSON.stringify({
-      systemMessage: `Nexus test-entry gate: ${role} ran a raw test command. Run tests through ${call}. Logged to .claude/audit/violations.log.`,
-    }));
-    return process.exit(0);
-  }
   return deny(`a raw test command (\`${row.command}\`). Run tests through ${call}.`);
 }
 

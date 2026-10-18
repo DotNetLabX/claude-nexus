@@ -13,8 +13,8 @@ It ships a coordinated team of specialized agents, always-on behavioral rules, r
 | **Agents** | 8 | architect, developer, learner, po, solo, team-lead (`opus`); critic, reviewer (`sonnet`) |
 | **Rules** | 18 (4 kernel + 10 on-demand + 1 prohibitions + 1 reply-form + 2 spawn-contract) | **Three** always-on tiers are injected at SessionStart, each as its own separately-capped payload (plugins have no auto-loaded `rules/`) — the kernel, the prohibitions envelope and the reply-form envelope; the on-demand tier is delivered as a Read-Index instead; and the **spawn-contract** pair is not a SessionStart tier at all — it is delivered at *spawn* time, via `SubagentStart` — see *Design: where conventions live* below |
 | **Skills** | 20 | 13 process recipes (planning, specs, architecture docs, review calibration, lessons, TDD, debugging, cleanup, verify roles, skill building, releases) + 7 artifact-format and entry schemas (implementation/questions/review/summary/lessons/proposal + KB entries) |
-| **Commands** | 10 | 8 persona activators + `backlog` + `style` |
-| **Hooks** | 30 commands across 7 events, over 25 scripts | `inject-rules`, `restore-agent`, `inject-prohibitions`, `inject-reply-style`, `declarations-nudge` (SessionStart); `guard`, `pipeline-gate`, `prohibition-gate`, `test-entry-gate`, `owner-ask-gate`, `audit-logger` (PreToolUse); `register-persona`, `learner-cadence`, `boundary-detector`, `registry-stamp-check`, `read-tracker`, `skill-tracker`, `handoff-tracker`, `lessons-tracker`, `config-advisor`, `register-owner-away` (PostToolUse); `inject-verify-roles`, `inject-spawn-contract`, `inject-script-folder`, `handoff-tracker` (SubagentStart); `verify-gate`, `handoff-tracker` (SubagentStop); `handoff-tracker` (Stop, UserPromptSubmit). `handoff-tracker` is registered five times and `read-tracker` twice, which is why 30 commands cover 25 script names |
+| **Commands** | 11 | 8 persona activators + `backlog` + `style` + `gear` |
+| **Hooks** | 32 commands across 7 events, over 27 scripts | `inject-rules`, `restore-agent`, `inject-prohibitions`, `inject-reply-style`, `declarations-nudge` (SessionStart); `guard`, `pipeline-gate`, `prohibition-gate`, `test-entry-gate`, `owner-ask-gate`, `checker-effort`, `audit-logger` (PreToolUse); `register-persona`, `learner-cadence`, `boundary-detector`, `registry-stamp-check`, `read-tracker`, `skill-tracker`, `handoff-tracker`, `lessons-tracker`, `config-advisor`, `register-owner-away` (PostToolUse); `inject-verify-roles`, `inject-spawn-contract`, `inject-script-folder`, `handoff-tracker` (SubagentStart); `verify-gate`, `handoff-tracker` (SubagentStop); `handoff-tracker`, `critique-check` (Stop); `handoff-tracker` (UserPromptSubmit). `handoff-tracker` is registered five times and `read-tracker` twice, which is why 32 commands cover 27 script names |
 
 ## Two ways to use an agent
 
@@ -62,6 +62,15 @@ It is on by default and controlled by one committed key, `replyStyle` in the pro
 Both writes behave the same way. Either one creates `.claude/nexus-agents.json` containing only that key if the file does not exist, and preserves every other key byte-for-byte if it does. If the key already holds the value you asked for — **or the file or key is absent, which is the same as `on`** — nothing is written and nothing is created; the report says *already on* / *already off*. If the file exists but does not parse, nothing is written at all and the command says why.
 
 The **printed** half always runs, whatever the file half did: the key decides what the *next* session receives, while what the command prints takes effect immediately — this session's delivery was decided at its start and need not match the file. **A user-set Claude Code output style wins**, which the paragraph says itself; the plugin performs no detection of that setting and never edits it.
+
+## Feature switches
+
+Some features ship switched off. The `features` object in the project's `.claude/nexus-agents.json` holds their named switches, and each is off unless its value is the JSON `true` — a missing file, section or key, or any other value, leaves it off. To turn one on, ask the agent to set it, or add it yourself, for example `"features": { "planCutCandidates": true }`; every other key in the file stays as it is.
+
+| Switch | What it turns on | Default |
+|--------|------------------|---------|
+| `planCutCandidates` | The architect marks the parts of a plan that could be deferred, both plan reviewers judge each one, and you keep or defer each at plan approval; a deferred part becomes a backlog row. | off |
+| `skillsPerStep` | The architect names every pattern skill a plan step touches, not only one; the developer opens each, the plan critic checks each step's files against the skills, and the code reviewer checks each step's code against the skills it names. | off |
 
 ## Install
 
