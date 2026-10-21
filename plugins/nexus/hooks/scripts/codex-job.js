@@ -4,7 +4,7 @@
  *
  *   node codex-job.js start   --prompt-file <path> [--limit-minutes <n>] [--effort <level>] [--label <text>] [--kind <kind>]
  *   node codex-job.js wait    --job <id> --deadline <iso> [--started <iso>] [--max-seconds <n>]
- *   node codex-job.js collect --job <id> --deadline <iso> [--started <iso>] [--kind review|done-check|research|panel]
+ *   node codex-job.js collect --job <id> --deadline <iso> [--started <iso>] [--kind review|done-check|research|panel|mining]
  *   node codex-job.js jobs    --label <text>
  *
  * Every call prints one JSON object on stdout and exits 0 on every handled outcome — an unavailable
@@ -21,7 +21,11 @@
  * which adds `recordError`. `jobs --label` prints every job recorded under exactly that label,
  * newest first: `recorded` with its id, `started, id not recorded` for an intent with neither, or
  * `none`, a missing record file included; a record it cannot read whole is `unreadable`. --kind is
- * validated as `collect` validates it and recorded. Without --label nothing is written.
+ * validated as `collect` validates it and recorded. Without --label nothing is written. A `collect`
+ * that returns `completed`, `failed` or `cancelled` for a job the record holds appends one `end` line
+ * — its label, the job id, when it ended and the state — once per job, so a labelled job's run time
+ * can be read back; a job the record does not hold, a companion not found, or a job still running
+ * writes none, and `jobs --label` reads past the line.
  *
  * RUN FROM THE SESSION ROOT, NEVER WITH A --cwd. The Codex companion keeps its job records per
  * working directory, so `start`, `wait` and `collect` find the same job only when all three run from
@@ -108,8 +112,8 @@ const READ_SLACK_MS = LOOKUP_MS * LOOKUP_TRIES + 1000;
 const KILL_MS = 10000;
 const RECHECK_MS = 2000;
 const CODEX_EFFORTS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'];
-const KINDS = ['review', 'done-check', 'research', 'panel'];
-const ANY_OUTPUT_KINDS = new Set(['research', 'panel']);
+const KINDS = ['review', 'done-check', 'research', 'panel', 'mining'];
+const ANY_OUTPUT_KINDS = new Set(['research', 'panel', 'mining']);
 const RECORD_REL = '.claude/audit/codex-jobs.jsonl';
 const TERMINAL = new Set(['completed', 'failed', 'cancelled']);
 const WORKER_WAIT = path.join(__dirname, 'codex-worker-wait.js');
@@ -340,6 +344,21 @@ function appendRecord(line) {
   } catch (err) {
     return `the Codex job record (${RECORD_REL}) could not be written: ${err.message}`;
   }
+}
+
+// A record that cannot be read whole writes no end line: a collect never fails on its timing line.
+function recordEnd(jobId, state) {
+  let lines;
+  try {
+    lines = fs.readFileSync(path.join(process.cwd(), RECORD_REL), 'utf8').split(/\r?\n/).filter((l) => l.trim() !== '').map((l) => JSON.parse(l));
+  } catch {
+    return;
+  }
+  if (lines.some((l) => l && l.type === 'end' && l.jobId === jobId)) return;
+  const job = lines.filter((l) => l && l.type === 'job' && l.jobId === jobId).pop();
+  const intent = job && lines.find((l) => l && l.type === 'intent' && l.intent === job.intent);
+  if (!intent) return;
+  appendRecord({ type: 'end', label: intent.label, jobId, endedAt: new Date().toISOString(), state });
 }
 
 // Every job recorded under exactly this label, newest first. A record that cannot be read whole is
@@ -622,15 +641,16 @@ function cmdCollect(opts) {
   const script = a.found.path;
   const s = lostWorker(readStatus(script, a.job, 0, COLLECT_STATUS_MS), a.job);
   if (s.pidFree) companion(script, ['cancel', a.job, '--json'], CANCEL_MS);
+  const ended = (out) => { if (TERMINAL.has(out.state)) recordEnd(a.job, out.state); return print(out); };
   if (TERMINAL.has(s.state)) {
     const out = finished(script, a.job, s, kind);
-    return print(isJobFailure(out) ? flagEarly(out, a) : out);
+    return ended(isJobFailure(out) ? flagEarly(out, a) : out);
   }
-  if (Date.now() >= a.deadline) return print(cut(script, a.job, s, kind, null));
+  if (Date.now() >= a.deadline) return ended(cut(script, a.job, s, kind, null));
   const stall = s.readError ? null : stallOf(s.record, a.started);
   if (stall && stall.stalled) {
     const early = flagEarly({}, a, SETUP_ALLOWANCE_MS).earlyFailure === true;
-    return print(cut(script, a.job, s, kind, { early }));
+    return ended(cut(script, a.job, s, kind, { early }));
   }
   const out = { state: s.state, output: '', verdict: null, reason: 'still running — wait until the deadline' };
   return print(s.readError ? { ...out, readError: true } : out);

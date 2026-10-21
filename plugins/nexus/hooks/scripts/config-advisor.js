@@ -18,8 +18,11 @@
  * families: a seat's value is compared by the family it names (`claude-opus-5-5` reads as `opus`),
  * and a name outside the four is its own family — kept, compared and suggested like any other. The
  * job checks below use the same list, since a job value must be one of the four — save one value:
- * `codex` at `doneCheck`, where a repo may name Codex as its done check; at every other job `codex`
- * draws the same outside-the-families line, and it is never listed as a family.
+ * `codex` at `doneCheck`, where a repo may name Codex as its done check; at a miner key `codex` draws
+ * a line naming nexus-miner's mining job table, where Codex already leads the jobs that only read; at
+ * every other job `codex` draws the same outside-the-families line, and it is never listed as a family.
+ * The miner pair is reported only where `minerJudge` equals `minerGenerator`: under the job table the
+ * judge key sets a fallback, a different model by design.
  *
  * TWO NAMED FAMILIES NEVER SUGGESTED, AND WHY THAT IS NOT A BREACH OF IT. `NEVER_SUGGESTED` and
  * `NOT_A_CHECKER` are not permitted-model lists and not judgments about what any seat is configured to
@@ -75,6 +78,7 @@ const OWN_JOBS = ['discovery', 'audit', 'secondReader', 'doneCheck'];
 const RESEARCH_TIERS = ['routine', 'highStakes'];
 const CHECKER_JOBS = ['secondReader', 'doneCheck'];
 const PANEL_PEERS = ['fable', 'opus'];
+const MINER_JOBS = ['minerGenerator', 'minerJudge', 'minerMechanical'];
 const CODEX = 'codex';
 const CODEX_EFFORTS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 
@@ -130,6 +134,12 @@ function checkJobs(jobs, cfg) {
       continue;
     }
     if (key === 'doneCheck' && typeof v === 'string' && v.trim().toLowerCase() === CODEX) continue;
+    if (MINER_JOBS.includes(key) && typeof v === 'string' && v.trim().toLowerCase() === CODEX) {
+      out.push(`${PREFIX} jobs.${key} is ${show(v)} — Codex already leads the mining jobs that only read, by nexus-miner's ` +
+        `mining job table (tools/stage-models.json); a miner key names a Claude family (${FAMILIES.join(', ')}) ` +
+        `for the Claude jobs and fallbacks, so the spawn reads it as unset.`);
+      continue;
+    }
     const f = exactFamily(v);
     if (!f) { out.push(valueLine(key, v)); continue; }
     if (f === NOT_A_CHECKER && CHECKER_JOBS.includes(key)) {
@@ -140,12 +150,12 @@ function checkJobs(jobs, cfg) {
       out.push(`${PREFIX} jobs.doneCheck is ${f}, the developer's family — the done check would grade work from its own family; your setting stands.`);
     }
   }
-  // FAMILIES is in tier order, best first: a higher index is a lower tier.
   const judge = exactFamily(jobs.minerJudge);
   const generator = exactFamily(jobs.minerGenerator);
-  if (judge && generator && FAMILIES.indexOf(judge) >= FAMILIES.indexOf(generator)) {
-    out.push(`${PREFIX} jobs.minerJudge (${judge}) is at or below jobs.minerGenerator (${generator}) — ` +
-      `verification never runs below generation on a same-model pair; your setting stands.`);
+  if (judge && generator && judge === generator) {
+    out.push(`${PREFIX} jobs.minerJudge (${judge}) equals jobs.minerGenerator (${generator}) — a mining judge ` +
+      `on its producer's model is no independent check (the key sets the judge fallbacks where Codex leads, and ` +
+      `the judge itself in mine-from-spec); your setting stands.`);
   }
   return out;
 }

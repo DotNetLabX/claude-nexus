@@ -23,12 +23,17 @@
  * failing, or null when it names none it can place in the repo, names one it cannot place, was aborted,
  * or ran anything but a listed shape: the runner invoked directly, with listed options only, as its last
  * stage after listed setup stages (a wrapper may stop at its first failing stage; an unlisted shape may hide one).
+ * The listed options include the per-test stops the composer adds (`--test-timeout`, `--test-force-exit`, the
+ * core events reporter, `--blame-hang-timeout`, `--blame-hang-dump-type`) and the trx report a .NET step close
+ * is timed from (`--logger trx --results-directory`). nodeInvocation reads a command
+ * that is one direct node stage in that shape into its executable, options and targets, so verify-run.js can
+ * run it as the composer's legs. A tied vstest command carries the hang stop when `stopSeconds` is given.
  */
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { fileURLToPath } = require('url');
-const { filesCommand, inferRunner, joinExclusion, splitChain } = require('./compose-test-command');
+const { filesCommand, inferRunner, joinExclusion, splitChain, stopFlags, REPORTER_URL } = require('./compose-test-command');
 const { isExcluded } = require('./tree-hash');
 
 const NODE_SOURCE = /\.(js|mjs|cjs|ts|mts|cts|jsx|tsx)$/;
@@ -152,13 +157,14 @@ function unitFilter(unit) {
 }
 
 // A tied run is never wider than the step close it stands in for: it keeps the unit's filter and,
-// where slow tests are declared, their exclusion.
-function dotnetCommand(project, filter, slow) {
-  const head = `dotnet test "${project}"${filter ? ` --filter "${filter}"` : ''}`;
+// where slow tests are declared, their exclusion. `stopSeconds` adds the composer's hang stop.
+function dotnetCommand(project, filter, slow, stopSeconds) {
+  const stop = stopSeconds ? ` ${stopFlags('vstest', stopSeconds)}` : '';
+  const head = `dotnet test "${project}"${stop}${filter ? ` --filter "${filter}"` : ''}`;
   return slow ? joinExclusion({ runner: 'vstest', unit: head }) : head;
 }
 
-function tiedSet({ repo, changed, runner, unit = '', slow = null, listing = null }) {
+function tiedSet({ repo, changed, runner, unit = '', slow = null, listing = null, stopSeconds = 0 }) {
   const named = [...new Set((changed || []).map((f) => relTo(repo, f)))];
   const considered = named.filter((f) => !isExcluded(f));
   const result = (fields) => ({
@@ -176,7 +182,7 @@ function tiedSet({ repo, changed, runner, unit = '', slow = null, listing = null
   if (filter === null) {
     return result({ targets, fallback: "the declared unit's dotnet test runs carry different filters, so a tied project's own cannot be told" });
   }
-  return result({ targets, commands: targets.map((p) => dotnetCommand(p, filter, Boolean(slow))) });
+  return result({ targets, commands: targets.map((p) => dotnetCommand(p, filter, Boolean(slow), stopSeconds)) });
 }
 
 // The spec reporter's `test at {file}:{line}:{col}` and the TAP reporter's `location: '{file}:…'`.
@@ -247,15 +253,18 @@ function runnerNamed(word) {
 const VALUE = () => true;
 const oneOf = (...allowed) => (v) => allowed.includes(v);
 const VERBOSITY = oneOf('q', 'quiet', 'm', 'minimal', 'n', 'normal', 'd', 'detailed', 'diag', 'diagnostic');
-// A reporter or logger outside the built-in ones is a module that runs code and owns the output read here.
+// A reporter or logger outside the built-in ones is a module that runs code and owns the output read here;
+// the core's own events reporter writes only its events file.
 const NODE_TEST_OPTIONS = new Map([
-  ['--test-concurrency', VALUE], ['--test-reporter', oneOf('spec', 'tap', 'dot', 'junit', 'lcov')],
-  ['--test-reporter-destination', VALUE], ['--test-timeout', VALUE], ['--test-name-pattern', VALUE],
+  ['--test-concurrency', VALUE], ['--test-reporter', oneOf('spec', 'tap', 'dot', 'junit', 'lcov', REPORTER_URL)],
+  ['--test-reporter-destination', VALUE], ['--test-timeout', VALUE], ['--test-force-exit', null], ['--test-name-pattern', VALUE],
   ['--test-skip-pattern', VALUE], ['--test-only', null], ['--experimental-test-coverage', null], ['--no-warnings', null],
 ]);
 const DOTNET_TEST_OPTIONS = new Map([
   ['--filter', VALUE], ['--no-build', null], ['--no-restore', null], ['-c', VALUE], ['--configuration', VALUE],
   ['--logger', (v) => /^(?:console|trx|html)(?:;[\w.]+=[\w.]+)*$/i.test(v)], ['-v', VERBOSITY], ['--verbosity', VERBOSITY],
+  ['--blame-hang-timeout', (v) => /^\d+(?:ms|s|m|h)?$/.test(v)], ['--blame-hang-dump-type', oneOf('none', 'mini', 'full')],
+  ['--results-directory', VALUE],
 ]);
 const DOTNET_BUILD_OPTIONS = new Map([
   ['-c', VALUE], ['--configuration', VALUE], ['-f', VALUE], ['--framework', VALUE], ['-v', VERBOSITY], ['--verbosity', VERBOSITY],
@@ -349,6 +358,32 @@ function chainAccountsFor(command) {
   return Boolean(stages && directRunner(stages.at(-1))) && stages.slice(0, -1).every(setupStage);
 }
 
+// A command that is one direct `node … --test …` stage in a listed shape, read into what a run needs to
+// recompose it as argument lists: the executable, the listed environment assignments before it, its node
+// options and its targets. null for anything else — a setup stage, a wrapper, another runner.
+function nodeInvocation(command) {
+  const stages = stagesOf(command);
+  if (!stages || stages.length !== 1 || directRunner(stages[0]) !== 'node') return null;
+  const words = stages[0];
+  const env = {};
+  let start = 0;
+  for (; isAssignment(words[start]); start++) {
+    const at = words[start].text.indexOf('=');
+    env[words[start].text.slice(0, at)] = words[start].text.slice(at + 1);
+  }
+  const args = words.slice(start + 1).map((w) => w.text);
+  const options = [];
+  const targets = [];
+  for (let i = 0; i < args.length;) {
+    if (args[i] === '--test') { i++; continue; }
+    if (!args[i].startsWith('-')) { targets.push(args[i++]); continue; }
+    const end = optionEnd(NODE_TEST_OPTIONS, args, i);
+    options.push(...args.slice(i, end));
+    i = end;
+  }
+  return { exe: words[start].text, env, options, targets };
+}
+
 // A run the test host aborted never ran the tests after the abort.
 const ABORTED = /^\s*Test Run Aborted\b|The active test run was aborted/im;
 
@@ -377,7 +412,7 @@ function failedTargets({ output, repo, command = null, listing = null }) {
   return found.size ? [...found].sort() : null;
 }
 
-module.exports = { tiedSet, failedTargets, runnerOf, declaredFor, readConfig };
+module.exports = { tiedSet, failedTargets, nodeInvocation, runnerOf, declaredFor, readConfig };
 
 function cli(argv) {
   const at = (flag) => argv.indexOf(flag);

@@ -55,10 +55,11 @@ No approval without evidence. Reject immediately if:
 - A passing **baseline** is offered for a **plan-mandated** test the baseline's filter *excludes* (e.g. "309 passing" under `--filter Category!=Integration` when the plan required an `Integration`-tagged test) — the count proves nothing about the excluded test; run it by name
 
 **Cite the run record; run no whole suite.** The brief's `Run record:` line names the round's record: cite it in your Evidence table, and run no whole suite — not the complete run, not the `unit` role, not a whole `node --test` or `dotnet test` run, not the fast profile without `--files` — except where its state says so:
-- **a complete record, `pass`, for the reviewed tree** (a first review) — it is the test evidence;
+- **a complete record that counts as passing, for the reviewed tree** (a first review) — a `pass`, or a `fail` whose only failures are timeouts in tests the change did not touch (`touched: false`, the shared rule in `lib/run-verdict.js`) — it is the test evidence; those timeouts go to a solo after the close and are no finding;
+- **a red complete record whose failures then ran green by name** (the handover ladder's end) — cite it with those by-name records; together they are the test evidence;
 - **`undeclared`** (the repo declares no complete suite) — no run would be duplicated, so run the fast profile once (`verify-run.js --profile fast`, the repo's `unit` role) and cite that;
 - **`pending — complete run in flight`** (the light lane) — targeted checks only;
-- **no `Run record:` line** (a standalone review, `/nexus:reviewer`) — cite the newest passing complete record for the reviewed tree where one exists, else run the complete suite once and cite that;
+- **no `Run record:` line** (a standalone review, `/nexus:reviewer`) — cite the newest complete record that counts as passing for the reviewed tree where one exists, else run the complete suite once and cite that;
 - **on a follow-up, the producer's fast record** — the fix developer's `## Fix Round` block, the solo's `Verify:` line, or the hand-up developer's `## Fix Round Hand-up {n}` block. A record cut at its limit (an `Unfinished:` line) or missing reads **"not verified at this round — the close run covers it"**: cite it so, never reject on it. A red record is a finding.
 
 You still run a **named test file** — `verify-run.js --profile fast --files {file}` — only to prove a specific finding: a plan-mandated test the record's filter excluded (run by name), a platform branch forced the other way, the failing set of a "pre-existing" carry-over, a mutation battery in a scratch tree (`review-format`). Staleness is the close's: the close run re-measures the final tree, and the close gate refuses `summary.md` without a passing complete record for it — never recompute a tree hash.
@@ -181,7 +182,7 @@ Pipeline coordination — always in effect when you operate in the pipeline. (Fo
 
 (*One block bullet is overridden here by role. **Message Size Contract** — your findings, evidence and severity ratings go in the `## Step 2 — Code Review` section of `review.md`, while the verdict handoff itself stays ~300 words: a declared carve-out in `agents-workflow.md` § Message Size Contract.*)
 
-You are Step 2, running beside the architect's Step 1 done check after a green handover run. On the light lane (the brief carries `Suite: running — record pending`) the complete run starts beside you and its record may land after you — cite it in your Evidence, or `pending — complete run in flight`, with targeted checks only (→ § Fresh Evidence); read `## Unfinished Tests` in `implementation.md` as not verified at the step — the complete run covers it.
+You are Step 2, running beside the architect's Step 1 done check after a handover run that counts as passing, or whose failures then ran green by name. On the light lane (the brief carries `Suite: running — record pending`) the complete run starts beside you and its record may land after you — cite it in your Evidence, or `pending — complete run in flight`, with targeted checks only (→ § Fresh Evidence); read `## Unfinished Tests` in `implementation.md` as not verified at the step — the complete run covers it.
 
 **`## Solo Fixes` in `implementation.md`** is code a solo changed outside the plan's steps: review it as part of the diff, but its files are never a plan-deviation finding; read each block's `Class checked:` and `Left:` lines.
 

@@ -14,6 +14,8 @@
  * reuses a stale record, so the list errs toward counting. The pipeline writes, by writer:
  *   audit/**              every hook's logs, records, locks and stamps; the campaign runner's state
  *   review-queue/**       the team lead's unattended review queue
+ *   tmp/**                agents' scratch: helper scripts, probe projects and scratch files a campaign unit
+ *                         keeps out of the machine's temp folder
  *   .current-agent        the persona commands
  *   .personas.json        register-persona.js, restore-agent.js (and their `.personas.json.{pid}.tmp`)
  *   .pipeline-state       the team lead's phase token
@@ -36,7 +38,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 
-const PIPELINE_DIRS = ['audit/', 'review-queue/'];
+const PIPELINE_DIRS = ['audit/', 'review-queue/', 'tmp/'];
 const PIPELINE_FILES = new Set([
   '.current-agent', '.personas.json', '.pipeline-state', '.approval-scope', '.worktree-target',
   '.campaign-unit', '.owner-away', 'test-times.json',

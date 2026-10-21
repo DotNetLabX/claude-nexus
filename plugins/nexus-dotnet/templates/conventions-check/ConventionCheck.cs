@@ -10,6 +10,8 @@ public class ConventionCheck
     public required string Kind { get; init; }
     public required string Message { get; init; }
     public bool LibraryHalf { get; init; }
+    public string? Files { get; init; }
+    public string? AllowList { get; init; }
     public bool Comments { get; init; }
     public string? UnlessText { get; init; }
     public List<ConventionPattern> Patterns { get; init; } = [];

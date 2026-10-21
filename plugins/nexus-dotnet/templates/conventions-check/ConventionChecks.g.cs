@@ -32,7 +32,8 @@ public static class ConventionChecks
             Scope = @"fragment",
             Lang = @"cs",
             Kind = @"text",
-            Message = @"a JsonPropertyName that only repeats the default camelCase name",
+            Message = @"an endpoint request or reply shape carries no JsonPropertyName that only repeats the default camelCase name",
+            Files = @"(?:Command|Query|Dto)\.cs$",
             Pattern = @"\[(?:property:\s*)?JsonPropertyName\(""(?<json>[^""]*)""\)\]\s*(?:(?:public|private|protected|internal|required|virtual|override|static|readonly)\s+)*[\w.<>?,\[\] ]+?\s+(?<name>[\p{L}_]\w*)\s*(?:[{;=,)]|$)",
             Compare = @"camelEqual",
             LiteralGroup = @"json",
@@ -118,7 +119,7 @@ public static class ConventionChecks
             Scope = @"fragment",
             Lang = @"project",
             Kind = @"line",
-            Message = @"a project file sets the basics only: no documentation file, no warning suppression, no comment — a pinned package excepted",
+            Message = @"a project file sets the basics only: no documentation file, no warning suppression, and no comment but one directly above the setting it explains",
             Patterns =
             [
                 new()
@@ -132,8 +133,25 @@ public static class ConventionChecks
                 },
                 new()
                 {
+                    Pattern = @"<!--\s*<",
+                },
+                new()
+                {
+                    Pattern = @"<!--[^\p{L}]*-->",
+                },
+                new()
+                {
+                    Pattern = @"<!--.*?(?:([=*#~_])\1{2}|---)",
+                },
+                new()
+                {
+                    Pattern = @"^\s*<!--.*\p{L}.*-->\s*$",
+                    UnlessNext = @"^\s*<(?!(?:Project|PropertyGroup|ItemGroup|ItemDefinitionGroup|ImportGroup|Target|Choose|When|Otherwise)\b)[\p{L}_][\w.]*\b[^<>]*>",
+                },
+                new()
+                {
                     Pattern = @"<!--",
-                    UnlessNext = @"^\s*<Package(?:Version|Reference)\b",
+                    Unless = @"^\s*<!--.*\p{L}.*-->\s*$",
                 },
             ],
         },
@@ -332,7 +350,8 @@ public static class ConventionChecks
             Scope = @"file",
             Lang = @"cs",
             Kind = @"types",
-            Message = @"a class logs only when it is on the lists file's logging list or is a hosted service, job, worker, middleware, pipeline behaviour or the central error handler",
+            Message = @"a class logs only when it is listed in docs/conventions/project-lists.md § Logging classes (the lists file the check's settings name) or is a hosted service, job, worker, middleware, pipeline behaviour or the central error handler",
+            AllowList = @"Logging classes",
             Rule = @"logging",
             AllowName = @"(?:HostedService|BackgroundService|Job|Worker|Middleware|Behavior|Behaviour|ExceptionHandler|ErrorHandler)$",
             AllowBase = @"\b(?:BackgroundService|IHostedService|IMiddleware|IPipelineBehavior<|IExceptionHandler|IJob)\b",

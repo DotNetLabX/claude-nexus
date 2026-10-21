@@ -14,12 +14,14 @@
  *   4) Full-suite evidence (F81, ADR-96). A summary.md's existence means "the pipeline completed".
  *      When the repo DECLARED a full suite (.claude/verify.json → roles.full), writing that file
  *      with no passing `role:"full"` record in the audit trail means the close gate's suite never
- *      ran. Blocked. The record must name the ROUND KEY — the slug taken from the summary.md path
+ *      ran. Blocked. Passing is lib/run-verdict.js's rule: a pass, or a run whose only failures are
+ *      timed-out tests the change did not touch. The record must name the ROUND KEY — the slug taken from the summary.md path
  *      being written — as well as matching the round's token or session; an unsigned record
- *      discharges nothing. Numbered 4 because 3 is retired below and is never reused. Under a plan
- *      header gear whose complete run runs once beside the reviewers, a stale or red latest record
- *      can still discharge it on the gear's evidence (lib/gear-close.js); the deny names what is not
- *      covered.
+ *      discharges nothing. Numbered 4 because 3 is retired below and is never reused. Whatever the
+ *      gear, a stale or red latest record can still discharge it on the close evidence
+ *      (lib/gear-close.js): each failure re-run green by name, every later change covered by a green
+ *      run. The deny names what is not covered; a record that cannot stand as evidence (cut, crashed,
+ *      or with no file hashes) keeps its own cause, and under a gear names the evidence's.
  *   5) Lessons evidence (F99, ADR-100 K5). "Write lessons before you close" was the one affirmative
  *      duty the always-on prohibitions envelope carried, and the W4 subagent probes measured it at
  *      0.000 — the prose was carrying nothing. The duty leaves the envelope and becomes observed:
@@ -145,7 +147,8 @@ const { execFileSync } = require('child_process');
 const { isCodeFile } = require('./lib/is-code-file');
 const { resolveDeclaredTree } = require('./lib/worktree-target');
 const { treeHash, sameTree } = require('./lib/tree-hash');
-const { closeGear, closeEvidence } = require('./lib/gear-close');
+const { closeGear, closeEvidence, labelsOnly } = require('./lib/gear-close');
+const { countsAsPassing } = require('./lib/run-verdict');
 const { isNonRegistry } = require('./lib/registry-stamp');
 
 // The calibration script, addressed from this file. `hooks/` and `skills/` are siblings under the
@@ -228,7 +231,9 @@ process.stdin.on('end', () => {
     const denial = fullSuiteDeclared(tree) ? fullSuiteDenial(tree, root, data, slug) : null;
     if (denial) {
       const { cause, gear, files } = denial;
-      const gloss = gear ? `under the ${gear} gear, ${GEAR_CAUSES[cause]}${files.length ? `: ${files.join(', ')}` : ''}` : DENY_CAUSES[cause];
+      const gloss = EVIDENCE_CAUSES[cause]
+        ? `${gear ? `under the ${gear} gear, ` : ''}${EVIDENCE_CAUSES[cause]}${files.length ? `: ${files.join(', ')}` : ''}`
+        : DENY_CAUSES[cause];
       return deny(
         `summary.md needs a passing full-suite record for ${slug} (cause: ${cause} — ${gloss}). ` +
         'This repo declares .claude/verify.json → roles.full. Run:\n' +
@@ -533,16 +538,16 @@ const DENY_CAUSES = {
   failing: 'the latest record for this tree state did not pass',
 };
 
-// The gear's evidence fell short; the files are named after the gloss, and the re-run still discharges.
-const GEAR_CAUSES = {
+// The close evidence fell short; the files are named after the gloss, and the re-run still discharges.
+const EVIDENCE_CAUSES = {
   'not-completed': 'the latest record was cut or crashed, or its failures cannot all be named, so it cannot stand for the close',
   unrepaired: 'no green, unfiltered run by name of the feature\'s slug stands for the content these hold now since the latest record failed them',
   uncovered: 'no green tied run holds these files at their current hash since the latest record',
 };
 
 /**
- * Why does the LATEST in-scope full-suite record not discharge this close? `{cause}` — plus `gear` and
- * `files` when a gear's evidence fell short — or `null` when it does.
+ * Why does the LATEST in-scope full-suite record not discharge this close? `{cause}` — plus `files`, and
+ * the `gear` when one is set, when the close evidence fell short — or `null` when it does.
  *
  * Latest, not any. The audit file is append-only, so a run/fix/re-run cycle leaves several
  * full-suite records for one round; "any pass discharges" would let an early green shadow the red
@@ -569,10 +574,14 @@ const GEAR_CAUSES = {
  * says which run of it. A correctly-slugged record from a stale round is still not this round's.
  *
  * THEN THREE FACTS ON THE LATEST (F147), checked in this order: it ran in THIS tree (`wrong-tree`
- * otherwise), at this tree's current source hash (`stale`), and it passed (`failing`). The order is the
+ * otherwise), at this tree's current source hash (`stale`), and it counts as passing (`failing`) — it
+ * passed, or its only failures are timed-out tests the change did not touch (lib/run-verdict.js, the rule
+ * the gear close and the campaign's closing check read too). A tree whose every change since the record is
+ * a label label-tests.js wrote (lib/gear-close.js labelsOnly) is not stale. The order is the
  * remedy's: a red record from another tree or an earlier state needs a re-run, and reading it as
  * `failing` would send the closer into a fix loop for a failure the current tree may not have. Matching
- * the hash is what lets the close reuse the handover run instead of paying the suite twice.
+ * the hash is what lets the close reuse the handover run instead of paying the suite twice. A `stale` or
+ * `failing` record is then read once more, as close evidence (lib/gear-close.js `closeEvidence`).
  *
  * A missing, empty or unparseable verdict file yields no records and therefore denies — that is
  * invariant (4)'s sanctioned exception, not an oversight (see the header).
@@ -615,13 +624,14 @@ function fullSuiteDenial(tree, root, data, slug) {
   // is skipped whole — a record without `tree_hash` included — while the tree and verdict still bind.
   const hash = treeHash(tree);
   let cause = null;
-  if (hash !== null && latest.tree_hash !== hash) cause = 'stale';
-  else if (latest.verdict !== 'pass') cause = 'failing';
+  if (hash !== null && latest.tree_hash !== hash && !labelsOnly({ records, index, tree })) cause = 'stale';
+  else if (!countsAsPassing(latest)) cause = 'failing';
   if (!cause) return null;
-  const gear = closeGear(slug, { tree, root });
-  if (!gear) return { cause };
   const evidence = closeEvidence({ records, index, tree, slug });
-  return evidence.ok ? null : { cause: evidence.cause, gear, files: evidence.files };
+  if (evidence.ok) return null;
+  const gear = closeGear(slug, { tree, root });
+  if (!gear && evidence.cause === 'not-completed') return { cause };
+  return { cause: evidence.cause, gear, files: evidence.files };
 }
 
 function writtenContent(tool, ti) {

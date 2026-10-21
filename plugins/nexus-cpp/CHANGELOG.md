@@ -2,6 +2,10 @@
 
 All notable changes to the `nexus-cpp` plugin.
 
+## [0.3.5] — 2026-10-20
+- F271-MinerQuickWins (`mine-verify-cover-cpp`): the mutation target is given in the report's own path namespace (the container path) and matched by full path, replacing the base-name guidance.
+  - estate raise: `mine-verify-cover-cpp/SKILL.md` +134 B.
+
 ## [0.3.4] — 2026-10-09
 - PATCH bump.
   - skill change (mine-verify-cover-cpp)

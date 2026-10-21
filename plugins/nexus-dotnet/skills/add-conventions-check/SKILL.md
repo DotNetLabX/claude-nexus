@@ -110,7 +110,7 @@ off what the repo will not fix now, and record why.
 
 | The test that fails | What it says | What to do |
 |---|---|---|
-| `TheSourceFollowsTheRule({check-id})` | `{file}:{line} [{check-id}] {message}`, one line per place, then the settings file to switch it off in | fix each place; or add the class to the lists file where the message names it; or switch the check off |
+| `TheSourceFollowsTheRule({check-id})` | `{file}:{line} [{check-id}] {message}`, one line per place; for a check a lists-file section can exempt a class from, the line `Or add the class to {lists file} § {section}.`, naming the lists file the scan read; then the settings file to switch it off in | fix each place; or add the class to that section where the rule allows it; or switch the check off |
 | `TheScanReadsTheRepository` | the scan did not run: no repo root, no source file found, the lists file missing or unreadable, an unknown setting, a report that could not be written | fix what it names — every case names the path it tried |
 
 When the scan fails, every rule case fails too, pointing at `TheScanReadsTheRepository`; fix that one first.

@@ -45,8 +45,9 @@
  *
  * THIRD PAYLOAD — the runner block (F147), FIRST in the payload. When the tree declares a non-empty
  * `roles.unit` — the same arming condition as test-entry-gate.js — the carrier delivers the resolved
- * verify-run.js call for the fast profile and its named-files form. Same reason as the commit block:
- * nothing else in a background spawn's context can locate the runner.
+ * verify-run.js call for the step close (the tied form), its named-files form, and the label-tests.js
+ * call that labels from the step close's record. Same reason as the commit block: nothing else in a
+ * background spawn's context can locate either script.
  *
  * BUDGET PRIORITY. All three payloads share the 2,000-byte delivery budget. The ROSTER yields first
  * (it is verify.json, a file the developer can open), the commit block second, and the runner block
@@ -123,9 +124,11 @@ function commitBlock(tree, role) {
 function runnerBlock(roles) {
   if (typeof roles.unit !== 'string' || roles.unit.trim() === '') return '';
   const runner = path.join(__dirname, 'verify-run.js').replace(/\\/g, '/');
+  const labeller = path.join(__dirname, 'label-tests.js').replace(/\\/g, '/');
   return '```\n' +
-    `run tests: node "${runner}" --profile fast\n` +
+    `run tests: node "${runner}" --profile fast --tied --changed <every file this step changed> --slug <slug>\n` +
     `the test file you are writing: node "${runner}" --profile fast --files <test file>...\n` +
+    `then label from that run: node "${labeller}" --run <run_id>\n` +
     '```';
 }
 
@@ -175,7 +178,7 @@ process.stdin.on('end', () => {
       roster && ('```\n' +
         'Nexus verification roles (.claude/verify.json → roles):\n' +
         `${roster}\n` +
-        'Step-close = ONE call of verify-run.js --profile fast; never a separate build call outside a ' +
+        'Step-close = ONE call of verify-run.js --profile fast --tied, then label-tests.js --run; never a separate build call outside a ' +
         'compile-fix loop; the full suite is never run by a subagent.\n' +
         '```'),
       withCommit && commit,
@@ -197,7 +200,7 @@ process.stdin.on('end', () => {
     // blocks is strictly worse than losing the one the reader can recover from `.claude/verify.json`.
     //
     // Reachability, stated honestly: with the four-role roster this hook actually emits, the floor
-    // caps the roster near 300 chars, the commit block near 400 and the runner block near 250, so
+    // caps the roster near 300 chars, the commit block near 400 and the runner block near 450, so
     // these lines are a FLOOR rather than a live path — reachable only if the role list grows or a
     // plugin root gets implausibly long. Kept because the alternative is a silent over-budget emit,
     // which is the one failure mode a carrier cannot detect. Past the roster, the commit block goes

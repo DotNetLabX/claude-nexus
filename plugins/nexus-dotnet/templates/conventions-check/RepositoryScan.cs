@@ -20,6 +20,7 @@ public class RepositoryScan
 
     public string? Failure { get; private init; }
     public string SettingsPath { get; private init; } = ConventionSettings.FileName;
+    public string ListsPath { get; private init; } = "";
     public ConventionSettings Settings { get; private init; } = new();
     public List<ConventionHit> Hits { get; private init; } = [];
 
@@ -49,7 +50,8 @@ public class RepositoryScan
                 return Failed(settingsPath, $"the check found no .git and no solution file above {projectFolder}");
             }
 
-            var lists = ProjectLists.Read(InRepository(repositoryRoot, settings.ListsFile));
+            var listsPath = InRepository(repositoryRoot, settings.ListsFile);
+            var lists = ProjectLists.Read(listsPath);
             var files = SourceFiles(repositoryRoot, settings, projectFolder);
             if (files.Count == 0)
             {
@@ -57,7 +59,7 @@ public class RepositoryScan
             }
 
             var libraryRoots = settings.LibraryRoots.Select(root => InRepository(repositoryRoot, root)).ToList();
-            var scanner = new ConventionScanner(lists.LoggingClasses);
+            var scanner = new ConventionScanner(lists);
             var hits = files
                 .SelectMany(file => scanner.Scan(
                     Encoding.UTF8.GetString(File.ReadAllBytes(file)),
@@ -75,7 +77,13 @@ public class RepositoryScan
                 }
             }
 
-            return new RepositoryScan { SettingsPath = settingsPath, Settings = settings, Hits = hits };
+            return new RepositoryScan
+            {
+                SettingsPath = settingsPath,
+                ListsPath = IsUnder(listsPath, repositoryRoot) ? InRepositoryName(repositoryRoot, listsPath) : listsPath,
+                Settings = settings,
+                Hits = hits,
+            };
         }
         catch (Exception problem) when (problem is InvalidOperationException or System.Text.Json.JsonException or IOException or UnauthorizedAccessException or ArgumentException)
         {

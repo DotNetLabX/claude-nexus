@@ -154,10 +154,10 @@
       "catalogue": null,
       "allowed": ["tied to the change", "as today", "ask me"],
       "values": {
-        "fast": { "value": "tied to the change", "text": "the tests tied to the change" },
-        "normal": { "value": "as today", "text": "as today" },
-        "quality": { "value": "as today", "text": "as today" },
-        "off": { "value": "as today", "text": "as today" }
+        "fast": { "value": "tied to the change", "text": "always on — no longer a gear setting" },
+        "normal": { "value": "tied to the change", "text": "always on — no longer a gear setting" },
+        "quality": { "value": "tied to the change", "text": "always on — no longer a gear setting" },
+        "off": { "value": "tied to the change", "text": "always on — no longer a gear setting" }
       }
     }
   ]

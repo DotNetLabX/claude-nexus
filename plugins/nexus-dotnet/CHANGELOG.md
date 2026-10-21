@@ -1,6 +1,57 @@
 # nexus-dotnet — Changelog
 
 
+## [2.0.7] — 2026-10-20
+- F272-MinerRunSetup: the .NET mining adapter follows the repo's own test stack (its scaffold only where the repo has
+  no test project; classic xUnit 2 on Stryker's default runner); the no-production-edit check covers every non-test
+  project, not only Domain; the conventions file and an internal class's access grant are one-time setup steps; a
+  one-file Stryker reach probe per target project, read by the new `tools/stryker-reach.mjs`; a `ConfigureAwait`
+  survivor is an `equivalent-other` candidate only with a proof. Needs nexus-miner 0.1.7 for the kickoff fields.
+  - estate raise: `mine-verify-cover-dotnet/SKILL.md` +4416 B.
+
+## [2.0.6] — 2026-10-20
+- PATCH bump.
+  - plugin payload (conventions/csharp.md)
+  - skill change (add-conventions-check)
+  - skill change (central-package-management)
+  - skill change (create-service)
+  - plugin payload (templates/conventions-check/ConventionCheck.cs)
+  - plugin payload (templates/conventions-check/ConventionChecks.g.cs)
+  - plugin payload (templates/conventions-check/ConventionScanner.cs)
+  - plugin payload (templates/conventions-check/ConventionsTests.cs)
+  - plugin payload (templates/conventions-check/ProjectLists.cs)
+  - plugin payload (templates/conventions-check/RepositoryScan.cs)
+  - estate raise: plugins/nexus-dotnet/skills/add-conventions-check/SKILL.md 8335→8485 B — F275-ConventionRefinements: project-file comment rule (divider banners, multi-line packages) and the lists-file path in a list-backed failure
+  - estate raise: plugins/nexus-dotnet/skills/central-package-management/SKILL.md 6295→6324 B — F275-ConventionRefinements: project-file comment rule (divider banners, multi-line packages) and the lists-file path in a list-backed failure
+  - estate raise: plugins/nexus-dotnet/skills/create-service/SKILL.md 6492→6530 B — F275-ConventionRefinements: project-file comment rule (divider banners, multi-line packages) and the lists-file path in a list-backed failure
+  - estate raise: plugins/nexus-dotnet/skills/create-service/workflows/ScaffoldCsprojFiles.md 4348→4463 B — F275-ConventionRefinements: project-file comment rule (divider banners, multi-line packages) and the lists-file path in a list-backed failure
+
+## [2.0.5] — 2026-10-20
+- F271-MinerQuickWins (`mine-verify-cover-dotnet`): the tool check probes Stryker with `--help`, so Stryker 4.16 (which rejects `--version`) is no longer reported missing; the test-project section states that Stryker mutates only projects the test project references directly, and that a green build is no evidence of reach.
+  - estate raise: `mine-verify-cover-dotnet/SKILL.md` +324 B.
+
+## [2.0.4] — 2026-10-19
+- F270-DotnetConventionsOneHome — the conventions become the one home for a consuming repo's elected .NET rules:
+  an argument error now answers 500 with a fixed sentence (it was 400); a required number or enum setting is
+  nullable with `[Required]`; the JSON-name rule and its check cover endpoint request and reply files only; a
+  project-file comment may stand directly above the setting or package it explains; the logging check names the
+  logging list's path; `is null` carries its reason. No new exception. (Feedback
+  `nexus-2026-10-18-campaign-questions-and-conventions` `#2`, `#3`.)
+- PATCH bump.
+  - plugin payload (conventions/csharp.md)
+  - skill change (add-typed-client)
+  - skill change (central-package-management)
+  - skill change (error-handling)
+  - skill change (service-infra-conventions)
+  - plugin payload (templates/conventions-check/ConventionCheck.cs)
+  - plugin payload (templates/conventions-check/ConventionChecks.g.cs)
+  - plugin payload (templates/conventions-check/ConventionScanner.cs)
+  - estate raise: plugins/nexus-dotnet/skills/add-typed-client/SKILL.md 8652→8731 B — F270-DotnetConventionsOneHome: elected .NET rules — argument errors answer 500, required value-type settings, JSON-name rule scoped to endpoint files, project-file comment rule, logging list path, is-null reason
+  - estate raise: plugins/nexus-dotnet/skills/central-package-management/SKILL.md 6001→6295 B — F270-DotnetConventionsOneHome: elected .NET rules — argument errors answer 500, required value-type settings, JSON-name rule scoped to endpoint files, project-file comment rule, logging list path, is-null reason
+  - estate raise: plugins/nexus-dotnet/skills/error-handling/SKILL.md 11164→11441 B — F270-DotnetConventionsOneHome: elected .NET rules — argument errors answer 500, required value-type settings, JSON-name rule scoped to endpoint files, project-file comment rule, logging list path, is-null reason
+  - estate raise: plugins/nexus-dotnet/skills/service-infra-conventions/SKILL.md 19274→19601 B — F270-DotnetConventionsOneHome: elected .NET rules — argument errors answer 500, required value-type settings, JSON-name rule scoped to endpoint files, project-file comment rule, logging list path, is-null reason
+
+
 ## [2.0.3] — 2026-10-13
 - PATCH bump.
   - plugin.json metadata change

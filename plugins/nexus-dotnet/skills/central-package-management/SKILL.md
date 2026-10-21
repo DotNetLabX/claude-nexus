@@ -34,8 +34,10 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
 - **The version is current stable**, or the shared library's where the repo has one — never a number copied from
   another project's file.
 - **A pin.** A package the dependency graph would otherwise lift to a newer version, kept back on purpose, stays
-  pinned in the props file with a one-line comment directly above it giving the reason. That comment is the only
-  comment a package file carries.
+  pinned in the props file with a one-line comment directly above it giving the reason.
+- **A comment sits only directly above a setting it explains** (a pin, a setting kept on purpose): worded text on its
+  own line, kept wherever a later reader would otherwise "fix" a deliberate setting. Never a label above an
+  `<ItemGroup>` or a `<PropertyGroup>`, a divider banner, a commented-out element or a comment at a line's end.
 
 ## When to Use
 
@@ -79,7 +81,7 @@ Every `<PackageReference>` has no `Version` attribute and no `<Version>` child; 
 ```
 
 Project files set nothing beyond the basics: no documentation-file generation, no warning suppressions (except the
-one a pinned package needs), no comments.
+one a pinned package needs), and a comment only directly above a setting it explains.
 
 ## Migration Recipe
 

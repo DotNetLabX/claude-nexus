@@ -109,8 +109,10 @@ that belongs to one style says so. Where a rule allows a listed exception, the l
   record's base. Tools and models do not produce this unprompted, so the convention check holds the record half.
 - **Comparisons.** No explicit comparison where `==` already compares exactly. A case-insensitive match goes through
   one extension method for that equality, and uses `StringComparer.OrdinalIgnoreCase` for a set or a lookup.
-- **JSON names come from the web default;** no per-property name that only repeats it. A name another system
-  dictates stays.
+- **JSON names come from the web default** in an endpoint's request and reply shapes (the `{Op}Command.cs`,
+  `{Op}Query.cs` and `{Thing}Dto.cs` files): no per-property name there only repeats it, and the convention check
+  holds that. Elsewhere, where another serializer may read the class, a `JsonPropertyName` stays as written. A name
+  another system dictates stays.
 - **Small forms.** Status codes by named constant; a callback shape as a named delegate type; a shared text with
   placeholders as `static readonly`; public constants in dedicated constants classes; no `Empty`, `None` or `Default`
   static instances; named arguments not aligned into columns. In a FastEndpoints service: route, access and tag as
@@ -157,7 +159,7 @@ that belongs to one style says so. Where a rule allows a listed exception, the l
 ## Null Handling
 
 - **`is null` and `is not null` in statements;** `== null` only inside a query expression, where the language allows
-  no other form.
+  no other form. A custom `IsNull()` extension is not used, because it loses the compiler's null-state tracking.
 - **A member that must be given is `required`,** in preference to `= null!`.
 - **Don't use `?.` as a silent suppressor** where the value must exist.
 - **Optional navigation properties are explicitly `?`.**
@@ -205,6 +207,11 @@ that belongs to one style says so. Where a rule allows a listed exception, the l
   `<PackageReference>` carries no `Version`. Where the repo has a shared library, its services use the versions that
   library uses; without one, the current stable version.
 - **A package pinned against a newer version the dependency graph would pick** keeps its pin, with a one-line comment
-  above the pin giving the reason. That comment is the only comment a project file carries.
+  directly above the pin giving the reason.
+- **A project file carries a comment only directly above a setting it explains** (a pin, a setting kept on purpose):
+  worded text on its own line. One is kept wherever a later reader would otherwise "fix" a deliberate setting — a
+  transitive pinning left off on purpose, say. Never a label above an `<ItemGroup>` or a `<PropertyGroup>`, a divider
+  banner, a commented-out element, a comment at a line's end or one with no setting after it; the convention check
+  holds this.
 - **Project files set nothing beyond the basics:** no documentation-file generation and no warning suppressions,
-  except the one a pinned package needs.
+  except the one a pinned package needs, and no comment but one directly above the setting it explains.

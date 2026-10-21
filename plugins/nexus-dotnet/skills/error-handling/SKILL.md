@@ -56,8 +56,10 @@ One family. Each type lives in the Domain project and carries a message and noth
 
 An optional lookup returns nothing and its caller decides; only a required one throws. Framework error types
 (`InvalidOperationException`, `ArgumentException`) appear only in a shared library or a module — for a configuration
-fault, in one short sentence and never `NotSupportedException`, and as the guards' own argument errors, which the
-mapper turns into a 400. A service meets a configuration fault through a shared helper that throws it (the settings
+fault, in one short sentence and never `NotSupportedException`, and as an argument error. An argument error is a
+fault in the calling code, not bad input: the mapper answers it 500 with a fixed sentence, in every environment, and
+logs it once with its stack. A message meant for the user is raised as a business error (`DomainException`) instead.
+A service meets a configuration fault through a shared helper that throws it (the settings
 binder's `GetRequiredConnectionString`, the seed-file reader, the cached-table reader); a failure at run time, an
 outside system's included, is one of the family's errors.
 
@@ -193,7 +195,7 @@ public class GlobalExceptionMiddleware(RequestDelegate _next, ILogger<GlobalExce
             AlreadyExistsException => StatusCodes.Status409Conflict,
             UnauthorizedException => StatusCodes.Status401Unauthorized,
             DomainException => StatusCodes.Status400BadRequest,
-            ArgumentException => StatusCodes.Status400BadRequest,
+            ArgumentException => StatusCodes.Status500InternalServerError,
             _ => StatusCodes.Status500InternalServerError
         };
 
@@ -201,7 +203,9 @@ public class GlobalExceptionMiddleware(RequestDelegate _next, ILogger<GlobalExce
         if (unexpected)
             _logger.LogError(exception, "Request {Path} failed", context.Request.Path);
 
-        var message = unexpected && !_environment.IsDevelopment() ? "An unexpected error occurred." : exception.Message;
+        var message = exception is ArgumentException || (unexpected && !_environment.IsDevelopment())
+            ? "An unexpected error occurred."
+            : exception.Message;
         var errors = exception is ValidationException validation
             ? validation.Errors.Select(error => new ValidationError(error.PropertyName, error.ErrorMessage)).ToList()
             : null;

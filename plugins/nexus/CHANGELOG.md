@@ -1,5 +1,48 @@
 # nexus — Changelog
 
+## [2.4.43] — 2026-10-20
+- F273-CampaignQuickFixes2: the source-tree hash (`lib/tree-hash.js`) skips `.claude/tmp/`, a session's scratch folder, so a scratch file never makes a passing complete-run record stale
+  - hook behavior/enforcement change
+
+## [2.4.42] — 2026-10-19
+- F267-MiningStageModels: every mining job runs on a model and effort from one shipped table (Opus for writers, Codex for judges, a non-Fable fallback); campaign check shows seat models, the mining table and the fit to the weekly limit; the board shows a dated limit reading
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 225168→225371 B — F267-MiningStageModels: mining job table rules (family core § Mining job models), member judge rows, campaign check/board seat and weekly-limit lines
+  - estate raise: plugins/nexus/agents/learner.md 61188→61391 B — F267-MiningStageModels: mining job table rules (family core § Mining job models), member judge rows, campaign check/board seat and weekly-limit lines
+  - estate raise: plugins/nexus/agents/po.md 73965→74168 B — F267-MiningStageModels: mining job table rules (family core § Mining job models), member judge rows, campaign check/board seat and weekly-limit lines
+  - estate raise: plugins/nexus/agents/team-lead.md 236790→236993 B — F267-MiningStageModels: mining job table rules (family core § Mining job models), member judge rows, campaign check/board seat and weekly-limit lines
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 28576→28779 B — F267-MiningStageModels: mining job table rules (family core § Mining job models), member judge rows, campaign check/board seat and weekly-limit lines
+  - estate raise: plugins/nexus/rules/on-demand/pipeline-guardrails.md 14234→14445 B — F267-MiningStageModels: mining job table rules (family core § Mining job models), member judge rows, campaign check/board seat and weekly-limit lines
+
+## [2.4.41] — 2026-10-19
+- F269-RerunFailuresAlone: a red complete run first re-runs each failed test file once, by name; a file that passes is flaky — listed in the summary, given one backlog row, and holding nothing up; only what fails again goes to a solo (a .NET project target re-runs the complete run once instead).
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - skill change (summary-format)
+  - estate raise: plugins/nexus/agents/architect.md 222920→225168 B — F269-RerunFailuresAlone: a red complete run re-runs its failed tests by name once before a solo
+  - estate raise: plugins/nexus/agents/team-lead.md 234225→236790 B — F269-RerunFailuresAlone: a red complete run re-runs its failed tests by name once before a solo
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 112054→113228 B — F269-RerunFailuresAlone: a red complete run re-runs its failed tests by name once before a solo
+  - estate raise: plugins/nexus/skills/summary-format/SKILL.md 9893→10674 B — F269-RerunFailuresAlone: a red complete run re-runs its failed tests by name once before a solo
+
+## [2.4.40] — 2026-10-19
+- A repo that declares no complete test command (`roles.full`) is no longer forced to full checks (adhoc-NoFullSuiteLightClose, owner ruling 2026-10-19): the architect's lane pick, the gear's plan type, lowering to light, the plan-only entry and the catalogue's `build lane` and `plan only` entries drop that condition; the light close states an undeclared complete run is met — it rests on the green step runs, noted in `summary.md` — as the close gate already fails open there
+  - agent instruction/behavior change
+  - shipped command changed
+  - skill change (questions-format)
+
+## [2.4.39] — 2026-10-19
+- Fail-fast tests (F265): every node test run gets a per-test stop — 3 s for a fast test, 30 s for one labelled slow (`testStop` in `.claude/verify.json`; the 3 s stop only where `slow.labelled: true`) — run as a fast leg and a slow leg, with a child-call preload that stops an untimed synchronous child call in the test worker; a timed-out test is recorded apart from a real failure (`timed_out`, `failed_tests`, `touched`), and one close rule (`lib/run-verdict.js`) lets a run whose only failures are timeouts in tests the change did not touch count as passing — those go to a solo after the closing commit; the step close times the step's tests and `label-tests.js` labels the ones over the slow line from the same run, the developer getting one speed-up try before a slow label with a reason; .NET and Flutter tests are timed and labelled at the step close too. The handover ladder re-runs only the failed tests by name, never the suite unchanged, at most 3 fix attempts, and the close reads that by-name evidence at every close, not only under the "once beside the reviewers" gear. Merged on the owner's word before its code review and done check (both owed)
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - skill change (declare-verify-roles, implementation-format, summary-format, tdd)
+
 ## [2.4.38] — 2026-10-18
 - Skills per step (F264), behind the new `features.skillsPerStep` switch (off unless `true`): the architect writes `**Skills per step:** on` in the plan header and names every pattern skill each step's actions touch, several per step in both plan formats; the plan critic checks each step's changed files against the skills it names; the code reviewer, as primary or second reader, checks each step's code against those skills; on the light lane the line also spawns the second code reader when no step is risky; the developer opens and the done check scores each named skill. Off, every role reads a plan as before (ADR-158)
   - agent instruction/behavior change

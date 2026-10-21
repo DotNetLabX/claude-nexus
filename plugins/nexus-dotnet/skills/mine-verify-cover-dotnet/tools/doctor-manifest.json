@@ -18,7 +18,8 @@
     {
       "name": "Stryker.NET dotnet-tool available",
       "command": "dotnet",
-      "args": ["stryker", "--version"],
+      "args": ["stryker", "--help"],
+      "expect": "Stryker mutator",
       "severity": "BLOCK",
       "fixHint": "dotnet tool install -g dotnet-stryker (or restore the local tool manifest) — Stryker is capability 3, the mutation tool"
     }

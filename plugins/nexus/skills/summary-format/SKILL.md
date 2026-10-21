@@ -18,15 +18,21 @@ Its verdict, duration and timestamp are transcribed from the close gate's full-s
 it — never from recollection. The record carries no test **count**,
 so read `N tests` off the suite's own output, or drop that clause when the runner reports none. The
 three values are the record's verdict: `pass`, `fail`, or `undeclared` when the repo declared no
-`roles.full`. Carry the timestamp so a reader can tell a fresh run from a stale one. The gate that
+`roles.full`. A record whose only failures are timeouts in tests the change did not touch counts as
+passing at the close yet still reads `fail` here; the Notes' `Timed out, sent to solo:` line says why
+it closed. A red whose every failure passed when re-run alone also closes yet reads `fail` here; the
+Notes' flaky line says why. Carry the timestamp so a reader can tell a fresh run from a stale one. The gate that
 produces the record, and the fork a `fail` takes, are `team-lead.md` § Close Gate item 5 — cited, not
 restated.
 
 The line's two measurement fields come from the same record. `filtered` is transcribed from the
 record's `filtered` field. **Complete red on a fast-green tree** is derived from two fields: `yes` when
 the record's `verdict` is `fail` **and** its `fast_green` is `pass`; `not measured` when `fast_green` is `none`;
-`no` otherwise — a passing complete run on a fast-green tree reads `no`, never `yes`. Worked:
+`no` otherwise — a passing complete run on a fast-green tree reads `no`, never `yes`, and so does a `fail`
+whose only failures are timeouts in tests the change did not touch (`reason: "tests-timed-out"`, every
+`timed_out` entry `touched: false`): it counts as passing, so it is no red. Worked:
 `verdict: pass, fast_green: pass` → `no`; `verdict: fail, fast_green: pass` → `yes`;
+`verdict: fail, reason: tests-timed-out, all untouched, fast_green: pass` → `no`;
 `verdict: fail, fast_green: none` → `not measured`.
 
 **The `**Map delta:**` line is required in EVERY summary.md too — and it is never a verdict.** It
@@ -77,10 +83,15 @@ Gear: {gear} — {campaign | switch | repo} | none — at the spec review: {gear
 ## Notes
 - [Anything the user should know before committing]
 - **Under the bar:** {the rows, one per line, `[LEVEL] title — file:line (source)`} | none — **Carry-over row:** {row id} | none (no MEDIUM) | no backlog (this list is the record) | none ({gear} gear — not fixed, this list is the record)
+- **Slow tests kept:** {`{test} — {reason}`, one per line} | none
+- **Timed out, sent to solo:** {`{file}:{line} {test} — {the solo's commit | pending}`, one per line} | none | {backlog row id} (campaign unit)
+- **Flaky — passed when re-run alone:** {`{file} — {its failing test}`, one per line} — **Backlog row:** {row id} | no backlog (this line is the record) | none
 ```
 
 **The `Gear:` line** sits under the mode line in every summary: the gear the plan header names (`gear.js fix` printed it), or `none`, and — only where it differed — the gear in force at the spec review, from the spec's `**Gear at review:**` line (→ agents-workflow.md § Gears).
 
 **The `**Under the bar:**` line** is the union of every under-bar block in `review.md` — each fix list's (the block after the follow-up line, `review-format`) and each `## Step 2 — Merge, no fix round` section's — keeping the rows that no later round fixed, deduped by file:line and title — the items the fix-round bar left recorded but unfixed (→ agents-workflow.md § Fix rounds). `none` when no block left any. Its **Carry-over row** field names the backlog row the close wrote for the MEDIUMs among them, by its id — the gate that writes it is `team-lead.md` § Close Gate, the carry-over-row item, cited and not restated. It reads `none (no MEDIUM)` when the union holds LOWs only, `none ({gear} gear — not fixed, this list is the record)` under a gear that leaves those findings unfixed, and `no backlog (this list is the record)` in a repo with no backlog file.
+
+**The three test lines name tests, not a run.** They are apart from the `slow` a complete record may carry, which says a crowded machine slowed the whole run. `Slow tests kept:` gathers every `Slow kept:` line of `implementation.md` — step blocks, fix rounds and solo blocks (`implementation-format`): a test still over the speed-up line after its one try, kept with its reason. `Timed out, sent to solo:` lists every timeout in a test the change did not touch that a record of the round let through the close (`team-lead.md` § Close Gate, the full-suite item). The solo runs after the closing commit, so the line reads `pending` when it is written; in a campaign unit no solo runs, and the line names the backlog row instead. `Flaky — passed when re-run alone:` lists each failed test file of a red complete run that passed when re-run once by name from the coordinating session, or that passed on the once-unchanged complete re-run where `--files` cannot take its target — flaky, never fixed in the run (`team-lead.md` § Close Gate, the full-suite item); its **Backlog row** field names the one row the close wrote listing them, or reads `no backlog (this line is the record)` in a repo with no backlog file. Each line reads `none` when there is nothing to list.
 
 **The `**Risky steps:**` line** appears on a light-lane run only (mode line level `light`), or a team pipeline run on the light path under a gear: it transcribes the one line of `review.md`'s `## Step 2 — Risky steps` section verbatim, the failed-recheck form included, so the close record says which steps had the second reader's full read (`review-format`); on a light-lane run whose plan carries `**Skills per step:** on`, that reader also ran the skills check over every other step (→ architect.md § Light Lane (standalone only)). Every other summary omits it.

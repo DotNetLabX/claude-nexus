@@ -74,7 +74,7 @@ rg -n 'ProjectReference Include=.(\.\..){2,}' src/Services/{Name} --glob '*.cspr
 rg -n 'ProjectReference Include=.\.\..\.\..[^.]' src/Services/{Name} --glob '*.csproj'            # another service's project — expect zero
 rg -n 'ProjectReference.*\.API\.csproj' src/Services/{Name} --glob '!**/{Name}.API/**'            # nothing references the API project — expect zero
 rg -n 'Version=' src/Services/{Name} --glob '*.csproj'                                            # no version on a reference — expect zero
-rg -n '<!--|NoWarn|GenerateDocumentationFile' src/Services/{Name} --glob '*.csproj'               # project files carry the basics only — expect zero
+rg -n '<!--|NoWarn|GenerateDocumentationFile' src/Services/{Name} --glob '*.csproj'               # basics only; a fresh service has no deliberate setting, so no comment yet — expect zero
 rg --files --hidden -g '.gitkeep' src/Services/{Name}                                             # no placeholder files — expect zero
 ```
 

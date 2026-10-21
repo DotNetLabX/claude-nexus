@@ -1,6 +1,11 @@
 # Changelog — nexus-flutter
 
 
+## [0.5.6] — 2026-10-20
+- F272-MinerRunSetup: the survivor tag table gains `equivalent-other` (an equivalent mutant that is neither logging
+  nor format, assigned only with a stated proof), pointing at the method's table.
+  - estate raise: `mine-verify-cover-flutter/SKILL.md` +388 B.
+
 ## [0.5.5] — 2026-10-09
 - PATCH bump.
   - skill change (mine-verify-cover-flutter)

@@ -131,10 +131,10 @@ The Cover agent writes the test file; a distinct runner agent executes the toolc
      one oracle scored 335 FALSE KILLS (survivors 430+ → 198, 29 s instead of ~55 s) while a
      subshell-scoped fail-closed flag still printed ALL GATES PASSED. A per-oracle kill-jump
      alarm (sudden survivor drop paired with a runtime drop) is the cheap tripwire.
-4. Build `mutatedFiles` (one `{file,count}` per key in `cover.json.files`) for the `target_mutated` anti-fake-green guard — verify your slice's basename was actually mutated (count > 0).
+4. Build `mutatedFiles` (one `{file,count}` per key in `cover.json.files`) for the `target_mutated` anti-fake-green guard — each `file` is the `cover.json` key as given; your slice's full container path must show count > 0.
 5. **Never execute mutant binaries outside mull.** Survivor triage is **read-only** — reason from `cover.json` + the source. A mutation can break a loop guard and produce a **non-terminating binary**; mull's per-mutant timeout contains that, an ad-hoc probe does not (a live run hand-compiled surviving mutants into a diff harness with no timeout — one spun at 100% CPU and deadlocked the whole workflow until killed). If SUT execution outside `ctest`/`mull-runner-15` is ever unavoidable, wrap it in `timeout <N>s`.
 
-Two path namespaces (the one structural difference from host-native adapters): the **container** source path (`/probe/src/<slice>`) is the mull-report key + the `mutation_floor` lookup; the **host** path is what the Cover agent reads. `target_mutated` matches on basename, so it is namespace-agnostic.
+Two path namespaces (the one structural difference from host-native adapters): the **container** source path (`/probe/src/<slice>`) is the mull-report key + the `mutation_floor` lookup; the **host** path is what the Cover agent reads. `target_mutated` is given the target in the report's own namespace (the container path) and matches it by full path, never by file name — the host path fails it.
 
 ## exit()/abort() neutralization — a FIRST-CLASS limiter, not a footnote
 

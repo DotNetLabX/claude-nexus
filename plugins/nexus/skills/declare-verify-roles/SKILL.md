@@ -38,7 +38,7 @@ facts. This recipe writes them, once, attended.
    the whole cost you just took out of `unit`.
 
    **The `slow` object and the slow-test exclusion.** Propose one more object beside `roles`, read by
-   the runner's named-files run:
+   the runner on every run:
 
    ```json
    "slow": { "thresholdMs": 2000, "runner": "vstest", "targets": ["src/App.slnx"] }
@@ -63,6 +63,21 @@ facts. This recipe writes them, once, attended.
      invocation of a chained `unit` — and exits 2 naming the reason when it cannot join. On `node`,
      first run `node "{plugin}/hooks/scripts/lib/compose-test-command.js" node-skip-pattern`: `false`
      means this Node lacks the skip flag — declare `slow` and skip the exclusion.
+
+   **The per-test stop.** A stuck test should fail in seconds, not hold the whole run. For `vstest`
+   and `flutter`, join the runner's stop into `unit` **and** `full` with the same composer, at the
+   slow stop of step 5 (30 s unless the user picks another):
+
+   ```bash
+   node "{plugin}/hooks/scripts/lib/compose-test-command.js" join-stop --runner {runner} --seconds 30 -- "{unit}"
+   ```
+
+   It adds `--blame-hang-timeout {s}s --blame-hang-dump-type none` to `dotnet test`, or
+   `--timeout {s}s` to `flutter test`, and leaves a command that already carries one as it is. `node`
+   needs nothing: the runner applies its stops at run time to a direct `node --test` command. A `unit`
+   or `full` that runs a script of its own instead passes the composer's legs — `nodeLegs` for the
+   argument lists, `announceLegs` before the first — so its tests get the stops and its run's
+   timeouts are told apart from failures.
 3. **Run each role command once through the runner** — `verify-run.js --role {r}`; for `unit`
    `verify-run.js --role unit --timeout-ms 110000`, since no step limit is set yet and the bare form
    would cut at the 90 s default; and for `full`
@@ -87,8 +102,8 @@ facts. This recipe writes them, once, attended.
    `.claude/nexus-agents.json` lets the developer commit each finished step on its branch through the
    plugin's commit helper (squashed at integration) — recommend it for worktree or branch lanes; the
    default (`"2"`) stays right for a repo that commits on its main branch.
-5. **Write** `.claude/verify.json` (Write tool, never a heredoc) — `roles`, and the `slow` object
-   when declared — and, if chosen, the `commitStrategy` key. **Keep what you measured** in a
+5. **Write** `.claude/verify.json` (Write tool, never a heredoc) — `roles`, the `slow` object when
+   declared and the settings proposed below — and, if chosen, the `commitStrategy` key. **Keep what you measured** in a
    `measured` object beside `roles`, one entry per role you timed (for `unit`, the joined command's
    time), each carrying two fields — `ms`, the elapsed milliseconds as a positive
    number, and `at`, the date you ran it:
@@ -129,11 +144,29 @@ facts. This recipe writes them, once, attended.
    ```json
    "fullLimitSeconds": 1200
    ```
+
+   **The per-test stops and the speed-up line.** Propose a top-level `"testStop"` and
+   `"speedUpSeconds"` beside `stepLimitSeconds`, in whole seconds, with the same fall-back to the
+   default and one stderr line on a bad value:
+
+   ```json
+   "testStop": { "fastSeconds": 3, "slowSeconds": 30 },
+   "speedUpSeconds": 5
+   ```
+
+   A test over its stop fails as *timed out*, apart from a real failure, and a timeout in a test the
+   change did not touch never holds the close. A labelled-slow test gets `slowSeconds`, every other
+   test `fastSeconds` — but only once the `slow` object carries `"labelled": true`, written when the
+   repo's slow tests carry their label; without it every test gets `slowSeconds`, so an unlabelled
+   repo never loses a slow test to the fast stop. `vstest` and `flutter` take `slowSeconds` alone.
+   `speedUpSeconds` is the line over which a developer gets one try to speed a test up before it is
+   kept slow with a reason.
 6. **Do not commit** unless the user asks — the files are theirs; name them in your reply.
    Where the `tag-slow-tests` skill (`nexus-pro`) is in your skill list and `slow` was declared, end
-   the reply by inviting "tag slow tests": that pass times the suite and tags its slow tests, which
-   is what gives the exclusion something to leave out (an exclusion for tags that do not exist yet is
-   harmless).
+   the reply by inviting "tag slow tests": that pass times the suite, tags its slow tests and writes
+   `"labelled": true`, which is what gives the exclusion something to leave out (an exclusion for
+   tags that do not exist yet is harmless) and switches on the fast stop. From then on each step
+   close labels the tests it ran.
 
 ## Anti-patterns
 

@@ -17,7 +17,8 @@ public class ProjectLists
 
     public required Dictionary<string, List<string[]>> Tables { get; init; }
 
-    public List<string> LoggingClasses => Tables["Logging classes"].Select(row => row[0]).ToList();
+    public List<string> ClassesIn(string section) =>
+        Tables.TryGetValue(section, out var rows) ? rows.Select(row => row[0]).ToList() : [];
 
     public static ProjectLists Read(string path)
     {

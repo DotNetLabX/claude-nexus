@@ -43,8 +43,8 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
    shapes are private records nested in the client, so nothing else reaches them — or, the repo's other form and
    the one for shapes several classes share, public top-level types in a `Models.cs` beside the client
    (`conventions/csharp.md` § Classes and Methods). Where their
-   names differ from the camelCase default, `JsonPropertyName` states them, and a name the default already produces
-   is not repeated. The client maps between the two by hand.
+   names differ from the camelCase default, `JsonPropertyName` states them. The rule against repeating a default
+   name holds for endpoint request and reply shapes only; here a `JsonPropertyName` stays as written. The client maps between the two by hand.
 5. **The client class** — `{System}Client`, taking `HttpClient` by its primary constructor. No `try/catch` that
    turns a failure into a value; a non-success status throws, the set-up retries what is worth retrying, and what
    still fails reaches the central error mapper (`error-handling`). A reply the client cannot use is one of the

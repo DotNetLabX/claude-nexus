@@ -57,7 +57,7 @@ test), `not testable here` (with the reason) or `disputed` (a question to the ar
 
 Write one test using the project's test naming convention (e.g. `docs/conventions/testing.md`). Structure: Arrange (set up inputs), Act (call the unit), Assert (verify ONE behavior).
 
-**Run** `verify-run.js --profile fast` — **one call**, never a build call and then a test call. Confirm it fails for the RIGHT reason (not a compile error, not a wrong assertion — the actual behavior is missing). While you iterate, the test you are writing runs alone as `--profile fast --files {that file}`; the step close is the call with no files.
+**Run** `verify-run.js --profile fast` — **one call**, never a build call and then a test call. Confirm it fails for the RIGHT reason (not a compile error, not a wrong assertion — the actual behavior is missing). While you iterate, the test you are writing runs alone as `--profile fast --files {that file}`; the step close is the tied call (`--profile fast --tied --changed {every file the step changed} --slug {slug}`), and its labelling is the developer's agent file's.
 
 If it fails for the wrong reason: fix the test setup, not the production code.
 

@@ -40,6 +40,7 @@ verify it exists on a Fast run, so it is required there and absent everywhere el
 **Unfinished:** {files | whole unit run | {acceptance test file} (acceptance run)} — cut at {limit} s; only when this step's close, or its light acceptance run, was cut at its limit, else omit the line; one line per cut run
 **Bug found:** {the symptom} — {the failing test or record} — {where it was}; only when this step met a bug it did not cause, else omit the line; one line per occurrence, so a block may carry several
 **Risk raised:** {why} — light lane only: where this step turned out riskier than its plan line says, else omit the line
+**Slow kept:** {test} — {reason}; only for a test this step wrote or touched that its one speed-up try left over the speed-up line, labelled slow with that reason, else omit the line; one line per test
 
 ## Step 2 — {step name}
 ...
@@ -102,7 +103,7 @@ cut. Its readers take each entry as not verified at the step — the complete ru
 
 **A fix round has no step of its own.** When the reviewer returns findings, every step block is
 already closed and there is no current step to append to. Add one `## Fix Round N` block in the step
-region, after the last step block, with the same four fields (plus an `Unfinished:` line when its close was cut) — `Files:` names what the fixes touched,
+region, after the last step block, with the same four fields (plus an `Unfinished:` line when its close was cut, and a `Slow kept:` line per test the round kept slow) — `Files:` names what the fixes touched,
 `Deviations:` records any finding you did not act on and why. Never rewrite the original step blocks
 to make them look as though they had been right the first time: the sequence of what was built and
 what was corrected is what a resume and a re-review both read. A bug met in a fix round that this
@@ -134,8 +135,8 @@ not the completion message, so a stranded message costs nothing (ADR-17).
 
 ## Solo Fixes
 
-A solo spawned inside a feature's run — for a red complete run, or for a bug a developer met and did
-not cause — records its work here, never in a step block. The section sits **immediately after the
+A solo spawned inside a feature's run — for a red complete run, for a bug a developer met and did
+not cause, or after the closing commit for the timed-out tests the change did not touch — records its work here, never in a step block. The section sits **immediately after the
 head, before the first step block**: a developer's step blocks are appended at the end of the file,
 so they never land after it, mid-build or at close. The first solo creates the section; each later
 solo inserts its block inside it, after the last solo block. Solo appends its own model id to the
@@ -145,13 +146,14 @@ solo inserts its block inside it, after the last solo block. Solo appends its ow
 ## Solo Fixes
 
 ### Solo fix {n} — {date}
-**Failure:** the failing test or record, or the developer's `Bug found:` line, as given
+**Failure:** the failing test or record, the developer's `Bug found:` line, or the timed-out tests, as given
 **Cause:** what made it fail
 **Approach:** what it will change — written before the first edit
 **Files:** `full/path/to/File` — what changed; one line per file
 **Class checked:** other places with the same flaw — fixed, or listed
 **Verify:** the fast call it ran, as run — and its outcome: green | red | unfinished
 **Unfinished:** {files | whole unit run} — cut at {limit} s; only when that call was cut at its limit
+**Slow kept:** {test} — {reason}; only for a test its one speed-up try left over the speed-up line, one line per test
 **Left:** each listed instance or follow-up, one per line — or `None`
 **Verdict:** fixed | too big | not caused here — {for `not caused here`, the act that would clear it}
 ```

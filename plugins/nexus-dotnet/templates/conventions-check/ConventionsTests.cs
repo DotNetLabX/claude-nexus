@@ -41,9 +41,12 @@ public class ConventionsTests
             .Where(hit => hit.Check == checkId)
             .Select(hit => $"{hit.File}:{hit.Line} [{hit.Check}] {hit.Message}")
             .ToList();
+        var allowList = ConventionChecks.All.First(check => check.Id == checkId).AllowList;
+        var listLine = allowList is null ? "" : $"Or add the class to {scan.ListsPath} § {allowList}.{Environment.NewLine}";
         Assert.True(
             hits.Count == 0,
             $"{hits.Count} place(s) break the rule [{checkId}]:{Environment.NewLine}{string.Join(Environment.NewLine, hits)}{Environment.NewLine}" +
+            listLine +
             $"To switch this check off, add \"{checkId}\" to \"off\" in {scan.SettingsPath}.");
     }
 

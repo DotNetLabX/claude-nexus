@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 
 namespace ConventionsCheck;
 
-public class ConventionScanner(IReadOnlyCollection<string> _loggingClasses)
+public class ConventionScanner(ProjectLists _lists)
 {
     private const char ByteOrderMark = (char)0xFEFF;
 
@@ -40,6 +40,11 @@ public class ConventionScanner(IReadOnlyCollection<string> _loggingClasses)
             }
 
             if (check.Lang != "both" && check.Lang != lang)
+            {
+                continue;
+            }
+
+            if (check.Files is not null && !Pattern(check.Files, null).IsMatch(fileName))
             {
                 continue;
             }
@@ -302,6 +307,7 @@ public class ConventionScanner(IReadOnlyCollection<string> _loggingClasses)
 
     private List<int> LoggingHits(ConventionCheck check, string[] lines, List<TypeDeclaration> types)
     {
+        var allowed = Allowed(check);
         var allowName = Pattern(check.AllowName!, null);
         var allowBase = Pattern(check.AllowBase!, null);
         var hits = new List<int>();
@@ -310,7 +316,7 @@ public class ConventionScanner(IReadOnlyCollection<string> _loggingClasses)
             foreach (Match match in LoggerOwner.Matches(lines[i]))
             {
                 var owner = match.Groups[1].Value;
-                if (_loggingClasses.Contains(owner) || allowName.IsMatch(owner))
+                if (allowed.Contains(owner) || allowName.IsMatch(owner))
                 {
                     continue;
                 }
@@ -515,6 +521,7 @@ public class ConventionScanner(IReadOnlyCollection<string> _loggingClasses)
         return tail.Success ? tail.Groups[1].Value : "";
     }
 
+    private List<string> Allowed(ConventionCheck check) => check.AllowList is null ? [] : _lists.ClassesIn(check.AllowList);
     private static string Camel(string name) => name.Length == 0 ? name : char.ToLowerInvariant(name[0]) + name[1..];
 
     private Regex Pattern(string pattern, string? flags)

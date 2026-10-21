@@ -34,6 +34,11 @@
  * Warn-only. The clause forms belong to lib/compose-test-command.js; this file imports the
  * predicate and holds no list of its own.
  *
+ * UNSTOPPED, OUTSIDE THE LADDER. A declared `unit` or `full` that runs vstest or flutter tests without
+ * that runner's per-test stop (the composer's joinStop would still add it) hears one warn-only line
+ * naming the roles, beside the ladder's, under the same opt-out. node needs no stop in the declaration:
+ * verify-run.js applies it at run time.
+ *
  * THE GEAR LINE, BESIDE THE LADDER. A repo with no `gear` in `.claude/nexus-agents.json` hears one
  * line naming the gear command; a `gear` that resolves to nothing (lib/gears.js decides) hears one
  * naming it. Any gear that resolves, `off` included, ends it. Its opt-out is its own:
@@ -47,7 +52,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { isFilteredFull } = require('./lib/compose-test-command');
+const { isFilteredFull, inferRunner, joinStop } = require('./lib/compose-test-command');
 const { resolveGear } = require('./lib/gears');
 
 const RELAY = 'Tell the user once, in your first reply, in your own words, keeping the quoted phrase exactly as written: ';
@@ -55,6 +60,8 @@ const NUDGE = RELAY + 'This repo hasn\'t declared its verify roles (the build / 
 const BROKEN = (why) => RELAY + 'This repo\'s .claude/verify.json exists but does not parse (' + why + ') — the verify gate is running on its detection fallback and the declared roles are unread. Say "declare verify roles" and I will repair it.';
 const FILTERED_FULL = RELAY + 'This repo\'s "full" verify role in .claude/verify.json carries a filter clause, so the suite the close runs once is not the whole suite — the tests the clause leaves out run at no gate. Slow tests belong in the "unit" exclusion instead: the complete run at handover already covers them. Say "declare verify roles" and I will re-propose "full" without the clause, or silence this with "declarationsNudge": false in .claude/nexus-agents.json.';
 const UNMEASURED = RELAY + 'This repo declared its verify roles but never timed them: .claude/verify.json records no measurement for the "unit" role, the command a step close runs, so nothing shows whether it fits inside the step limit ("stepLimitSeconds", 90 seconds when unset) or is really the whole suite. This is a one-time re-measure after an upgrade, not a fault report. Say "declare verify roles" and I will time the declared commands and record the numbers, or silence this with "declarationsNudge": false in .claude/nexus-agents.json.';
+
+const UNSTOPPED = (roles) => RELAY + 'This repo\'s ' + roles.map((r) => '"' + r + '"').join(' and ') + ' verify role' + (roles.length > 1 ? 's run' : ' runs') + ' .NET or Flutter tests with no per-test stop in .claude/verify.json, so one stuck test holds the whole run until its time limit. Say "declare verify roles" and I will add the stop to the declared command, or silence this with "declarationsNudge": false in .claude/nexus-agents.json.';
 
 const GEAR_OPT_OUT = ', or silence this with "gearNudge": false in .claude/nexus-agents.json.';
 const NO_GEAR = RELAY + 'This repo has no pipeline gear set, so every feature asks its process questions — how detailed the plan is, whether a critic reads it, who reads the code, who builds it — as before. Run "/nexus:gear" to see the gears side by side and set one ("off" keeps every question)' + GEAR_OPT_OUT;
@@ -90,18 +97,32 @@ function hasMeasurement(cfg) {
   return msOk && atOk;
 }
 
-/** Returns { state: 'declared' | 'unmeasured' | 'absent' | 'broken', why?, filtered } — never throws. */
+// The declared `unit` and `full` that run vstest or flutter tests without their runner's per-test stop:
+// the composer's join would still add it. node needs none — the runner applies its stop at run time.
+function unstoppedRoles(roles) {
+  if (!roles || typeof roles !== 'object') return [];
+  return ['unit', 'full'].filter((role) => {
+    const command = roles[role];
+    if (typeof command !== 'string' || !command.trim()) return false;
+    const runner = inferRunner(command);
+    if (runner !== 'vstest' && runner !== 'flutter') return false;
+    try { return joinStop({ runner, unit: command, seconds: 1 }) !== command; } catch { return false; }
+  });
+}
+
+/** Returns { state: 'declared' | 'unmeasured' | 'absent' | 'broken', why?, filtered, unstopped } — never throws. */
 function inspect(root) {
   const file = path.join(root, '.claude', 'verify.json');
-  if (!fs.existsSync(file)) return { state: 'absent', filtered: false };
+  if (!fs.existsSync(file)) return { state: 'absent', filtered: false, unstopped: [] };
   let cfg;
-  try { cfg = readJson(file); } catch (e) { return { state: 'broken', why: String(e && e.message || e).slice(0, 120), filtered: false }; }
+  try { cfg = readJson(file); } catch (e) { return { state: 'broken', why: String(e && e.message || e).slice(0, 120), filtered: false, unstopped: [] }; }
   const roles = cfg && cfg.roles;
   const filtered = Boolean(roles && typeof roles === 'object' && typeof roles.full === 'string' && isFilteredFull(roles.full));
+  const unstopped = unstoppedRoles(roles);
   if (roles && typeof roles === 'object' && typeof roles.unit === 'string' && roles.unit.trim()) {
-    return { state: hasMeasurement(cfg) ? 'declared' : 'unmeasured', filtered };
+    return { state: hasMeasurement(cfg) ? 'declared' : 'unmeasured', filtered, unstopped };
   }
-  return { state: 'absent', filtered };
+  return { state: 'absent', filtered, unstopped };
 }
 
 function readAgentsConfig(root) {
@@ -141,6 +162,7 @@ function main(evt) {
     else if (r.state === 'unmeasured') lines.push(UNMEASURED);
     else if (r.state === 'absent') lines.push(NUDGE);
     if (r.filtered) lines.push(FILTERED_FULL);
+    if (r.unstopped.length) lines.push(UNSTOPPED(r.unstopped));
   }
   const gear = gearLine(root, cfg);
   if (gear) lines.push(gear);
@@ -161,4 +183,4 @@ if (require.main === module) {
   if (process.stdin.isTTY) { try { main({}); } catch { process.exit(0); } }
 }
 
-module.exports = { inspect, NUDGE, UNMEASURED, FILTERED_FULL, RELAY, NO_GEAR, MISSING_GEAR };
+module.exports = { inspect, NUDGE, UNMEASURED, FILTERED_FULL, UNSTOPPED, RELAY, NO_GEAR, MISSING_GEAR };

@@ -24,7 +24,9 @@
 
   The same block carries three miner keys — `minerGenerator`, `minerJudge` and `minerMechanical` —
   which are authored in the miner's own doctrine (`mine-family-core.md` § Kickoff checklist, in the
-  `nexus-miner` plugin), not here. A skill of another installed plugin may declare a job of its own
+  `nexus-miner` plugin), not here. Mining jobs take their model and effort from `nexus-miner`'s
+  mining job table — the checker-seat effort table below does not apply to them — and where Codex
+  leads a mining job the key sets its fallback. A skill of another installed plugin may declare a job of its own
   in the same block: its row, its unset value and the rule for its value are authored in that skill,
   which points here for how a job's model is read.
 

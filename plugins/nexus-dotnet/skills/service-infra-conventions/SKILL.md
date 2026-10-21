@@ -159,7 +159,9 @@ A middleware lives in the `Middlewares` folder and takes only injected services.
 - **A settings class is data only.** Named `{Subject}Options`, one class per file, no methods and no static members,
   no section-name constant — the section in the settings file carries the class's name. A value is `init`, and
   `required` when it has no default; a required value is never `string?` and never `= string.Empty` as a
-  placeholder (`= null!` only where a binder needs it). Validation is by attributes; a rule that spans two settings
+  placeholder (`= null!` only where a binder needs it). A value type that must be given (an enum, a number) is a
+  nullable member with `[Required]`, because a bound value type cannot tell "left out" from its default.
+  Validation is by attributes; a rule that spans two settings
   lives in one validator class (`IValidateOptions<T>`) beside them, in the project that binds them. Connection
   strings stay under `ConnectionStrings`.
 - **Nested values are validated only when marked.** A nested settings class is marked `[ValidateObjectMembers]` and
@@ -349,8 +351,9 @@ global pre-processor and its validators run before `HandleAsync`.
 
 ## 6. HTTP JSON casing — keep the framework default
 
-JSON names come from the web default (camelCase); no per-property name that only repeats it. A name another system
-dictates stays. The JSON settings — case-insensitive reading and enums written as text — are set once per host,
+JSON names come from the web default (camelCase): an endpoint's request and reply shapes (the `{Op}Command.cs`,
+`{Op}Query.cs` and `{Thing}Dto.cs` files) carry no per-property name that only repeats it. Elsewhere a
+`JsonPropertyName` stays as written, and a name another system dictates stays. The JSON settings — case-insensitive reading and enums written as text — are set once per host,
 never per class, on the serializer the endpoint style replies through.
 
 The mediator style (Carter or minimal APIs) replies through the host's HTTP JSON options, set in its API

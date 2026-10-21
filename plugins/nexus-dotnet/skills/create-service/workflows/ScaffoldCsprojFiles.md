@@ -1,8 +1,9 @@
 # Scaffold csproj Files
 
 One project file per layer, with only the references the service's axes need. Project files set the basics only:
-no versions (the central package file holds them), no documentation-file generation, no warning suppressions, no
-comments. Reference direction:
+no versions (the central package file holds them), no documentation-file generation, no warning suppressions, and no
+comment but one directly above a setting it explains — a fresh scaffold has no deliberate setting yet, so it has
+none. Reference direction:
 
 - Domain references nothing of the service; Persistence references Domain; Application (where present) references
   Persistence; API references Application, or Persistence where there is no Application project.

@@ -402,6 +402,9 @@ starts the readers of a round whose record is missing, it runs `jobs --label {th
 - `started, id not recorded` or `unreadable` — the job may still run and cannot be reached: that
   seat's fallback, the reason in the round's header note.
 
+A `collect` that returns a finished, failed or cancelled job started with a label adds one `end`
+line to the same record — when the job ended and its state — so the job's run time can be read back.
+
 **Holding for the other readers.** On `deadlinePassed`, while any other reader of the round is not yet
 in — its verdict landed, or its stall handling ended with no verdict; a fallback reader counts as the
 reader it replaced (→ agents-workflow.md § Fix rounds) — call `wait --max-seconds 30` again instead of

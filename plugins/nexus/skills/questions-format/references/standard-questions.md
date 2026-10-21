@@ -465,7 +465,7 @@ They would add {the measured growth}.
 
 ### plan only
 
-**When asked:** asked when a request with no spec reaches a standalone architect, in a repo that declares its complete test run.
+**When asked:** asked when a request with no spec reaches a standalone architect.
 **Surfaces:** question box.
 **Options:**
 
@@ -529,7 +529,7 @@ It would have {its step count and the mix of step kinds}.
 
 | label | consequence | offered when |
 |---|---|---|
-| fastest — lighter checks | it is built now, then checked once at lower effort, with one round of fixes | the plan declares no developer split and the repo declares its complete test run (`roles.full` in `.claude/verify.json`) |
+| fastest — lighter checks | it is built now, then checked once at lower effort, with one round of fixes | the plan declares no developer split |
 | fast — full checks | it is built now in this session; every fix is re-read, up to three rounds, so fewer issues slip through | the plan declares no developer split |
 | thorough — full team | separate roles plan, build and review it; it catches the most and can run while you are away | always |
 | stop after the plan | nothing is built; the plan waits | always |
