@@ -85,7 +85,8 @@ sighting — so treat the improvement proposal's and skill-gap entry's `**Eviden
   2-occurrence promotion threshold (learner step 3) **in the lesson itself**, not re-derived from learner
   bookkeeping each pass.
 - **Strengthen, don't duplicate.** When a lesson matching an existing entry recurs, **append the new run
-  to that entry's provenance** — never add a near-identical twin. Promote only at the threshold; on a
+  to that entry's provenance** — never add a near-identical twin. Promote only at the threshold — a critical item (security, data
+  loss, build-breaking) aside, which the learner promotes at once (learner step 3); on a
   *contradicting* recurrence, revise the entry rather than appending a conflicting twin. Keeps
   `lessons.md` lean and the recurrence signal honest.
 

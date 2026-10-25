@@ -6,6 +6,7 @@
  *   node codex-job.js wait    --job <id> --deadline <iso> [--started <iso>] [--max-seconds <n>]
  *   node codex-job.js collect --job <id> --deadline <iso> [--started <iso>] [--kind review|done-check|research|panel|mining]
  *   node codex-job.js jobs    --label <text>
+ *   node codex-job.js sweep
  *
  * Every call prints one JSON object on stdout and exits 0 on every handled outcome — an unavailable
  * Codex, a failed or cancelled job, a job cut off at its limit. Exit 2 is reserved for a call the
@@ -13,19 +14,31 @@
  * printed as `{error}`.
  *
  * A JOB A LATER SESSION CAN FIND. The companion's job records are per working directory and no session
- * keeps another's job id, so a session started after one ended could not reach its jobs. With
- * --label, `start` appends an intent line to `.claude/audit/codex-jobs.jsonl` in the session root
- * before it calls the companion — an intent it cannot write starts no job, `unavailable` — then the
- * job id, or `unstarted` when no companion was found to call. A companion call that returns no id
- * leaves the intent standing, since its worker may already run; so does an id line it cannot write,
- * which adds `recordError`. `jobs --label` prints every job recorded under exactly that label,
- * newest first: `recorded` with its id, `started, id not recorded` for an intent with neither, or
- * `none`, a missing record file included; a record it cannot read whole is `unreadable`. --kind is
- * validated as `collect` validates it and recorded. Without --label nothing is written. A `collect`
- * that returns `completed`, `failed` or `cancelled` for a job the record holds appends one `end` line
- * — its label, the job id, when it ended and the state — once per job, so a labelled job's run time
- * can be read back; a job the record does not hold, a companion not found, or a job still running
- * writes none, and `jobs --label` reads past the line.
+ * keeps another's job id, so a session started after one ended could not reach its jobs. `start`
+ * appends an intent line to `.claude/audit/codex-jobs.jsonl` in the session root before it calls the
+ * companion — its --label, or null without one — then the job id, or `unstarted` when no companion was
+ * found to call. A labelled intent it cannot write starts no job, `unavailable`; an unlabelled one
+ * starts the job anyway and adds `recordError`. A companion call that returns no id leaves the intent
+ * standing, since its worker may already run; so does an id line it cannot write, which adds
+ * `recordError`. `jobs --label` prints every job recorded under exactly that label, newest first:
+ * `recorded` with its id, `started, id not recorded` for an intent with neither, or `none`, a missing
+ * record file included; a record it cannot read whole is `unreadable`. --kind is validated as
+ * `collect` validates it and recorded. A `collect` that returns `completed`, `failed` or `cancelled`
+ * for a job the record holds appends one `end` line — its label, the job id, when it ended and the
+ * state — once per job, so every job's run time can be read back; a job the record does not hold, a
+ * companion not found, or a job still running writes none, and `jobs --label` reads past the line.
+ *
+ * CLOSING FORGOTTEN SERVERS. The Codex plugin keeps one background server per folder and, when its
+ * connect check on it fails, starts another without ending the old one. `start`, before it calls the
+ * companion, and a `collect` whose job ended — read as completed, failed or cancelled, or cut with the
+ * cancel confirmed — end this folder's forgotten servers (lib/codex-servers.js): those whose pid file
+ * is gone and that no Codex record names, and only while no Codex job runs in the folder, this
+ * collect's own worker left out. The recorded server stays; the Codex plugin stops it when the session
+ * ends. Each such call prints `serversClosed`; a close that fails adds `serversNote` and never changes
+ * the job's state, verdict, output or early flag. `sweep` does the same for every folder on the
+ * machine and prints one row per folder — closed, kept, and why kept — with the total. Every close
+ * that ends servers appends one `close` line: when, the folder, how many, their ages in minutes, and
+ * the trigger, `start`, `collect` or `sweep`.
  *
  * RUN FROM THE SESSION ROOT, NEVER WITH A --cwd. The Codex companion keeps its job records per
  * working directory, so `start`, `wait` and `collect` find the same job only when all three run from
@@ -61,7 +74,8 @@
  * as terminal, a completed job with no usable output for its --kind — returned before the start plus
  * the window (6 minutes, or the whole limit where that is shorter) carries `earlyFailure`; a stall
  * carries it only when `collect` sees it before the window plus one minute of companion setup. The time
- * the helper sees the failure governs, so no caller keeps a clock. No --started, no flag.
+ * the helper sees the failure governs, less the time `start` spent closing forgotten servers, so no
+ * caller keeps a clock. No --started, no flag.
  *
  * THE STOP. `collect` runs the companion's own `cancel` first (40 s), with Git Bash path conversion off
  * so the companion's `taskkill /PID` switches arrive intact. A cancel that fails is judged by the
@@ -297,19 +311,24 @@ function cmdStart(opts) {
   const codex = readCodexConfig(process.cwd());
   const limit = resolveLimit(codex, opts['limit-minutes']);
   const effort = resolveEffort(codex, opts, process.cwd());
-  const unavailable = (why) => print(Date.now() < callStart + windowMs(limit * 60000)
-    ? { unavailable: why, earlyFailure: true }
-    : { unavailable: why });
+  let closeMs = 0;
+  const unavailable = (why, servers = {}) => print({
+    ...(Date.now() - closeMs < callStart + windowMs(limit * 60000) ? { unavailable: why, earlyFailure: true } : { unavailable: why }),
+    ...servers,
+  });
 
-  let intent = null;
-  if ('label' in opts) {
-    intent = `${Date.now().toString(36)}-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
-    const at = new Date();
-    const wrote = appendRecord({
-      type: 'intent', intent, label: opts.label, kind: opts.kind || null,
-      at: at.toISOString(), deadline: new Date(at.getTime() + limit * 60000).toISOString(),
-    });
-    if (wrote !== true) return unavailable(wrote);
+  const labelled = 'label' in opts;
+  let intent = `${Date.now().toString(36)}-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
+  let recordError = null;
+  const at = new Date();
+  const wroteIntent = appendRecord({
+    type: 'intent', intent, label: labelled ? opts.label : null, kind: opts.kind || null,
+    at: at.toISOString(), deadline: new Date(at.getTime() + limit * 60000).toISOString(),
+  });
+  if (wroteIntent !== true) {
+    if (labelled) return unavailable(wroteIntent);
+    recordError = wroteIntent;
+    intent = null;
   }
   const unstarted = (why) => {
     if (intent) appendRecord({ type: 'unstarted', intent, reason: why });
@@ -317,24 +336,66 @@ function cmdStart(opts) {
   };
   const found = findCompanion(process.cwd());
   if (found.unavailable) return unstarted(found.unavailable);
+  const closeStart = Date.now();
+  const servers = closeServers('start', null);
+  closeMs = Date.now() - closeStart;
 
   const args = ['task', '--background', '--prompt-file', promptFile, '--json'];
   if (effort) args.push('--effort', effort);
   const startedAt = new Date();
   const res = companion(found.path, args, 120000, workerWaitEnv());
   const jobId = res.json && res.json.jobId;
-  if (!res.ok || !jobId) return unavailable(res.ok ? 'the Codex companion returned no job id' : res.reason);
+  if (!res.ok || !jobId) return unavailable(res.ok ? 'the Codex companion returned no job id' : res.reason, servers);
   const deadline = new Date(startedAt.getTime() + limit * 60000);
   const out = { jobId, startedAt: startedAt.toISOString(), deadline: deadline.toISOString(), effort: effort || null };
   if (intent) {
     const wrote = appendRecord({ type: 'job', intent, jobId, startedAt: out.startedAt, deadline: out.deadline });
-    if (wrote !== true) out.recordError = wrote;
+    if (wrote !== true) recordError = wrote;
   }
-  print(out);
+  if (recordError) out.recordError = recordError;
+  print({ ...out, ...servers });
 }
 
-// The session root's record of labelled jobs, one JSON line each: an intent before the companion is
-// called, then the job id — or `unstarted` where no companion was found. Returns true, or why not.
+// Ends forgotten Codex servers (lib/codex-servers.js) — this folder's, or with `workspace` null every
+// folder's — and records one close line per folder where any ended. Whatever happens here, the job's
+// own outcome stands: a failure, the module's loading included, is only a note beside it.
+function closeAndRecord(trigger, excludeJob, workspace) {
+  const { closeForgotten, defaultStateRoots } = require('./lib/codex-servers');
+  const res = closeForgotten({ workspace, excludeJob, stateRoots: defaultStateRoots(codexDataDir) });
+  const at = new Date().toISOString();
+  for (const row of res.workspaces) {
+    if (!row.closed) continue;
+    const ages = res.closed.filter((c) => c.workspace === row.workspace).map((c) => c.ageMinutes);
+    const wrote = appendRecord({ type: 'close', at, workspace: row.workspace, servers: row.closed, ages, trigger });
+    if (wrote !== true && !res.reason) res.reason = wrote;
+  }
+  return res;
+}
+
+function cmdSweep() {
+  findCompanion(process.cwd());
+  let res;
+  try {
+    res = closeAndRecord('sweep', null, null);
+  } catch (err) {
+    res = { workspaces: [], reason: `the Codex server close failed: ${err.message}` };
+  }
+  const total = res.workspaces.reduce((t, w) => ({ closed: t.closed + w.closed, kept: t.kept + w.kept }), { closed: 0, kept: 0 });
+  print(res.reason ? { workspaces: res.workspaces, total, reason: res.reason } : { workspaces: res.workspaces, total });
+}
+
+function closeServers(trigger, excludeJob) {
+  try {
+    const res = closeAndRecord(trigger, excludeJob, process.cwd());
+    return res.reason ? { serversClosed: res.closed.length, serversNote: res.reason } : { serversClosed: res.closed.length };
+  } catch (err) {
+    return { serversClosed: 0, serversNote: `the Codex server close failed: ${err.message}` };
+  }
+}
+
+// The session root's record of Codex jobs, one JSON line each: an intent before the companion is
+// called, then the job id — or `unstarted` where no companion was found — and a close line per folder
+// whose forgotten servers were ended. Returns true, or why not.
 function appendRecord(line) {
   const file = path.join(process.cwd(), RECORD_REL);
   try {
@@ -522,6 +583,8 @@ function finished(script, job, s, kind) {
   return { state: s.state, output: '', verdict: null, reason };
 }
 
+// Windows: 'gone', { commandLine }, or null when no try could run or every command line was empty.
+// A busy machine can push one query past its limit, so a try with no answer is asked once more.
 function commandOverride(name) {
   try {
     const v = JSON.parse(process.env[name] || 'null');
@@ -531,8 +594,6 @@ function commandOverride(name) {
   }
 }
 
-// Windows: 'gone', { commandLine }, or null when no try could run or every command line was empty.
-// A busy machine can push one query past its limit, so a try with no answer is asked once more.
 function lookupProcess(pid) {
   for (let i = 1; ; i++) {
     const found = lookupOnce(pid);
@@ -641,7 +702,11 @@ function cmdCollect(opts) {
   const script = a.found.path;
   const s = lostWorker(readStatus(script, a.job, 0, COLLECT_STATUS_MS), a.job);
   if (s.pidFree) companion(script, ['cancel', a.job, '--json'], CANCEL_MS);
-  const ended = (out) => { if (TERMINAL.has(out.state)) recordEnd(a.job, out.state); return print(out); };
+  const ended = (out) => {
+    if (!TERMINAL.has(out.state)) return print(out);
+    recordEnd(a.job, out.state);
+    return print({ ...out, ...closeServers('collect', a.job) });
+  };
   if (TERMINAL.has(s.state)) {
     const out = finished(script, a.job, s, kind);
     return ended(isJobFailure(out) ? flagEarly(out, a) : out);
@@ -663,7 +728,8 @@ function main() {
   if (sub === 'wait') return cmdWait(opts);
   if (sub === 'collect') return cmdCollect(opts);
   if (sub === 'jobs') return cmdJobs(opts);
-  return usage(`unknown subcommand ${JSON.stringify(sub || '')} — use start, wait, collect or jobs`);
+  if (sub === 'sweep') return cmdSweep();
+  return usage(`unknown subcommand ${JSON.stringify(sub || '')} — use start, wait, collect, jobs or sweep`);
 }
 
 main();

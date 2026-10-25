@@ -14,7 +14,7 @@ Generate `docs/specs/{slug}/delivery/plan.md` with a structural guarantee that e
 
 ## When to use
 
-After a feature spec exists (`docs/specs/{slug}/definition/spec.md` with `Status: Ready`). Replaces freeform plan writing.
+After a Ready definition exists — a spec, bug or epic file under `docs/specs/{slug}/definition/` with `Status: Ready`, a technical feature's ADR-collapsed definition, or a plan-only definition, where the plan is the definition (→ `architect.md` § Plan-Only Definition (standalone only)). Replaces freeform plan writing.
 
 ## Reading protocol
 
@@ -92,7 +92,7 @@ Before writing, ensure you have:
    AC/ADR-unit/`ruleName` is real and the reviewer verifies the code traces to it (both "where present",
    not a new hard gate).
 
-7. **Apply the auto-approve gate** — owned by the coordination roles, not by a rule file: `team-lead.md` § Plan Approval and `architect.md` § Phase 2 (always auto-approve once the review passes with no open questions; a plan that needs build slices carries its `**Build slices:**` line — § Build Slices). Message team lead, never developer directly.
+7. **Apply the auto-approve gate** — owned by the coordination roles, not by a rule file: `team-lead.md` § Plan Approval and `architect.md` § Phase 2: Write plan (resumed by team lead with answers) (auto-approve once the review passes with no open questions, save three holds that wait for the owner — an offered cut candidate, a tagged decision row (`Adds:`, `Departs from`) asked as the `plan departures` question before the build, and a light review that folded a CRITICAL or HIGH, which with the owner away the review's round 2 checks instead (→ `architect.md` § Check Level and Plan Size); a plan that needs build slices carries its `**Build slices:**` line — § Build Slices). Message team lead, never developer directly — standalone, you dispatch your own lane (→ `architect.md` § Architect-Led Fast Lane (standalone only)).
 
 ## Arguments
 
@@ -139,7 +139,7 @@ A light plan holds:
 - **A goal** — on a plan-only definition, 2–4 lines and an out-of-scope line, in place of Context and Scope; a spec'd plan points to its spec instead.
 - **Steps**, each a `### Step N — {outcome}` heading (the step count and the handover recheck read these headings) and one body line: `Accept:` the test file and what it asserts, or an exact grep or command · `Files:` each file the step creates or modifies, in backticks · `Follow {skill}` — under `**Skills per step:** on`, every skill step 4 names, as `Follow {skill}, {skill}` — or `None` · `TDD: yes` where the step is test-first · `Risk: risky — {why}` on a risky step only, a safe step carrying no risk field. Where a rule list is joined, the step's `Satisfies:` rule lines follow its line (step 6's grammar), and the *Not delivered by this feature* list is a header line.
 - **A where-to-look list** — per step, the file and the class, method, document section or configuration key the developer starts from; for a new file, the existing file it follows or `no precedent`; never a line number.
-- **`## Decisions`**, which may read the one-line None sentence, **`## Decisions and why`**, which may read its own one-line None sentence, and **`## Open Questions`**.
+- **`## Decisions`**, which may read the one-line None sentence — a call that adds behaviour no source asks for still gets its `Adds:` row, and, under a `**Mirrors:**` header line, a call that builds differently from the named pattern its `Departs from` row, as the template's § Decisions says — **`## Decisions and why`**, which may read its own one-line None sentence, and **`## Open Questions`**.
 - **`## Cut candidates`**, only when a part qualifies (→ architect.md § Check Level and Plan Size), laid out as in the full format; a light plan expanded to the full format keeps it.
 
 Left out: the Skill Mapping table (each step's skill and `TDD` mark move into its line, chosen as step 4 says), Domain and Data Model Changes, Cross-Service Changes, Migration Notes, Must-NOT-Change, Testing Strategy and KB Impact. Build slices, the KB update step (owed wherever a `docs/kb/` entry needs updating), the registry steps and the close- and operator-owned steps keep their rules.

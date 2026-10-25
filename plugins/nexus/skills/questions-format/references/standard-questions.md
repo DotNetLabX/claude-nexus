@@ -32,13 +32,13 @@ would run past about 100 characters, one fact line. A run whose facts fit the ro
 alone. The long form may carry the same facts. Each option's consequence is one sentence, and the
 long form carries it word for word.
 
-Each entry's **With the owner away** line says what an owner-away run does in place of asking: first
-the answer a run declared in the owner's own words takes, then the typed marker's, or "the same". It
-is the one home of the words-declared answer, and the rule it serves is stated once
+Each entry's **With the owner away** line says what an owner-away run does in place of asking — one
+answer, the same whichever way the run was declared: the away answerer's, which for most entries is
+the recommended option. It is the one home of that answer, and the rule it serves is stated once
 (→ agents-workflow.md § Owner-away runs).
 
-Four entries carry an **Under a gear** line: the answer a feature's gear gives in place of the
-question, attended or away (→ agents-workflow.md § Gears).
+Six entries carry an **Under a gear** line: the answer a feature's gear gives in place of the
+question, attended or away, or that the question is asked as written under any gear (→ agents-workflow.md § Gears).
 
 ## Entries
 
@@ -70,7 +70,7 @@ models eligible to check is closed.
 | a name you give instead | you name it; folder and branch follow | always |
 
 **Recommended:** the proposed name, unless the user has already named one in the conversation.
-**With the owner away:** a PO's or team lead's proposed name is taken, since they assign slugs; a standalone architect or solo that needs a new slug waits on it, since it may only ask for one. Typed marker: the same.
+**With the owner away:** a PO's or team lead's proposed name is taken, since they assign slugs; a standalone architect or solo that needs a new slug waits on it, since it may only ask for one.
 **Long form:**
 
 ```
@@ -97,8 +97,8 @@ It is built from {the words it came from}.
 | an independent critic reads it | a second reader raises gaps before work starts | always |
 | self-review only | fastest; gaps surface later, during the build | always |
 
-**Recommended:** an independent critic where the work is complex or costly to get wrong, self-review otherwise.
-**With the owner away:** the option you would have recommended. Typed marker: self-review (`team-lead.md` § Unattended Mode).
+**Recommended:** an independent critic where the work is complex or costly to get wrong, or touches shipped or production code; self-review otherwise.
+**With the owner away:** the away answerer takes the recommended option.
 **Under a gear:** not asked; the gear's review is taken — self-review, Codex alone, or a critic — and named in the record with the gear; under `off`, or where the gear says ask me, it is asked as above.
 **Long form:**
 
@@ -127,7 +127,7 @@ It is {its size or intent class}.
 | skip the panel | the plan proceeds on one position | always |
 
 **Recommended:** run the panel when the design is expensive to reverse, skip it otherwise.
-**With the owner away:** not run; the plan is written on your one recommendation and the build waits for the owner on that choice, so the `build lane` question is not reached. Typed marker: the same.
+**With the owner away:** the away answerer takes the recommended option: where the panel runs, the plan is written for the approach you recommend, and that choice goes on the run's list.
 **Long form:**
 
 ```
@@ -156,7 +156,7 @@ Reversing this design would cost {what reversing it costs}.
 | overwrite it | the existing plan is replaced; its steps are lost | a plan exists |
 
 **Recommended:** resume, unless the existing plan predates a decision that changed the feature.
-**With the owner away:** resume; a plan is never overwritten. Typed marker: the same.
+**With the owner away:** resume; a plan is never overwritten.
 **Long form:**
 
 ```
@@ -178,7 +178,7 @@ It got as far as {how far}.
 **Surfaces:** question box; checkpoint report.
 **Options:** derived — see the shared model-choice option set above.
 **Recommended:** the main reader of the reader-pair list's first applicable pair — the first whose conditions hold and whose main is not the author's family, from pair 3 on where the reviewer was set explicitly — never Fable.
-**With the owner away:** the pairing check runs as attended and takes the option it would have recommended, with no ask (`team-lead.md` § Checker-Seat Pairing Check). Typed marker: that check's unattended step, step 6.
+**With the owner away:** the pairing check runs as attended and takes the option it would have recommended, with no ask (`team-lead.md` § Checker-Seat Pairing Check).
 **Long form:**
 
 ```
@@ -199,7 +199,7 @@ Reviewer pairing check, routine: {the author model} wrote the code, and the revi
 **Surfaces:** question box; checkpoint report.
 **Options:** derived — see the shared model-choice option set above.
 **Recommended:** the main reader of the reader-pair list's first applicable pair, from pair 3 on where the critic was set explicitly, never Fable.
-**With the owner away:** the pairing check runs as attended and takes the option it would have recommended, with no ask (`team-lead.md` § Checker-Seat Pairing Check). Typed marker: that check's unattended step, step 6.
+**With the owner away:** the pairing check runs as attended and takes the option it would have recommended, with no ask (`team-lead.md` § Checker-Seat Pairing Check).
 **Long form:**
 
 ```
@@ -230,8 +230,8 @@ This review allows {what it allows}.
 | {the checker model} alone | one reader, cheaper and faster than a pair, and the record says the second was skipped | the configured model is not the author's family |
 | Fable, with Sonnet reading second | the strongest reader leads, at the highest cost | the author is not Fable |
 
-**Recommended:** the reader-pair list's first applicable pair (`agents-workflow.md` § Critic rounds) — the Codex option where it is offered; otherwise the first two-reader option, in the table's order, whose leading model is neither the author's family nor Fable. Either way, its second reader is replaced by the repo's `jobs.secondReader` model where that is set and usable, rendered under the option's concrete names — on the Codex option that is the reader beside Codex, at every review. Fable is never recommended, and where it is the configured checker its option is labelled as the configured model; the one exception is a repo-set Fable second reader in an attended run, which the recommended option names.
-**With the owner away:** the pairing check runs as attended — its precedence, its collision check and its second-reader rules unchanged — and takes its recommended option with no ask, recorded `presumed` (`team-lead.md` § Checker-Seat Pairing Check). Typed marker: that check's checker-resolution and unattended steps, steps 2 and 6.
+**Recommended:** the reader-pair list's first applicable pair (`agents-workflow.md` § Critic rounds) — the Codex option where it is offered; otherwise the first two-reader option, in the table's order, whose leading model is neither the author's family nor Fable. Either way, its second reader is replaced by the repo's `jobs.secondReader` model where that is set and usable, rendered under the option's concrete names — on the Codex option that is the reader beside Codex, at every review. Fable is never recommended, and where it is the configured checker its option is labelled as the configured model; the one exception is a repo-set Fable second reader, which the recommended option names.
+**With the owner away:** the pairing check runs as attended — its precedence, its collision check and its second-reader rules unchanged — and takes its recommended option with no ask, recorded `presumed` (`team-lead.md` § Checker-Seat Pairing Check).
 **Under a gear:** not asked; the gear's pair is taken, its second reader still the repo's `jobs.secondReader` where that is set and usable, and named in the record with the gear; under `off`, or where the gear says ask me, it is asked as above. A consolidation takes no gear, so the learner asks it as before.
 **Long form:**
 
@@ -269,7 +269,7 @@ Reader pair, routine: {the author model} wrote the {artifact}, and {the checker 
 - New work **builds on** the current unmerged branch → recommend **stacked branch**.
 - Work will run **in parallel** with other active work in this checkout (another session/agent), is long-running, or sits on a dirty tree that must stay untouched → recommend **worktree**.
 
-**With the owner away:** the branch matrix's unattended column with its dirty-tree and stale-default overlays, for every seat, solo included (`agents-workflow.md` § Branch Pre-Flight & Default-Branch Resolution); a worktree only where the owner's launch words named one. Typed marker: the same column.
+**With the owner away:** the branch matrix's unattended column with its dirty-tree and stale-default overlays, for every seat, solo included (`agents-workflow.md` § Branch Pre-Flight & Default-Branch Resolution); a worktree only where the owner's launch words named one.
 **Long form:**
 
 ```
@@ -288,7 +288,7 @@ The folder holds {its changed files and whose they are}.
 
 ### verify-roles declaration
 
-**When asked:** asked at pre-flight, once per repo, when the repo declares no unit verify command.
+**When asked:** asked at pre-flight, once per repo, when the repo declares no unit verify command; and at a campaign's preparation, when the repo declares no full suite.
 **Surfaces:** question box.
 **Options:**
 
@@ -299,7 +299,7 @@ The folder holds {its changed files and whose they are}.
 | stop asking in this repo | the prompt is silenced; the speed features stay off | always |
 
 **Recommended:** declare now — it is one pass, and every later run reuses it.
-**With the owner away:** skipped, and named in `summary.md`. Typed marker: the same.
+**With the owner away:** the run declares them by the `declare-verify-roles` skill's unattended path; a campaign unit never declares — its coordinator does, at the campaign's preparation.
 **Long form:**
 
 ```
@@ -331,7 +331,7 @@ The report's own `Stop` line is a template element, never one of this entry's op
 neither listed here nor counted toward the four a question may carry.
 
 **Recommended:** the default action, unless the checkpoint's own findings argue against it.
-**With the owner away:** the recommended option, unless the action is one-way or the point is reserved for the owner — the first two rows of the open-point table (→ agents-workflow.md § Owner-away runs). Typed marker: the same.
+**With the owner away:** the recommended option, unless the action is one-way or the point is reserved for the owner — the first two rows of the open-point table (→ agents-workflow.md § Owner-away runs).
 **Long form:**
 
 ```
@@ -360,7 +360,7 @@ Its findings were {what they were}.
 | answer now | the recommendation stands, unverified | always |
 
 **Recommended:** measure first when the fact would change the recommendation, not just its wording.
-**With the owner away:** the research runs where the question it serves is one the run proceeds on. Typed marker: the same.
+**With the owner away:** the research runs where the question it serves is one the run proceeds on.
 **Long form:**
 
 ```
@@ -389,7 +389,7 @@ Measuring {the target} would cost about {the rough cost}.
 | stop at the commit | the branch is handed to you by name and nothing merges | always |
 
 **Recommended:** squash-merge when the run closed clean and nothing else is building on the branch.
-**With the owner away:** stop at the commit and name the branch. Typed marker: the same.
+**With the owner away:** stop at the commit and name the branch.
 **Long form:**
 
 ```
@@ -418,7 +418,7 @@ It is not yet on {the default branch}, and a separate working copy is {in play o
 | keep it local | nothing is published; the commits stay here | always |
 
 **Recommended:** push when the run closed clean and the branch is meant to be shared.
-**With the owner away:** no push, unless an explicit owner instruction that the seat's own text already honours says to. Typed marker: the team lead's `autoPush` setting decides, by its push gate.
+**With the owner away:** the team lead's `autoPush` setting decides, by its push gate, whichever way the run was declared; no other seat pushes.
 **Long form:**
 
 ```
@@ -446,7 +446,7 @@ Push, routine: {how many} commits are local on {the branch}, and {the remote} ha
 | apply none | nothing changes; the lessons stay recorded | always |
 
 **Recommended:** apply, where every promotion carries its measured size and a pruning pass has run.
-**With the owner away:** nothing is promoted; the proposals are listed. Typed marker: the same.
+**With the owner away:** nothing is promoted; the proposals are listed.
 **Long form:**
 
 ```
@@ -476,7 +476,7 @@ They would add {the measured growth}.
 | small enough for Solo | one session makes the change with no plan and no separate review | the change fits Solo's scope |
 
 **Recommended:** plan it now, where the request has no product what to shape; a spec first where it has one.
-**With the owner away:** shape a spec first; a plan-only definition is never chosen without you. Typed marker: the same.
+**With the owner away:** shape a spec first; a plan-only definition is never chosen without you.
 **Long form:**
 
 ```
@@ -503,7 +503,7 @@ Plan only, routine: the request is {its intent class}, has no spec, and would ch
 | full plan | every section is written, so any way of building it can follow | always |
 
 **Recommended:** the plan the architect expects, which is `full plan`, since the question is asked only then.
-**With the owner away:** not asked; the plan takes the format the architect expects. Typed marker: the same.
+**With the owner away:** not asked; the plan takes the format the architect expects.
 **Under a gear:** not asked; the plan takes the gear's plan detail, named in the record with the gear; under `off`, or where the gear says ask me, it is asked as above.
 **Long form:**
 
@@ -535,8 +535,8 @@ It would have {its step count and the mix of step kinds}.
 | stop after the plan | nothing is built; the plan waits | always |
 
 **Recommended:** `thorough — full team` for more than 8 developer-built steps or a declared developer split; otherwise the level the plan's `**Lane:**` header names — `fastest — lighter checks` for light, `fast — full checks` for full. The other offered options follow by preference: after `thorough — full team` — `fast — full checks`, then `fastest — lighter checks`; after `fast — full checks` — `thorough — full team`, then `fastest — lighter checks`; after `fastest — lighter checks` — `fast — full checks`, then `thorough — full team`; `stop after the plan` always last. The recommendation's reason says why in plain words — the plan's size, a developer split — and never names the `fullChecks` list.
-**With the owner away:** not asked; the lane you would have recommended from the finished plan, with `fast — full checks` in place of `fastest — lighter checks` — a lighter-checks build needs you. Typed marker: the same.
-**Under a gear:** not asked; the build takes the gear's lane, named in the record with the gear, and the away swap to `fast — full checks` above does not apply — a gear's lighter-checks build runs unattended too; under `off`, or where the gear says ask me, it is asked as above.
+**With the owner away:** not asked; the away answerer takes the recommended option, from the finished plan.
+**Under a gear:** not asked; the build takes the gear's lane, named in the record with the gear, the owner present or away; under `off`, or where the gear says ask me, it is asked as above.
 **Long form:**
 
 ```
@@ -568,7 +568,7 @@ The available lanes are {which ones}.
 A part's label runs to at most 40 characters and what deferring it loses to at most 35, so every line fits; the proposed backlog row is written as its id inside backticks, never bare.
 
 **Recommended:** `Defer it` only when two readers from two model families both say `safe to defer` at medium or better — and where the first round had more readers, every one of them; otherwise `Keep it`, which any `keep`, any low, a disagreement, a part changed after its verdicts or fewer than two verdicts gives.
-**With the owner away:** not asked; nothing is cut — the offered parts and their verdicts go on the run's list. Typed marker: the same.
+**With the owner away:** not asked; the away answerer takes the recommended option for each offered part — a deferred part writes no backlog row, since an id is the owner's to confirm, and goes on the run's list with its verdicts.
 **Long form:**
 
 ```
@@ -583,4 +583,66 @@ Keep {the part} in this plan, or defer it?
 ```
 Cut candidates, routine: deferring {the part} loses {what deferring it loses}.
 {each reader's verdict and confidence}.
+```
+
+### spec additions
+
+**When asked:** asked before a spec goes Ready, once its source check lists rules the spec's author or a reviewer added with no source behind them, and the owner has not kept; one batch for every such rule, each question a multi-select of at most three rules plus the option `None of these`, so two to four options always; at most three questions to a box, and past nine rules a second box.
+**Surfaces:** question box; questions file.
+**Options:**
+
+| label | consequence | offered when |
+|---|---|---|
+| {the addition} | {what keeping it adds} | one option per added rule, at most three to a question |
+| None of these | none of these rules is built | always — last, or first where it is recommended |
+
+An added rule is restated in plain words — no marker, no bracket, no emphasis — its label at most 40 characters and what keeping it adds at most 35, each recommended rule's description closing with its own confidence clause. A ticked rule is kept, and marked kept by the owner with the date; an unticked one is dropped to the spec's Out of Scope. `None of these` ticked beside rules counts the rules. Where the asker recommends dropping every rule of a question, `None of these` is listed first and recommended.
+
+**Recommended:** the rules the asker would keep, listed first together — a rare case, since none has a source; otherwise `None of these`.
+**With the owner away:** not asked; every added rule is dropped to the spec's Out of Scope and listed on the run's list, since nothing that adds behaviour is built on a presumed answer.
+**Under a gear:** asked as written under any gear, since it asks what is built, not how.
+**Long form:**
+
+```
+Behaviour nobody asked for is cheaper to drop now than to build and take out later.
+No source asked for these rules: {the additions}.
+Which of these rules should be built?
+```
+
+**This run:**
+
+```
+Spec additions, routine: {how many} rules in {the spec} have no source behind them.
+```
+
+### plan departures
+
+**When asked:** asked at a plan's approval, before the build, when its decisions hold rows that add behaviour no source asks for or that build differently from the pattern the owner named to mirror; one batch for every such row, packed as `spec additions` is — at most three rows plus `None of these` to a question, at most three questions to a box, a second box past nine; asked as written under any gear, since it asks what is built, not how.
+**Surfaces:** question box; questions file.
+**Options:**
+
+| label | consequence | offered when |
+|---|---|---|
+| {the departure} | {what keeping it adds} | one option per tagged row, at most three to a question |
+| None of these | each is removed, or rebuilt to follow the pattern | always — last, or first where it is recommended |
+
+A row is restated in plain words, with the same caps and clauses as `spec additions`. A ticked row is kept as planned; an unticked addition is removed, and an unticked departure is rebuilt to follow the pattern — one the pattern cannot carry goes back to the owner with why. `None of these` ticked beside rows counts the rows. Where the asker recommends dropping every row of a question, `None of these` is listed first and recommended.
+
+Each question's header is `Deviations {n}`, numbered within its box; `{the pattern}` is the pattern the owner named to mirror, or what was asked where no pattern was named.
+
+**Recommended:** the rows the asker would keep, listed first together — always a departure a source requires, since the ticket wins over the pattern; otherwise a rare case — and `None of these` where it would keep none.
+**With the owner away:** not asked; a departure a source requires is kept, since the ticket wins over the pattern, and every other tagged row is dropped — an addition removed, a departure rebuilt to follow the pattern, one the pattern cannot carry left waiting — each listed on the run's list.
+**Under a gear:** asked as written under any gear, since it asks what is built, not how.
+**Long form:**
+
+```
+A plan that deviates from what was asked, or from the pattern you named, is shown to you before it is built.
+The plan for {the feature} deviates here: {the departures}.
+Which of these deviations from {the pattern} should be built as planned?
+```
+
+**This run:**
+
+```
+Plan departures, routine: the plan for {the feature} deviates in {how many} places.
 ```

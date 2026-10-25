@@ -102,6 +102,21 @@
  *      `Write` is judged: an `Edit` or `MultiEdit` carries part of the file, and every close writes the
  *      summary whole. It runs last among the summary invariants — (9) after (4)–(7) — so a write
  *      another one refuses keeps that refusal. Foreground writers only, as (4)–(7).
+ *  10) Spec sources (ADR-161). Every business rule of a spec names its source, and a rule a writer or a
+ *      reviewer added keeps the spec from Ready until the owner keeps it. A `Write`, `Edit` or
+ *      `MultiEdit` of a docs/specs/{slug}/definition/spec.md (a nested issue's included) is Blocked
+ *      when the file after the write has a status line reading Ready (`Status:` or `**Status:**` at a
+ *      line's start, its value starting `Ready`, a suffix allowed), the file before it did not (a
+ *      missing file reads not Ready), and lib/spec-sources.js reports a rule `missing` or `pending`.
+ *      The base is the committed version (`git show HEAD:`), read with (7)'s bound: where it reads
+ *      Ready or Done, only rules new or changed against it are judged, so an approved spec's old
+ *      rules are never re-judged; a path HEAD does not hold has no base and every rule is judged. The
+ *      deny names each rule id and its fix. Fail-open edges: an unreadable file, an `Edit` whose
+ *      `old_string` is absent, a git read that cannot answer (no git, not a repository, no commit, a
+ *      timeout, a committed path it cannot read) and a library error all allow.
+ *      REACH: foreground writers only, as (4)–(9) — a spawned PO or architect is covered by the
+ *      same check, spec-sources.js, which the team lead runs before it spawns the architect for
+ *      the plan. Only spec.md: an epic, a bug or a tech-spec is not judged here.
  *
  * REMOVED — invariant (3), state-file integrity (blocking a pipeline subagent's write to
  * .claude/.pipeline-state): the only callers it could ATTRIBUTE (data.agent_type is present
@@ -150,6 +165,7 @@ const { treeHash, sameTree } = require('./lib/tree-hash');
 const { closeGear, closeEvidence, labelsOnly } = require('./lib/gear-close');
 const { countsAsPassing } = require('./lib/run-verdict');
 const { isNonRegistry } = require('./lib/registry-stamp');
+const { checkSpec, readCommitted, isReady } = require('./lib/spec-sources');
 
 // The calibration script, addressed from this file. `hooks/` and `skills/` are siblings under the
 // plugin root in the source repo AND under the version root of a consuming repo's version-keyed
@@ -215,6 +231,13 @@ process.stdin.on('end', () => {
       'write `Follow-up review: none due`. Where the list does hold one of those in a form this check did not ' +
       'read, write it as a numbered `{n}. [HIGH] …` row.'
     );
+  }
+
+  // (10) Spec sources: a write that flips a spec to Ready with an unsourced or unkept rule.
+  const specMatch = fp.match(/(?:^|\/)docs\/specs\/([^/]+(?:\/[^/]+)?)\/definition\/spec\.md$/);
+  if (specMatch && !data.agent_type) {
+    const reason = unsourcedSpecRules(root, fp, tool, ti, specMatch[1]);
+    if (reason) return deny(reason);
   }
 
   // (4) Full-suite evidence: summary.md needs a passing role:"full" record for THIS round.
@@ -289,6 +312,34 @@ process.stdin.on('end', () => {
 
   return allow();
 });
+
+/**
+ * The deny reason for a write that flips a spec to Ready while a rule is unsourced or an added rule
+ * unkept, or null to allow. Every uncertainty allows (header, invariant (10)).
+ */
+function unsourcedSpecRules(root, fp, tool, ti, slug) {
+  try {
+    const after = contentAfterWrite(root, fp, tool, ti);
+    if (after === null || !isReady(after)) return null;
+    const file = path.resolve(root, fp);
+    const before = readLf(file);
+    if (before !== null && isReady(before)) return null;
+    const base = readCommitted(file, 'HEAD', { timeoutMs: GIT_STATUS_TIMEOUT_MS });
+    if (base.status === 'error') return null;
+    const { missing, pending } = checkSpec(after, base.status === 'text' ? base.text : null);
+    if (!missing.length && !pending.length) return null;
+    const found = [
+      missing.length ? `no source: ${missing.join(', ')}` : '',
+      pending.length ? `added, not kept by the owner: ${pending.join(', ')}` : '',
+    ].filter(Boolean).join('; ');
+    return `spec.md for ${slug} cannot go Ready while a business rule is unsourced (${found}). ` +
+      'End each rule with its source marker, `*(Source: {kind} {reference})*`, the kind one of ticket, ' +
+      'contract, owner, document, pattern or added (the spec template\'s Business Rules grammar); split a ' +
+      'rule its source covers only in part, the rest written `added`; put the added rules to the owner as ' +
+      'the catalogue\'s `spec additions` entry, marking each kept one `added — kept by owner {YYYY-MM-DD}` and ' +
+      'moving each dropped one to Out of Scope — then mark the spec Ready.';
+  } catch { return null; }
+}
 
 /**
  * Registries this close wrote that still hold a `pending-triage` row with no `ruling:` key. Returns

@@ -68,7 +68,7 @@ extraction reads that table rather than re-parsing prose.
 **Untouchable:** data-loss | security | silent-wrong-output
 **Tag:** round-1 miss: {surface}
 **Source:** … **Issue:** … **Impact:** … **Fix:** …
-**Route:** plan must resolve
+**Route:** plan must resolve | owner keep or drop
 ```
 
 `Anchor`, `Shape`, `Consequence`, `Evidence` and `Surfaces` are **mandatory** — the extraction fails
@@ -76,7 +76,9 @@ on a merge row that leaves one of them empty, rather than recording a half-forme
 appear only when they apply: `Band` only when genuinely unsure between two levels; `Untouchable` only
 when one of the three classes applies; `Tag` only from round two on, for a finding on text untouched
 since the round it names; `Route` only where a finding cannot be settled at the depth the artifact is
-written for and belongs one layer down.
+written for and belongs one layer down (`plan must resolve`), or where a spec review finds behaviour
+no source asks for, which the author writes into the spec as an `added` rule for the owner to keep or
+drop (`owner keep or drop`) — both LOW, and neither a reason for another round.
 
 **Where each field lands in the record.** The fold's merge table carries one row per finding, with a
 column per field above; the band rides **inside the anchor cell**, appended as `; band {a}–{b}`, and

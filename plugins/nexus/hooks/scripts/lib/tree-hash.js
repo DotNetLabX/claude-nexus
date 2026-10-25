@@ -29,6 +29,10 @@
  * so two trees with equal content hash equal across commits. A listed path that cannot be read (a
  * tracked file deleted from the worktree) contributes `path NUL deleted` instead of throwing.
  *
+ * THE BUILD HASH (`buildHash`) is the same digest over the same listing with the top-level `docs` kept: a
+ * project may compile a file under it, so a test run that reuses a build keys on it. It still leaves out
+ * the pipeline's own `.claude/` writes. `treeHash`, `fileHashes` and `isExcluded` are unchanged by it.
+ *
  * COST. Measured at plan time: 0.9–1.1 s per call on ~700 files / 9.9 MB, against a 9.6 s fast run.
  *
  * `null` means the tree is not a git repository, or git is absent: a consumer skips the hash factor.
@@ -45,16 +49,20 @@ const PIPELINE_FILES = new Set([
 ]);
 const PERSONAS_TMP = /^\.personas\.json\.\d+\.tmp$/;
 
-function excluded(p) {
+function pipelineWrite(p) {
   const slash = p.indexOf('/');
   const first = slash === -1 ? p : p.slice(0, slash);
-  if (first === 'docs') return true;
   if (first !== '.claude') return false;
   const rest = p.slice(slash + 1);
   return PIPELINE_DIRS.some((d) => rest.startsWith(d)) || PIPELINE_FILES.has(rest) || PERSONAS_TMP.test(rest);
 }
 
-function hashedPaths(tree) {
+// One argument only: callers hand it to `filter`.
+function excluded(p) {
+  return p === 'docs' || p.startsWith('docs/') || pipelineWrite(p);
+}
+
+function hashedPaths(tree, leftOut) {
   let listing;
   try {
     listing = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
@@ -63,12 +71,12 @@ function hashedPaths(tree) {
   } catch {
     return null;
   }
-  return listing.split('\0').filter((p) => p && !excluded(p)).sort();
+  return listing.split('\0').filter((p) => p && !leftOut(p)).sort();
 }
 
 // Both forms from one read of each file: `{hash, files}`, or null outside git.
-function hashTree(tree) {
-  const paths = hashedPaths(tree);
+function hashTree(tree, leftOut = excluded) {
+  const paths = hashedPaths(tree, leftOut);
   if (paths === null) return null;
   const hash = crypto.createHash('sha256');
   const files = {};
@@ -84,6 +92,11 @@ function hashTree(tree) {
 
 function treeHash(tree) {
   const both = hashTree(tree);
+  return both && both.hash;
+}
+
+function buildHash(tree) {
+  const both = hashTree(tree, pipelineWrite);
   return both && both.hash;
 }
 
@@ -110,4 +123,4 @@ function sameTree(a, b) {
   return path.resolve(a) === path.resolve(b);
 }
 
-module.exports = { treeHash, fileHashes, hashTree, fileHash, sameTree, isExcluded: excluded };
+module.exports = { treeHash, buildHash, fileHashes, hashTree: (tree) => hashTree(tree), fileHash, sameTree, isExcluded: excluded };

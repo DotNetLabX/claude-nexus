@@ -69,8 +69,22 @@ For each endpoint, specify error responses and their conditions.
 
 Numbered list. Each rule is enforceable and testable. State rules in domain language — "email comparison is case-insensitive", not "uses `StringComparer.OrdinalIgnoreCase`". Describe what the system guarantees, not how the code enforces it.
 
-1. {Rule}
-2. {Rule}
+Each rule ends with its source, in italics in parentheses — `*(Source: {kind} {reference})*` — one of six kinds:
+- `ticket` — the tracker item, or its quoted text in the spec's source notes;
+- `contract` — a counterpart's written contract, such as a platform comment;
+- `owner` — an owner answer: a question id, or the conversation and its date;
+- `document` — any written source in the repo, by path and section: a product document, an ADR, a ratified proposal;
+- `pattern` — the existing pattern the owner said to mirror, by name;
+- `added` — no source: the spec's author or a reviewer added it.
+
+A rule built from two sources lists both, separated by `;`. A rule its source covers only in part is split in two: the covered part keeps its source, the rest is `added`. Where the ticket and the mirrored pattern disagree, the ticket wins: the rule cites the ticket, never the pattern. An `added` rule keeps the spec from Ready until the owner keeps or drops it: a kept rule reads `Source: added — kept by owner {YYYY-MM-DD}`, and a dropped one leaves this list for `## Out of Scope`, its reason `dropped at the owner's keep-or-drop`. The check `spec-sources.js`, beside the plugin's `verify-run.js`, lists every rule with no source and every `added` rule not yet kept; a main-session write that marks the spec Ready with one of them is refused.
+
+1. Team names are unique, compared without regard to case. *(Source: owner, Q4)*
+2. A deleted team's name can be reused at once. *(Source: added)*
+
+## Technical part
+
+*Optional — omit the section when no architect adds one. Written by the architect for its own team only, from its own code repository: a few high-level points, with no class-level detail, no step list and no plan. It is the only section that may name a code fact, and the only one the architect writes.*
 
 ## Decisions and why
 
@@ -90,6 +104,7 @@ Entries are numbered `D1`, `D2`, … (`P1`, `P2`, … in a plan), and every refe
 - **Why:** an owner ruling quotes the owner verbatim; where the owner gave no reason, the writer's explanation, marked `PO's reading` or `architect's reading`; a writer's decision gives the writer's reasoning — never an invented owner reason
 - **Turned down:** each option not taken, with its reason in a few words where one was given — or `none offered` where there were no alternatives
 - **Rests on:** the fact that, if it changes, reopens the decision — or `none — a preference` where nothing outside the owner's preference supports it
+- **Confidence:** high | medium | low — {one-line why}: how sure the decider is, for an owner ruling and a writer's decision alike; an entry written before this part has none, and a reader takes it as missing
 - **Source:** the question's number in the feature's `questions.md`, the date of the discussion, or the architecture decision record a ruling of wider reach was routed to
 - **State:** `current`, or `replaced by {reference}`
 

@@ -128,7 +128,7 @@ Line-number and content drift are **out of scope** — anchored-cites and ordina
 those. This gate guards the fatal class: the cited file is gone.
 
 Who runs it: the canonical Close Gate in `team-lead.md` (attended, a non-zero exit blocks close;
-unattended, the failing output is recorded and the run closes with the obligation on record). Sibling
+with the owner away, the close gate's owner-away rule for its obligations applies). Sibling
 close surfaces point at that item — they never restate it.
 
 ## Species boundary — the KB layer

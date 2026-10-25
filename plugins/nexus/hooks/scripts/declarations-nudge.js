@@ -31,13 +31,18 @@
  * FILTERED_FULL, OUTSIDE THE LADDER. A `roles.full` carrying a filter clause is not the complete
  * suite the close runs once, whatever state the ladder reads — so its line is decided from
  * `roles.full` alone and rides the same injection as the ladder's line (two lines, one output).
- * Warn-only. The clause forms belong to lib/compose-test-command.js; this file imports the
+ * Warn-only. The clause forms belong to lib/test-runners.js's runner table; this file imports the
  * predicate and holds no list of its own.
  *
- * UNSTOPPED, OUTSIDE THE LADDER. A declared `unit` or `full` that runs vstest or flutter tests without
- * that runner's per-test stop (the composer's joinStop would still add it) hears one warn-only line
+ * UNSTOPPED, OUTSIDE THE LADDER. A declared `unit` or `full` whose runner stops a stuck test by a flag in
+ * the command, run without it (the composer's joinStop would still add it), hears one warn-only line
  * naming the roles, beside the ladder's, under the same opt-out. node needs no stop in the declaration:
  * verify-run.js applies it at run time.
+ *
+ * RUNNER MISSING, OUTSIDE THE LADDER. A repo whose step runner (`slow.runner`, else the one its `unit`
+ * invokes) no installed plugin serves hears one warn-only line carrying the loader's reason (lib/test-runners.js),
+ * under the same opt-out: its named-files and tied runs fall back to the whole `unit` until the language
+ * plugin is installed or updated. The line names no plugin.
  *
  * THE GEAR LINE, BESIDE THE LADDER. A repo with no `gear` in `.claude/nexus-agents.json` hears one
  * line naming the gear command; a `gear` that resolves to nothing (lib/gears.js decides) hears one
@@ -53,6 +58,7 @@
 const fs = require('fs');
 const path = require('path');
 const { isFilteredFull, inferRunner, joinStop } = require('./lib/compose-test-command');
+const { loadRunner, RUNNERS } = require('./lib/test-runners');
 const { resolveGear } = require('./lib/gears');
 
 const RELAY = 'Tell the user once, in your first reply, in your own words, keeping the quoted phrase exactly as written: ';
@@ -62,6 +68,8 @@ const FILTERED_FULL = RELAY + 'This repo\'s "full" verify role in .claude/verify
 const UNMEASURED = RELAY + 'This repo declared its verify roles but never timed them: .claude/verify.json records no measurement for the "unit" role, the command a step close runs, so nothing shows whether it fits inside the step limit ("stepLimitSeconds", 90 seconds when unset) or is really the whole suite. This is a one-time re-measure after an upgrade, not a fault report. Say "declare verify roles" and I will time the declared commands and record the numbers, or silence this with "declarationsNudge": false in .claude/nexus-agents.json.';
 
 const UNSTOPPED = (roles) => RELAY + 'This repo\'s ' + roles.map((r) => '"' + r + '"').join(' and ') + ' verify role' + (roles.length > 1 ? 's run' : ' runs') + ' .NET or Flutter tests with no per-test stop in .claude/verify.json, so one stuck test holds the whole run until its time limit. Say "declare verify roles" and I will add the stop to the declared command, or silence this with "declarationsNudge": false in .claude/nexus-agents.json.';
+
+const RUNNER_MISSING = (runner, reason) => RELAY + 'This repo\'s tests run with the ' + runner + ' runner, but ' + reason + ', so a step\'s named-files and tied test runs fall back to the whole "unit" role and take longer. Install or update the language plugin for this repo\'s stack to restore them, or silence this with "declarationsNudge": false in .claude/nexus-agents.json.';
 
 const GEAR_OPT_OUT = ', or silence this with "gearNudge": false in .claude/nexus-agents.json.';
 const NO_GEAR = RELAY + 'This repo has no pipeline gear set, so every feature asks its process questions — how detailed the plan is, whether a critic reads it, who reads the code, who builds it — as before. Run "/nexus:gear" to see the gears side by side and set one ("off" keeps every question)' + GEAR_OPT_OUT;
@@ -97,20 +105,33 @@ function hasMeasurement(cfg) {
   return msOk && atOk;
 }
 
-// The declared `unit` and `full` that run vstest or flutter tests without their runner's per-test stop:
-// the composer's join would still add it. node needs none — the runner applies its stop at run time.
-function unstoppedRoles(roles) {
+// The declared `unit` and `full` whose runner stops a stuck test by a flag in the command, run without it:
+// the composer's join would still add it. node needs none — verify-run.js applies its stop at run time.
+function unstoppedRoles(roles, root) {
   if (!roles || typeof roles !== 'object') return [];
   return ['unit', 'full'].filter((role) => {
     const command = roles[role];
     if (typeof command !== 'string' || !command.trim()) return false;
     const runner = inferRunner(command);
-    if (runner !== 'vstest' && runner !== 'flutter') return false;
-    try { return joinStop({ runner, unit: command, seconds: 1 }) !== command; } catch { return false; }
+    if (!runner || runner === 'node') return false;
+    try { return joinStop({ runner, unit: command, seconds: 1, root }) !== command; } catch { return false; }
   });
 }
 
-/** Returns { state: 'declared' | 'unmeasured' | 'absent' | 'broken', why?, filtered, unstopped } — never throws. */
+// The declared step runner (`slow.runner`, else the one the declared unit invokes) when no installed plugin
+// serves it, with the loader's reason; null otherwise. node is the core's own.
+function missingRunner(cfg, root) {
+  const slow = cfg && cfg.slow && typeof cfg.slow.runner === 'string' ? cfg.slow.runner : '';
+  const unit = cfg && cfg.roles && typeof cfg.roles.unit === 'string' ? cfg.roles.unit : '';
+  const runner = slow || inferRunner(unit);
+  if (!runner || runner === 'node' || runner === 'mtp' || !RUNNERS.has(runner)) return null;
+  try {
+    const { runner: found, reason } = loadRunner(runner, { root });
+    return found ? null : { runner, reason };
+  } catch { return null; }
+}
+
+/** Returns { state: 'declared' | 'unmeasured' | 'absent' | 'broken', why?, filtered, unstopped, missing? } — never throws. */
 function inspect(root) {
   const file = path.join(root, '.claude', 'verify.json');
   if (!fs.existsSync(file)) return { state: 'absent', filtered: false, unstopped: [] };
@@ -118,11 +139,13 @@ function inspect(root) {
   try { cfg = readJson(file); } catch (e) { return { state: 'broken', why: String(e && e.message || e).slice(0, 120), filtered: false, unstopped: [] }; }
   const roles = cfg && cfg.roles;
   const filtered = Boolean(roles && typeof roles === 'object' && typeof roles.full === 'string' && isFilteredFull(roles.full));
-  const unstopped = unstoppedRoles(roles);
+  const unstopped = unstoppedRoles(roles, root);
+  const missing = missingRunner(cfg, root);
+  const extra = missing ? { missing } : {};
   if (roles && typeof roles === 'object' && typeof roles.unit === 'string' && roles.unit.trim()) {
-    return { state: hasMeasurement(cfg) ? 'declared' : 'unmeasured', filtered, unstopped };
+    return { state: hasMeasurement(cfg) ? 'declared' : 'unmeasured', filtered, unstopped, ...extra };
   }
-  return { state: 'absent', filtered, unstopped };
+  return { state: 'absent', filtered, unstopped, ...extra };
 }
 
 function readAgentsConfig(root) {
@@ -163,6 +186,7 @@ function main(evt) {
     else if (r.state === 'absent') lines.push(NUDGE);
     if (r.filtered) lines.push(FILTERED_FULL);
     if (r.unstopped.length) lines.push(UNSTOPPED(r.unstopped));
+    if (r.missing) lines.push(RUNNER_MISSING(r.missing.runner, r.missing.reason));
   }
   const gear = gearLine(root, cfg);
   if (gear) lines.push(gear);

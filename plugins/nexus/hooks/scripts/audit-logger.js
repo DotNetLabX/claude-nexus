@@ -2,8 +2,11 @@
 /**
  * Nexus PreToolUse hook: OPT-IN audit trail. Async (observe-only) — never blocks.
  *
- * Fully gated behind the `token_audit` plugin config (argv[2]) — when OFF (the default), this
- * script does nothing at all: no directories, no files, zero footprint in the host project.
+ * Fully gated behind the `token_audit` plugin option — when OFF (the default), this script does
+ * nothing at all: no directories, no files, zero footprint in the host project. Each source is
+ * trimmed, lower-cased and taken only when it reads on (1, true, on, yes) or off (0, false, off, no):
+ * argv[2] where a hooks.json passes one, else the platform's CLAUDE_PLUGIN_OPTION_TOKEN_AUDIT
+ * variable, else off. An unset, empty or unknown value falls through.
  *
  * When ON, writes under `.claude/audit/` in the host project (NOT docs/ — audit logs are local
  * state, not committed content; add `.claude/audit/` to the project's .gitignore):
@@ -39,7 +42,13 @@
 const fs = require('fs');
 const path = require('path');
 
-const AUDIT_ON = /^(1|true|on|yes)$/i.test(String(process.argv[2] || '').trim());
+const auditSwitch = (value) => {
+  const v = String(value ?? '').trim().toLowerCase();
+  if (['1', 'true', 'on', 'yes'].includes(v)) return true;
+  if (['0', 'false', 'off', 'no'].includes(v)) return false;
+  return null;
+};
+const AUDIT_ON = auditSwitch(process.argv[2]) ?? auditSwitch(process.env.CLAUDE_PLUGIN_OPTION_TOKEN_AUDIT) ?? false;
 
 // Resolve the main-thread persona for THIS session from the per-session registry (shared lib —
 // was a hand-copied local definition until F45-RuntimeDriftHardening Step 3).

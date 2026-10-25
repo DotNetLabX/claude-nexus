@@ -8,7 +8,7 @@ description: Format spec for the review artifact — severity ratings, verdict, 
 The two checks after a build run **at the same time**, so each writes its own file:
 
 - **`done-check.md`** — the architect's done check (Step 1): step dispositions, process slips and one PASS/FAIL verdict per check. Only the architect writes it, or its dispatcher persists a Codex check (→ codex-dispatch.md § Done check).
-- **`review.md`** — the reviewer's code review (Step 2) and its re-reviews, plus the coordinator's fix list for each round and, on the light lane, its risky-steps line. Severity findings and one APPROVED/REQUEST CHANGES verdict per review section.
+- **`review.md`** — the reviewer's code review (Step 2) and its re-reviews, plus the coordinator's fix list for each round and, on the light lane, its risky-steps line. Severity findings and one verdict per review section — APPROVED, COMMENT or REQUEST CHANGES; APPROVED and COMMENT both satisfy the reviewer-verdict condition of the close predicate.
 
 Six sibling verdict files are sanctioned beside `review.md` and no others (`plan-review.md` does NOT exist): `done-check.md` at the architect's seat; `review-codex.md`, `review-second.md` and, under a gear that adds Fable, `review-third.md` at the reviewer seat; `review-critic.md` and `review-critic-codex.md` at the critic seat. The critic writes no file; the persona persists its message to `review-critic.md` under the critic-round layout (→ agents-workflow.md § Critic rounds).
 
@@ -97,9 +97,11 @@ at full severity or losing it.
 **Causal-attribution grammar (not a second threshold).** A finding asserting *causation* names its mechanism — the variable/path producing the failure — or the causal attribution is tagged **`correlation-only`** and capped at MEDIUM; a **directly-observed** CRITICAL/HIGH impact (data loss, security, silent incorrect output) keeps its severity floor (impact filed at full severity, unproven attribution routed to Open Questions). This is a *grammar* requirement, not a number: the ≥80 cutoff above remains the **sole** thin-evidence threshold.
 
 ## Verdict
-- **APPROVED**: No CRITICAL or HIGH issues.
+- **APPROVED**: Nothing open — no finding at any level.
 - **REQUEST CHANGES**: Any CRITICAL or HIGH issue present.
 - **COMMENT**: Only MEDIUM/LOW, no blockers.
+
+APPROVED and COMMENT both satisfy the reviewer-verdict condition of the close predicate; REQUEST CHANGES holds the close.
 
 ## Review Output Format
 

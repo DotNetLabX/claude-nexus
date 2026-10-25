@@ -45,12 +45,12 @@
   turn naming the job, the value and the value taken — never a halt: an unknown family, a job name
   no table declares, `haiku` at `secondReader` or `doneCheck` (`haiku` is never a checker). One job
   exists to add a family, so a setting that would lose it is read as unset too: a `secondReader`
-  naming the main reader's family. A repo-set `fable` second reader is the repo's approval for an
-  attended run; an `[UNATTENDED]` run reads it as unset. The second reader resolves by a longer
+  naming the main reader's family. A repo-set `fable` second reader is the repo's approval, and it
+  holds in every run, the owner present or away. The second reader resolves by a longer
   order, with the feature's picked pair first (→ agents-workflow.md § Critic rounds). The config
   advisory (`config-advisor.js`) reports, when the file is edited, the unusable values the file alone
-  shows; the ones that depend on the run — a `secondReader` in the primary's family, a `fable`
-  second reader in an `[UNATTENDED]` run — surface only at the spawn's disclosure line.
+  shows; the one that depends on the run — a `secondReader` in the primary's family — surfaces only
+  at the spawn's disclosure line.
 
   **`codex` — one setting for every Codex job.** `codex.timeLimitMinutes` is a positive number, the
   total time a Codex job may run from its start (unset: 25); a review job with other readers in its

@@ -8,7 +8,8 @@ description: "Declare a repo's verify roles (build / unit / full / mutation comm
 The developer closes each step with **one call** of the declared `unit` command, through
 `verify-run.js --profile fast`, and the close gate runs `full` once and keeps a record — but only
 in a repo that has **declared** those commands. The plugin never guesses them: they are the repo's
-facts. This recipe writes them, once, attended.
+facts. This recipe writes them, once — with the owner, or by the unattended path below when the
+owner is away.
 
 ## Steps
 
@@ -48,6 +49,11 @@ facts. This recipe writes them, once, attended.
      Testing Platform runner flag → `mtp`, which this version refuses to time or exclude (declare it,
      skip the exclusion, say so); `node --test` → `node`; `pubspec.yaml` → `flutter`. A `full` that
      runs none of these declares no `slow`.
+   - **A `vstest` or `flutter` repo needs its language plugin** (`nexus-dotnet`, `nexus-flutter`): this
+     plugin runs node tests itself, and each language plugin carries how its own tests run. Without it
+     the composer's `join` and `join-stop` below exit 2 naming the missing plugin, named-files and tied
+     step closes run the declared `unit` whole, and slow tests cannot be timed; `filtered` answers either
+     way. Tell the user which plugin to install before composing.
    - `targets` — the paths the `full` command names (a solution or project file, test globs, a test
      directory); `thresholdMs` — 2,000 unless the user picks another.
    - Write the exclusion into `unit` — **never** into `full` — as an addition to the `unit` you just
@@ -76,8 +82,14 @@ facts. This recipe writes them, once, attended.
    `--timeout {s}s` to `flutter test`, and leaves a command that already carries one as it is. `node`
    needs nothing: the runner applies its stops at run time to a direct `node --test` command. A `unit`
    or `full` that runs a script of its own instead passes the composer's legs — `nodeLegs` for the
-   argument lists, `announceLegs` before the first — so its tests get the stops and its run's
-   timeouts are told apart from failures.
+   argument lists, `announceLegs` before the first, and as its last act `endLegs` with the legs'
+   statuses, which states that nothing of the script's own failed and exits — so its tests get the
+   stops and its run's timeouts are told apart from failures. Declare the script as `node {script}`
+   alone — never through another program, never chained with another stage, with no word a shell
+   would expand (`*`, `?`): the runner then starts it with no shell and counts only the statement of
+   the process it started, so call `endLegs` there, never in a process the script starts. A script whose own check
+   failed exits without `endLegs`, and `endLegs` states nothing while an `exit` listener is registered,
+   since that listener runs after it; every red exit `endLegs` did not end stays a real failure.
 3. **Run each role command once through the runner** — `verify-run.js --role {r}`; for `unit`
    `verify-run.js --role unit --timeout-ms 110000`, since no step limit is set yet and the bare form
    would cut at the 90 s default; and for `full`
@@ -167,6 +179,27 @@ facts. This recipe writes them, once, attended.
    `"labelled": true`, which is what gives the exclusion something to leave out (an exclusion for
    tags that do not exist yet is harmless) and switches on the fast stop. From then on each step
    close labels the tests it ran.
+
+## With the owner away
+
+A run with the owner away whose repo declares no `roles.unit` declares them by this path, as the
+catalogue's `verify-roles declaration` entry says. Nothing in it is asked.
+
+- Steps 1 to 3 run as written, but the proposal is not shown for approval: step 3's timing run proves
+  it instead — it writes the proposed roles into `.claude/verify.json` before it runs them — and step
+  3's bounds hold, with no override.
+- A role whose command fails its timing run is taken out of the file again. Where no role is left
+  working, the file is restored to what it was before this pass — removed, where there was none — and
+  `summary.md` names the roles `undeclared`.
+- Step 4 is not asked: the commit strategy takes its default, and no `commitStrategy` key is written.
+- Step 5 writes the file as usual. The declaration is a listed point, its answer
+  `presumed (proceed-default), not user-confirmed`, naming each role with its measured time
+  (→ agents-workflow.md § Owner-away runs).
+- In place of step 6, the file is kept on the feature's branch with the run's work, never on the
+  default branch, and the invitation to tag slow tests goes on the list.
+
+A campaign unit takes none of this: it never declares and never writes the file. Its coordinator
+declares the roles at the campaign's preparation, and the unit reads its worktree's copy.
 
 ## Anti-patterns
 

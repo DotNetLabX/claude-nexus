@@ -6,6 +6,29 @@ Stack-specific testing standards. For the TDD loop (red, green, refactor), see t
 
 ### Project Structure
 
+**One test project per module or service.** Each module and each service has its own test project, `{Name}.Tests`,
+beside its other projects. It references that module's or service's own projects only (its API project included,
+where its features live there), never another module's or service's. Tests that need the whole running app (the
+host's composition, start-up, a call through every layer) live in one small test project for the app's own wiring,
+never as the home for module tests. Why: a test run follows project references, so a change then ties to the few
+tests that cover it.
+
+```text
+src/Modules/Billing/
+  Billing.Domain/
+  Billing.Persistence/
+  Billing.Tests/                 # references the Billing projects only
+src/Services/Orders/
+  Orders.API/
+  Orders.Domain/
+  Orders.Tests/                  # references the Orders projects only
+src/Hosts/Shop/
+  Shop.Host/
+  Shop.Host.Tests/               # the app's own wiring only
+```
+
+Inside a test project:
+
 ```text
 {Svc}.Tests/
   Features/{Area}/

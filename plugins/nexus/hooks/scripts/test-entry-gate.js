@@ -16,7 +16,7 @@
  * string decision made before any registry or declaration read.
  *
  * An INVOCATION, not a mention: the command is split on its chain separators and newlines outside
- * quotes (lib/compose-test-command.js owns what a separator is) and on `$(`; a segment fires when it
+ * quotes (lib/test-runners.js owns what a separator is) and on `$(`; a segment fires when it
  * contains a test form, token-bounded, UNLESS its first token (by basename) is a read/display lead —
  * `grep`, `cat`, `echo`, `git` and kin — or an exempt script. So `grep jest package.json` and
  * `git commit -m "wip; dotnet test"` pass, while `$out = node --test x`, `python -m pytest` and

@@ -19,15 +19,25 @@
  * THE PER-TEST STOPS. `testStop.fastSeconds` (3) and `testStop.slowSeconds` (30), beside them
  * `speedUpSeconds` (5), are read as `stepLimitSeconds` is; `slow.labelled: true` says the repo's slow
  * tests carry their label, and only then does a fast test run under the fast stop
- * (lib/compose-test-command.js composes the legs). readTestEvents reads the core reporter's events into
- * the record's `timed_out` and `failed_tests`, and each timed-out test is marked `touched` by the change
- * before the record is written (lib/run-verdict.js `markTouched`, where the close rule lives too).
+ * (lib/compose-test-command.js composes the legs; the two legs of a split unit run at the same time, sharing
+ * its test concurrency). readTestEvents reads the core reporter's events into the record's `timed_out` and
+ * `failed_tests`, and each timed-out test is marked `touched` by the change before the record is written
+ * (lib/run-verdict.js `markTouched`, where the close rule lives too). A red run reads `tests-timed-out` only
+ * when every failure is a timed-out test and every red exit is explained: a leg's by its own events, a
+ * wrapper's only by its own statement — the `endLegs` line (compose-test-command.js), the last its command
+ * wrote, naming that exit, written by the very process this runner started, with no shell, for a command that
+ * is one `node {script}` stage, running that script. Anything else, an exit status that merely matches a
+ * leg's or a statement from a process the wrapper started included, is a real failure.
  *
- * A STEP CLOSE TIMES ITS TESTS. A `--files` or `--tied` record carries `test_times`, `over_speed_up` and
- * `timed_hashes`, executed tests only, which label-tests.js labels from. Node's come from the core
- * reporter's events; a vstest or flutter step close this runner composed adds the runner's own report
- * (`--logger trx` into a per-run folder, `--reporter json` on stdout), read through lib/test-labels.js. Their
- * `timed_out` stays null: neither runner's timeouts are told apart here.
+ * A STEP CLOSE TIMES ITS TESTS. A `--files` or `--tied` record carries `test_times` and `over_speed_up`,
+ * executed tests only, and `timed_hashes` — the files it timed or timed out — which label-tests.js labels
+ * from, with `companion_hashes` for a project file a label there needs (the runner's `labelCompanions`).
+ * Node's times come from the core reporter's events; a command this runner composed for a runner that writes
+ * its own report adds it (the runner's `withReport`, read back by its `reportTimes` — the contract in
+ * lib/test-runners.js). A tied step close runs the change's own test files whole beside what it runs — a node
+ * file as one more leg, another runner's as a command composed for them, with its report — so they are timed
+ * even when the rest falls back to the declared unit. Those runners' `timed_out` stays null: their timeouts
+ * are not told apart here.
  *
  * PROFILES ARE ALIASES, NEVER NEW KEYS: `fast` runs roles.unit (the step close) and
  * `complete` runs roles.full (the close gate's suite, 10 min default, --slug required). `--files`
@@ -38,13 +48,30 @@
  *
  * `--tied --changed` runs the tests tied to the named changed files (lib/tied-tests.js), recorded with
  * `files` (the tied test files or projects), `tied: true`, `changed` and `changed_hashes`; a change it
- * cannot tie runs roles.unit whole, its record naming why in `tied_fallback`. An undeclared unit exits 3
+ * cannot tie runs roles.unit whole, its record naming why in `tied_fallback`. A `--files` or `--tied` run
+ * whose runner no installed plugin serves runs roles.unit whole too, its record carrying the loader's
+ * reason in `runner_missing` (a too-old or missing language plugin). An undeclared unit exits 3
  * and writes nothing. A full record carries `file_hashes` (lib/tree-hash.js's per-file form) and `failed`: the test files or projects its output names as
  * failing, `[]` when it passed, `null` when the run was cut or crashed, names a failure it cannot place,
  * was aborted, or ran anything but the test runner invoked directly as its last stage, after setup stages only. A fast record with a slug, written after a full
  * record of that slug on the same tree, carries `delta_base` (that record's `ts`) and `delta_hashes`
  * (the files whose content then differed from its `file_hashes`, at their content then) — the content a
  * gear's close repair ran at (lib/gear-close.js).
+ *
+ * A COMPOSED RUN BUILDS ONLY WHEN A FILE CHANGED. For a runner with `buildKey` and `noBuild`, each named-files
+ * or tied command takes the runner's no-build form when the latest record in this tree that built anything
+ * built it: the same `buildKey`, at the current build hash (lib/tree-hash.js `buildHash`, which keeps `docs/`),
+ * and that build succeeded with the tree unchanged while it ran. Any other run in the tree that may have
+ * built — a declared role, a verify-gate run, a composed run of other targets — comes after it and voids it,
+ * and so does a tree outside git. The record carries `builds`: per command run, `key`, `hash` (taken before
+ * the run) and `outcome` — `built` (tests ran), `reused`, `failed` (no test ran) or `changed` (the tree moved
+ * during the run). A no-build command that fails with no test run is run once more with the build, said on
+ * stderr, and marked `retried`. A declared role always builds; a build made by hand is not seen.
+ * "The latest" is the tree's build ledger's (lib/build-ledger.js), where every run in the tree, whichever session
+ * ran it, writes a start line before it may build and an end line when it ends, in the order they happened; a
+ * build that overlapped another, or a start the ledger cannot show ended, voids reuse. A record in the session root's log or the
+ * tree's own log of a run the ledger does not hold voids it too, unless that run ended before the last build
+ * started.
  *
  * EVERY RECORD CARRIES `tree_hash` (lib/tree-hash.js), and a `full` record adds `filtered` (its command
  * carries a filter clause) and `fast_green` (the latest whole fast record's verdict on the same tree at
@@ -75,7 +102,8 @@
  * shell, and the test runner under it ran on. So the command — a shell, or a node leg started with none —
  * starts as the head of its own process group (POSIX) or as a root taskkill can walk (Windows), and the
  * whole tree is ended
- * at the limit, on output overflow, and when this runner is itself interrupted.
+ * at the limit, on output overflow, and when this runner is itself interrupted — then the tree of every
+ * command running at that moment, both legs of a split unit included, before its turn is released.
  *
  * THE RUN KEEPS ITS CALLER'S PRIORITY. A suite lowered below normal on a busy machine fails its
  * timing-dependent tests; a suite that must leave room for other work caps its own parallelism in
@@ -115,9 +143,10 @@ const fs = require('fs');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 const { resolveDeclaredTree } = require('./lib/worktree-target');
-const { filesCommand, isFilteredFull, nodeLegs, nodeSupportsSkipPattern, PRELOAD_URL } = require('./lib/compose-test-command');
-const { parseTrx, parseFlutterJson, sourceFiles, dotnetClassFile, dotnetMethodLine } = require('./lib/test-labels');
-const { hashTree, fileHash, sameTree } = require('./lib/tree-hash');
+const { filesCommand, isFilteredFull, nodeLegs, shareConcurrency, nodeSupportsSkipPattern, PRELOAD_URL } = require('./lib/compose-test-command');
+const { loadRunner, RUNNERS, stagesOf, isAssignment } = require('./lib/test-runners');
+const { hashTree, buildHash, fileHash, sameTree } = require('./lib/tree-hash');
+const { readBuildEntries, hasBuildLedger, startBuild, endBuild, mayHaveBuilt, lastBuildReusable } = require('./lib/build-ledger');
 const { tiedSet, failedTargets, declaredFor, nodeInvocation, runnerOf } = require('./lib/tied-tests');
 const { deltaSince } = require('./lib/gear-close');
 const { markTouched } = require('./lib/run-verdict');
@@ -187,19 +216,30 @@ function endTree(platform, pid, { run = runHidden, signal = (target, sig) => pro
   }
 }
 
-let running = null;
+// Every command running now: the two legs of a split unit run at the same time.
+const running = new Set();
 let releaseTurn = () => {};
+
+// Ends every running command's tree, each tried; ended only when every one is.
+function endRunning(end = (pid) => endTree(process.platform, pid)) {
+  let ended = true;
+  for (const child of [...running]) if (!end(child.pid)) ended = false;
+  return ended;
+}
+
+const runningPids = () => [...running].map((child) => child.pid);
 
 function endRunningOnSignal(sig, code) {
   process.once(sig, () => {
-    releaseTurn(running ? endTree(process.platform, running.pid) : true);
+    releaseTurn(endRunning());
     process.exit(code);
   });
 }
 
 // Resolves with execSync's failure vocabulary: `code` ETIMEDOUT / ENOBUFS / a spawn errno, else the
 // exit `status` or the `signal`, plus `tree` — whether the tree was ended when the runner ended it.
-// `cmd` is a shell string, or `{shell}` / `{file, args}` with an `env` laid over this process's.
+// `cmd` is a shell string, or `{shell}` / `{file, args}` with an `env` laid over this process's; a `{shell}`
+// with a `direct` form runs that form with no shell, its own `env` laid over that.
 function runCommand(cmd, cwd, timeoutMs, platform = process.platform) {
   return new Promise((resolve) => {
     const out = [];
@@ -215,7 +255,7 @@ function runCommand(cmd, cwd, timeoutMs, platform = process.platform) {
       settled = true;
       clearTimeout(timer);
       clearTimeout(grace);
-      running = null;
+      running.delete(child);
       resolve({ code, status, signal: sig, tree, pid: child && child.pid,
         stdout: Buffer.concat(out).toString(), stderr: Buffer.concat(err).toString() });
     };
@@ -232,8 +272,11 @@ function runCommand(cmd, cwd, timeoutMs, platform = process.platform) {
     const timer = setTimeout(() => stop('ETIMEDOUT'), timeoutMs);
     const item = typeof cmd === 'string' ? { shell: cmd } : cmd;
     const env = item.env ? { ...process.env, ...item.env } : process.env;
+    const { direct } = item;
     try {
-      child = item.file
+      child = direct
+        ? spawn(direct.file, direct.args, { ...startOptions(platform, cwd), shell: false, env: { ...env, ...direct.env } })
+        : item.file
         ? spawn(item.file, item.args, { ...startOptions(platform, cwd), shell: false, env })
         : spawn(item.shell, { ...startOptions(platform, cwd), env });
     } catch (e) {
@@ -241,7 +284,7 @@ function runCommand(cmd, cwd, timeoutMs, platform = process.platform) {
       finish(null, null);
       return;
     }
-    running = child;
+    running.add(child);
     const take = (sink) => (chunk) => {
       bytes += chunk.length;
       if (bytes > MAX_OUTPUT_BYTES) stop('ENOBUFS');
@@ -317,6 +360,31 @@ function fastGreen(root, tree, hash) {
   }
   if (!latest || latest.reason === 'timeout') return 'none';
   return latest.verdict === 'pass' || latest.verdict === 'fail' ? latest.verdict : 'none';
+}
+
+// What may say what last built in `tree`: its build ledger, and the records of the session root's log and the
+// tree's own log of runs the ledger does not hold.
+function buildHistory(root, tree) {
+  const ledger = readBuildEntries(tree);
+  const held = new Set(ledger.map((e) => e.run_id).filter(Boolean));
+  const logs = [...readLog(root), ...(sameTree(root, tree) ? [] : readLog(tree))]
+    .filter((r) => r && sameTree(r.tree, tree) && !held.has(r.run_id) && mayHaveBuilt(r));
+  return { ledger, logs };
+}
+
+// A log record's start plus its duration: a gate record times each command, a run record the whole run.
+function endedAt(r) {
+  const ms = typeof r.duration_ms === 'number' ? r.duration_ms
+    : Array.isArray(r.commands) ? r.commands.reduce((sum, c) => sum + (c && typeof c.duration_ms === 'number' ? c.duration_ms : 0), 0) : 0;
+  return Date.parse(r.ts) + ms;
+}
+
+function buildReusable(history, key, hash, own) {
+  if (!hash) return false;
+  const last = lastBuildReusable(history.ledger, key, hash, own);
+  if (!last || !last.ok) return false;
+  const from = Date.parse(last.start.ts);
+  return history.logs.every((r) => endedAt(r) < from);
 }
 
 function median(values) {
@@ -611,8 +679,9 @@ const slashed = (p) => String(p).replace(/\\/g, '/');
 // the number this runner ran itself, and a `shell` command among them announced its own; without that both
 // lists are null, never empty. Only tests
 // count: a suite's own failure is judged from its tests. A test is timed out when its failure carries
-// the child-call stop (`child-stopped`), is the runner's timeout (`timeout`) or was cancelled by a
-// parent cut (`cancelled-by-parent`); any other failure is a real one.
+// the child-call stop (`child-stopped`), is the runner's timeout (`timeout`) or was cancelled under an
+// ancestor that itself timed out (`cancelled-by-parent`); any other failure is a real one, a cancellation
+// with no timed-out ancestor among them.
 function readTestEvents(text, { legs = 0, shell = false, tree = '' } = {}) {
   const events = [];
   for (const line of String(text || '').split('\n')) {
@@ -631,10 +700,11 @@ function readTestEvents(text, { legs = 0, shell = false, tree = '' } = {}) {
   // A parent reports after its children, so the events still open at a deeper nesting of the same file when
   // a parent's own event arrives are its descendants. A test cancelled under a parent that failed for a real
   // reason — a hook that threw — did not time out: the parent's failure is the one counted.
+  // Two legs running at the same time over one file are told apart by their runner's `pid`.
   const nodes = events.filter((e) => e.kind === 'test' || e.kind === 'suite').map((e) => ({ e, parent: null }));
   const open = new Map();
   for (const node of nodes) {
-    const key = String(node.e.file || '');
+    const key = `${node.e.pid === undefined ? '' : node.e.pid}|${node.e.file || ''}`;
     const depth = Number(node.e.nesting) || 0;
     const pending = open.get(key) || [];
     open.set(key, pending.filter((child) => {
@@ -645,7 +715,9 @@ function readTestEvents(text, { legs = 0, shell = false, tree = '' } = {}) {
   }
   const NOT_REAL = new Set(['subtestsFailed', 'testTimeoutFailure', 'cancelledByParent']);
   const realFailure = (e) => Boolean(e.failureType) && !NOT_REAL.has(e.failureType) && e.causeCode !== 'ERR_NEXUS_TEST_STOP';
-  const underRealFailure = (node) => { for (let p = node.parent; p; p = p.parent) if (realFailure(p.e)) return true; return false; };
+  const timedOutItself = (e) => e.failureType === 'testTimeoutFailure' || e.causeCode === 'ERR_NEXUS_TEST_STOP';
+  const above = (node, is) => { for (let p = node.parent; p; p = p.parent) if (is(p.e)) return true; return false; };
+  const underRealFailure = (node) => above(node, realFailure);
   const timedOut = [];
   const failed = [];
   const times = [];
@@ -665,12 +737,68 @@ function readTestEvents(text, { legs = 0, shell = false, tree = '' } = {}) {
     let cause = null;
     if (e.causeCode === 'ERR_NEXUS_TEST_STOP') cause = 'child-stopped';
     else if (e.failureType === 'testTimeoutFailure') cause = 'timeout';
-    else if (e.failureType === 'cancelledByParent') cause = underRealFailure(node) ? 'covered' : 'cancelled-by-parent';
+    else if (e.failureType === 'cancelledByParent') {
+      if (underRealFailure(node)) cause = 'covered';
+      else if (above(node, timedOutItself)) cause = 'cancelled-by-parent';
+    }
     if (cause === 'covered') continue;
     if (cause) timedOut.push({ ...at, cause });
     else failed.push(at);
   }
   return { complete, timed_out: complete ? timedOut : null, failed_tests: complete ? failed : null, test_times: times };
+}
+
+// The node options whose value is the next word, so that word is never read as the script.
+const NODE_VALUED = new Set(['-r', '--require', '--import', '--loader', '--experimental-loader', '-C', '--conditions',
+  '--env-file', '--input-type', '--title', '-e', '--eval', '-p', '--print']);
+
+// A command that is one `node {script}` stage (lib/test-runners.js stagesOf), as the no-shell spawn of its words —
+// `file`, `args`, its leading assignments as `env` — with its `script` resolved in `tree`; null for any other
+// shape, or a bare word a shell may expand (`*`, `?`). In a chain the exit may be a stage's that never ran the
+// script, or ran it inside; through a shell the process started is the shell's, not the script's.
+function directNode(command, tree) {
+  const stages = stagesOf(String(command || ''), { values: true });
+  if (!stages || stages.length !== 1) return null;
+  const words = stages[0];
+  if (words.some((w) => !w.quoted && /[*?]/.test(w.text))) return null;
+  let i = 0;
+  const env = {};
+  for (; i < words.length && isAssignment(words[i]); i++) {
+    const eq = words[i].text.indexOf('=');
+    env[words[i].text.slice(0, eq)] = words[i].text.slice(eq + 1);
+  }
+  if (i >= words.length || !/^node(\.exe)?$/i.test(path.basename(words[i].text))) return null;
+  const file = words[i].text;
+  const start = i + 1;
+  for (i++; i < words.length && words[i].text.startsWith('-'); i++) {
+    if (!words[i].text.includes('=') && NODE_VALUED.has(words[i].text)) i++;
+  }
+  if (i >= words.length) return null;
+  return { file, args: words.slice(start).map((w) => w.text), env, script: path.resolve(tree, words[i].text) };
+}
+
+const samePath = (a, b) => {
+  try { return path.relative(fs.realpathSync(a), fs.realpathSync(b)) === ''; } catch { return false; }
+};
+
+// The last line written to the events file from byte `from` on, parsed; null when there is none or it is torn.
+function lastEventFrom(file, from) {
+  let text = '';
+  try { text = fs.readFileSync(file).subarray(from).toString('utf8'); } catch { return null; }
+  const line = text.split('\n').map((l) => l.trim()).filter(Boolean).at(-1);
+  if (!line) return null;
+  try { const e = JSON.parse(line); return e && typeof e === 'object' ? e : null; } catch { return null; }
+}
+
+// A shell item's red exit is its legs' own only by the wrapper's `endLegs` line (compose-test-command.js) as
+// the last its command wrote: own checks passed, that exit named, written by the process this runner started
+// with no shell for a one-stage `node {script}` command, running that script — a process it started in turn,
+// the same script's included, never counts.
+function wrapperExplained(item, res, last) {
+  const { direct } = item;
+  return Boolean(direct && last && last.kind === 'legs-end' && last.own === 'passed' && Number.isInteger(last.status)
+    && last.status === res.status && Number.isInteger(last.pid) && last.pid === res.pid
+    && typeof last.script === 'string' && samePath(direct.script, last.script));
 }
 
 let signalsWired = false;
@@ -752,9 +880,15 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   let commands = typeof declared === 'string' && declared.trim() !== '' ? [declared.trim()] : [];
 
   const settings = testSettings(cfg, (line) => process.stderr.write(`verify-run: ${line}\n`));
-  // vstest and flutter take one stop, the slow one: neither is split into a fast and a slow set.
+  // Only node splits a run into a fast and a slow set; every other runner takes one stop, the slow one.
   const stopSeconds = settings.slowMs / 1000;
   const runner = runnerOf(cfg);
+  // The libraries below load runners from the process environment; this load must read the same install record.
+  const loaded = runner ? loadRunner(runner, { root, env: { ...process.env, ...env } }) : { runner: null, reason: null };
+  const runnerOps = loaded.runner;
+  // A runner of the core's table that no installed plugin serves: a named-files or tied run takes the declared
+  // unit whole, and its record names why.
+  const runnerMissing = runner && !runnerOps && RUNNERS.has(runner) && runner !== 'mtp' ? loaded.reason : null;
   const runId = `${Date.now().toString(36)}-${require('crypto').randomBytes(4).toString('hex')}`;
   let composed = false;
   let relFiles = null;
@@ -763,45 +897,83 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
       process.stderr.write('verify-run: --files needs a runner — no slow.runner in .claude/verify.json and no recognised test invocation in roles.unit; declare verify roles first\n');
       return 2;
     }
-    relFiles = files.map((f) => path.relative(tree, path.resolve(tree, f)).split(path.sep).join('/'));
-    composed = true;
-    try {
-      commands = filesCommand({ runner, files: relFiles, exclude: false, cwd: tree, stopSeconds, note: (line) => process.stderr.write(`verify-run: ${line}\n`) });
-    } catch (e) {
-      process.stderr.write(`verify-run: ${e.message}\n`);
-      return 2;
+    if (runnerMissing) {
+      process.stderr.write(`verify-run: --files: ${runnerMissing} — running roles.unit\n`);
+    } else {
+      relFiles = files.map((f) => path.relative(tree, path.resolve(tree, f)).split(path.sep).join('/'));
+      composed = true;
+      try {
+        commands = filesCommand({ runner, files: relFiles, exclude: false, cwd: tree, stopSeconds, root, note: (line) => process.stderr.write(`verify-run: ${line}\n`) });
+      } catch (e) {
+        process.stderr.write(`verify-run: ${e.message}\n`);
+        return 2;
+      }
     }
   }
   // An undeclared unit writes no record: the developer's own fallback runs instead, and a tied record
   // that ran nothing must never read as covering the change.
   let tiedFields = null;
   let changedTests = [];
+  // The first of `commands` this runner composed for the change's own test files, where the rest is not.
+  let ownFrom = composed ? 0 : null;
   if (tied) {
     if (commands.length === 0) {
       process.stderr.write('verify-run: --tied: no roles.unit declared in .claude/verify.json — nothing ran and nothing is recorded; take the undeclared-unit fallback\n');
       return 3;
     }
-    const set = tiedSet({ repo: tree, changed, ...declaredFor(cfg), stopSeconds });
+    const declared = declaredFor(cfg);
+    const set = tiedSet({ repo: tree, changed, ...declared, stopSeconds, root });
+    // The test files the change itself touched run whole beside what runs for it, timed, whatever that holds:
+    // a node file as one more leg; another runner's, a command it composes (no slow exclusion), with its report —
+    // beside a tied set unless that set provably runs every test: no slow tests declared and no filter in any of
+    // its commands (the runner's `exclusionOf` reads none). A file the runner refuses as a test file is none.
+    const own = set.changed.filter((f) => fs.existsSync(path.join(tree, f)));
+    let ownTests = [];
+    if (runner === 'node') ownTests = own.filter((f) => NODE_TEST_FILE.test(f));
+    else if (runnerOps && !runnerMissing) {
+      ownTests = own.filter((f) => { try { filesCommand({ runner, files: [f], exclude: false, cwd: tree, root }); return true; } catch { return false; } });
+    }
+    const ownCommands = ownTests.length
+      ? filesCommand({ runner, files: ownTests, exclude: false, cwd: tree, stopSeconds, root, note: (line) => process.stderr.write(`verify-run: ${line}\n`) })
+      : [];
     if (set.fallback) {
       process.stderr.write(`verify-run: tied: ${set.fallback} — running roles.unit\n`);
-      // The test files the change itself touched run beside the whole unit, timed, whatever it holds.
-      if (runner === 'node') changedTests = set.changed.filter((f) => NODE_TEST_FILE.test(f) && fs.existsSync(path.join(tree, f)));
-      if (changedTests.length) commands = [...commands, ...filesCommand({ runner, files: changedTests, exclude: false, cwd: tree })];
+      if (runner === 'node') changedTests = ownTests;
+      if (ownCommands.length) {
+        ownFrom = runner === 'node' ? null : commands.length;
+        commands = [...commands, ...ownCommands];
+      }
     } else {
-      commands = set.commands;
+      const whole = (c) => { try { const read = runnerOps.exclusionOf(c); return Boolean(read && read.none); } catch { return false; } };
+      const everyTest = !declared.slow && Boolean(runnerOps && typeof runnerOps.exclusionOf === 'function') && set.commands.every(whole);
+      commands = runner === 'node' || everyTest ? set.commands : [...set.commands, ...ownCommands];
       relFiles = set.targets;
       composed = true;
+      ownFrom = 0;
     }
     tiedFields = { tied: true, changed: set.changed, ...(set.fallback ? { tied_fallback: set.fallback } : {}) };
   }
-  // A .NET or Flutter step close this runner composed writes the runner's own report, which it is timed from.
-  const reported = composed && (runner === 'vstest' || runner === 'flutter');
+  const buildOps = composed && runnerOps && typeof runnerOps.buildKey === 'function' && typeof runnerOps.noBuild === 'function' ? runnerOps : null;
+  let builds = null;
+  if (buildOps) {
+    const before = buildHash(tree);
+    const log = buildHistory(root, tree);
+    builds = { before, items: commands.map((c) => {
+      const key = buildOps.buildKey(c);
+      return { key, reuse: buildReusable(log, key, before, runId), build: c, outcome: null, retried: false };
+    }) };
+    commands = commands.map((c, i) => (builds.items[i].reuse ? buildOps.noBuild(c) : c));
+  }
+  // A step close this runner composed, for a runner that writes its own report, is timed from that report —
+  // the commands it composed, never a declared one beside them.
+  const reported = ownFrom !== null && ownFrom < commands.length && Boolean(runnerOps && runnerOps.withReport);
   const reportDir = `.claude/audit/test-reports-${runId}`;
-  if (reported) commands = commands.map((c, i) => withReport(c, runner, `${reportDir}/${i}`));
+  if (reported) commands = commands.map((c, i) => (i >= ownFrom ? runnerOps.withReport(c, `${reportDir}/${i}`) : c));
+  if (builds && reported) builds.items.forEach((b, i) => { b.build = runnerOps.withReport(b.build, `${reportDir}/${i}`); });
   // The record keeps the unsplit command: the readers of `command` (the usual time, `filtered`, the
   // failure list's shape check) read the legs as one run.
   const command = commands.join(' && ');
-  const plan = runPlan({ commands, composed, runner, relFiles, settings, tree, changedTests });
+  const plan = runPlan({ commands, composed: composed || ownFrom !== null, runner, relFiles, settings, tree, root, changedTests });
 
   // `slug` is omitted rather than written empty when absent: the gate treats a record with no slug as
   // undischargeable, and an explicit `slug: ""` would be one `=== ''` bug away from matching.
@@ -809,6 +981,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
     ts: new Date().toISOString(), source: 'verify-run', role, run_id: runId,
     ...(profile ? { profile } : {}), ...(relFiles ? { files: relFiles } : {}), ...(slug ? { slug } : {}),
     session, token, tree, ...(tiedFields || {}),
+    ...(runnerMissing && (files || tied) ? { runner_missing: runnerMissing } : {}),
   };
 
   // The audit file is the RESOLVED ROOT's, even when the command ran in a redirected tree — same
@@ -826,6 +999,15 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   // The queue's fields are read when the record is written: a release or a heartbeat that failed
   // after the turn was taken still reaches it.
   let turn = { fields: {}, claimFile: null };
+  // A tree whose runner reuses no build needs no ledger, unless one is already kept there.
+  const reuses = Boolean(runnerOps && typeof runnerOps.buildKey === 'function' && typeof runnerOps.noBuild === 'function');
+  const ledgered = () => reuses || hasBuildLedger(tree);
+  let buildStarted = false;
+  const beginBuild = () => {
+    if (buildStarted || !ledgered()) return;
+    buildStarted = true;
+    startBuild(tree, { id: runId, source: 'verify-run' });
+  };
   const write = (fields) => {
     const hashed = hashTree(tree);
     const record = { ...base, ...turn.fields, tree_hash: hashed && hashed.hash, ...fields };
@@ -846,6 +1028,9 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
       fs.mkdirSync(path.join(root, '.claude', 'audit'), { recursive: true });
       fs.appendFileSync(path.join(root, '.claude', 'audit', 'verify-verdict.json'), JSON.stringify(record) + '\n');
     } catch { /* an unwritable audit dir must not also lose the stdout record below */ }
+    if (record.verdict !== 'undeclared' && ledgered()) {
+      endBuild(tree, { id: runId, ts: record.ts, source: 'verify-run', run_id: runId, builds: Array.isArray(record.builds) ? record.builds : null });
+    }
     out(JSON.stringify(record) + '\n');
   };
 
@@ -908,30 +1093,83 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
     const fields = { events: read.complete, timed_out: timedOut, failed_tests: read.failed_tests };
     if (plan.stop || (read.complete && text.includes('"kind":"legs"'))) fields.stop_ms = { fast: settings.fastMs, slow: settings.slowMs };
     // A step close times its tests: each executed test, those over the speed-up line, and the content hash
-    // of every file it timed — what label-tests.js checks a file against before it labels from this run.
+    // of every file it timed or timed out — what label-tests.js checks a file against before it labels from
+    // this run — and of each project file a label there needs beside it (`labelCompanions`), as it stood.
     if (composed || tied) {
-      fields.test_times = reported ? [...read.test_times, ...reportTimes(runner, tree, reportDir, outputs.join(''))] : read.test_times;
+      fields.test_times = reported ? [...read.test_times, ...runnerOps.reportTimes({ tree, reportDir, stdout: outputs.join('') })] : read.test_times;
       fields.over_speed_up = fields.test_times.filter((t) => t.ms > settings.speedUpMs).map(({ file, line, test, ms }) => ({ file, line, test, ms }));
-      fields.timed_hashes = Object.fromEntries([...new Set(fields.test_times.map((t) => t.file))].sort().map((f) => [f, fileHash(tree, f)]));
+      const hashed = [...new Set([...fields.test_times, ...(timedOut || [])].map((t) => t.file).filter((f) => typeof f === 'string'))].sort();
+      fields.timed_hashes = Object.fromEntries(hashed.map((f) => [f, fileHash(tree, f)]));
+      if (hashed.length && runnerOps && typeof runnerOps.labelCompanions === 'function') {
+        let companions = [];
+        try { companions = runnerOps.labelCompanions({ tree, files: hashed }).map((c) => c.file); } catch { /* none read */ }
+        if (companions.length) fields.companion_hashes = Object.fromEntries([...new Set(companions)].sort().map((f) => [f, fileHash(tree, f)]));
+      }
     }
     return fields;
   };
 
+  // A composed command of another runner is one shell item: item k runs commands[k].
+  if (builds && plan.items.length !== commands.length) builds = null;
+  const testsRan = (k, res) => {
+    if (!reported || typeof buildOps.reportCount !== 'function') return !res.code && res.status === 0;
+    try { return buildOps.reportCount(path.join(tree, reportDir, String(k))) > 0; } catch { return false; }
+  };
+  const buildsField = () => {
+    if (!builds) return {};
+    const after = builds.before === null ? null : buildHash(tree);
+    return { builds: builds.items.filter((b) => b.outcome).map((b) => ({
+      key: b.key, hash: builds.before, outcome: b.outcome === 'built' && after !== builds.before ? 'changed' : b.outcome,
+      ...(b.retried ? { retried: true } : {}),
+    })) };
+  };
+
+  if (!builds || !builds.items.every((b) => b.reuse)) beginBuild();
   const started = Date.now();
   const slowTimer = usual ? setTimeout(() => warnSlow(SLOW_RATIO), Math.ceil(SLOW_RATIO * usual.usual_ms)) : null;
   if (slowTimer) slowTimer.unref();
   const outputs = [];
-  let red = null;
-  for (const item of plan.items) {
+  const reds = [];
+  const eventsSize = () => { try { return fs.statSync(eventsFile).size; } catch { return 0; } };
+  // Items of one `group` (the two legs of a split unit) start at the same time; the rest one after the other.
+  let halted = false;
+  for (let k = 0; k < plan.items.length && !halted;) {
+    let end = k + 1;
+    if (plan.items[k].group !== undefined) while (end < plan.items.length && plan.items[end].group === plan.items[k].group) end++;
     const remaining = Math.max(1, timeoutMs - (Date.now() - started));
-    const res = await run({ ...item, env: { ...runEnv, ...item.env } }, tree, remaining);
-    outputs.push(`${res.stdout}${res.stderr}`);
-    if (!res.code && res.status === 0) continue;
-    red = res;
-    // Both legs always run: a red fast leg still leaves the slow leg to run. A cut, a crash or a signal ends the run.
-    if (!res.code && typeof res.status === 'number' && item.leg) continue;
-    break;
+    const batch = plan.items.slice(k, end);
+    // A shell item runs alone; the events it writes start where the file ended before it.
+    const from = batch.length === 1 && !batch[0].file ? eventsSize() : null;
+    const results = await Promise.all(batch.map((item) => run({ ...item, env: { ...runEnv, ...item.env } }, tree, remaining)));
+    for (const [n, item] of batch.entries()) {
+      let res = results[n];
+      const index = k + n;
+      outputs.push(`${res.stdout}${res.stderr}`);
+      if (builds) {
+        const b = builds.items[index];
+        let ran = testsRan(index, res);
+        if (b.reuse && !ran && !res.code && res.status !== 0) {
+          const line = `verify-run: ${b.key}: no build output for the --no-build run — running it once more with the build\n`;
+          process.stderr.write(line);
+          outputs.push(line);
+          b.reuse = false;
+          b.retried = true;
+          beginBuild();
+          res = await run({ ...item, shell: b.build, direct: undefined, env: { ...runEnv, ...item.env } }, tree, Math.max(1, timeoutMs - (Date.now() - started)));
+          outputs.push(`${res.stdout}${res.stderr}`);
+          ran = testsRan(index, res);
+        }
+        b.outcome = b.reuse ? 'reused' : ran ? 'built' : 'failed';
+      }
+      if (!res.code && res.status === 0) continue;
+      reds.push({ item, res, last: from === null ? null : lastEventFrom(eventsFile, from) });
+      // Both legs always run: a red fast leg still leaves the slow leg to run. A cut, a crash or a signal ends the run.
+      if (!(!res.code && typeof res.status === 'number' && item.leg)) halted = true;
+    }
+    k = end;
   }
+  // The red the record names: a cut, a crash or a signal over a plain red status.
+  const red = reds.length ? (reds.find((r) => r.res.code || typeof r.res.status !== 'number') || reds.at(-1)).res : null;
   if (red) {
     const res = red;
     const captured = outputs.join('');
@@ -946,8 +1184,11 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
       process.stderr.write(`verify-run: ${raise}\n`);
     }
     const tests = testFields();
-    // A run that completed and whose every failure is a timed-out test says so apart from a red one.
-    const timedOutOnly = !res.code && typeof res.status === 'number' && tests.events && tests.failed_tests.length === 0 && tests.timed_out.length > 0;
+    // A run that completed and whose every failure is a timed-out test says so apart from a red one; a command
+    // the runner did not compose — a wrapper — counts only by its own endLegs statement.
+    const explained = reds.every(({ item, res: r, last }) => item.file || wrapperExplained(item, r, last));
+    const timedOutOnly = !res.code && typeof res.status === 'number' && explained && tests.events
+      && tests.failed_tests.length === 0 && tests.timed_out.length > 0;
     write({
       command,
       verdict: 'fail',
@@ -956,86 +1197,62 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
       // gate distinguishes "the suite is red" from "the suite never finished", and a reader should
       // not have to pattern-match an errno to tell them apart.
       reason: cause === 'ETIMEDOUT' ? 'timeout' : timedOutOnly ? 'tests-timed-out' : cause,
-      ...(role === 'full' ? { failed: res.code || typeof res.status !== 'number' ? null : failedTargets({ output: captured, repo: tree, command }) } : {}),
+      ...(role === 'full' ? { failed: res.code || typeof res.status !== 'number' ? null : failedTargets({ output: captured, repo: tree, command, root }) } : {}),
       ...tests,
+      ...buildsField(),
       output_excerpt: excerpt(`${captured}\n[verify-run] command failed: ${cause}${ended}\n${raise ? `[verify-run] ${raise}\n` : ''}`),
     });
     return 1;
   }
   const durationMs = Date.now() - started;
   releaseTurn(true);
-  write({ command, verdict: 'pass', duration_ms: durationMs, ...(role === 'full' ? { failed: [] } : {}), ...testFields() });
+  write({ command, verdict: 'pass', duration_ms: durationMs, ...(role === 'full' ? { failed: [] } : {}), ...testFields(), ...buildsField() });
   return 0;
-}
-
-// The report a vstest or flutter step close is timed from: a trx file in its own folder per command, or the
-// json event stream on stdout.
-function withReport(command, runner, dir) {
-  if (runner === 'flutter') return command.replace(/^flutter test(?=\s|$)/, 'flutter test --reporter json');
-  return `${command} --logger trx --results-directory "${dir}"`;
-}
-
-// Each executed test of a vstest or flutter step close, by its source file: a .NET test by the file that
-// declares its class and the line of its method, a Flutter test at the position the stream reported.
-// The report folder is removed once read.
-function reportTimes(runner, tree, reportDir, stdout) {
-  if (runner === 'flutter') {
-    return parseFlutterJson(stdout, tree).map((e) => ({ file: e.file, line: e.line, column: e.column, test: e.name, ms: e.ms }));
-  }
-  const dir = path.join(tree, reportDir);
-  const times = [];
-  const cache = new Map();
-  const sources = new Map();
-  try {
-    for (const trx of sourceFiles(dir, '.trx')) {
-      for (const e of parseTrx(fs.readFileSync(trx, 'utf8'))) {
-        const short = e.className.split('.').pop();
-        const abs = e.codeBase ? dotnetClassFile(tree, e.codeBase, short, cache) : null;
-        if (!abs) continue;
-        const file = path.relative(tree, abs).split(path.sep).join('/');
-        if (!sources.has(file)) sources.set(file, fs.readFileSync(abs, 'utf8'));
-        const line = dotnetMethodLine(sources.get(file), short, e.method) || null;
-        times.push({ file, line, column: null, test: e.key.slice(e.key.indexOf('::') + 2), class: short, method: e.method, ms: e.ms });
-      }
-    }
-  } catch { /* no report written: nothing was timed */ }
-  try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* left for the next run's sweep */ }
-  return times;
 }
 
 // How a run's commands are executed. A node run is the composer's legs, as argument lists with no shell:
 // the files or tied tests this runner composed run whole under the slow stop, and a declared command that
 // is one direct `node --test` stage is split into its fast and slow legs. Anything else — a wrapper, a
-// setup stage, another runner — runs as declared, through a shell, and inherits the environment. The test
-// files a tied fallback adds for the change (`changedTests`, the last of `commands`) are one more whole leg.
-function runPlan({ commands, composed, runner, relFiles, settings, tree, changedTests = [] }) {
+// setup stage, another runner — runs as declared, through a shell, and inherits the environment (a one-stage
+// `node {script}` wrapper with no word a shell would expand runs as its words with no shell, `directNode`); another
+// runner's composed command carries its own stop. The test files a tied fallback adds for the change
+// (`changedTests`, the last of `commands`) are one more whole leg. The two legs of a split unit run at the
+// same time (`together`, their items one `group`), sharing its test concurrency — node's own default when it
+// names none — unless that cap is below two.
+function runPlan({ commands, composed, runner, relFiles, settings, tree, root = null, changedTests = [] }) {
   const stop = { fastMs: settings.fastMs, slowMs: settings.slowMs };
   if (changedTests.length) {
-    const unit = runPlan({ commands: commands.slice(0, -1), composed, runner, relFiles, settings, tree });
+    const unit = runPlan({ commands: commands.slice(0, -1), composed, runner, relFiles, settings, tree, root });
     const extra = nodeLegs({ targets: changedTests, stop, labelled: settings.labelled, split: false, cwd: tree });
     return {
       items: [...unit.items.map((i) => ({ ...i, leg: true })), ...extra.map((l) => ({ file: 'node', args: l.args, env: { ...l.env }, leg: true }))],
       legs: unit.legs + extra.length,
       stop: unit.stop || extra.some((l) => l.stopMs !== null),
+      together: unit.together,
     };
   }
-  const asLegs = (exe, env, legs) => ({
-    items: legs.map((l) => ({ file: exe, args: l.args, env: { ...env, ...l.env }, leg: true })),
+  const asLegs = (exe, env, legs, together = false) => ({
+    items: legs.map((l) => ({ file: exe, args: l.args, env: { ...env, ...l.env }, leg: true, ...(together ? { group: 1 } : {}) })),
     legs: legs.length,
     stop: legs.some((l) => l.stopMs !== null),
+    together,
   });
   if (composed && runner === 'node') {
     return asLegs('node', {}, nodeLegs({ targets: relFiles, stop, labelled: settings.labelled, split: false, cwd: tree }));
   }
   // Below Node 22.1 no stop applies, so a declared command runs as declared, its shell expanding its globs.
-  const invocation = commands.length === 1 && !composed && nodeSupportsSkipPattern(process.versions.node) ? nodeInvocation(commands[0]) : null;
+  const invocation = commands.length === 1 && !composed && nodeSupportsSkipPattern(process.versions.node) ? nodeInvocation(commands[0], { root }) : null;
   if (invocation) {
-    return asLegs(invocation.exe, invocation.env,
-      nodeLegs({ targets: invocation.targets, options: invocation.options, stop, labelled: settings.labelled, cwd: tree }));
+    const legs = nodeLegs({ targets: invocation.targets, options: invocation.options, stop, labelled: settings.labelled, cwd: tree });
+    const shared = shareConcurrency(legs, require('os').availableParallelism() - 1);
+    return asLegs(invocation.exe, invocation.env, shared.legs, shared.together);
   }
-  return { items: commands.map((shell) => ({ shell })), legs: 0, stop: composed && (runner === 'vstest' || runner === 'flutter') };
+  return {
+    items: commands.map((shell) => { const direct = directNode(shell, tree); return direct ? { shell, direct } : { shell }; }),
+    legs: 0, stop: composed && runner !== 'node', together: false,
+  };
 }
 
-module.exports = { main, timeoutFor, testSettings, readTestEvents, endTree, startOptions, usualTime, slowField, runsAtOnce, readClaims, mayStart, takeTurn };
+module.exports = { main, timeoutFor, testSettings, readTestEvents, runPlan, endTree, runCommand, endRunning, runningPids, startOptions, usualTime, slowField, runsAtOnce, readClaims, mayStart, takeTurn };
 
 if (require.main === module) main().then((code) => process.exit(code));

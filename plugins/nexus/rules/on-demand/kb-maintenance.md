@@ -78,7 +78,8 @@ business-rule registry. It binds every agent that edits such a unit; the role-sp
 each flag stays in that agent's own file.
 
 - **Pre-edit.** When the unit you are about to touch **has a registry at
-  `docs/business-rules/<area>/<unit>.md`**, read it before editing — its rows are the load-bearing
+  `docs/business-rules/<area>/<unit>.md`**, read it after reading the code you will change and before
+  editing — its rows are the load-bearing
   behaviors.
 - **Post-edit — scoped skeptic re-verify.** Run a **scoped** re-verify of the *touched* rules only:
   spawn a read-only `general-purpose` verifier over the edited source against those rows, on the

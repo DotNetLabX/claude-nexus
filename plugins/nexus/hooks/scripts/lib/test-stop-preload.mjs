@@ -7,15 +7,17 @@
 // helper module) gets the stop as an ordinary timeout result: spawnSync's `error.code === 'ETIMEDOUT'`,
 // or the error execSync and execFileSync throw. An explicit `timeout` is never changed.
 //
-// At exit it ends the direct children it saw spawn, exec, execFile or fork start that still run: a
-// forced exit after a timed-out test would otherwise leave them behind. A grandchild behind a program
-// that already exited is out of its reach.
+// At exit it ends the direct children it saw spawn, exec, execFile or fork start that still run, their
+// promisified forms included: a forced exit after a timed-out test would otherwise leave them behind. A
+// grandchild behind a program that already exited is out of its reach.
 //
 // It acts only in the test worker itself, on Node 22.1 or later, with a positive stop. A worker is a process
-// with NODE_TEST_CONTEXT starting `child` whose node options include the runner's `--test-*` ones (the legs
-// always pass `--test-timeout`). A process the test starts inherits the environment but not those options,
-// so it is left alone: its own children, and the detached ones it means to leave running, are not the
-// preload's. So is any process outside a worker — a wrapper script, a runner's own process.
+// with NODE_TEST_CONTEXT starting `child` and the runner's `--test-*` options (the legs always pass
+// `--test-timeout`) whose parent is the test runner, which loads no preload. Every process this loads into, the
+// worker too, writes its own pid to NEXUS_TEST_PRELOAD_PID, so a process the worker starts — forked, it may carry
+// every option the worker has — finds its parent's pid there and is left alone: its own children, and the
+// detached ones it means to leave running, are not the preload's. So is any process outside a worker — a
+// wrapper script, a runner's own process.
 import childProcess from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
@@ -26,8 +28,11 @@ import { promisify } from 'node:util';
 const [major, minor] = process.versions.node.split('.').map(Number);
 const supported = major > 22 || (major === 22 && minor >= 1);
 const stopMs = Number(process.env.NEXUS_TEST_STOP_MS);
+const PRELOAD_PID = 'NEXUS_TEST_PRELOAD_PID';
 const inWorker = String(process.env.NODE_TEST_CONTEXT || '').startsWith('child')
-  && process.execArgv.some((a) => a.startsWith('--test-'));
+  && process.execArgv.some((a) => a.startsWith('--test-'))
+  && process.env[PRELOAD_PID] !== String(process.ppid);
+if (!process.execArgv.includes('--test')) process.env[PRELOAD_PID] = String(process.pid);
 
 function stopError(what, cause) {
   const err = new Error(`${what} was stopped after ${stopMs} ms (the test stop) — it set no timeout of its own`);
@@ -89,18 +94,25 @@ function patch() {
   };
 
   const started = new Set();
+  const register = (child) => {
+    if (child && typeof child.once === 'function') {
+      started.add(child);
+      child.once('exit', () => started.delete(child));
+    }
+    return child;
+  };
   // The wrapper keeps the original's promisified form, which `util.promisify(exec)` resolves to
-  // `{ stdout, stderr }`; a child started through that form is not tracked.
+  // `{ stdout, stderr }`, and registers the child that form's promise carries.
   const track = (original) => {
-    const wrapped = function (...args) {
-      const child = original.apply(this, args);
-      if (child && typeof child.once === 'function') {
-        started.add(child);
-        child.once('exit', () => started.delete(child));
-      }
-      return child;
-    };
-    if (original[promisify.custom]) wrapped[promisify.custom] = original[promisify.custom];
+    const wrapped = function (...args) { return register(original.apply(this, args)); };
+    const custom = original[promisify.custom];
+    if (custom) {
+      wrapped[promisify.custom] = function (...args) {
+        const promise = custom.apply(this, args);
+        if (promise) register(promise.child);
+        return promise;
+      };
+    }
     return wrapped;
   };
   childProcess.spawn = track(spawn);

@@ -1,6 +1,17 @@
 # nexus-dotnet — Changelog
 
 
+## [2.0.9] — 2026-10-23
+- PATCH bump.
+  - F47-FlowAtlas: two flow-atlas profiles (need nexus-pro) — `flow-atlas-dotnet` (entry kinds: FastEndpoints, controllers, minimal APIs, MCP tools, hosted services, consumers, handlers, executables; the closed `reg:` binding vocabulary; `tools/extract-dotnet.mjs`) and `flow-atlas-vue` (route → view → store → API module; `tools/extract-vue.mjs` with the client-to-server join). Test code is left out by default. Both need the repo's `features.flowAtlas` switch on.
+
+## [2.0.8] — 2026-10-23
+- PATCH bump.
+  - F291-DotnetTestSelection: the .NET test runner moves here (`hooks/scripts/test-runner.js`); ties follow project references transitively, build-wide files select every test project, an empty set falls back; builds are reused while nothing changed; the timing pass keeps to what `full` leaves out. Needs nexus 2.4.50.
+  - skill change (create-module, create-service): one `{Name}.Tests` project per module or service, referencing only that unit; testing.md teaches it.
+  - skill change (create-host, persistence-patterns) and coding-conventions.md: the unit's own test project is an allowed reference to its API project.
+  - estate raise: create-module +1089 B, create-service +1048 B, create-host +62 B, persistence-patterns +93 B — F291.
+
 ## [2.0.7] — 2026-10-20
 - F272-MinerRunSetup: the .NET mining adapter follows the repo's own test stack (its scaffold only where the repo has
   no test project; classic xUnit 2 on Stryker's default runner); the no-production-edit check covers every non-test

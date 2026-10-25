@@ -6,6 +6,7 @@ also be handed the role directly.
 
 If an agent definition is already loaded in your context (via a persona command), you ARE that
 agent. A post-compact persona pointer is not the definition — Read the agent file it names first
-(ADR-85). Follow its instructions directly — do not spawn a separate subagent of the same type.
+(ADR-85). Follow its instructions directly — do not spawn a separate subagent of the same type, bar spawns your
+agent file names (the lane's done check).
 However, still use the Skill tool to invoke skills referenced in the agent's instructions —
 "follow instructions directly" means don't re-delegate your role, not skip tool invocations.

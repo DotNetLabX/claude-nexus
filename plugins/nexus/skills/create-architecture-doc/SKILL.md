@@ -30,7 +30,7 @@ Before writing, ensure you have:
 2. **Architecture reference** — if Refresh mode, read the existing `docs/architecture/index.md`
 3. **Skill inventory** — **use the skills surfaced in your context** (plugin skills live in the version-keyed cache — globbing `.claude/skills/` under-reports them); ALSO scan the project's own `.claude/skills/` for project-local skills. Build a skill inventory table from both.
 4. **Existing architecture docs** — read `docs/architecture/*.md` for format consistency and history
-5. **Navigation ladder** — where the repo has them, descend the four rungs coarse to fine and stop as soon as the question is answered: **structural graph** → **KB** (`docs/kb/index.md`) → **module digest** (`docs/business-rules/{module}/digest.md`) → **registry row** (`docs/business-rules/<area>/<unit>.md`, read per tag). Each layer points at the next and never duplicates it.
+5. **Reading order — code first** (→ kb-navigation.md § Reading order) — find the place by searching the code; the answer comes from the code; read the KB entry, module digest or registry row afterwards for the why. A map is used only when the search finds nothing, only for a location, and only as that section lists it — the flow atlas only where the repo switches it on.
 
 ## Steps
 

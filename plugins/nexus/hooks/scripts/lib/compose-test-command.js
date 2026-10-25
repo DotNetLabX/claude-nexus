@@ -1,282 +1,104 @@
 'use strict';
 /**
- * The one owner of every per-runner test-command grammar. Consumers import it or call the CLI form
- * at the bottom; none carries a local copy of a rule here, because a drifted exclusion fails green.
+ * The one entry to every runner's test-command grammar. Consumers import it or call the CLI form at the
+ * bottom; none carries a local copy of a rule here, because a drifted exclusion fails green.
  *
- * No spawns and no network. The `vstest` branch of filesCommand reads synchronously (the nearest
- * ancestor .csproj, the `class` declarations), and so does nodeLegs (which files hold the slow label);
- * the one write is announceLegs, a line appended to the run's events file. Everything else is pure.
+ * Each runner-keyed export (filesCommand, timingCommand, deltaTargets, stopFlags, joinExclusion, joinStop)
+ * refuses a runner outside the core's table, then hands the work to that runner, found by lib/test-runners.js
+ * (which holds the contract): node is built in, every other runner ships in its language plugin. A runner no
+ * installed plugin serves is refused with the loader's reason. `root` is the session's checkout, which decides
+ * which project install is read; it defaults to CLAUDE_PROJECT_DIR, else the working folder. `mtp` is refused
+ * by every runner-keyed export until its report form is measured on a fixture project; each form is lifted
+ * separately, so the refusal names the form.
  *
- * `mtp` is refused by every runner-keyed export until its report form is measured on a fixture
- * project; each form is lifted separately, so the refusal names the form.
- *
- * Commands come back as an array run in sequence — a vstest named-files run over two projects is two
- * invocations — so no consumer branches on the runner to know how to run the result. The string
- * builders stay strings (the paid timing pass runs them through a shell); nodeLegs alone returns
- * argument lists.
+ * Commands come back as an array run in sequence — a named-files run over two projects is two invocations — so
+ * no consumer branches on the runner to know how to run the result. The string builders stay strings (the paid
+ * timing pass runs them through a shell); nodeLegs alone returns argument lists.
  *
  * THE PER-TEST STOPS. A node leg on Node 22.1 or later carries `--test-timeout={ms} --test-force-exit`
- * and the core reporter (test-reporter.mjs) beside `spec` on stdout. With `slow.labelled`, a run is two
- * legs: the fast set (`--test-skip-pattern "@slow"`) under the fast stop and the slow set
- * (`--test-name-pattern "@slow"`, only the files that hold the label) under the slow stop; otherwise one
- * leg under the slow stop. Below Node 22.1 nothing is added. Each leg names the stop the child-call
- * preload (test-stop-preload.mjs) reads from NEXUS_TEST_STOP_MS. vstest takes
- * `--blame-hang-timeout {s}s --blame-hang-dump-type none` and flutter `--timeout {s}s` (stopFlags),
- * in filesCommand when it is given `stopSeconds` and in a declared unit through joinStop.
+ * and the core reporter (test-reporter.mjs) beside the caller's own reporters, or `spec` on stdout. With
+ * `slow.labelled`, a run is two legs: the fast set (`--test-skip-pattern "@slow"`) under the fast stop and
+ * the slow set (`--test-name-pattern "@slow"`, only the files that hold the label) under the slow stop, its
+ * report files named apart; otherwise one leg under the slow stop. Two legs run at the same time share the
+ * run's concurrency (shareConcurrency). Below Node 22.1 nothing is added. Each leg names the stop the
+ * child-call preload (test-stop-preload.mjs) reads from NEXUS_TEST_STOP_MS. Any other runner takes its own
+ * stop flags (stopFlags), in filesCommand when it is given `stopSeconds` and in a declared unit through
+ * joinStop.
+ *
+ * nodeLegs reads which files hold the slow label, and announceLegs and endLegs each append a line to the
+ * run's events file — a wrapper calls the first before its legs and the second as its last act, which exits;
+ * everything else here only composes text.
  */
 const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
-
-const RUNNERS = new Set(['vstest', 'mtp', 'node', 'flutter']);
-const VSTEST_SLOW_CLAUSE = 'Speed!=Slow';
-
-// A .csproj is a test project when it references a test SDK or a test framework, or says so outright.
-const TEST_PROJECT = /Microsoft\.NET\.Test\.Sdk|<IsTestProject>\s*true|xunit|nunit|mstest/i;
+const {
+  RUNNERS, INVOCATION, loadRunner, fold, commandSegments, splitChain, inferRunner, isFilteredFull, parseClasses,
+} = require('./test-runners');
 
 function checkRunner(runner, form) {
   if (!RUNNERS.has(runner)) {
-    throw new Error(`${form}: unknown runner ${JSON.stringify(runner)} (expected vstest | mtp | node | flutter)`);
+    throw new Error(`${form}: unknown runner ${JSON.stringify(runner)} (expected ${[...RUNNERS].join(' | ')})`);
   }
   if (runner === 'mtp') throw new Error(`${form}: runner not yet supported (mtp)`);
 }
 
-const quote = (p) => `"${String(p).replace(/\\/g, '/')}"`;
+const sessionRoot = (root) => root || process.env.CLAUDE_PROJECT_DIR || process.cwd();
 
-const TEST_FILE = {
-  node: /\.test\.(mjs|js|cjs)$/,
-  flutter: /_test\.dart$/,
-};
-
-function checkTestFiles(runner, files) {
-  for (const f of files) {
-    if (!TEST_FILE[runner].test(String(f))) {
-      throw new Error(`filesCommand: ${f} is not a ${runner} test file`);
-    }
-  }
-}
-
-function parseClasses(source) {
-  const names = [];
-  for (const m of String(source).matchAll(/\bclass\s+([A-Za-z_]\w*)/g)) {
-    if (!names.includes(m[1])) names.push(m[1]);
-  }
-  return names;
-}
-
-// Bounded by cwd: a .csproj above the tree belongs to some other checkout.
-function nearestTestProject(absFile, cwd) {
-  const top = path.resolve(cwd);
-  let dir = path.dirname(absFile);
-  while (dir === top || dir.startsWith(top + path.sep)) {
-    let projects = [];
-    try { projects = fs.readdirSync(dir).filter((n) => n.endsWith('.csproj')).sort(); } catch { /* unreadable */ }
-    if (projects.length > 0) {
-      const proj = path.join(dir, projects[0]);
-      let text = '';
-      try { text = fs.readFileSync(proj, 'utf8'); } catch { /* unreadable */ }
-      return TEST_PROJECT.test(text) ? proj : null;
-    }
-    if (dir === top || path.dirname(dir) === dir) break;
-    dir = path.dirname(dir);
-  }
-  return null;
-}
-
-const disjunction = (classes) => classes.map((c) => `FullyQualifiedName~${c}`).join('|');
-
-// Under cmd.exe's 8,191-character line limit with room for its own wrapper. Applied on every
-// platform so the Linux gate exercises the fallback the Windows run depends on.
-const COMMAND_BUDGET = 7000;
-
-// A filter that would take the command past the budget is dropped, keeping only the slow exclusion:
-// the whole project runs, which is slower and never wrong.
-function vstestFiltered(head, classes, exclude, note) {
-  let expr = disjunction(classes);
-  if (exclude) expr = `${classes.length > 1 ? `(${expr})` : expr}&${VSTEST_SLOW_CLAUSE}`;
-  const command = `${head} --filter "${expr}"`;
-  if (command.length <= COMMAND_BUDGET) return command;
-  if (note) note(`${head}: its class filter makes a ${command.length}-character command, over the ${COMMAND_BUDGET}-character budget — running the whole project`);
-  return exclude ? `${head} --filter "${VSTEST_SLOW_CLAUSE}"` : head;
-}
-
-// `strict` refuses what a changed-files restriction drops: a named-files run names only test files, while a diff
-// over a test root also lists the code under test.
-function classesByProject(files, cwd, strict) {
-  const byProject = new Map();
-  for (const f of files) {
-    const abs = path.resolve(cwd, f);
-    const proj = String(f).endsWith('.cs') ? nearestTestProject(abs, cwd) : null;
-    if (!proj) {
-      if (strict) throw new Error(`filesCommand: ${f} is not a .cs file under a test project`);
-      continue;
-    }
-    let classes = [];
-    try { classes = parseClasses(fs.readFileSync(abs, 'utf8')); } catch { /* unreadable → no classes */ }
-    if (classes.length === 0) {
-      if (strict) throw new Error(`filesCommand: ${f} declares no class to filter on`);
-      continue;
-    }
-    const rel = path.relative(cwd, proj).replace(/\\/g, '/');
-    if (!byProject.has(rel)) byProject.set(rel, []);
-    const names = byProject.get(rel);
-    for (const c of classes) if (!names.includes(c)) names.push(c);
-  }
-  return byProject;
+function runnerFor(runner, form, root) {
+  checkRunner(runner, form);
+  const loaded = loadRunner(runner, { root: sessionRoot(root) });
+  if (!loaded.runner) throw new Error(`${form}: ${loaded.reason}`);
+  return loaded.runner;
 }
 
 // The flags that stop one stuck test, for a stop in whole seconds.
-function stopFlags(runner, seconds) {
-  checkRunner(runner, 'stopFlags');
-  if (runner === 'node') return `--test-timeout=${seconds * 1000} --test-force-exit`;
-  if (runner === 'vstest') return `--blame-hang-timeout ${seconds}s --blame-hang-dump-type none`;
-  return `--timeout ${seconds}s`;
+function stopFlags(runner, seconds, { root } = {}) {
+  return runnerFor(runner, 'stopFlags', root).stopFlags(seconds);
 }
 
-// `stopSeconds` adds the stop flags to a vstest or flutter run; a node run takes its stop as legs.
-function filesCommand({ runner, files, exclude, cwd = process.cwd(), note, stopSeconds }) {
-  checkRunner(runner, 'filesCommand');
-  const list = Array.isArray(files) ? files : [];
-  const stop = stopSeconds && runner !== 'node' ? ` ${stopFlags(runner, stopSeconds)}` : '';
-  if (runner === 'vstest') {
-    return [...classesByProject(list, cwd, true)].map(([proj, classes]) =>
-      vstestFiltered(`dotnet test ${quote(proj)}${stop}`, classes, exclude, note));
-  }
-  checkTestFiles(runner, list);
-  const quoted = list.map(quote).join(' ');
-  if (runner === 'node') {
-    return [`node --test ${exclude ? '--test-skip-pattern "@slow" ' : ''}${quoted}`];
-  }
-  return [`flutter test${stop} ${quoted}${exclude ? ' -x slow' : ''}`];
+// `stopSeconds` adds the stop flags to a run whose runner stops in the command; a node run takes its stop as
+// legs.
+function filesCommand({ runner, files, exclude, cwd = process.cwd(), note, stopSeconds, root }) {
+  const r = runnerFor(runner, 'filesCommand', root);
+  return r.filesCommand({ files: Array.isArray(files) ? files : [], exclude, cwd, note, stopSeconds: runner === 'node' ? 0 : stopSeconds });
 }
 
-// The changed-files restriction: the changed test files for node / flutter; for vstest the test
-// projects of the changed .cs files, each with only the classes that live in it.
-function deltaTargets({ runner, files, cwd = process.cwd() }) {
-  checkRunner(runner, 'deltaTargets');
-  const list = (Array.isArray(files) ? files : []).map(String);
-  if (runner !== 'vstest') return { targets: list.filter((f) => TEST_FILE[runner].test(f)), classes: {} };
-  const byProject = classesByProject(list, cwd, false);
-  return { targets: [...byProject.keys()], classes: Object.fromEntries(byProject) };
+// The changed-files restriction of a timing pass: what it re-times, and for a runner that filters by class,
+// the classes of each target.
+function deltaTargets({ runner, files, cwd = process.cwd(), root }) {
+  return runnerFor(runner, 'deltaTargets', root).deltaTargets({ files, cwd });
 }
 
-// `reporter` (node only) is the reporter module whose records the caller reads; `classes`
-// (vstest only) maps a target to the classes its run is filtered to.
-function timingCommand({ runner, targets, tmp, n, classes = {}, reporter, note }) {
-  checkRunner(runner, 'timingCommand');
-  const list = Array.isArray(targets) ? targets : [];
-  const dir = String(tmp).replace(/\\/g, '/');
-  if (runner === 'node') {
-    if (!reporter) throw new Error('timingCommand: node needs a reporter module');
-    return [`node --test --test-reporter=${quote(reporter)} --test-reporter-destination=${quote(`${dir}/${n}.jsonl`)} ${list.map(quote).join(' ')}`];
-  }
-  if (runner === 'flutter') {
-    return [`flutter test --reporter json ${list.map(quote).join(' ')}`];
-  }
-  return list.map((t) => {
-    const head = `dotnet test ${quote(t)} --logger trx --results-directory ${quote(dir)}`;
-    const own = classes[t];
-    return Array.isArray(own) && own.length ? vstestFiltered(head, own, false, note) : head;
-  });
+// `reporter` (node only) is the reporter module whose records the caller reads; `classes` maps a target to
+// the classes its run is filtered to, where the runner filters by class; `exclusion` is a clause the runner's
+// `exclusionOf` returned, joined to every command it composes.
+function timingCommand({ runner, targets, tmp, n, classes = {}, reporter, note, exclusion = null, root }) {
+  return runnerFor(runner, 'timingCommand', root).timingCommand({ targets, tmp, n, classes, reporter, note, exclusion });
 }
 
-const FILTER_CLAUSE_FLAGS = new Set(['--filter', '--filter-not-trait', '-x', '--exclude-tags', '--test-skip-pattern', '--exclude']);
-
-const fold = (command) => String(command || '').replace(/["']/g, '').replace(/\s+/g, ' ').trim();
-
-function isFilteredFull(command) {
-  return fold(command).split(' ').some((token) => FILTER_CLAUSE_FLAGS.has(token.split('=')[0]));
+// The runner's invocation in a declared command, as [start, end], or a refusal naming the form.
+function invocationOf(runner, text, form) {
+  const target = commandSegments(text).find(([s, e]) => INVOCATION[runner].test(fold(text.slice(s, e))));
+  if (!target) throw new Error(`${form}: no ${runner} test invocation in ${JSON.stringify(text)}`);
+  return target;
 }
 
-// Chain separators (&&, ||, ;, |, &, newline) split a command line only OUTSIDE quotes: a VSTest
-// filter expression carries `&` and `|` inside its quotes, and a quoted message carries anything.
-function commandSegments(text) {
-  const segments = [];
-  let start = 0;
-  let quoteChar = '';
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (quoteChar) { if (ch === quoteChar) quoteChar = ''; continue; }
-    if (ch === '"' || ch === "'") { quoteChar = ch; continue; }
-    if (ch === ';' || ch === '&' || ch === '|' || ch === '\n' || ch === '\r') {
-      segments.push([start, i]);
-      if ((ch === '&' || ch === '|') && text[i + 1] === ch) i++;
-      start = i + 1;
-    }
-  }
-  segments.push([start, text.length]);
-  return segments;
-}
-
-function splitChain(text) {
-  const s = String(text || '');
-  return commandSegments(s).map(([start, end]) => s.slice(start, end));
-}
-
-const INVOCATION = {
-  vstest: /(^|\s)dotnet\s+test(\s|$)/,
-  node: /(^|\s)node(\.exe)?\s(.*\s)?--test(\s|$)/,
-  flutter: /(^|\s)(flutter|dart)\s+test(\s|$)/,
-};
-
-const ALREADY_EXCLUDED = {
-  vstest: /Speed!=Slow/,
-  node: /--test-skip-pattern[= ]@slow(\s|$)/,
-  flutter: /(^|\s)(-x|--exclude-tags)[= ]slow(\s|$)/,
-};
-
-function inferRunner(command) {
-  for (const segment of splitChain(command)) {
-    const folded = fold(segment);
-    const runner = ['vstest', 'node', 'flutter'].find((r) => INVOCATION[r].test(folded));
-    if (runner) return runner;
-  }
-  return '';
-}
-
-function hasTopLevelOr(expr) {
-  let depth = 0;
-  for (const ch of expr) {
-    if (ch === '(') depth++;
-    else if (ch === ')') depth--;
-    else if (ch === '|' && depth === 0) return true;
-  }
-  return false;
-}
-
-function joinVstest(segment) {
-  const filter = segment.match(/--filter(\s+|[=:])(?:"([^"]*)"|'([^']*)'|([^\s"']+))/);
-  if (filter) {
-    const expr = filter[2] ?? filter[3] ?? filter[4];
-    const joined = `${hasTopLevelOr(expr) ? `(${expr})` : expr}&${VSTEST_SLOW_CLAUSE}`;
-    return segment.slice(0, filter.index) + `--filter${filter[1]}"${joined}"` + segment.slice(filter.index + filter[0].length);
-  }
-  const clause = ` --filter "${VSTEST_SLOW_CLAUSE}"`;
-  const runsettings = segment.match(/\s--(\s|$)/);
-  if (runsettings) return segment.slice(0, runsettings.index) + clause + segment.slice(runsettings.index);
-  const body = segment.replace(/\s+$/, '');
-  return body + clause + segment.slice(body.length);
-}
-
-function insertAfter(segment, re, flag) {
-  const m = segment.match(re);
-  const at = m.index + m[0].length;
-  return segment.slice(0, at) + flag + segment.slice(at);
-}
-
-function joinExclusion({ runner, unit }) {
+function joinExclusion({ runner, unit, root }) {
   checkRunner(runner, 'joinExclusion');
   const text = String(unit || '');
-  const target = commandSegments(text).find(([s, e]) => INVOCATION[runner].test(fold(text.slice(s, e))));
-  if (!target) throw new Error(`joinExclusion: no ${runner} test invocation in ${JSON.stringify(text)}`);
-  const [s, e] = target;
-  const segment = text.slice(s, e);
-  if (ALREADY_EXCLUDED[runner].test(fold(segment))) return text;
-  let joined;
-  if (runner === 'vstest') joined = joinVstest(segment);
-  else if (runner === 'node') joined = insertAfter(segment, /(^|\s)--test(?=\s|$)/, ' --test-skip-pattern "@slow"');
-  else joined = insertAfter(segment, /(flutter|dart)\s+test(?=\s|$)/, ' -x slow');
-  return text.slice(0, s) + joined + text.slice(e);
+  const [s, e] = invocationOf(runner, text, 'joinExclusion');
+  return text.slice(0, s) + runnerFor(runner, 'joinExclusion', root).joinExclusion(text.slice(s, e)) + text.slice(e);
+}
+
+// A declared unit or full with its runner's stop joined in; node's stop is applied at run time, so a
+// node unit comes back as it was.
+function joinStop({ runner, unit, seconds, root }) {
+  checkRunner(runner, 'joinStop');
+  const text = String(unit || '');
+  if (runner === 'node') return text;
+  const [s, e] = invocationOf(runner, text, 'joinStop');
+  return text.slice(0, s) + runnerFor(runner, 'joinStop', root).joinStop(text.slice(s, e), seconds) + text.slice(e);
 }
 
 // --test-skip-pattern first ships in Node 22.1.0; below it Node rejects the flag as a bad option.
@@ -284,26 +106,6 @@ function nodeSupportsSkipPattern(version) {
   if (!/^\d+\.\d+\.\d+$/.test(String(version))) return false;
   const [major, minor] = String(version).split('.').map(Number);
   return major > 22 || (major === 22 && minor >= 1);
-}
-
-const ALREADY_STOPPED = {
-  vstest: /(^|\s)--blame-hang-timeout[= ]/,
-  flutter: /(^|\s)--timeout[= ]/,
-};
-
-// A declared unit or full with its runner's stop joined in; node's stop is applied at run time, so a
-// node unit comes back as it was.
-function joinStop({ runner, unit, seconds }) {
-  checkRunner(runner, 'joinStop');
-  const text = String(unit || '');
-  if (runner === 'node') return text;
-  const target = commandSegments(text).find(([s, e]) => INVOCATION[runner].test(fold(text.slice(s, e))));
-  if (!target) throw new Error(`joinStop: no ${runner} test invocation in ${JSON.stringify(text)}`);
-  const [s, e] = target;
-  const segment = text.slice(s, e);
-  if (ALREADY_STOPPED[runner].test(fold(segment))) return text;
-  const at = runner === 'vstest' ? /dotnet\s+test(?=\s|$)/ : /(flutter|dart)\s+test(?=\s|$)/;
-  return text.slice(0, s) + insertAfter(segment, at, ` ${stopFlags(runner, seconds)}`) + text.slice(e);
 }
 
 const SLOW_LABEL = '@slow';
@@ -330,25 +132,46 @@ function labelledFiles({ targets, cwd = process.cwd() }) {
   return out;
 }
 
-// The options a leg sets itself, dropped from the caller's (with their value when it is the next word),
-// and the patterns that decide whether a run can be split.
-const LEG_OWNED = new Set(['--test-timeout', '--test-force-exit', '--test-reporter', '--test-reporter-destination']);
+// The options a leg sets itself, dropped from the caller's (with their value when it is the next word), the
+// caller's reporters, which every leg keeps beside the core one, and the patterns that decide whether a run
+// can be split.
+const LEG_OWNED = new Set(['--test-timeout', '--test-force-exit']);
+const REPORTING = new Set(['--test-reporter', '--test-reporter-destination']);
 const PATTERNS = new Set(['--test-name-pattern', '--test-skip-pattern']);
 const VALUED = new Set(['--test-timeout', '--test-reporter', '--test-reporter-destination', '--test-name-pattern', '--test-skip-pattern', '--test-concurrency']);
+const STREAMS = new Set(['stdout', 'stderr']);
 
 function splitOptions(options) {
   const kept = [];
   const patterns = [];
+  const reporters = [];
+  const destinations = [];
   const list = Array.isArray(options) ? options.map(String) : [];
   for (let i = 0; i < list.length; i++) {
     const name = list[i].split('=')[0];
     const pair = !list[i].includes('=') && VALUED.has(name) && list[i + 1] !== undefined && !list[i + 1].startsWith('-');
     const words = pair ? [list[i], list[++i]] : [list[i]];
+    const value = pair ? words[1] : list[i].slice(name.length + 1);
     if (LEG_OWNED.has(name)) continue;
-    if (PATTERNS.has(name)) patterns.push({ name, value: pair ? words[1] : list[i].slice(name.length + 1) });
+    if (REPORTING.has(name)) { (name === '--test-reporter' ? reporters : destinations).push(value); continue; }
+    if (PATTERNS.has(name)) patterns.push({ name, value });
     kept.push(...words);
   }
-  return { kept, patterns };
+  return { kept, patterns, reporters, destinations };
+}
+
+// The reporters a leg writes with: the caller's, each paired with its destination (stdout where it named none,
+// as node gives a lone reporter), or `spec` on stdout; then the core reporter. `apart` names the slow leg's
+// own file beside each file the caller named, so two legs never write one file.
+function reportingArgs({ reporters, destinations }, reporter, apart) {
+  const own = reporters.map((r, i) => [r, destinations[i] === undefined ? 'stdout' : destinations[i]]).filter(([r]) => r !== reporter);
+  const pairs = own.length ? own : [['spec', 'stdout']];
+  const file = (d) => {
+    if (!apart || STREAMS.has(d)) return d;
+    const ext = path.extname(d);
+    return `${d.slice(0, d.length - ext.length)}.slow${ext}`;
+  };
+  return [...pairs, [reporter, 'stderr']].flatMap(([r, d]) => [`--test-reporter=${r}`, `--test-reporter-destination=${file(d)}`]);
 }
 
 /**
@@ -360,12 +183,11 @@ function splitOptions(options) {
 function nodeLegs({ targets, options = [], stop, labelled = false, split = true, cwd = process.cwd(),
   nodeVersion = process.versions.node, reporter = REPORTER_URL, slowFiles }) {
   const list = (Array.isArray(targets) ? targets : []).map(String);
-  const { kept, patterns } = splitOptions(options);
-  if (!nodeSupportsSkipPattern(nodeVersion)) return [{ args: ['--test', ...kept, ...list], stopMs: null, env: {} }];
-  const leg = (ms, extra, files) => ({
-    args: ['--test', ...kept, `--test-timeout=${ms}`, '--test-force-exit',
-      '--test-reporter=spec', '--test-reporter-destination=stdout', `--test-reporter=${reporter}`, '--test-reporter-destination=stderr',
-      ...extra, ...files],
+  const split_ = splitOptions(options);
+  const { kept, patterns } = split_;
+  if (!nodeSupportsSkipPattern(nodeVersion)) return [{ args: ['--test', ...(Array.isArray(options) ? options : []).map(String), ...list], stopMs: null, env: {} }];
+  const leg = (ms, extra, files, apart = false) => ({
+    args: ['--test', ...kept, `--test-timeout=${ms}`, '--test-force-exit', ...reportingArgs(split_, reporter, apart), ...extra, ...files],
     stopMs: ms,
     env: { NEXUS_TEST_STOP_MS: String(ms) },
   });
@@ -375,8 +197,40 @@ function nodeLegs({ targets, options = [], stop, labelled = false, split = true,
   const slow = Array.isArray(slowFiles) ? slowFiles : labelledFiles({ targets: list, cwd });
   const legs = [leg(stop.fastMs, ['--test-skip-pattern', SLOW_LABEL], list)];
   // With no target, node discovers the files itself, so the slow leg must run too.
-  if (slow.length || list.length === 0) legs.push(leg(stop.slowMs, ['--test-name-pattern', SLOW_LABEL], slow));
+  if (slow.length || list.length === 0) legs.push(leg(stop.slowMs, ['--test-name-pattern', SLOW_LABEL], slow, true));
   return legs;
+}
+
+const CONCURRENCY = '--test-concurrency';
+
+/**
+ * Two legs run at the same time share the run's test concurrency, never add to it: the slow leg takes a
+ * third of it (at least one), the fast leg the rest. The cap is the legs' own `--test-concurrency`, else
+ * `fallback` (node's default). A cap below two cannot be shared, so the legs keep it each and run one after
+ * the other (`together: false`); so does a run of one leg.
+ */
+function shareConcurrency(legs, fallback) {
+  if (!Array.isArray(legs) || legs.length !== 2) return { legs, together: false };
+  const strip = (args) => {
+    let cap = null;
+    const out = [];
+    for (let i = 0; i < args.length; i++) {
+      if (args[i] === CONCURRENCY) { cap = Number(args[++i]); continue; }
+      if (args[i].startsWith(`${CONCURRENCY}=`)) { cap = Number(args[i].slice(CONCURRENCY.length + 1)); continue; }
+      out.push(args[i]);
+    }
+    return { cap, args: out };
+  };
+  const stripped = legs.map((l) => strip(l.args));
+  const declared = stripped[0].cap;
+  const cap = Number.isInteger(declared) && declared > 0 ? declared : Math.max(1, Math.floor(Number(fallback)) || 1);
+  const together = cap >= 2;
+  const slow = together ? Math.max(1, Math.round(cap / 3)) : cap;
+  const shares = together ? [cap - slow, slow] : [cap, cap];
+  return {
+    legs: legs.map((l, i) => ({ ...l, args: [stripped[i].args[0], `${CONCURRENCY}=${shares[i]}`, ...stripped[i].args.slice(1)] })),
+    together,
+  };
 }
 
 // A wrapper that runs legs of its own says how many first, so the run's events count as complete only
@@ -386,11 +240,29 @@ function announceLegs(n, env = process.env) {
   fs.appendFileSync(env.NEXUS_TEST_EVENTS, `${JSON.stringify({ kind: 'legs', legs: n })}\n`);
 }
 
+// A wrapper's last act, once its legs ended and nothing of its own failed: it writes that its exit is its legs'
+// outcome — their statuses (a missing one counts 1), the worse of them, `own: "passed"` and the script and
+// process that write it — and exits with that worse status. A wrapper whose own check failed exits without it,
+// and so does one with an `exit` listener registered: process.exit runs it after the line, and it may still
+// fail. Its red exit reads as its legs' own only when this line is the last its command wrote, names that exit,
+// and comes from the process verify-run.js started for a one-stage `node {script}` command, running that
+// script — never from a process that one started. `proc` (its `exit` and `listenerCount`) is for a test.
+function endLegs(statuses, env = process.env, proc = process) {
+  const list = (Array.isArray(statuses) ? statuses : []).map((s) => (Number.isInteger(s) ? s : 1));
+  const status = list.reduce((a, b) => Math.max(a, b), 0);
+  const script = process.argv[1] ? path.resolve(process.argv[1]) : null;
+  if (env.NEXUS_TEST_EVENTS && proc.listenerCount('exit') === 0) fs.appendFileSync(env.NEXUS_TEST_EVENTS, `${JSON.stringify({ kind: 'legs-end', statuses: list, status, own: 'passed', script, pid: process.pid })}\n`);
+  proc.exit(status);
+  return status;
+}
+
 module.exports = {
-  COMMAND_BUDGET, filesCommand, timingCommand, deltaTargets, parseClasses, isFilteredFull, joinExclusion, nodeSupportsSkipPattern,
-  splitChain, inferRunner, stopFlags, joinStop, labelledFiles, nodeLegs, announceLegs, REPORTER_URL, PRELOAD_URL,
+  filesCommand, timingCommand, deltaTargets, parseClasses, isFilteredFull, joinExclusion, nodeSupportsSkipPattern,
+  splitChain, inferRunner, stopFlags, joinStop, labelledFiles, nodeLegs, shareConcurrency, announceLegs, endLegs,
+  REPORTER_URL, PRELOAD_URL,
 };
 
+// `filtered` is the core's own predicate and needs no runner; `join` and `join-stop` need the runner's.
 function cli(argv) {
   const [sub, ...rest] = argv;
   const dash = rest.indexOf('--');

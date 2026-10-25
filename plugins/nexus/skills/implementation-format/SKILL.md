@@ -151,17 +151,20 @@ solo inserts its block inside it, after the last solo block. Solo appends its ow
 **Approach:** what it will change — written before the first edit
 **Files:** `full/path/to/File` — what changed; one line per file
 **Class checked:** other places with the same flaw — fixed, or listed
-**Verify:** the fast call it ran, as run — and its outcome: green | red | unfinished
+**Verify:** each fast call it ran, as run — and its outcome: green | red | unfinished
 **Unfinished:** {files | whole unit run} — cut at {limit} s; only when that call was cut at its limit
 **Slow kept:** {test} — {reason}; only for a test its one speed-up try left over the speed-up line, one line per test
 **Left:** each listed instance or follow-up, one per line — or `None`
 **Verdict:** fixed | too big | not caused here — {for `not caused here`, the act that would clear it}
 ```
 
-**The verdicts.** `fixed` — it made the change its approach named. The fast call's outcome is
-recorded apart, on `Verify:`, and the coordinator routes on it (`team-lead.md` § Message Handoffs (you are the hub)):
+**The verdicts.** `fixed` — it made the change its approach named. The fast calls' outcomes are
+recorded apart, on `Verify:`, and the coordinator routes on them (`team-lead.md` § Message Handoffs (you are the hub)):
 mid-build, green stands, red resumes the solo once and then goes to the architect, unfinished is left
-to the complete run; on the handover ladder the next complete run decides. `too big` — the fix is outside
+to the complete run. On the handover ladder the solo's proof is each failed test file run by name plus its
+tied call: every failure green by name ends the red with no second complete run, a red proof is the
+ladder's next attempt — at most three, then the architect — and only a failure that cannot be named, or a
+by-name run cut at its limit, waits for another complete run. `too big` — the fix is outside
 solo's size rule, or would change something the plan or the spec decided; nothing is left half-done,
 and a `questions.md` entry to the architect points at the block. `not caused here` — the failure is
 real but nothing in this feature's change caused it (a default branch that moved, the environment, a
@@ -170,7 +173,7 @@ would clear it.
 
 **Written during the run.** A solo block is written by its solo before the hand-back — the
 `Approach:` line before the first edit. A solo resumed with a new record (a red on its own fast call,
-or the ladder's second red) keeps its `{n}`: it appends an `Attempt 2 — {date}` part to its own block
+or a red proof on the ladder — its next attempt) keeps its `{n}`: it appends an `Attempt {k} — {date}` part, `{k}` the attempt's number, to its own block
 — that bold line, then the fields from `Failure:` to `Verdict:` for the new record — and hands back
 with the same `{n}`; the block's last `Verdict:` is the one that stands. Its `Left:` items reach
 `## Carry-Over Findings` so the readers that must disposition that table see them: where the table

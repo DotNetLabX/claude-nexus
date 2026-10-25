@@ -15,7 +15,7 @@
       {
         "matcher": "Read|Write|Edit|MultiEdit|NotebookEdit|Bash|PowerShell",
         "hooks": [
-          { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/guard.js", "${user_config.security_mode}"] }
+          { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/guard.js"] }
         ]
       },
       {
@@ -50,7 +50,7 @@
       },
       {
         "hooks": [
-          { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/audit-logger.js", "${user_config.token_audit}"], "timeout": 10, "async": true }
+          { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/audit-logger.js"], "timeout": 10, "async": true }
         ]
       }
     ],
@@ -126,6 +126,7 @@
     "UserPromptSubmit": [
       {
         "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/register-persona.js\"", "timeout": 10 },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/handoff-tracker.js\"", "timeout": 10, "async": true }
         ]
       }

@@ -1,6 +1,6 @@
 ---
 name: create-module
-description: Scaffolds an empty module skeleton from its CLAUDE.md. Branches on archetype — Component (a contracts project and its first implementation) or Domain (Domain and Persistence, with an optional Application project and an optional API class library). Use when standing up a new module after its CLAUDE.md exists.
+description: Scaffolds an empty module skeleton from its CLAUDE.md. Branches on archetype — Component (a contracts project and its first implementation) or Domain (Domain and Persistence, with an optional Application project and an optional API class library), each with its one test project. Use when standing up a new module after its CLAUDE.md exists.
 ---
 
 # Create Module
@@ -59,18 +59,27 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
    - **A module that owns tables owns its schema and its migration history** (`persistence-patterns` § Entity
      Configuration).
 4. **Wire the infrastructure** — `workflows/ScaffoldInfrastructure.md`.
-5. **Verify:**
+5. **Create the module's test project** — `src/Modules/{Name}/{Name}.Tests/`, added to the solution; a later
+   Component run that adds an implementation adds its reference here, not a second test project. It references
+   this module's own projects only (its API library included, where it has one), never another module's: a test run
+   follows project references, so a change then ties to the few tests that cover it. It takes the test framework,
+   assertion library and packages of the repo's existing test projects, else the stack's testing convention; tests
+   needing the whole running app go to the app's one wiring test project, not here.
+6. **Verify:**
    ```bash
    dotnet build src/{SolutionFile}
    rg -n 'ProjectReference Include=.\.\..\.\..[^.]' src/Modules/{Name} --glob '*.csproj'   # another module — expect zero unless the CLAUDE.md names it
-   rg -n 'Microsoft.AspNetCore' src/Modules/{Name} --glob '!**/{Name}.API/**'               # no web framework outside the API library — expect zero
+   rg -n 'Microsoft.AspNetCore' src/Modules/{Name} --glob '!**/{Name}.API/**' --glob '!**/{Name}.Tests/**' # no web framework outside the API library and its tests — expect zero
+   rg --files src/Modules/{Name} -g '*.Tests.csproj'                                        # the module's one test project — expect one file
+   rg -n 'ProjectReference Include=.(\.\..){2,}' src/Modules/{Name}/{Name}.Tests --glob '*.csproj' # the test project references this module only — expect zero
    ```
    The patterns hold no double quote and no doubled backslash, so PowerShell and Git Bash pass them to `rg`
    unchanged; a `.` stands for the quote and for either path separator.
-6. **Report**, per archetype:
-   - **Component:** "Module `{Name}` scaffolded with contract `{IContractName}` and implementation `{FirstImpl}`. A host
+7. **Report**, per archetype:
+   - **Component:** "Module `{Name}` scaffolded with contract `{IContractName}`, implementation `{FirstImpl}` and test
+     project `{Name}.Tests`. A host
      references `{Name}.Contracts` and `{Name}.{FirstImpl}`; add implementations by re-running `create-module {Name}`."
-   - **Domain:** "Module `{Name}` scaffolded. A host composes it with `services.Add{Name}Persistence(configuration)` and
+   - **Domain:** "Module `{Name}` scaffolded with its test project `{Name}.Tests`. A host composes it with `services.Add{Name}Persistence(configuration)` and
      `app.Migrate<{Name}DbContext>()` (`persistence-patterns` § Migrations at Start-up){, and
      `app.Map{Name}Endpoints()` with an API library}. Run `create-aggregate` next."
 

@@ -45,7 +45,8 @@ src/
 ```
 
 - **`src/Hosts/{Host}/` holds the deployable's one web-SDK project and no business code.** It references the API
-  project of each service or module it runs — the one exception to "no project references an API project" — and a
+  project of each service or module it runs — the one production exception to "no project references an API
+  project", beside a module's or service's own test project — and a
   module without an API project through its other projects.
 - **No production project references a host.** A test project may, for `WebApplicationFactory<Program>`. The repo's
   own architecture test enforces this where it has one.

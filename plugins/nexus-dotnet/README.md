@@ -3,11 +3,12 @@
 A **thin .NET / Vue stack extension** for the `nexus` core pipeline. It declares `dependencies: ["nexus"]`,
 so installing it auto-installs and enables `nexus`, then layers the stack on top.
 
-It ships **no agents, rules, commands, or hooks** — those come from `nexus`. It adds only:
+It ships **no agents, rules, commands, or hook registrations** — those come from `nexus`. It adds only:
 
 | Component | Count | Notes |
 |-----------|-------|-------|
-| **Skills** | 41 | The .NET/Vue stack code-pattern skills (services, modules, aggregates, CQRS, EF, gRPC, Vue, Pinia, Tailwind, …). The process + artifact-format skills come from `nexus`. |
+| **Test runner** | 1 | `hooks/scripts/test-runner.js` — how .NET tests run, for the core's test runs: named-file and step-tied runs (a change ties to every test project that reaches it through project references), the slow label, the per-test stop, a reused build while no file changed, and what the slow-test timing leaves out. The core finds it in this plugin; without it, a .NET repo's step checks run the declared `unit` whole. It needs a `nexus` core that ships the runner contract. |
+| **Skills** | 43 | The .NET/Vue stack code-pattern skills (services, modules, aggregates, CQRS, EF, gRPC, Vue, Pinia, Tailwind, …). The process + artifact-format skills come from `nexus`. |
 | **Conventions** | 5 | `csharp`, `ef-core`, `vue`, `testing`, `coding-conventions` — scaffold source for the Read-Index pattern; copied again after each update. |
 | **Templates** | 3 | `templates/CLAUDE.md` — a .NET/Vue project starter; `templates/project-lists.md` — the repo's lists file, copied once and never again; `templates/conventions-check/` — the optional conventions check (`add-conventions-check`). |
 

@@ -20,7 +20,7 @@
       "allowed": ["self-review", "Codex alone", "a critic always", "as today", "ask me"],
       "values": {
         "fast": { "value": "Codex alone", "text": "Codex alone where installed, else self-review" },
-        "normal": { "value": "as today", "text": "as today (a critic for complex or costly work)" },
+        "normal": { "value": "as today", "text": "as today (a critic for complex or costly work, or touching shipped or production code)" },
         "quality": { "value": "a critic always", "text": "always a critic" },
         "off": { "value": "ask me", "text": "ask me" }
       }
@@ -36,7 +36,7 @@
       "values": {
         "fast": { "value": "Codex + Sonnet", "text": "Codex + Sonnet" },
         "normal": { "value": "Codex + Sonnet", "text": "Codex + Sonnet" },
-        "quality": { "value": "Codex + Sonnet + Fable", "text": "Codex + Sonnet, plus Fable while usage allows" },
+        "quality": { "value": "Codex + Sonnet + Fable", "text": "Codex + Sonnet, plus Fable" },
         "off": { "value": "ask me", "text": "ask me" }
       }
     },

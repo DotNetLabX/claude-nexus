@@ -45,7 +45,8 @@
  *
  * THIRD PAYLOAD — the runner block (F147), FIRST in the payload. When the tree declares a non-empty
  * `roles.unit` — the same arming condition as test-entry-gate.js — the carrier delivers the resolved
- * verify-run.js call for the step close (the tied form), its named-files form, and the label-tests.js
+ * verify-run.js call for the step close (the tied form), its named-files form (both with `--slug`, so a
+ * feature's test time counts every run its developer made), and the label-tests.js
  * call that labels from the step close's record. Same reason as the commit block: nothing else in a
  * background spawn's context can locate either script.
  *
@@ -127,7 +128,7 @@ function runnerBlock(roles) {
   const labeller = path.join(__dirname, 'label-tests.js').replace(/\\/g, '/');
   return '```\n' +
     `run tests: node "${runner}" --profile fast --tied --changed <every file this step changed> --slug <slug>\n` +
-    `the test file you are writing: node "${runner}" --profile fast --files <test file>...\n` +
+    `the test file you are writing: node "${runner}" --profile fast --files <test file>... --slug <slug>\n` +
     `then label from that run: node "${labeller}" --run <run_id>\n` +
     '```';
 }

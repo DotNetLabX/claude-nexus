@@ -1,5 +1,126 @@
 # nexus — Changelog
 
+## [2.4.56] — 2026-10-25
+- F297: a commit made by an installed plugin's own save script counts as the user's act (each push still asked), the architect may write a spec's optional technical part, and the safety check allows folders added to the session
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - skill change (create-feature-spec)
+  - estate raise: plugins/nexus/agents/architect.md 231307→231977 B — F297 step 2: plugin save exception, architect technical part, voice-check skip
+  - estate raise: plugins/nexus/agents/po.md 77394→77650 B — F297 step 2: plugin save exception, architect technical part, voice-check skip
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 116260→116949 B — F297 step 2: plugin save exception, architect technical part, voice-check skip
+  - estate raise: plugins/nexus/skills/create-feature-spec/SKILL.md 7789→8147 B — F297 step 2: plugin save exception, architect technical part, voice-check skip
+  - estate raise: plugins/nexus/skills/create-feature-spec/workflows/Template.md 8190→8516 B — F297 step 2: plugin save exception, architect technical part, voice-check skip
+
+## [2.4.55] — 2026-10-24
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - skill change (create-architecture-doc)
+  - estate raise: plugins/nexus/agents/architect.md 231100→231307 B — F295 fix round 1: the flow-atlas switch restored in the reading-order rule, the architect's planning-time digest read restored, and the map pointers inherit the switch
+  - estate raise: plugins/nexus/rules/on-demand/kb-navigation.md 3388→3467 B — F295 fix round 1: the flow-atlas switch restored in the reading-order rule, the architect's planning-time digest read restored, and the map pointers inherit the switch
+  - estate raise: plugins/nexus/skills/create-architecture-doc/SKILL.md 3986→4036 B — F295 fix round 1: the flow-atlas switch restored in the reading-order rule, the architect's planning-time digest read restored, and the map pointers inherit the switch
+
+## [2.4.54] — 2026-10-24
+- PATCH bump.
+  - F295: the reading order is now code first, replacing the read-the-maps-first ladder. Agents find the place by
+    searching the code, take the answer from the code, and read the KB, digest or registry afterwards for the why; a
+    map (code graph, flow atlas, KB index) is used only when the search finds nothing, and only for a location.
+  - Affected: architect, developer, solo, reviewer, `kb-navigation`, `kb-maintenance` and `create-architecture-doc`.
+    The light plan no longer lets a registry row or code map stand in for reading the code.
+  - Measured in the session-accuracy study (2026-10-24): maps-first never beat code search, in empty or busy sessions.
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - skill change (create-architecture-doc)
+  - estate raise: plugins/nexus/agents/reviewer.md 31353→31423 B — F295-TrimSessionStartLoad: code-first reading order replaces read-maps-first steps (reviewer and kb-maintenance read the registry after the code)
+  - estate raise: plugins/nexus/rules/on-demand/kb-maintenance.md 7816→7861 B — F295-TrimSessionStartLoad: code-first reading order replaces read-maps-first steps (reviewer and kb-maintenance read the registry after the code)
+
+## [2.4.53] — 2026-10-23
+- PATCH bump.
+  - F47-FlowAtlas: the navigation ladder gains a rung — agents read `docs/flow-atlas/` after the structural graph and before the KB — which classes run for an entry point — only where it exists and the repo's `.claude/nexus-agents.json` sets `features.flowAtlas` to `true` (off by default; README's feature switches); the five ladders (architect, developer, solo, create-architecture-doc, kb-navigation) now count five rungs.
+
+## [2.4.52] — 2026-10-23
+- Fail-fast tests, the late close (F265): the fixes its code review found after the merge. A cancelled test counts as a timeout only under a timed-out ancestor; a wrapper's red reads timeout-only only from its own `endLegs` statement, made by the one-stage `node {script}` process the runner started (now run with no shell) with no exit listener left to run; the child-call preload acts only in a real test worker, never in a fork that copied its options, and tracks promisified children; the fast and slow legs run at the same time on a split concurrency cap, every running leg tracked and ended on an interrupt; .NET and Flutter step closes time the change's own test files; `label-tests.js` runs a labelled file's two legs apart once and keeps a failed check, and a failed check takes away label coverage at close; declared reporters are kept; the ladder prose in the solo, the developer and `implementation-format` matches the rule of re-running failed tests by name. A complete run red only on timed-out tests can be cleared by running each touched timed-out test file green by name. Two HIGH edge cases closed with on the owner's ruling (BUG-81) and five MEDIUMs carried over (BUG-80)
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - skill change (declare-verify-roles, implementation-format)
+
+## [2.4.51] — 2026-10-23
+- PATCH bump.
+  - skill change (questions-format)
+  - estate raise: plugins/nexus/skills/questions-format/references/standard-questions.md 33949→34137 B — adhoc-DeviationsTitle: the plan departures ask is titled Deviations
+
+## [2.4.50] — 2026-10-23
+- PATCH bump.
+  - F291-DotnetTestSelection: every test runner sits behind one runner contract and loader (`lib/test-runners.js`); JavaScript stays built in, .NET and Flutter load from their plugins; a missing runner falls back to the whole declared unit with a `runner_missing` reason.
+  - hook behavior/enforcement change: a named or tied .NET run reuses the last build while nothing changed (a tree-local build ledger, conservative under concurrent builds); step-close slow labels only in the step's own files; `test-time.js` prints the feature's total test and build time.
+  - skill change (summary-format): the `**Tests and builds:**` line.
+  - skill change (declare-verify-roles): a .NET or Flutter repo needs its language plugin.
+  - estate raise: summary-format/SKILL.md 10674→11391 B, declare-verify-roles/SKILL.md 15022→15505 B — F291.
+
+## [2.4.49] — 2026-10-22
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - skill change (create-implementation-plan)
+  - estate raise: plugins/nexus/agents/critic.md 34049→34403 B — F289-ScopeTraceRules: source markers, keep-or-drop routes and plan departures
+  - estate raise: plugins/nexus/agents/po.md 77243→77394 B — F289-ScopeTraceRules: source markers, keep-or-drop routes and plan departures
+  - estate raise: plugins/nexus/agents/team-lead.md 240824→240969 B — F289-ScopeTraceRules: source markers, keep-or-drop routes and plan departures
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 38642→38750 B — F289-ScopeTraceRules: source markers, keep-or-drop routes and plan departures
+
+## [2.4.48] — 2026-10-22
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (always-on kernel — injected every session)
+  - rule (on-demand tier — read on trigger)
+  - skill change (create-implementation-plan)
+  - skill change (lessons-format)
+  - skill change (review-format)
+  - estate raise: plugins/nexus/agents/architect.md 225816→228411 B — F288: exception pointers at flat rules
+  - estate raise: plugins/nexus/agents/critic.md 31663→32166 B — F288: exception pointers at flat rules
+  - estate raise: plugins/nexus/agents/developer.md 51703→52080 B — F288: exception pointers at flat rules
+  - estate raise: plugins/nexus/agents/learner.md 61104→61546 B — F288: exception pointers at flat rules
+  - estate raise: plugins/nexus/agents/po.md 73881→74187 B — F288: exception pointers at flat rules
+  - estate raise: plugins/nexus/agents/reviewer.md 30866→31353 B — F288: exception pointers at flat rules
+  - estate raise: plugins/nexus/agents/solo.md 34113→34461 B — F288: exception pointers at flat rules
+  - estate raise: plugins/nexus/agents/team-lead.md 237381→238877 B — F288: exception pointers at flat rules
+  - estate raise: plugins/nexus/rules/agent-invocation.md 704→762 B — F288: exception pointers at flat rules
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 114979→115719 B — F288: exception pointers at flat rules
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 37821→38406 B — F288: exception pointers at flat rules
+  - estate raise: plugins/nexus/skills/lessons-format/SKILL.md 7141→7260 B — F288: exception pointers at flat rules
+  - estate raise: plugins/nexus/skills/review-format/SKILL.md 30677→30919 B — F288: exception pointers at flat rules
+
+## [2.4.47] — 2026-10-22
+- F283-UnattendedAsAttended: an unattended run follows the attended rules, the owner's seat taken by one away answerer; every unattended clause that checked less is removed (self-review of specs and plans, close checks recorded as debt, the skipped test declaration, Sonnet-only research, dropped Fable readers, weaker panel seats, the skipped options panel); work touching shipped or production code calls for a critic in every run; the campaign end report shows each unit's spec and plan review; campaign mining needs nexus-miner 0.1.8 (--unattended).
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 114950→114979 B — F283: one owner-away rule
+
+## [2.4.46] — 2026-10-22
+- F280-CampaignRun2Fixes: every decision a plan or a spec records carries a confidence — a confidence column in the plan's `## Decisions` row (full and light formats) and a `Confidence:` line in every `## Decisions and why` entry; an older row or entry reads as confidence missing.
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - skill change (create-feature-spec)
+  - skill change (create-implementation-plan)
+  - estate raise: plugins/nexus/agents/architect.md 225371→225426 B — F280 step 5: every plan decision row and spec decision entry carries a confidence
+  - estate raise: plugins/nexus/skills/create-feature-spec/workflows/Template.md 6488→6699 B — F280 step 5: every plan decision row and spec decision entry carries a confidence
+  - estate raise: plugins/nexus/skills/create-implementation-plan/references/plan-template.md 16874→17077 B — F280 step 5: every plan decision row and spec decision entry carries a confidence
+
+## [2.4.45] — 2026-10-21
+- F279-CodexServerSweep: `codex-job.js` closes the Codex servers the Codex plugin forgot (pid file gone, not in its record) whenever no Codex job runs in their workspace — at every `start`, at every confirmed-ended `collect`, and across the machine with the new `sweep` command; the recorded server stays; anything the process list cannot show for certain keeps the server; every job (labelled or not) and every close is recorded in `.claude/audit/codex-jobs.jsonl`
+  - hook behavior/enforcement change
+
+## [2.4.44] — 2026-10-21
+- F278-TeamLeadCompaction: a persona is recorded from the command that sets it (`/{plugin}:{agent}`, on the prompt, synchronously), not only from a later Write of `.claude/.current-agent`, so a session that wrote that file from the shell keeps its role through a compaction; the restore finds the role file in whichever installed plugin ships it, this checkout's install first; an entry lives while its transcript changes; an unattended session whose role file cannot be read stops with a continuation note instead of asking; a helper agent's re-read no longer sends a reminder into its parent session's context (it is still counted and logged)
+  - hook behavior/enforcement change
+
 ## [2.4.43] — 2026-10-20
 - F273-CampaignQuickFixes2: the source-tree hash (`lib/tree-hash.js`) skips `.claude/tmp/`, a session's scratch folder, so a scratch file never makes a passing complete-run record stale
   - hook behavior/enforcement change

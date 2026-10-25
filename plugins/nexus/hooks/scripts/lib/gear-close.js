@@ -3,10 +3,12 @@
  * The close evidence, read at every close whatever the gear. The round's latest complete record
  * discharges the close at a tree that has changed since it, or despite its failures, when all three hold:
  *
- *   it completed — never cut or crashed, and a red one names all its failures (`failed` is a list), or it
- *     counts as passing (lib/run-verdict.js: its only failures are untouched timed-out tests);
+ *   it completed — never cut or crashed, and a red one names all its failures (`failed` is a list, or the
+ *     events were read whole, `failed_tests` is empty and every failure is a timed-out test placed in a file,
+ *     whose touched entries' files are then its failures), or it counts as passing (lib/run-verdict.js: its
+ *     only failures are untouched timed-out tests);
  *   each failure is repaired — a failed file whose only failures are untouched timeouts owes none, while a
- *     real failure in the same file still does; otherwise the newest later record of the same slug and tree that ran the failed
+ *     real failure or a touched timeout in the same file still does; otherwise the newest later record of the same slug and tree that ran the failed
  *     test file or project by name is green, ran it with no filter, and holds the content it ran at
  *     (`delta_hashes` against this complete record): every file whose content now differs from that is
  *     held at its current hash by a green record after it, or the newest whole-unit fast record of the
@@ -18,8 +20,11 @@
  *     record of the same slug and tree at the current tree hash is green.
  *
  * A file label-tests.js labelled after a green fast record that timed it is held by that record: its label
- * record's `before` is that run's hash for it and its `after` the hash now (labelsOnly gives invariant (4)
- * the same reading of a complete record).
+ * record's `before` is that run's hash for it (`timed_hashes`, or `companion_hashes` for a project file the
+ * label needs beside it) and its `after` the hash now (labelsOnly gives invariant (4) the same reading of a
+ * complete record). A two-leg check label-tests.js kept as failed at a file's content takes back, by the log's
+ * append order, every coverage of that content recorded before it — a label, a green record holding it, a
+ * whole-unit green, a named repair of it — until a newer check there passes or green evidence follows it.
  *
  * A cut record is never green, and a newer red takes back an older green. Records of another slug or
  * tree never count. `closeGear` names the plan header's gear (`lib/gears.js`) only where its complete run
@@ -29,7 +34,7 @@
  */
 const { planHeader, valueOf } = require('./gears');
 const { treeHash, fileHashes, sameTree } = require('./tree-hash');
-const { isFilteredFull } = require('./compose-test-command');
+const { isFilteredFull } = require('./test-runners');
 const { countsAsPassing, untouchedTimeouts } = require('./run-verdict');
 
 const ONCE = 'once beside the reviewers';
@@ -75,44 +80,58 @@ function deltaSince({ records, tree, slug, files }) {
 function closeEvidence({ records, index, tree, slug }) {
   const complete = records[index];
   const passing = countsAsPassing(complete);
+  const failures = failuresOf(complete);
   const completed = Boolean(complete) && complete.reason !== 'timeout'
-    && (passing || (complete.verdict === 'fail' && Array.isArray(complete.failed)))
+    && (passing || failures !== null)
     && Boolean(complete.file_hashes) && typeof complete.file_hashes === 'object';
   if (!completed) return { ok: false, cause: 'not-completed', files: [] };
-  // A file whose only failures are untouched timeouts owes no repair; a real failure in it still does.
+  // A file whose only failures are untouched timeouts owes no repair; a real failure or a touched timeout in it still does.
   const untouched = new Set(untouchedTimeouts(complete).map((t) => t.file));
-  const realFailure = new Set((Array.isArray(complete.failed_tests) ? complete.failed_tests : []).map((t) => t.file));
+  const realFailure = new Set([
+    ...(Array.isArray(complete.failed_tests) ? complete.failed_tests : []),
+    ...(Array.isArray(complete.timed_out) ? complete.timed_out.filter((t) => !t || t.touched !== false) : []),
+  ].map((t) => t && t.file));
   const owesRepair = (item) => !(untouched.has(item) && Array.isArray(complete.failed_tests) && !realFailure.has(item));
 
-  const later = records.slice(index + 1)
-    .filter((r) => r && r.profile === 'fast' && r.slug === slug && sameTree(r.tree, tree));
+  // `laterAt` holds each later record's place in the log, the append order a failed check is weighed by.
+  const laterAt = [];
+  records.forEach((r, k) => { if (k > index && r && r.profile === 'fast' && r.slug === slug && sameTree(r.tree, tree)) laterAt.push(k); });
+  const later = laterAt.map((k) => records[k]);
   const now = fileHashes(tree);
   const changed = now === null ? [] : differing(complete.file_hashes, now).sort();
   const labels = labelRecords(records.slice(index + 1), tree);
+  const failed = failedChecks(records, index, tree);
   // A label record stands for the labelled file as its run's coverage: that run is a later green fast record
   // that timed the file at the label record's `before`, and no newer record holding the file is red.
+  // A project file a label needs beside it (a Flutter project's dart_test.yaml) is held at the hash the run
+  // took of it (`companion_hashes`).
+  const ranAt = (r, p) => (has(r.timed_hashes, p) ? r.timed_hashes[p] : hashIn(r.companion_hashes, p));
   const labelHeld = (i, p) => labels.some((label) => {
     const f = label.files[p];
-    if (!f || f.after !== hashIn(now, p)) return false;
+    if (!f || f.after !== hashIn(now, p) || failed.at(p, f.after) >= 0) return false;
     const j = later.findIndex((r) => r.run_id === label.run_id);
-    if (j <= i || !green(later[j]) || hashIn(later[j].timed_hashes, p) !== f.before) return false;
-    return !later.slice(j + 1).some((r) => (has(r.changed_hashes, p) || has(r.timed_hashes, p)) && !green(r));
+    if (j <= i || !green(later[j]) || ranAt(later[j], p) !== f.before) return false;
+    return !later.slice(j + 1).some((r) => (has(r.changed_hashes, p) || has(r.timed_hashes, p) || has(r.companion_hashes, p)) && !green(r));
   });
-  const heldGreenAfter = (i, p) => green(later.slice(i + 1).filter((r) => has(r.changed_hashes, p) && r.changed_hashes[p] === hashIn(now, p)).at(-1))
-    || labelHeld(i, p);
+  // Green evidence counts only after the newest failed check at the content it vouches for.
+  const heldGreenAfter = (i, p) => {
+    const j = later.findLastIndex((r, k) => k > i && has(r.changed_hashes, p) && r.changed_hashes[p] === hashIn(now, p));
+    return (j > i && green(later[j]) && laterAt[j] > failed.at(p, hashIn(now, p))) || labelHeld(i, p);
+  };
   let hashNow;
   const wholeGreenAfter = (i) => {
     if (hashNow === undefined) hashNow = treeHash(tree);
     const j = later.findLastIndex((r) => r.files === undefined && r.tree_hash === hashNow);
-    return j > i && green(later[j]);
+    return j > i && green(later[j]) && !failed.since(laterAt[j], now);
   };
 
-  const unrepaired = (complete.verdict === 'fail' && Array.isArray(complete.failed) ? complete.failed : []).filter(owesRepair).filter((item) => {
+  const unrepaired = (failures || []).filter(owesRepair).filter((item) => {
     const i = later.findLastIndex((r) => Array.isArray(r.files) && r.files.includes(item));
     const r = later[i];
     if (!green(r) || !unfiltered(r)) return true;
     if (r.delta_base !== complete.ts || !r.delta_hashes || typeof r.delta_hashes !== 'object') return true;
     if (now === null) return false;
+    if (failed.at(item, hashIn(now, item)) > laterAt[i]) return true;
     const ranAt = (p) => (has(r.delta_hashes, p) ? r.delta_hashes[p] : hashIn(complete.file_hashes, p));
     const moved = [...new Set([...Object.keys(r.delta_hashes), ...changed])].filter((p) => ranAt(p) !== hashIn(now, p));
     return moved.some((p) => !heldGreenAfter(i, p)) && !wholeGreenAfter(i);
@@ -126,14 +145,48 @@ function closeEvidence({ records, index, tree, slug }) {
   return uncovered.length ? { ok: false, cause: 'uncovered', files: uncovered } : { ok: true };
 }
 
-const labelRecords = (records, tree) => records.filter((r) => r && r.source === 'label-tests' && sameTree(r.tree, tree)
-  && typeof r.run_id === 'string' && r.files && typeof r.files === 'object');
+/**
+ * The failures a red complete record names, or null when it cannot name them all: its `failed` list; else,
+ * for a run the events read whole whose only failures are timed-out tests each placed in a file, the files of
+ * its touched timeouts (an entry not marked untouched counts as touched).
+ */
+function failuresOf(complete) {
+  if (!complete || complete.verdict !== 'fail') return null;
+  if (Array.isArray(complete.failed)) return complete.failed;
+  const timedOut = complete.timed_out;
+  const timeoutsOnly = complete.reason === 'tests-timed-out' && complete.events === true
+    && Array.isArray(complete.failed_tests) && complete.failed_tests.length === 0
+    && Array.isArray(timedOut) && timedOut.length > 0
+    && timedOut.every((t) => t && typeof t.file === 'string' && t.file !== '');
+  return timeoutsOnly ? [...new Set(timedOut.filter((t) => t.touched !== false).map((t) => t.file))] : null;
+}
+
+const isLabelRecord = (r, tree) => Boolean(r) && r.source === 'label-tests' && sameTree(r.tree, tree)
+  && typeof r.run_id === 'string' && Boolean(r.files) && typeof r.files === 'object';
+const labelRecords = (records, tree) => records.filter((r) => isLabelRecord(r, tree));
+
+// The two-leg checks label-tests.js kept (`checks`) in the label records after the complete one (`index`):
+// `at(p, hash)` is the log place of the newest check of that file at that content when it failed, else -1;
+// `since(k, now)` whether one failed after place `k` at a file's content in `now`.
+function failedChecks(records, index, tree) {
+  const newest = new Map();
+  records.forEach((r, k) => {
+    if (k <= index || !isLabelRecord(r, tree) || !r.checks || typeof r.checks !== 'object') return;
+    for (const [p, c] of Object.entries(r.checks)) {
+      if (c && typeof c === 'object') newest.set(JSON.stringify([p, c.hash]), { p, hash: c.hash, at: c.passed === true ? -1 : k });
+    }
+  });
+  const at = (p, hash) => { const c = newest.get(JSON.stringify([p, hash])); return c ? c.at : -1; };
+  const since = (k, now) => [...newest.values()].some((c) => c.at > k && hashIn(now, c.p) === c.hash);
+  return { at, since };
+}
 
 /**
  * Whether the files that changed since a complete record (`index`) changed by labels alone: each file whose
  * hash now differs from the record's `file_hashes` has a later label record (label-tests.js) whose `before`
- * is the record's hash for it and whose `after` is its hash now. pipeline-gate.js invariant (4) then reads
- * the record as not stale — whichever step close the label record names.
+ * is the record's hash for it and whose `after` is its hash now, and whose newest two-leg check at that
+ * content, if any, passed. pipeline-gate.js invariant (4) then reads the record as not stale — whichever step
+ * close the label record names.
  */
 function labelsOnly({ records, index, tree }) {
   const complete = records[index];
@@ -143,7 +196,9 @@ function labelsOnly({ records, index, tree }) {
   const changed = differing(complete.file_hashes, now);
   if (changed.length === 0) return false;
   const labels = labelRecords(records.slice(index + 1), tree);
-  return changed.every((p) => labels.some((l) => l.files[p] && l.files[p].before === hashIn(complete.file_hashes, p) && l.files[p].after === hashIn(now, p)));
+  const failed = failedChecks(records, index, tree);
+  return changed.every((p) => failed.at(p, hashIn(now, p)) < 0
+    && labels.some((l) => l.files[p] && l.files[p].before === hashIn(complete.file_hashes, p) && l.files[p].after === hashIn(now, p)));
 }
 
 module.exports = { closeGear, closeEvidence, deltaSince, labelsOnly, ONCE };

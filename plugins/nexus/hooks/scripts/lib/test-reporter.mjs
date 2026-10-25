@@ -6,7 +6,8 @@
 // Per event: `kind` (test | suite), `skip`, `todo`, `file`, `line`, `column`, `test` (the name), `ms`,
 // `failureType` (the runner's own — `testTimeoutFailure`, `cancelledByParent`, `testCodeFailure`, … —
 // null on a pass) and `causeCode` (the thrown error's `code`, which carries the child-call preload's
-// ERR_NEXUS_TEST_STOP). verify-run.js's readTestEvents is the reader.
+// ERR_NEXUS_TEST_STOP), and `pid`, this runner process's, which tells apart two legs running at the same
+// time over one file. verify-run.js's readTestEvents is the reader.
 import { appendFileSync } from 'node:fs';
 
 function write(line) {
@@ -32,6 +33,7 @@ export default async function* testReporter(source) {
       ms: details.duration_ms,
       failureType: error ? error.failureType || 'unknown' : null,
       causeCode: error && error.cause && error.cause.code ? String(error.cause.code) : null,
+      pid: process.pid,
     });
   }
   write({ kind: 'run-end' });

@@ -255,7 +255,6 @@ function repoSetting(row, cell, o, config) {
     const parts = cell ? cell.value.split(' + ') : [];
     if (typeof second !== 'string' || !second.trim() || parts.length < 2) return null;
     if (family(second) === family(parts[0])) return null;
-    if (family(second) === 'fable' && o.unattended) return null;
     parts[1] = titled(second);
     return parts.filter((p, i) => parts.findIndex((q) => family(q) === family(p)) === i).join(' + ');
   }

@@ -248,7 +248,7 @@ reader is promoted to main when its family is neither the author's nor Fable —
 that already ran (→ agents-workflow.md § Critic rounds) — and the round runs on that **one reader**. On the light lane's code review, a promoted second reader that
 read only the risky steps is re-briefed with the rest of the change, and its verdict counts as the main
 reader's only after that (→ architect.md § Light Lane (standalone only)). Where the
-second reader is the author's family or Fable (an attended repo may set `jobs.secondReader: fable`),
+second reader is the author's family or Fable (a repo may set `jobs.secondReader: fable`),
 its findings stay in the round as a reader section, and a fresh main is spawned from pairs 3–4 by the
 reading rule — Sonnet, or Opus where the author is Sonnet — never Fable. A round with no other reader
 (a critic round ≥ 2, a follow-up covering no step) takes the same fresh main, and gains no second

@@ -35,6 +35,13 @@ whose only failures are timeouts in tests the change did not touch (`reason: "te
 `verdict: fail, reason: tests-timed-out, all untouched, fast_green: pass` → `no`;
 `verdict: fail, fast_green: none` → `not measured`.
 
+**The `**Tests and builds:**` line sits under the full-suite line in every summary.md** — what the feature
+spent on test runs and builds, summed from the run records. The summary's writer runs
+`test-time.js --slug {slug} --tree {the feature's tree}`, found beside `verify-run.js`, and copies the line it
+prints, never a figure of its own. A part marked `≈` counts verify-gate runs that carry no pipeline token,
+matched by session and time. Where the script cannot run, the line reads `not measured — {why}`, so a missing
+figure never reads as zero. It is a figure, never a verdict: nothing consumes it as a gate.
+
 **The `**Map delta:**` line is required in EVERY summary.md too — and it is never a verdict.** It
 carries no pass/fail and nothing consumes it as a gate. It exists so that a reader can see the map's
 drift trend across closes without anyone having to run anything. **Transcribed verbatim, never
@@ -72,6 +79,7 @@ Gear: {gear} — {campaign | switch | repo} | none — at the spec review: {gear
 - [Files created/modified count]
 - [Build status]
 - **Full suite:** pass | fail | undeclared — {duration} (recorded {ts}; complete red on a fast-green tree: yes | no | not measured; filtered: yes | no)
+- **Tests and builds:** {test-time.js's line after its label, verbatim} | not measured — {why}
 - **Map delta:** {the meter's headline line verbatim} | none | unavailable
 - **Rules:** {n} listed behaviour rules without a disposition · {n} `tested` rules whose named test does not exist (the done-check's report-only count, from the newest footed check in `done-check.md` — any completion footer counts, a Codex check's `*Status: COMPLETE — Codex, persisted by {session}, {date}*` included; omit the line when the plan listed no rules). In an architect-led fast lane, also the close's rulings, one per row: `{unit} {row id}: {ruling}`
 - **Risky steps:** {the line of `review.md`'s risky-steps section, verbatim} — the light lane only

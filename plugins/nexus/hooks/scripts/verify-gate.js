@@ -76,7 +76,9 @@
  * published target it resolves commands, the execution cwd, and the round token from that tree —
  * but the verdict still APPENDS TO THE RESOLVED ROOT'S audit file, so there is still ONE log home
  * and the token-scoped round queries keep working. Measuring and writing are separate choices; only
- * the first one moved.
+ * the first one moved. The only lines it writes in the measured tree are build-ledger lines, a start before its
+ * commands, starting the ledger where none is kept, and an end after them: its commands may have built there, and
+ * build reuse reads the tree's ledger (lib/build-ledger.js, verify-run.js).
  *
  * The asymmetry that licenses diverging at all: skill-tracker only RECORDS, so one log home is
  * simply right for it. This gate's verdict DECIDES an unattended close (ADR-31/32) — so measuring
@@ -96,6 +98,7 @@ const { execSync } = require('child_process');
 const { resolveRole } = require('./lib/resolve-role');
 const { readWorktreeTarget } = require('./lib/worktree-target');
 const { stepCheckpoint, handbackText } = require('./lib/step-checkpoint');
+const { hasBuildLedger, startBuild, endBuild } = require('./lib/build-ledger');
 
 // Roles that write application source — the gate's verify boundary. Everything else that is a
 // recognized pipeline role is a NON-impl stop (skip); anything not in either set is "unknown".
@@ -285,6 +288,10 @@ process.stdin.on('end', () => {
     }
 
     const commands = resolveCommands(tree);
+    // The commands may build, and a run in another session may start the tree's ledger while they do, so the start
+    // line is written on every tree (lib/build-ledger.js).
+    const ledgerId = commands.length ? `gate-${Date.now().toString(36)}-${process.pid}` : null;
+    if (ledgerId) startBuild(tree, { id: ledgerId, source: 'verify-gate' });
     const results = commands.map((c) => {
       const started = Date.now();
       const r = runCommand(c.run, tree);
@@ -292,6 +299,7 @@ process.stdin.on('end', () => {
       if (!r.ok) entry.output_excerpt = excerpt(r.output);
       return entry;
     });
+    if (ledgerId && hasBuildLedger(tree)) endBuild(tree, { id: ledgerId, ts: base.ts, source: 'verify-gate', builds: null });
     const blocking_failed = results.some((r) => r.blocking && !r.ok);
     // commands_count makes an empty/undetectable set a visible audit signal: a verdict:"pass" with
     // commands_count:0 is "nothing was verified", distinct from a real green run — the team lead can

@@ -1,12 +1,12 @@
 ---
 name: create-service
-description: Scaffolds an empty service skeleton from its CLAUDE.md — folder tree, project files with their references, GlobalUsings, registration stubs, Program.cs, Dockerfile — with no business classes. Use when standing up a new service after its CLAUDE.md exists; create-aggregate and create-feature add the business code afterwards.
+description: Scaffolds an empty service skeleton from its CLAUDE.md — folder tree, project files with their references, GlobalUsings, registration stubs, Program.cs, Dockerfile, its test project — with no business classes. Use when standing up a new service after its CLAUDE.md exists; create-aggregate and create-feature add the business code afterwards.
 ---
 
 # Create Service
 
 Scaffolds a new service as an empty skeleton — folders, project files with the right references, start-up and
-registration stubs, settings, Dockerfile and compose entry — and **no business classes**. Afterwards the developer
+registration stubs, settings, Dockerfile and compose entry, and its one test project — and **no business classes**. Afterwards the developer
 runs `create-aggregate` for the first aggregate and `create-feature` for the first feature.
 
 ## Assumes
@@ -46,7 +46,7 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
    - **modules selectively** — only the modules the service runs on, each by its contracts project where it has one;
    - **only the shared libraries the service needs** — a reference is added when the first line using it is written;
    - **no project references an API project** — a host project apart, which references the API project of each
-     service or module it runs (`create-host`).
+     service or module it runs (`create-host`), and the service's own test project (step 9).
 4. **Scaffold the API project** — `workflows/ScaffoldApiProject.md`. It holds its features, its usings and its
    registration, nothing else. Generic web parts — rate limiting, security headers, the origin check,
    request-failure logging, readiness checks — are shared pieces: found in the repo's shared libraries, or built
@@ -58,9 +58,14 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
    `workflows/ScaffoldApplicationProject.md`.
 8. **Wire the infrastructure** — `workflows/ScaffoldInfrastructure.md`: the solution, the Dockerfile, the compose
    entry.
-9. **Verify** — § Verify below.
-10. **Report:** "Service `{Name}` scaffolded. Run `create-aggregate` next for the first aggregate, then
-    `create-feature` for the first feature."
+9. **Create the service's test project** — `src/Services/{Name}/{Name}.Tests/`, added to the solution. It
+   references this service's own projects only (its API project included, where the features live), never another
+   service's or module's: a test run follows project references, so a change then ties to the few tests that cover
+   it. It takes the test framework, assertion library and packages of the repo's existing test projects, else the
+   stack's testing convention; tests needing the whole running app go to the app's one wiring test project, not here.
+10. **Verify** — § Verify below.
+11. **Report:** "Service `{Name}` scaffolded with its test project `{Name}.Tests`. Run `create-aggregate` next for
+    the first aggregate, then `create-feature` for the first feature."
 
 ## Verify
 
@@ -72,7 +77,9 @@ a reference that climbs two folders lands beside the service, and one that climb
 dotnet build src/{SolutionFile}                                                                  # compiles, no new warnings
 rg -n 'ProjectReference Include=.(\.\..){2,}' src/Services/{Name} --glob '*.csproj'              # every outside reference — each a shared or contracts project
 rg -n 'ProjectReference Include=.\.\..\.\..[^.]' src/Services/{Name} --glob '*.csproj'            # another service's project — expect zero
-rg -n 'ProjectReference.*\.API\.csproj' src/Services/{Name} --glob '!**/{Name}.API/**'            # nothing references the API project — expect zero
+rg -n 'ProjectReference.*\.API\.csproj' src/Services/{Name} --glob '!**/{Name}.API/**' --glob '!**/{Name}.Tests/**' # nothing but the test project references the API project — expect zero
+rg --files src/Services/{Name} -g '*.Tests.csproj'                                                # the service's one test project — expect one file
+rg -n 'ProjectReference Include=.(\.\..){2,}' src/Services/{Name}/{Name}.Tests --glob '*.csproj'  # the test project references this service only — expect zero
 rg -n 'Version=' src/Services/{Name} --glob '*.csproj'                                            # no version on a reference — expect zero
 rg -n '<!--|NoWarn|GenerateDocumentationFile' src/Services/{Name} --glob '*.csproj'               # basics only; a fresh service has no deliberate setting, so no comment yet — expect zero
 rg --files --hidden -g '.gitkeep' src/Services/{Name}                                             # no placeholder files — expect zero

@@ -8,11 +8,12 @@
  * ~2.5MB through context). A PreToolUse deny would wedge legitimate reads and is dropped for
  * background subagents anyway (ADR-13) — so the only honest mechanism is rule + nudge +
  * deterministic detection, the same shape boundary-detector.js uses for spawns:
- *   - 2nd same-round read of a file  -> corrective systemMessage (best-effort; whether it
- *     reaches a background subagent's context is unverified — Probe P1 proved PostToolUse
- *     fires there, not that hook output is delivered)
+ *   - 2nd same-round read of a file  -> corrective systemMessage, for the MAIN session only. A
+ *     helper's event (it carries agent_type) is counted but sends none: a helper's hook output
+ *     is delivered into its parent's context, not the helper's — measured in a team lead's
+ *     transcript, thousands of reminders about its helpers' reads, none of them the lead's
  *   - 3rd+ same-round read           -> one line in .claude/audit/violations.log, which the
- *     team lead triages at every checkpoint (guaranteed detection layer)
+ *     team lead triages at every checkpoint (guaranteed detection layer), helpers' included
  *
  * Round boundary: the content of .claude/.pipeline-state OR the session id changing — the
  * team lead rewrites the token at every spawn/resume, so a token change IS a new round.
@@ -200,6 +201,7 @@ process.stdin.on('end', () => {
     // Persistence above is unconditional — the count is durable even for a silent first read.
     const repeats = counted.filter((c) => c.n >= 2);
     if (!repeats.length) return process.exit(0);
+    const helper = Boolean(data.agent_type);
 
     for (const { fp, n } of repeats.filter((c) => c.n >= 3)) {
       fs.appendFileSync(
@@ -210,6 +212,7 @@ process.stdin.on('end', () => {
         }) + '\n'
       );
     }
+    if (helper) return process.exit(0);
     // One combined message however many paths one command re-read. The single-path form is
     // byte-identical to the pre-F81 wording — BR-7 (golden) pins it verbatim, and widening the
     // tracker's INPUT is no reason to change its OUTPUT contract.

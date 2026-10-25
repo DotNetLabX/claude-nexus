@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Nexus label-tests: labels the tests a step close timed, from that run's record alone — it never runs a
- * test.
+ * Nexus label-tests: labels the tests a step close timed, from that run's record alone — it never re-times a
+ * test. The one run it makes is a check: each node file it labelled runs its two legs apart once (below).
  *
  *   node label-tests.js --run <run_id> [--reason "<text>" --test <file>:<line>]…
  *
@@ -11,9 +11,9 @@
  * definition, and is found by its line when the run gave no column; a run with no `timed_hashes` (a complete
  * run) is read against its `file_hashes`. For each timed test file, every timed test at or over the repo's slow line
  * (`slow.thresholdMs` in .claude/verify.json, 2000 ms when unset) gets the slow label and every one under it
- * loses it, along with a kept-slow reason above it: ` @slow` on a node test's name, `[Trait("Speed", "Slow")]`
- * on a .NET test method (found by its class and method name; a class-level Trait is left alone), `tags:
- * ['slow']` on a Flutter test() call, with `slow: {}` declared in its project's dart_test.yaml. `--reason`
+ * loses it, along with a kept-slow reason above it. The label is the file's runner's own form, written by that
+ * runner (`labelSource`, with any project file it needs beside it, `labelCompanions` — the contract in
+ * lib/test-runners.js); a file whose runner no installed plugin serves is skipped and named. `--reason`
  * with `--test {file}:{line}` (the line as the run reported it) writes that reason as a `// slow: {reason}`
  * comment above a test kept slow.
  *
@@ -23,20 +23,38 @@
  * tree, files: {path: {before, after, shifts}}}`, `before` the run's hash, `after` the labelled file's,
  * `shifts` the lines reason comments added (+1) or removed (-1) at a run line, so a later call maps the run's
  * positions. The close readers (pipeline-gate.js, lib/gear-close.js) accept such a record as covering the
- * labelled file for its run: the content differs from the run's by labels and reason comments alone.
+ * labelled file for its run: the content differs from the run's by labels and reason comments alone — unless
+ * the newest two-leg check kept at that content (below) failed, which also takes back any green record of that
+ * content older than it.
+ *
+ * A STEP CLOSE LABELS ONLY THE STEP'S OWN FILES. A run that names files (`files`, or a tied run's `changed`)
+ * labels a timed file only when it is among them and differs from HEAD in the run's tree now — staged,
+ * unstaged or untracked, read by one `git status` per file; where git cannot answer, the file counts as
+ * changed. Any other timed file whose labels would change is named as a slow candidate and left as it is, and
+ * so is a file whose label needs a project file outside that set (a label and the project file it needs).
+ * A run with no such set — a complete run, a whole-unit run — labels every file it timed.
+ *
+ * A LABELLED TEST MUST STAND ALONE. The complete run runs a node file's labelled tests and its other tests in
+ * separate processes (lib/compose-test-command.js nodeLegs), while a step close runs the file whole. So each
+ * node file whose labels this run wrote — in this call or an earlier one — runs its two legs once, apart, each
+ * by name, both under the repo's slow stop (the check is for dependence, not speed) and with the child-call
+ * preload, apart from any outer run's events file; a leg that fails is named, and the call exits 1. The labels
+ * stay written. Each check is kept in the label record (`checks: {path: {hash, passed}}`): a check passed at
+ * the file's content now is not run again, and a file whose check failed that has since changed keeps the run
+ * failing — every call for that run exits 1 until a new step close labels it.
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const childProcess = require('child_process');
 const { fileHash } = require('./lib/tree-hash');
-const {
-  retagNodeSource, setNodeReason, clearNodeReason, labelDotnetMethod, dotnetReasonLine, labelDartCall, mergeDartTestYaml, dartProjectDir,
-} = require('./lib/test-labels');
+const { loadRunner, runnerOfFile, mapLine } = require('./lib/test-runners');
+const { nodeLegs, nodeSupportsSkipPattern, PRELOAD_URL } = require('./lib/compose-test-command');
+const { testSettings } = require('./verify-run');
 
 const DEFAULT_SLOW_MS = 2000;
-const NODE_TEST = /\.test\.(mjs|js|cjs)$/;
-const DOTNET_TEST = /\.cs$/;
-const FLUTTER_TEST = /_test\.dart$/;
+const SLOW_LABEL = '@slow';
+const LEG_LIMIT_MS = 10 * 60 * 1000;
 const LOG = ['.claude', 'audit', 'verify-verdict.json'];
 
 function parseArgs(argv) {
@@ -71,39 +89,23 @@ function slowLine(tree) {
   }
 }
 
-const kindOf = (file) => (NODE_TEST.test(file) ? 'node' : DOTNET_TEST.test(file) ? 'dotnet' : FLUTTER_TEST.test(file) ? 'flutter' : null);
-
-// A .NET method is labelled by its name, never its line, so the attribute and comment lines the edits add
-// move nothing still to come. A method is slow when every timed case of it is at or over the line.
-function labelDotnet(file, source, tests, threshold, wanted, out) {
-  let text = source;
-  const methods = new Map();
-  for (const t of tests) {
-    const key = `${t.class}.${t.method}`;
-    if (!methods.has(key)) methods.set(key, { cls: t.class, method: t.method, lines: new Set(), slow: true, ms: 0 });
-    const m = methods.get(key);
-    m.lines.add(t.line);
-    m.slow = m.slow && t.ms >= threshold;
-    m.ms = Math.max(m.ms, t.ms);
-  }
-  for (const { cls, method, lines, slow, ms } of methods.values()) {
-    const edit = labelDotnetMethod(text, cls, method, slow);
-    if (!edit.found) { out(`label-tests: ${file} ${cls}.${method} — its declaration was not found, so no label was written\n`); continue; }
-    text = edit.text;
-    const asked = wanted.find((w) => w.file === file && lines.has(w.line));
-    const at = dotnetReasonLine(text, cls, method);
-    if (!slow) {
-      text = clearNodeReason(text, at).text;
-      if (asked) { asked.done = true; out(`label-tests: ${file}:${asked.line} ran under the slow line (${Math.round(ms)} ms) — no reason written\n`); }
-    } else if (asked) {
-      text = setNodeReason(text, at, asked.reason || 'kept slow').text;
-      asked.done = true;
-    }
-  }
-  return text;
+// The files a run's step named, or null for a run that names none.
+function stepFiles(run) {
+  const lists = [run.files, run.changed].filter(Array.isArray);
+  if (lists.length === 0) return null;
+  return new Set(lists.flat().filter((f) => typeof f === 'string').map((f) => f.replace(/\\/g, '/')));
 }
 
-const mapLine = (shifts, line) => line + shifts.filter((s) => s.at <= line).reduce((n, s) => n + s.delta, 0);
+// Whether `file` differs from HEAD in `tree`; null when git cannot say.
+function changedFromHead(tree, file) {
+  try {
+    return childProcess.execFileSync('git', ['status', '--porcelain', '-z', '--untracked-files=all', '--', file], {
+      cwd: tree, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true,
+    }).length > 0;
+  } catch {
+    return null;
+  }
+}
 
 // A timed-out test is recorded by its line alone; its call starts at the line's first non-blank column.
 function firstColumn(source, line) {
@@ -112,7 +114,27 @@ function firstColumn(source, line) {
   return at < 0 ? 1 : at + 1;
 }
 
-function main(argv = process.argv.slice(2), { env = process.env, out = (s) => process.stdout.write(s), cwd = process.cwd() } = {}) {
+// One leg of a labelled file, run with this node; its exit status, null when it could not finish.
+function spawnLeg(args, { cwd, env }) {
+  return childProcess.spawnSync(process.execPath, args, { cwd, env, stdio: 'ignore', windowsHide: true, timeout: LEG_LIMIT_MS }).status;
+}
+
+// A leg runs on its own — no events file of an outer run, no outer test runner's context — with the child-call
+// preload every run's legs carry, so a hung child call ends at the stop.
+function legEnv(extra) {
+  const env = { ...process.env, ...extra };
+  delete env.NEXUS_TEST_EVENTS;
+  delete env.NODE_TEST_CONTEXT;
+  const options = String(env.NODE_OPTIONS || '');
+  if (nodeSupportsSkipPattern(process.versions.node) && !options.includes(PRELOAD_URL)) env.NODE_OPTIONS = `${options} --import=${PRELOAD_URL}`.trim();
+  return env;
+}
+
+function readConfig(tree) {
+  try { return JSON.parse(fs.readFileSync(path.join(tree, '.claude', 'verify.json'), 'utf8')); } catch { return null; }
+}
+
+function main(argv = process.argv.slice(2), { env = process.env, out = (s) => process.stdout.write(s), cwd = process.cwd(), runLeg = spawnLeg } = {}) {
   const args = parseArgs(argv);
   if (typeof args.run !== 'string' || !args.run) {
     out('usage: label-tests.js --run <run_id> [--reason "<text>" --test <file>:<line>]...\n');
@@ -145,11 +167,25 @@ function main(argv = process.argv.slice(2), { env = process.env, out = (s) => pr
   });
 
   const files = {};
-  const yamls = new Set();
+  const runners = new Map();
+  const runnerFor = (kind) => {
+    if (!runners.has(kind)) runners.set(kind, { ...loadRunner(kind, { root, env: { ...process.env, ...env } }), slowFiles: [] });
+    return runners.get(kind);
+  };
+  const priorCheck = (file) => ownLabels.filter((r) => r.checks && r.checks[file]).map((r) => r.checks[file]).at(-1);
+  const step = stepFiles(run);
+  const inStep = (file) => !step || (step.has(file) && changedFromHead(tree, file) !== false);
+  const pending = [];
+  const unproven = [];
   const timedFiles = [...new Set([...Object.keys(run.timed_hashes || {}), ...timedOut.map((t) => t.file)])];
   for (const file of timedFiles.sort()) {
-    const kind = kindOf(file);
+    const kind = runnerOfFile(file);
     if (!kind) continue;
+    const labeller = runnerFor(kind);
+    if (!labeller.runner) {
+      out(`label-tests: skipped ${file} — ${labeller.reason}\n`);
+      continue;
+    }
     const before = hashes[file];
     const current = fileHash(tree, file);
     const prior = ownLabels.filter((r) => r.files[file]).map((r) => r.files[file]).at(-1);
@@ -158,57 +194,82 @@ function main(argv = process.argv.slice(2), { env = process.env, out = (s) => pr
     else if (prior && current !== null && prior.after === current) shifts = Array.isArray(prior.shifts) ? [...prior.shifts] : [];
     else {
       out(`label-tests: skipped ${file} — changed since run ${args.run}, so its timed positions no longer hold\n`);
+      const check = priorCheck(file);
+      if (check && !check.passed) unproven.push(file);
       continue;
     }
     const original = fs.readFileSync(path.join(tree, file), 'utf8');
-    let text = original;
-    if (kind === 'dotnet') {
-      text = labelDotnet(file, original, timed.filter((t) => t.file === file && t.class && t.method), threshold, wanted, out);
-      if (text === original) continue;
-      fs.writeFileSync(path.join(tree, file), text);
-      files[file] = { before, after: fileHash(tree, file), shifts };
-      out(`label-tests: ${file} — labelled from run ${args.run} (slow line ${threshold} ms)\n`);
+    // A test located by its line alone gets its line's first column; the runner picks the tests it labels by.
+    const tests = timed.filter((t) => t.file === file)
+      .map((t) => (!Number.isInteger(t.line) || Number.isInteger(t.column) ? t : { ...t, column: firstColumn(original, mapLine(shifts, t.line)) }));
+    if (!inStep(file)) {
+      const probe = labeller.runner.labelSource({ file, source: original, tests, threshold, wanted: wanted.map((w) => ({ ...w })), shifts, out: () => {} });
+      if (probe.text !== original) out(`label-tests: ${file} — a slow candidate, left unlabelled: the step did not change it\n`);
       continue;
     }
-    const tests = timed.filter((t) => t.file === file && Number.isInteger(t.line))
-      .map((t) => (Number.isInteger(t.column) ? t : { ...t, column: firstColumn(original, mapLine(shifts, t.line)) }));
-    if (kind === 'node') {
-      const tagged = retagNodeSource(original, tests.map((t) => ({ line: mapLine(shifts, t.line), column: t.column, slow: t.ms >= threshold })));
-      text = tagged.text;
-      for (const where of tagged.missing) out(`label-tests: ${file} ${where} — the test's name is not a literal, so no label was written\n`);
-    } else {
-      for (const t of tests) {
-        const edit = labelDartCall(text, mapLine(shifts, t.line), t.column, t.ms >= threshold);
-        if (!edit.found) out(`label-tests: ${file}:${t.line} — no test() call at the reported position, so no label was written\n`);
-        text = edit.text;
-      }
-      if (tests.some((t) => t.ms >= threshold)) yamls.add(file);
-    }
-    // Bottom-up by run line, so each edit's line count moves only the tests below it, which are done.
-    for (const t of [...tests].sort((a, b) => b.line - a.line)) {
-      const asked = wanted.find((w) => w.file === file && w.line === t.line);
-      let edit = { text, delta: 0 };
-      if (t.ms < threshold) {
-        edit = clearNodeReason(text, mapLine(shifts, t.line));
-        if (asked) { asked.done = true; out(`label-tests: ${file}:${t.line} ran under the slow line (${Math.round(t.ms)} ms) — no reason written\n`); }
-      } else if (asked) {
-        edit = setNodeReason(text, mapLine(shifts, t.line), asked.reason || 'kept slow');
-        asked.done = true;
-      }
-      text = edit.text;
-      if (edit.delta) shifts.push({ at: t.line, delta: edit.delta });
-    }
-    if (text === original) continue;
-    fs.writeFileSync(path.join(tree, file), text);
-    files[file] = { before, after: fileHash(tree, file), shifts };
-    out(`label-tests: ${file} — labelled from run ${args.run} (slow line ${threshold} ms)\n`);
+    const { text, slow } = labeller.runner.labelSource({ file, source: original, tests, threshold, wanted, shifts, out });
+    pending.push({ file, text, original, before, current, shifts, slow, labeller });
   }
-  // A Flutter project declares the tag its tests now carry, so `flutter test` does not warn on it.
-  for (const project of new Set([...yamls].map((f) => dartProjectDir(tree, f)).filter(Boolean))) {
-    const yaml = path.relative(tree, path.join(project, 'dart_test.yaml')).split(path.sep).join('/');
+  // A label whose project file lies outside the step is not written, and neither is that project file.
+  for (const p of pending) {
+    if (!step || !p.slow || !p.labeller.runner.labelCompanions) continue;
+    const blocked = p.labeller.runner.labelCompanions({ tree, files: [p.file] }).filter(({ file: companion, merge }) => {
+      const was = fs.existsSync(path.join(tree, companion)) ? fs.readFileSync(path.join(tree, companion), 'utf8') : null;
+      const merged = merge(was);
+      return merged !== null && merged !== was && !inStep(companion);
+    });
+    if (blocked.length) {
+      p.blocked = true;
+      out(`label-tests: ${[p.file, ...blocked.map((c) => c.file)].join(' and ')} — a slow candidate, left unlabelled: the label needs ${blocked.map((c) => c.file).join(', ')}, which the step did not change\n`);
+    }
+  }
+  const split = [];
+  for (const { file, text, original, before, current, shifts, slow, labeller, blocked } of pending) {
+    if (blocked) continue;
+    if (slow) labeller.slowFiles.push(file);
+    let hash = current;
+    if (text !== original) {
+      fs.writeFileSync(path.join(tree, file), text);
+      hash = fileHash(tree, file);
+      files[file] = { before, after: hash, shifts };
+      out(`label-tests: ${file} — labelled from run ${args.run} (slow line ${threshold} ms)\n`);
+    }
+    if (runnerOfFile(file) !== 'node' || !text.includes(SLOW_LABEL) || (text === original && current === before)) continue;
+    const check = priorCheck(file);
+    if (check && check.passed && check.hash === hash) out(`label-tests: ${file} — its two legs passed run apart at this content\n`);
+    else split.push({ file, hash });
+  }
+  // The complete run runs a node file's labelled tests and its other tests in separate processes: each file
+  // this run labelled runs its two legs apart once, so a test that leans on another's state is found now.
+  let apart = true;
+  const checks = {};
+  for (const file of unproven) {
+    apart = false;
+    out(`label-tests: ${file} — its two legs failed run apart for run ${args.run} and it changed since: time it again with a new step close and label from that run\n`);
+  }
+  if (split.length) {
+    // Both legs take the slow stop: the check is for a test leaning on another, never for its speed.
+    const { slowMs } = testSettings(readConfig(tree));
+    for (const { file, hash } of split) {
+      const legs = nodeLegs({ targets: [file], stop: { fastMs: slowMs, slowMs }, labelled: true, cwd: tree, slowFiles: [file] });
+      const failed = legs.map((leg, i) => ({ name: i === 0 ? 'fast' : 'slow', status: runLeg(leg.args, { cwd: tree, env: legEnv(leg.env) }) }))
+        .filter((l) => l.status !== 0);
+      checks[file] = { hash, passed: failed.length === 0 };
+      if (failed.length === 0) { out(`label-tests: ${file} — its two legs run apart: both pass\n`); continue; }
+      apart = false;
+      for (const l of failed) {
+        out(`label-tests: ${file} — its ${l.name} leg failed run apart (exit ${l.status}): a labelled test must stand alone — the complete run runs a file's labelled tests and its other tests in separate processes, so each sets up what it needs itself\n`);
+      }
+    }
+  }
+  // A project file the new labels need beside them, such as the declaration of the tag they carry.
+  const companions = [...runners.values()]
+    .filter((r) => r.runner && r.runner.labelCompanions && r.slowFiles.length)
+    .flatMap((r) => r.runner.labelCompanions({ tree, files: r.slowFiles }));
+  for (const { file: yaml, merge, refused } of companions) {
     const was = fs.existsSync(path.join(tree, yaml)) ? fs.readFileSync(path.join(tree, yaml), 'utf8') : null;
-    const merged = mergeDartTestYaml(was);
-    if (merged === null) { out(`label-tests: ${yaml} — its tags: is not a block map; add "slow: {}" under it by hand\n`); continue; }
+    const merged = merge(was);
+    if (merged === null) { out(`label-tests: ${refused}\n`); continue; }
     if (merged === was) continue;
     const before = was === null ? null : fileHash(tree, yaml);
     fs.writeFileSync(path.join(tree, yaml), merged);
@@ -216,13 +277,14 @@ function main(argv = process.argv.slice(2), { env = process.env, out = (s) => pr
     out(`label-tests: ${yaml} — the slow tag declared\n`);
   }
   for (const w of wanted.filter((x) => !x.done)) out(`label-tests: ${w.file}:${w.line} is no test run ${args.run} timed — no reason written\n`);
-  if (Object.keys(files).length) {
+  if (Object.keys(files).length || Object.keys(checks).length) {
     try {
       fs.mkdirSync(path.join(root, '.claude', 'audit'), { recursive: true });
-      fs.appendFileSync(path.join(root, ...LOG), `${JSON.stringify({ ts: new Date().toISOString(), source: 'label-tests', run_id: args.run, tree, files })}\n`);
+      const record = { ts: new Date().toISOString(), source: 'label-tests', run_id: args.run, tree, files, ...(Object.keys(checks).length ? { checks } : {}) };
+      fs.appendFileSync(path.join(root, ...LOG), `${JSON.stringify(record)}\n`);
     } catch { out('label-tests: the label record could not be written — the labelled files will read as changed since the run\n'); }
   }
-  return wanted.some((w) => !w.done) ? 1 : 0;
+  return wanted.some((w) => !w.done) || !apart ? 1 : 0;
 }
 
 module.exports = { main };

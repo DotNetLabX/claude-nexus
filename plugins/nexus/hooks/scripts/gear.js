@@ -8,7 +8,7 @@
  *   node gear.js begin --slug <s> [--campaign <name|off>]
  *   node gear.js fix --slug <s>                  prints the plan header line
  *   node gear.js close --slug <s>
- *   node gear.js value --setting <n> [--slug <s>] [--role <agent>] [--explicit <value>] [--unattended]
+ *   node gear.js value --setting <n> [--slug <s>] [--role <agent>] [--explicit <value>]
  *
  * Every call takes --root (default CLAUDE_PROJECT_DIR, else the working folder — run it from the
  * session root, as the Codex job helper is run), --tree (default the session's .worktree-target
@@ -69,7 +69,6 @@ function run(argv, env = process.env) {
         slug: typeof flags.slug === 'string' ? flags.slug : undefined,
         role: typeof flags.role === 'string' ? flags.role : undefined,
         explicit: typeof flags.explicit === 'string' ? flags.explicit : undefined,
-        unattended: flags.unattended === true,
       });
   }
 }

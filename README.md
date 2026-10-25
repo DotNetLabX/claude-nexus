@@ -11,7 +11,7 @@
 - **It auto-learns.** What the team learns on every feature becomes your conventions and your skills.
 - **It works in your stack.** Packs for .NET and Vue, Flutter, C++ and PHP — or the language of your choice.
 
-Stack extensions teach it your stack; six paid plugins add extras for shaping, review and reporting, rule mining, data analysis, meeting-notes search, building several features side by side while you are away, and a digital you that learns how you decide.
+Stack extensions teach it your stack; eight paid plugins add extras for shaping, review and reporting, rule mining, data analysis, meeting-notes search, building several features side by side while you are away, a digital you that learns how you decide, and a product owner's lane from meeting notes to tracker tickets, with its Jira extension.
 
 ## And there is more
 
@@ -21,6 +21,7 @@ Stack extensions teach it your stack; six paid plugins add extras for shaping, r
 - **Your session closed or crashed? Don't worry.** You resume it from where it was.
 - **The agents cannot cut corners.** 30 automatic checks police how they work and block dangerous commands.
 - **Small fix? One command.** `/nexus:solo` agrees the approach with you, then makes the change.
+- **A stuck test fails in seconds.** Every test has its own stop — 3 seconds, or 30 for a test marked slow — and a timeout is reported apart from a real failure. Each test a step adds or changes is timed as it is built and marked slow when it is.
 
 ## How a feature moves
 
@@ -104,21 +105,25 @@ Update with `claude plugin marketplace update claude-nexus`, then `claude plugin
 
 ## Paid plugins
 
-Six more plugins build on the core. Each lives in its own private repository, which is its own marketplace, and each repository's README carries its install lines.
+Eight more plugins build on the core. Each lives in its own private repository, which is its own marketplace, and each repository's README carries its install lines.
 
-- `DotNetLabX/claude-nexus-pro` — `nexus-pro`: nine extras for the core's own pipeline.
+- `DotNetLabX/claude-nexus-pro` — `nexus-pro`: eleven extras for the core's own pipeline.
   - **Brainstorm mode.** A source's own fixes critiqued first, then rounds of ideas that run straight into the critique, three topics a turn; every idea kept in a file beside the spec.
   - **Panel mode.** A second model argues your design question on its own; you get one merged answer and what the two still disagree on.
   - **Research.** An open fact is researched once, on the web or through Codex, saved with its sources and reused.
   - **Conventions review.** A separate advisory review of a change against your own conventions, architecture and patterns.
   - **Skill evaluation.** A skill is graded against a fixed rubric, and the findings are written down, ready to fix.
-  - **Slow-test tagging.** Your suite is timed and its slow tests are tagged, so the quick run leaves them out; every close re-times the tests that changed.
+  - **Slow-test tagging.** Your whole suite is timed and its slow tests are tagged, so the quick run leaves them out.
   - **Token report.** Which agent used the most tokens in a run, and why.
   - **Usage record.** A numbers-only record of each feature's tokens, times and models, committed at its close.
+  - **Custom gears.** Your repository's own pipeline gear: a new name, a base gear, and only the settings it changes.
+  - **Flow atlas.** Which classes run for each entry point of your app, page by page, every row re-checked against the code and marked stale when the code moves.
   - **Live agent view.** Each agent's row in the agents panel shows its role, and a developer's the step it is building.
 - `DotNetLabX/claude-nexus-miner` — `nexus-miner`: 95%+ test coverage backed by rules mined from your code, old code rewritten in the architecture you choose, a map of your system and a skills package for your agents.
 - `DotNetLabX/claude-nexus-analytics` — `nexus-analytics`: it mines your database and builds your semantic model for you, then answers business questions in plain words with numbers you can defend.
 - `DotNetLabX/claude-nexus-notes` — `nexus-notes`: every decision from your meetings in front of whoever writes the spec, and a record of which note fed which feature.
+- `DotNetLabX/claude-nexus-product` — `nexus-product`: a product owner's lane from meeting notes to tracker tickets, with stories estimated from your team's own closed tickets and nothing published without a preview you confirm.
+- `DotNetLabX/claude-nexus-product-jira` — `nexus-product-jira`: the product owner's lane on Jira Cloud — every ticket it reads or writes, through your own API token, which never shows in a session.
 - `DotNetLabX/claude-nexus-factory` — `nexus-factory`: a list of ready features built side by side while you are away, each by its own team on its own branch, with one report at the end.
 - `DotNetLabX/claude-nexus-digital-you` — `nexus-digital-you`: a profile of how you decide, learned from your own sessions and handed to every agent, with a hidden guess at every question you answer and an honest weekly score.
 

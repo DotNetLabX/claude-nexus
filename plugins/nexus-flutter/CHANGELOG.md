@@ -1,6 +1,10 @@
 # Changelog — nexus-flutter
 
 
+## [0.5.7] — 2026-10-23
+- PATCH bump.
+  - F291-DotnetTestSelection: the Flutter test runner moves here (`hooks/scripts/test-runner.js`), with its exclusion reader for the timing pass. Needs nexus 2.4.50.
+
 ## [0.5.6] — 2026-10-20
 - F272-MinerRunSetup: the survivor tag table gains `equivalent-other` (an equivalent mutant that is neither logging
   nor format, assigned only with a stated proof), pointing at the method's table.

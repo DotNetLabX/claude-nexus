@@ -12,7 +12,7 @@ This skill is for the **PO agent** (primary owner; the architect may consume it 
 
 This document is read by the **PO, architect, and the human stakeholder**. The Developer reads the plan and, of this file, only its `## Decisions and why` section — the why behind the owner's rulings, which every build agent reads.
 
-Write in **domain / product language**. Describe what the user does and what the system guarantees — not how the code implements it. A reader with no codebase access should understand every section.
+Write in **domain / product language**. Describe what the user does and what the system guarantees — not how the code implements it. A reader with no codebase access should understand every section — bar one: the optional `## Technical part`, which the architect may write for its own team, a few high-level points from its own code repository, with no class-level detail, no step list and no plan. That section is the only place a code fact may appear; the rest of the spec carries none.
 
 ### Do not include
 
@@ -48,9 +48,9 @@ Before writing, ensure you have:
 
 3. **Ask clarifying questions in one batch.** For anything ambiguous or unspecified in the business spec for this feature — ask once, all together. Do not write the file yet. **For any feature with UI elements, help/tooltip content is a default deliverable — confirm-or-skip it *here*, in this upfront interview**, not as a trailing opt-in after the spec already exists (a help deliverable that arrives as a tail-end line gets skipped; it was user-reported as a plugin regression, a consuming repo's plugin-feedback).
 
-4. **Write the spec** — follow `workflows/Template.md`. Output path: `docs/specs/{slug}/definition/spec.md` (or `epic.md` for epics, `bug.md` for bugs).
+4. **Write the spec** — follow `workflows/Template.md`. Output path: `docs/specs/{slug}/definition/spec.md` (or `epic.md` for epics, `bug.md` for bugs). Every business rule ends with its source marker, in the template's Business Rules grammar; before the spec goes Ready, the check `spec-sources.js` (beside the plugin's `verify-run.js`) lists any rule without one and any `added` rule the owner has not kept.
 
-5. **Voice check.** Before telling the user, scan the draft for:
+5. **Voice check.** Before telling the user, scan every section but the optional `## Technical part` (the architect's, above) for:
    - Code-formatted identifiers in backticks — for each one, ask: domain term or code artifact? Code artifacts move to the plan.
    - Type-suffix patterns: `Handler`, `Validator`, `Repository`, `Service`, `Command`, `Query`.
    - Code-formatted method invocations (backticks containing `()`).

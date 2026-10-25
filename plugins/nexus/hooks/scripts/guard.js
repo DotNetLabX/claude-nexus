@@ -2,11 +2,15 @@
 /**
  * Nexus PreToolUse security guard (SYNCHRONOUS — can block).
  *
- * Posture comes from ${user_config.security_mode} (passed as argv[2]):
+ * Posture comes from the `security_mode` plugin option, each source trimmed, lower-cased and taken
+ * only when it names a posture below: argv[2] where a hooks.json passes one, else the
+ * platform's CLAUDE_PLUGIN_OPTION_SECURITY_MODE variable, else the declared default `open`. An
+ * unset, empty or unknown value falls through and never selects a posture.
  *   open      (default) — block catastrophic actions: root/home deletes, sudo,
  *                         force-push, reset --hard, remote-pipe-to-shell, publish/push,
  *                         secret-file access, writes outside the project root (bar the
- *                         platform's scratch and memory folders, lib/is-code-file.js), AND a
+ *                         platform's scratch and memory folders, lib/is-code-file.js, and the
+ *                         folders listed in permissions.additionalDirectories), AND a
  *                         non-code pipeline role editing application source.
  *   hardened           — open PLUS: no git push at all, no network package installs,
  *                         no network fetches.
@@ -17,11 +21,18 @@
  * uncertainty (bad JSON, unreadable registry) so it can never wedge a run, including -p.
  */
 'use strict';
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { isCodeFile, isScratchPath, isMemoryPath } = require('./lib/is-code-file');
 const { readSessionPersona } = require('./lib/read-session-persona');
 
-const mode = (process.argv[2] || 'open').toLowerCase();
+const POSTURES = new Set(['open', 'hardened', 'off']);
+const posture = (value) => {
+  const v = String(value ?? '').trim().toLowerCase();
+  return POSTURES.has(v) ? v : null;
+};
+const mode = posture(process.argv[2]) || posture(process.env.CLAUDE_PLUGIN_OPTION_SECURITY_MODE) || 'open';
 
 // Pipeline roles that must never edit application source — they route code changes to the
 // developer (write findings/instructions instead). Code roles (developer, solo) are absent.
@@ -53,7 +64,8 @@ function evaluate(tool, ti, cwd, mode, data) {
     return `access to a secret file (${fp})`;
   }
   if (fp && isWriteTool && isAbsoluteOutside(fp, cwd)
-      && !isScratchPath(fp, cwd) && !isMemoryPath(fp, cwd, data.transcript_path)) {
+      && !isScratchPath(fp, cwd) && !isMemoryPath(fp, cwd, data.transcript_path)
+      && !addedFolders(projectRoot(data)).some((dir) => !isAbsoluteOutside(fp, dir))) {
     return `write outside the project root (${fp})`;
   }
   // Persona scope: a non-code pipeline role must not edit application source code.
@@ -83,6 +95,35 @@ function activeRole(data) {
   const root = process.env.CLAUDE_PROJECT_DIR || data.cwd || process.cwd();
   const a = data.agent_type || readSessionPersona(data.session_id, root) || 'main';
   return String(a).toLowerCase().split(/[:/]/).pop();
+}
+
+function projectRoot(data) {
+  return process.env.CLAUDE_PROJECT_DIR || data.cwd || process.cwd();
+}
+
+// The folders the user added to the session, from the project's local and shared settings and the
+// user's own; a file that cannot be read or parsed, or an entry that is not a string, adds nothing.
+// A leading `~` is the user's home folder; other entries resolve against the project root.
+function addedFolders(root) {
+  const configDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
+  const files = [
+    path.join(root, '.claude', 'settings.local.json'),
+    path.join(root, '.claude', 'settings.json'),
+    path.join(configDir, 'settings.json'),
+  ];
+  const dirs = [];
+  for (const file of files) {
+    let listed;
+    try { listed = JSON.parse(fs.readFileSync(file, 'utf8')).permissions.additionalDirectories; } catch { continue; }
+    if (!Array.isArray(listed)) continue;
+    for (const entry of listed) {
+      if (typeof entry !== 'string' || !entry.trim()) continue;
+      const named = entry.trim();
+      const home = /^~(?=$|[\\/])/.test(named) ? path.join(os.homedir(), named.slice(1)) : named;
+      dirs.push(path.resolve(root, home));
+    }
+  }
+  return dirs;
 }
 
 function isSecret(fp) {
