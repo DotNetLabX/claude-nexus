@@ -136,9 +136,10 @@ const MAX_LINE_LENGTH = 120;
 // the word anchors on both ends (`F1000` does not match), and the prefix-length bound of 2–4
 // letters, which is what actually exempts `PREFIX-12` and every 5+ letter prefix (`SPIKE-3`,
 // `STORY-4`, `COVID-19`) — extending the allow-list below will never reach those.
-// Deliberately NOT flagged: Q\d+, W\d+, P\d+, G\d+, D\d+ (Q4 is a quarter, 5G a network, W3C a body).
+// Deliberately NOT flagged: Q\d+, W\d+, P\d+, G\d+, D\d+ (Q4 is a quarter, 5G a network, W3C a body),
+// nor a bare B\d+ — a bug slug needs its name part (B12 is a vitamin or a paper size).
 const PREFIXED_ID_RE = /\b([A-Z]{2,4})-\d+\b/g;   // FR-19, CL-150, ADR-100, BUG-15
-const SLUG_ID_RE = /\bF\d{2,3}(?:-[A-Z][A-Za-z]+)?\b/g;   // F42, F42-SomeFeature
+const SLUG_ID_RE = /\b(?:F\d{2,3}(?:-[A-Z][A-Za-z]+)?|B\d{1,4}-[A-Z][A-Za-z]+)\b/g;   // F42, F42-SomeFeature, B15-DoubleEmail [owner-ask-gate BR-24]
 const LEDGER_ID_RE = /\bR-\d{4}-\d{2}-\d{2}-[A-Z]\d+\b/g; // R-2026-09-08-A1
 
 // Well-known technical prefixes carved out of the first family — one place, extendable, and the

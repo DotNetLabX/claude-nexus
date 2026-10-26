@@ -12,6 +12,10 @@ Regardless of archetype, every module needs these axes. Walk through the list us
 
 ## How to choose archetype
 
+**Component** is the generic module — no business rules, usable anywhere, often a contract with swappable
+implementations. **Domain** is the business module — business rules and its own tables, run inside a service or a
+host. A unit that could stand alone as a product is neither: it is a service (`create-service-claude-md`).
+
 Ask yourself (or the user) these questions:
 
 1. **Does the module have its own domain model (aggregates, domain events, state transitions)?** If yes → **Domain**. If no → **Component**.
@@ -19,7 +23,7 @@ Ask yourself (or the user) these questions:
 3. **Does the module produce side effects by handling domain events from the host service (e.g., tracking timeline entries when the host publishes events)?** If yes → **Domain**.
 4. **Is the module pure contract + one or more runtime implementations with no persistence of its own?** If yes → **Component**.
 
-If the answer is ambiguous (some of both), default to **Domain** — Component archetype is strictly for stateless infra adapters.
+If the answer is ambiguous (some of both), default to **Domain** — Component is for a generic module with no business rules; a generic module that keeps tables of its own takes Domain too.
 
 ## Pre-fill from conversation
 

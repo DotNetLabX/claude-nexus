@@ -10,7 +10,7 @@ src/Services/{Name}/
 ├── {Name}.API/
 │   ├── Features/
 │   ├── Middlewares/        only when the service has a middleware of its own
-│   └── Properties/
+│   └── Properties/         not for a service a host runs (ScaffoldHostedApi.md § Folder tree)
 ├── {Name}.Domain/          aggregate-grouped or flat folders, per create-aggregate
 ├── {Name}.Persistence/
 │   ├── Configurations/

@@ -5,10 +5,10 @@ description: Composes several .NET services into one host - the one web project 
 
 # Create Host
 
-A host is the one deployable web project that runs several services in one process. `create-service` scaffolds a
-service that hosts itself; this skill is used once a project wants a host — to compose services that are already
-class libraries (`workflows/ComposeHost.md`), or to convert a self-hosted service into one first
-(`workflows/ConvertService.md`).
+A host is the one deployable web project that runs several services in one process. `create-service` builds a
+self-running service by default, or a class library a host runs; this skill is used once a project wants a host — to
+compose services that are already class libraries (`workflows/ComposeHost.md`), or to convert a self-running service
+into one first (`workflows/ConvertService.md`). Which kind a unit is: `system-design` § Kinds of Reusable Unit.
 
 ## Assumes
 
@@ -52,6 +52,8 @@ src/
   own architecture test enforces this where it has one.
 - **Services never reference each other**, in a host as anywhere else. Glue between two services lives in the host
   (§ Glue Between Services).
+- **A host may run a service another host also runs**, and a repo may keep self-running services beside its hosts.
+  Each host supplies its own connection strings, to its own database, for every service it runs.
 
 ## What a Service Offers Its Host
 
@@ -342,15 +344,15 @@ and for either path separator:
 
 ```bash
 rg -l 'Sdk=.Microsoft\.NET\.Sdk\.Web' src/Hosts --glob '*.csproj'                                  # one web-SDK project per host folder — one file per folder
-rg -l 'Sdk=.Microsoft\.NET\.Sdk\.Web' src/Services --glob '*.csproj'                               # no web-SDK project under a service folder — expect zero
+rg -l 'Sdk=.Microsoft\.NET\.Sdk\.Web' src/Services/{Service} --glob '*.csproj'                     # each service the host runs: no web-SDK project — expect zero
 rg -n 'ProjectReference Include=.[^>]*Hosts.' src --glob '*.csproj' --glob '!**/*Tests*/**'       # no production project references a host — expect zero
 rg -n 'ProjectReference Include=.\.\..\.\..[^.]' src/Services --glob '*.csproj'                    # no service references another service — expect zero
 ```
 
 ## What this skill does NOT do
 
-- **Scaffold a service** — `create-service`, which keeps scaffolding a self-hosted one; this skill converts it when
-  a host runs it.
+- **Scaffold a service** — `create-service`, which builds a self-running service by default or a library a host
+  runs; this skill converts a self-running one when a host runs it.
 - **Ship an architecture test** for the host's references — the repo's own check, where it has one.
 - **Choose a repo's host values** — its paths, its page fallbacks, its port numbers.
 - **Write a consumer's body or a gRPC contract** — `consumer-patterns`, `create-grpc-contract`.

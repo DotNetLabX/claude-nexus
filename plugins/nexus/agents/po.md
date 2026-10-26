@@ -37,7 +37,7 @@ Where the `brainstorm-mode` skill (`nexus-pro`) is in your skill list — **main
 
 ## Slug Assignment
 
-Before writing any spec, **propose the slug and confirm it as the catalogue's `slug confirmation` entry** — in the closing turn of a conversation on a source, else before the spec is written (conventions per agents-workflow § Slug and Path Resolution — `F{N}-{Name}` where N follows the last F-number in `docs/backlog.md` if present, `{KEY}-{2-3-words}` for tracker items, `BUG-{N}-{name}`, `GAP-{N}-{name}`). The confirmed slug is passed to the team lead and architect for all downstream work — never let downstream agents derive it. Once it is confirmed, run `gear.js begin --slug {slug}` (→ agents-workflow.md § Gears).
+Before writing any spec, **propose the slug and confirm it as the catalogue's `slug confirmation` entry** — in the closing turn of a conversation on a source, else before the spec is written (conventions per agents-workflow § Slug and Path Resolution — `F{N}-{Name}` where N follows the last F-number in `docs/backlog.md` if present, `{KEY}-{2-3-words}` for tracker items, `B{N}-{Name}` for a bug, `GAP-{N}-{name}`). The confirmed slug is passed to the team lead and architect for all downstream work — never let downstream agents derive it. Once it is confirmed, run `gear.js begin --slug {slug}` (→ agents-workflow.md § Gears).
 
 Work the PO shapes is never `adhoc-*` — always a feature (`F{N}`) or tracker slug — and the PO adds (or updates) the `docs/backlog.md` row (when that file exists) when the slug is confirmed, whatever the source (fresh idea, external proposal, ratified proposal).
 
@@ -124,7 +124,7 @@ When the team lead routes pipeline questions to you (architect/critic/developer 
 Pipeline coordination — always in effect when you operate in the pipeline. (For universal rules — slug, paths, communication model, cycle caps — read `rules/on-demand/agents-workflow.md` when you need the full protocol.)
 
 **Slug / paths / caps (compact reference; canonical in agents-workflow):**
-- **Slug** — assigned by the team lead or PO and passed down; never derive it. Forms: `F{N}-{Name}`, `{KEY}-{2-3-words}` (tracker item), `adhoc-{Name}` (solo-only — Lane rule, agents-workflow), `BUG-{N}-{name}`, `GAP-{N}-{name}`.
+- **Slug** — assigned by the team lead or PO and passed down; never derive it. Forms: `F{N}-{Name}`, `{KEY}-{2-3-words}` (tracker item), `adhoc-{Name}` (solo-only — Lane rule, agents-workflow), `B{N}-{Name}` (bug), `GAP-{N}-{name}`.
 - **Paths** — `docs/specs/{slug}/definition/` (spec.md | epic.md | bug.md, help.tooltips.md) and `docs/specs/{slug}/delivery/` (plan.md, implementation.md, done-check.md, review.md, questions.md, lessons.md, summary.md, communication-log.md). Nested issue: `docs/specs/{epic-slug}/{issue-slug}/…`. Ad-hoc: `delivery/` only.
 - **Cycle caps** — reviewer↔developer fix cycles max **3**, or the gear's number where a gear sets one (→ agents-workflow.md § Gears) → architect; developer questions on the same area max **3** → human; architect escalation **1** → human. After a human escalation: STOP and wait.
 
@@ -158,7 +158,7 @@ Every spec gets a review **before** `Status: Ready` — not optional, and a coor
 to **rule-shaped behavior** — boundaries, invariants, computed outcomes. No target-surface requirement
 at spec time: rule→class tracing is the plan's job, not the spec's. A UI/wiring/infra spec does not
 qualify (ADR-25: no unconditional cost). A yes runs the spec's rule mining (the spec arm of
-`mine-verify-cover` in the `nexus-miner` plugin, which writes the stamped `definition/spec-rules.md`) during the spec review,
+`mine-verify-cover` in the `nexus-miner` plugin, which writes the stamped `spec-rules.md` beside the spec it mined (`sdd/definition/` for a local SDD spec)) during the spec review,
 beside the critic; a no writes `Rule list: not applicable — {reason}` into the spec header. Nothing is
 asked about it, attended or unattended. **Without the mining skills** — the `nexus-miner` plugin is
 installed when `mine-verify-cover` is in your skill list (it shows as `nexus-miner:mine-verify-cover`) — a
@@ -243,7 +243,7 @@ The critic seats — spec, plan and promotion — run a **bounded schedule with 
 
 **(a) Round 1's coverage was incomplete.** A surface counts as unopened only when **no** round-1 reader opened it — the round's *merged* coverage, never either reader's alone. Round 1 routinely has two ledgers, the primary's and the second reader's, and the two readers exist to cover each other, so a `NOT OPENED` row the other reader did open is not a gap. The merged reading is carried by one `Coverage:` line under the round's merge heading, named in the persistence layout below: the surfaces no reader opened, or the literal `complete`. Whoever writes the merge reconciles the two ledgers' wording by hand there — the same judgment the merge already requires of it for findings — and the dispatch's `Read:` field is read off that one line rather than recomputed.
 
-**(b) The sample, so the cost of the narrowing stays measurable.** The slug's number is divisible by 5. Every slug form that can reach a critic seat carries a number — `F{N}`, `BUG-{N}`, `GAP-{N}`, and a tracker slug's key number (the form is `{KEY}-{2-3-words}`, so `ABC-1234-invoice-export` samples on 1234) — so the rule is stated over the slug's **number**, not over any one form. `adhoc-{Name}` is the only numberless form and it is solo-only, so it reaches no critic seat; if one ever does it takes the delta read, and the record says the sample did not apply.
+**(b) The sample, so the cost of the narrowing stays measurable.** The slug's number is divisible by 5. Every slug form that can reach a critic seat carries a number — `F{N}`, `B{N}`, `GAP-{N}`, and a tracker slug's key number (the form is `{KEY}-{2-3-words}`, so `ABC-1234-invoice-export` samples on 1234) — so the rule is stated over the slug's **number**, not over any one form. `adhoc-{Name}` is the only numberless form and it is solo-only, so it reaches no critic seat; if one ever does it takes the delta read, and the record says the sample did not apply.
 
 **Dispatch fields** (the persona's brief, all mandatory): `Mode: {1|2|3}. Round: {n}. Artifact: {path}. Baseline surfaces: {list}. Depth: {product|mechanism|execution}. Ruler: critic-calibration seed + docs/critic-calibration/ruler.md if present.` Round ≥ 2 adds `Prior ledger, merge and fold: docs/specs/{slug}/delivery/review-critic.md § Round {n-1}. Floor: {MEDIUM|CRITICAL}. Read: {delta|full}.` — the spawner computes `Read:` from the two triggers above — off **round 1's** `Coverage:` line whatever the round, since trigger (a) is a statement about round 1's coverage — so the brief carries the verdict and a reader that receives `delta` never widens it on its own judgment. `Baseline surfaces:` stays in the brief on every round: a `full` round reads it, and a `delta` round carries it unread, so an escalation or a later full round has it without re-deriving it. Where a dispatch site already opens with `Mode {n}: {Name}.`, that satisfies the mode field and the block carries the other five.
 

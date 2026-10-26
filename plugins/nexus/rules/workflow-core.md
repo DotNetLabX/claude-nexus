@@ -6,7 +6,7 @@ reconstruct it.
 
 ## Slug, lane, paths
 
-- **Slug forms:** `F{N}-{Name}` · `{KEY}-{2-3-words}` (tracker item) · `BUG-{N}-{name}` · `GAP-{N}-{name}` · `adhoc-{Name}` (**solo-only**).
+- **Slug forms:** `F{N}-{Name}` · `{KEY}-{2-3-words}` (tracker item) · `B{N}-{Name}` (bug) · `GAP-{N}-{name}` · `adhoc-{Name}` (**solo-only**).
 - **Lane rule:** work shaped with the PO or designed with the architect is a **feature** — `F{N}` slug plus a `docs/backlog.md` row. Re-slug an `adhoc-*` that outgrows solo *before* the pipeline proceeds. Team lead or PO assigns it and passes it down — **never derive your own**.
 - **Paths:** under `docs/specs/{slug}/`, all `.md` — `definition/`: spec | epic | bug, help.tooltips · `delivery/`: plan, implementation, review, questions, lessons, summary, communication-log. Nested issue: `docs/specs/{epic-slug}/{issue-slug}/…`. Ad-hoc: `delivery/` only.
 

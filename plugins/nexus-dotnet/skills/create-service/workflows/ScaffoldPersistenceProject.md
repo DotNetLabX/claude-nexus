@@ -63,6 +63,29 @@ public static class DependencyInjection
 For PostgreSQL, `UseNpgsql`. Each repository the service adds later gets its own scoped line here. The repository
 base, the service's `Repository<T>` and the save interceptor are found first, or built once (`persistence-patterns`).
 
+### `Data: schema` — its own schema in a shared database
+
+The service's tables and its migration history table live in its schema (`persistence-patterns` § Data Ownership).
+The context sets the default schema:
+
+```csharp
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.HasDefaultSchema("{Schema}");
+    modelBuilder.ApplyConfigurationsFromAssembly(typeof({Name}DbContext).Assembly);
+}
+```
+
+and the registration puts the migration history table in it:
+
+```csharp
+services.AddDbContext<{Name}DbContext>((provider, options) => options
+    .UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "{Schema}"))
+    .AddInterceptors(provider.GetServices<ISaveChangesInterceptor>()));
+```
+
+For PostgreSQL, `UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "{Schema}"))`.
+
 ## Branch: Redis
 
 ### `{Name}.Persistence/GlobalUsings.cs`
@@ -89,8 +112,10 @@ No table configurations and no migrations.
 
 The API's start-up file migrates in its InitData region (`app.Migrate<{Name}DbContext>()`) and seeds test data in
 development only (`app.SeedTestData()`) — `service-registration` § Program.cs Structure (self-hosted service); both
-helpers are sampled in `persistence-patterns` § Migrations at Start-up and § Seed Data (Dual Pattern). In a service a
-host runs, both calls move into the service's `Init{Name}DataAsync`, which the host calls (`create-host`).
+helpers are sampled in `persistence-patterns` § Migrations at Start-up and § Seed Data (Dual Pattern). A service a
+host runs has no start-up file: both calls go in its data entry point, `Init{Name}DataAsync` in `{Name}Extensions`
+(`ScaffoldHostedApi.md`), which the host calls — the entry point a converted service's InitData region moves into
+(`../../create-host/workflows/ConvertService.md` § 3. Program.cs becomes the entry points).
 
 ## After this step
 

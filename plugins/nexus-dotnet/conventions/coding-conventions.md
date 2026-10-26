@@ -19,6 +19,21 @@ users share no project, a new shared project each of them references, with no re
 each user. Add its row to `project-lists.md` § Helpers in the same change.
 <!-- id-end -->
 
+## Kinds of Reusable Unit <!-- id: unit-kinds -->
+
+A unit's kind comes from whether it could stand alone. Neither having endpoints nor being shared by two apps decides it.
+
+| Kind | What it holds | The test |
+|---|---|---|
+| Generic module | a capability usable anywhere, often a contract with swappable implementations | it holds no business rules |
+| Business module | business rules and its own tables, with endpoints or without | it depends on other services, so it lives inside a service or a host and never stands alone |
+| Service | its own data, endpoints, integration events and gRPC calls — everything it needs | it is self-contained, so it could ship as a product of its own |
+
+A service runs on its own by default. In a repo that has a host, a service may instead run inside one host or several
+(`create-host`). In the module skills, the Component archetype is the generic module and the Domain archetype the
+business module; a generic module that keeps its own tables takes the Domain scaffold.
+<!-- id-end -->
+
 ## Source Files
 
 Source files hold application code: the `.cs` files of the services, modules and shared libraries, and the front

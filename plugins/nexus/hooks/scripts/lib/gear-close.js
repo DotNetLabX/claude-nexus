@@ -3,12 +3,13 @@
  * The close evidence, read at every close whatever the gear. The round's latest complete record
  * discharges the close at a tree that has changed since it, or despite its failures, when all three hold:
  *
- *   it completed — never cut or crashed, and a red one names all its failures (`failed` is a list, or the
- *     events were read whole, `failed_tests` is empty and every failure is a timed-out test placed in a file,
- *     whose touched entries' files are then its failures), or it counts as passing (lib/run-verdict.js: its
- *     only failures are untouched timed-out tests);
- *   each failure is repaired — a failed file whose only failures are untouched timeouts owes none, while a
- *     real failure or a touched timeout in the same file still does; otherwise the newest later record of the same slug and tree that ran the failed
+ *   it completed — never cut or crashed, and a red one names all its failures (`failed` is a non-empty list,
+ *     or the events were read whole, `failed_tests` is empty and every failure is a timed-out test placed in a
+ *     file, whose touched entries' targets are then its failures), or it counts as passing (lib/run-verdict.js:
+ *     its only failures are untouched timed-out tests — the one red whose `failed` is `[]`);
+ *   each failure is repaired — a failed target (a test file, or a .NET test project; an older record's entry
+ *     with no `target` is weighed by its file) whose only failures are untouched timeouts owes none, while a
+ *     real failure or a touched timeout in the same target still does; otherwise the newest later record of the same slug and tree that ran the failed
  *     test file or project by name is green, ran it with no filter, and holds the content it ran at
  *     (`delta_hashes` against this complete record): every file whose content now differs from that is
  *     held at its current hash by a green record after it, or the newest whole-unit fast record of the
@@ -57,6 +58,8 @@ const hashIn = (m, p) => (has(m, p) ? m[p] : null);
 const green = (r) => Boolean(r) && r.verdict === 'pass';
 const unfiltered = (r) => !isFilteredFull(r.command || '') && !NAME_FILTER.test(String(r.command || ''));
 const differing = (a, b) => [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((p) => hashIn(a, p) !== hashIn(b, p));
+// The item a failure is re-run by: its `target` (a .NET test project, a test file), else its file in an older record.
+const targetOf = (t) => (typeof t.target === 'string' && t.target !== '' ? t.target : t.file);
 
 /**
  * What a fast record of `slug` writes about the content it ran at: the files whose content differs from
@@ -86,11 +89,11 @@ function closeEvidence({ records, index, tree, slug }) {
     && Boolean(complete.file_hashes) && typeof complete.file_hashes === 'object';
   if (!completed) return { ok: false, cause: 'not-completed', files: [] };
   // A file whose only failures are untouched timeouts owes no repair; a real failure or a touched timeout in it still does.
-  const untouched = new Set(untouchedTimeouts(complete).map((t) => t.file));
+  const untouched = new Set(untouchedTimeouts(complete).map(targetOf));
   const realFailure = new Set([
     ...(Array.isArray(complete.failed_tests) ? complete.failed_tests : []),
     ...(Array.isArray(complete.timed_out) ? complete.timed_out.filter((t) => !t || t.touched !== false) : []),
-  ].map((t) => t && t.file));
+  ].map((t) => t && targetOf(t)));
   const owesRepair = (item) => !(untouched.has(item) && Array.isArray(complete.failed_tests) && !realFailure.has(item));
 
   // `laterAt` holds each later record's place in the log, the append order a failed check is weighed by.
@@ -146,19 +149,20 @@ function closeEvidence({ records, index, tree, slug }) {
 }
 
 /**
- * The failures a red complete record names, or null when it cannot name them all: its `failed` list; else,
- * for a run the events read whole whose only failures are timed-out tests each placed in a file, the files of
- * its touched timeouts (an entry not marked untouched counts as touched).
+ * The failures a red complete record names, or null when it cannot name them all: its `failed` list, unless
+ * it is empty — a red run that names no failure names nothing; else, for a run the events read whole whose
+ * only failures are timed-out tests each placed in a file, the targets of its touched timeouts (an entry not
+ * marked untouched counts as touched). `failures_partial` is never read: the failures seen so far are not the list.
  */
 function failuresOf(complete) {
   if (!complete || complete.verdict !== 'fail') return null;
-  if (Array.isArray(complete.failed)) return complete.failed;
+  if (Array.isArray(complete.failed)) return complete.failed.length ? complete.failed : null;
   const timedOut = complete.timed_out;
   const timeoutsOnly = complete.reason === 'tests-timed-out' && complete.events === true
     && Array.isArray(complete.failed_tests) && complete.failed_tests.length === 0
     && Array.isArray(timedOut) && timedOut.length > 0
     && timedOut.every((t) => t && typeof t.file === 'string' && t.file !== '');
-  return timeoutsOnly ? [...new Set(timedOut.filter((t) => t.touched !== false).map((t) => t.file))] : null;
+  return timeoutsOnly ? [...new Set(timedOut.filter((t) => t.touched !== false).map(targetOf))] : null;
 }
 
 const isLabelRecord = (r, tree) => Boolean(r) && r.source === 'label-tests' && sameTree(r.tree, tree)

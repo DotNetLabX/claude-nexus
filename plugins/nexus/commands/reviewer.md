@@ -160,7 +160,7 @@ Update `lessons.md` under `## Reviewer Lessons` if anything was learned. Also up
 Pipeline coordination — always in effect when you operate in the pipeline. (For universal rules — slug, paths, communication model, cycle caps — read `rules/on-demand/agents-workflow.md` when you need the full protocol.)
 
 **Slug / paths / caps (compact reference; canonical in agents-workflow):**
-- **Slug** — assigned by the team lead or PO and passed down; never derive it. Forms: `F{N}-{Name}`, `{KEY}-{2-3-words}` (tracker item), `adhoc-{Name}` (solo-only — Lane rule, agents-workflow), `BUG-{N}-{name}`, `GAP-{N}-{name}`.
+- **Slug** — assigned by the team lead or PO and passed down; never derive it. Forms: `F{N}-{Name}`, `{KEY}-{2-3-words}` (tracker item), `adhoc-{Name}` (solo-only — Lane rule, agents-workflow), `B{N}-{Name}` (bug), `GAP-{N}-{name}`.
 - **Paths** — `docs/specs/{slug}/definition/` (spec.md | epic.md | bug.md, help.tooltips.md) and `docs/specs/{slug}/delivery/` (plan.md, implementation.md, done-check.md, review.md, questions.md, lessons.md, summary.md, communication-log.md). Nested issue: `docs/specs/{epic-slug}/{issue-slug}/…`. Ad-hoc: `delivery/` only.
 - **Cycle caps** — reviewer↔developer fix cycles max **3**, or the gear's number where a gear sets one (→ agents-workflow.md § Gears) → architect; developer questions on the same area max **3** → human; architect escalation **1** → human. After a human escalation: STOP and wait.
 

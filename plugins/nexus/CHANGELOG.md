@@ -1,5 +1,69 @@
 # nexus — Changelog
 
+## [2.4.63] — 2026-10-26
+- F303: new bug folders are named `B{N}-{Name}` (a legacy `BUG-{N}-{name}` folder stays valid, never renamed; the next bug takes the number after the highest of either form; the close's carry-over bug row is `B{N}-CarryOver`), and the owner-question check flags a bug slug written with its name; a feature's spec and rule list are read through the new `sdd-read.js` — from `definition/`, a local `sdd/` folder, or a pinned specification repository at a pushed commit — by the architect's planning gates, the critic, the team lead's critic spawns and the Codex done-check brief; a rule list mined from a local `sdd/` spec is written beside it; the `Plan:` line goes only in a development spec
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - rule (always-on kernel — injected every session)
+  - skill change (create-feature-spec)
+  - skill change (create-implementation-plan)
+
+## [2.4.62] — 2026-10-26
+- F307: the architect scores every developer-built step on a Fibonacci scale (1, 2, 3, 5, 8, 13, 21) in one sweep after the plan review, the cuts and the departures, written as `Effort points:` on the step; a step scored 21 that touches over about 100 files is split by area, each half ending green; the team lead starts a fresh developer at a step hand-back when the current size plus the next step's points times the feature's rate reaches the size limit (rate = growth over counted steps ÷ their points, 15k per point to start, no margin); the measured limit stays the first test for every step
+  - agent instruction/behavior change
+  - skill change
+  - shipped command changed
+  - estate raise: plugins/nexus/agents/architect.md 232460→233225 B — F307-StepEffortScores: effort scores, the sweep and the handover rule
+  - estate raise: plugins/nexus/agents/team-lead.md 241618→243266 B — F307-StepEffortScores: effort scores, the sweep and the handover rule
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 39497→41612 B — F307-StepEffortScores: effort scores, the sweep and the handover rule
+  - estate raise: plugins/nexus/skills/create-implementation-plan/references/plan-template.md 18293→18445 B — F307-StepEffortScores: effort scores, the sweep and the handover rule
+
+## [2.4.61] — 2026-10-26
+- F304: a plan step that moves, creates or deletes files gives the developer searches that also see files not yet committed, and never stages files to make a search see them; a step that waits on a long machine run says what runs and roughly how long (`Long runs:`, in both plan formats)
+  - skill change
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 38907→39497 B — F304-PlanStepSizing: uncommitted-files search rule and the long-run line in the planning skill and its template
+  - estate raise: plugins/nexus/skills/create-implementation-plan/references/plan-template.md 18129→18293 B — F304-PlanStepSizing: uncommitted-files search rule and the long-run line in the planning skill and its template
+
+## [2.4.60] — 2026-10-26
+- Every bug row a role adds to the backlog carries two fields: `Cause:` (the feature whose change introduced the defect, or unknown / outside) and `Found:` (where it was seen); the finding feature goes in Cause only when its own change caused the defect
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 232374→232460 B — adhoc-BugRowCauseFound: bug rows carry Cause and Found fields
+  - estate raise: plugins/nexus/agents/team-lead.md 241371→241618 B — adhoc-BugRowCauseFound: bug rows carry Cause and Found fields
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 117356→117956 B — adhoc-BugRowCauseFound: bug rows carry Cause and Found fields
+
+## [2.4.59] — 2026-10-26
+- F292: every full run names each failed test and why, for .NET, vitest, Flutter and Node, even when cut; a .NET or Flutter timeout in a test the change did not touch no longer holds the close
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 232301→232374 B — F292-DotnetFlutterTimeouts fix round 1: the handover ladder's 'bar the unchanged re-run above' names no stack, and the cut-run clause names the record field holding the named failures
+  - estate raise: plugins/nexus/agents/team-lead.md 241293→241371 B — F292-DotnetFlutterTimeouts fix round 1: the handover ladder's 'bar the unchanged re-run above' names no stack, and the cut-run clause names the record field holding the named failures
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 117317→117356 B — F292-DotnetFlutterTimeouts fix round 1: the handover ladder's 'bar the unchanged re-run above' names no stack, and the cut-run clause names the record field holding the named failures
+
+## [2.4.58] — 2026-10-25
+- F301: the plan skill's "never adapt" ban (step 5 and the template's `Never "Adapt"` rule) no longer flags a line a mapped skill itself asks the step to carry, and the critic's plan review flags a step that maps a skill whose description names such a line and leaves it out. Both are generic and name no paid part; nexus-pro 0.1.27's `adapt-suite-methods` skill is the first to use them.
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - skill change (create-implementation-plan)
+  - estate raise: plugins/nexus/agents/critic.md 34703→34900 B — F301-AdaptedFromLine: adapt-suite-methods skill (nexus-pro), the plan skill's exemption clause, the critic's missing-line check
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 38750→38907 B — F301-AdaptedFromLine: adapt-suite-methods skill (nexus-pro), the plan skill's exemption clause, the critic's missing-line check
+  - estate raise: plugins/nexus/skills/create-implementation-plan/references/plan-template.md 17972→18129 B — F301-AdaptedFromLine: adapt-suite-methods skill (nexus-pro), the plan skill's exemption clause, the critic's missing-line check
+
+## [2.4.57] — 2026-10-25
+- F298: share code as far as it naturally divides, never by force — a new `## Share by fit` section in the engineering-discipline rule (a shared part that needs a per-caller flag, type switch or mode to serve its callers is forced; warn before such a share, never rewrite or comply silently), its trigger now naming designs that share, merge or generalize code, and a matching plan-review check in the critic.
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/critic.md 34403→34703 B — F298-ShareByFit: share-by-fit rule (engineering-discipline) and its critic pointer
+  - estate raise: plugins/nexus/rules/on-demand/engineering-discipline.md 3876→4649 B — F298-ShareByFit: share-by-fit rule (engineering-discipline) and its critic pointer
+
 ## [2.4.56] — 2026-10-25
 - F297: a commit made by an installed plugin's own save script counts as the user's act (each push still asked), the architect may write a spec's optional technical part, and the safety check allows folders added to the session
   - agent instruction/behavior change

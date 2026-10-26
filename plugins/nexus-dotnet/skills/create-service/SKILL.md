@@ -1,18 +1,26 @@
 ---
 name: create-service
-description: Scaffolds an empty service skeleton from its CLAUDE.md — folder tree, project files with their references, GlobalUsings, registration stubs, Program.cs, Dockerfile, its test project — with no business classes. Use when standing up a new service after its CLAUDE.md exists; create-aggregate and create-feature add the business code afterwards.
+description: Scaffolds an empty service skeleton from its CLAUDE.md, in one of two shapes - a self-running service by default (folder tree, project files with their references, GlobalUsings, registration stubs, Program.cs, Dockerfile, its test project) or a class library a host runs (the same projects, its API project offering the host its entry points, with no Program.cs, settings or Dockerfile) - with no business classes. Use when standing up a new service after its CLAUDE.md exists; create-aggregate and create-feature add the business code afterwards.
 ---
 
 # Create Service
 
-Scaffolds a new service as an empty skeleton — folders, project files with the right references, start-up and
-registration stubs, settings, Dockerfile and compose entry, and its one test project — and **no business classes**. Afterwards the developer
+Scaffolds a new service as an empty skeleton — folders, project files with the right references, registration stubs
+(and, self-running, the start-up file, settings, Dockerfile and compose entry), and its one test project — and **no
+business classes**. Afterwards the developer
 runs `create-aggregate` for the first aggregate and `create-feature` for the first feature.
+
+Two shapes, read from the CLAUDE.md: a **self-running service** (the default) has its own start-up file, settings,
+port and Docker entry; a **service a host runs** (`**Runs:** host`) is a class library whose API project offers the
+host its entry points, with no start-up file, settings, port or Docker entry — the shape `create-host` converts a
+self-running service into. Which kind a unit is: `system-design` § Kinds of Reusable Unit.
 
 ## Assumes
 
 - **The service's `CLAUDE.md`** exists (Precondition below) and names its axes: endpoint framework, database,
-  Application project or not, gRPC, integration events, file storage, Docker.
+  Application project or not, gRPC, integration events, file storage, Docker — and, where it was asked, how it runs
+  and where its data lives (absent, it runs on its own, in a database of its own).
+- **For a service a host runs, a host in the repo** — the shape `create-host` builds — to add it to afterwards.
 - **A solution file** (`.slnx`) and **central package management** (`central-package-management`).
 - **Whatever shared projects the repo already has** — shared libraries, modules, contracts projects. The skill
   references the ones the service needs and nothing else; a repo with none builds the service against the .NET SDK
@@ -47,8 +55,12 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
    - **only the shared libraries the service needs** — a reference is added when the first line using it is written;
    - **no project references an API project** — a host project apart, which references the API project of each
      service or module it runs (`create-host`), and the service's own test project (step 9).
-4. **Scaffold the API project** — `workflows/ScaffoldApiProject.md`. It holds its features, its usings and its
-   registration, nothing else. Generic web parts — rate limiting, security headers, the origin check,
+
+   For a service a host runs, the API project's file comes from `workflows/ScaffoldHostedApi.md` instead of the API
+   block here.
+4. **Scaffold the API project** — `workflows/ScaffoldApiProject.md`, or `workflows/ScaffoldHostedApi.md` for a
+   service a host runs. It holds its features, its usings and its registration — and, hosted, its entry points —
+   nothing else. Generic web parts — rate limiting, security headers, the origin check,
    request-failure logging, readiness checks — are shared pieces: found in the repo's shared libraries, or built
    once in the shared place under Look First, never inside one service's API project.
 5. **Scaffold the Domain project** — `workflows/ScaffoldDomainProject.md`.
@@ -57,7 +69,7 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
    FastEndpoints service that holds shared application pieces (a state machine, the access checker) —
    `workflows/ScaffoldApplicationProject.md`.
 8. **Wire the infrastructure** — `workflows/ScaffoldInfrastructure.md`: the solution, the Dockerfile, the compose
-   entry.
+   entry — the solution only, for a service a host runs.
 9. **Create the service's test project** — `src/Services/{Name}/{Name}.Tests/`, added to the solution. It
    references this service's own projects only (its API project included, where the features live), never another
    service's or module's: a test run follows project references, so a change then ties to the few tests that cover
@@ -65,7 +77,8 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
    stack's testing convention; tests needing the whole running app go to the app's one wiring test project, not here.
 10. **Verify** — § Verify below.
 11. **Report:** "Service `{Name}` scaffolded with its test project `{Name}.Tests`. Run `create-aggregate` next for
-    the first aggregate, then `create-feature` for the first feature."
+    the first aggregate, then `create-feature` for the first feature." For a service a host runs, the report first
+    names `create-host` as the next run, to add the service to its host — until then nothing starts it.
 
 ## Verify
 
@@ -83,6 +96,7 @@ rg -n 'ProjectReference Include=.(\.\..){2,}' src/Services/{Name}/{Name}.Tests -
 rg -n 'Version=' src/Services/{Name} --glob '*.csproj'                                            # no version on a reference — expect zero
 rg -n '<!--|NoWarn|GenerateDocumentationFile' src/Services/{Name} --glob '*.csproj'               # basics only; a fresh service has no deliberate setting, so no comment yet — expect zero
 rg --files --hidden -g '.gitkeep' src/Services/{Name}                                             # no placeholder files — expect zero
+rg -l 'Sdk=.Microsoft\.NET\.Sdk\.Web' src/Services/{Name} --glob '*.csproj'                        # a service a host runs only: no web-SDK project — expect zero
 ```
 
 The patterns hold no double quote and no doubled backslash, so they reach `rg` unchanged from PowerShell and from
@@ -97,6 +111,8 @@ Pass the service name: `/create-service Inventory`. The folder `src/Services/Inv
 
 - No aggregates, features or domain classes — `create-aggregate`, `create-feature`.
 - No API gateway route — added by hand where external clients must reach the service.
-- No migrations — `dotnet ef migrations add InitialCreate` after the first aggregate.
+- No migrations — `dotnet ef migrations add InitialCreate -p {Name}.Persistence -s {Name}.API` after the first
+  aggregate; for a service a host runs, the start-up project is the host, `-s {Host}` (`create-host`).
 - No edit to the repo-root `CLAUDE.md` service table.
-- No host — the service hosts itself; `create-host` converts it when a host runs it.
+- No host, and no change to one — a self-running service hosts itself, and `create-host` converts it when a host
+  later runs it; a service a host runs is added to its host by `create-host`.

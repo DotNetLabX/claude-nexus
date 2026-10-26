@@ -33,7 +33,8 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
 ## Spine Rules
 
 - **EF Core for every table the service owns,** in every service and module. SQL only where EF has no answer — a
-  search EF cannot express, a read on a database the service does not own — and that SQL lives in a read store.
+  search over the unit's own tables that EF cannot express — and that SQL lives in a read store. Never SQL against
+  another unit's tables or database (§ Data Ownership, below).
 - **A table another library creates and owns** is not an EF table: no configuration and no migration for it, and it
   keeps that library's names.
 - **The persistence project holds** the data context, the table configurations, the migrations, the repositories and
@@ -48,6 +49,17 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
   store by its own scoped line — no assembly scan, no factory lambda per repository.
 - **Table set-up runs at start-up** through migrations, never as a repository method; a lock that keeps two
   instances from migrating at once lives with the migration runner, if one is still needed.
+
+<!-- nexus-gen ef-core sections="data-ownership" BEGIN -->
+#### Data Ownership
+
+- **Every service and business module owns its own tables and its own migration history.**
+- **A business module defaults to its own schema in the database it shares; a service defaults to its own
+  database.** Either may take the other: a module may keep a database of its own, and a service its own schema in a
+  shared database.
+- **No foreign key, join or shared table ever crosses from one unit's tables to another's.** A unit reaches another
+  unit's data through that unit's contract — a call or an event — never through its tables.
+<!-- nexus-gen ef-core END -->
 
 ## Repository Pattern (3-Tier)
 
@@ -174,8 +186,9 @@ public class OrderReadStore(OrdersDbContext _dbContext)
   race on it); a sample that turns it on for every table teaches a cost with no need.
 - **Ids and times:** which id type and which time type an entity uses is not settled; a table keeps the types its
   entity has. One `Guid` in a route reads fine, several ids in one route do not, and a catalog needs no `Guid`.
-- **Schemas:** a module that owns tables owns its schema (`HasDefaultSchema`) and its own migration history; a
-  service has no schema of its own.
+- **Schemas:** a unit whose tables sit in a database it shares owns its schema there (`HasDefaultSchema`) and keeps
+  its migration history table in it — a business module by default, a service by choice; a service in a database of
+  its own needs no schema (§ Data Ownership, above).
 - **Table and column names, a choice:** the entity type's name (the default), or lower-case with underscores — the
   form a database or other SQL readers expect, since mixed-case names must be quoted in every SQL text. Pick one per
   repo and apply it in the context, not per table. A table another library owns keeps that library's names.

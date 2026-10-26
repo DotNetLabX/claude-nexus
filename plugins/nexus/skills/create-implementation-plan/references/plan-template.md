@@ -11,7 +11,7 @@ Use this template for every `docs/specs/{slug}/delivery/plan.md` file — the fu
 ```markdown
 # {Feature Name}
 
-**Feature Spec:** `docs/specs/{slug}/definition/spec.md` | None
+**Feature Spec:** `docs/specs/{slug}/definition/spec.md` | the spec `sdd-read.js` resolves, for a feature with an `sdd/` folder | None
 **Model:** {your own model's exact id, self-reported from your system context — write "unknown" if unstated, never the model you were dispatched as; see agents-workflow.md § Artifact Formats}
 **Developers:** {n} — {kind} (steps {a}–{b}) · {kind} (steps {c}–{d}); boundary: {what separates them} | omit this line — one developer builds the plan
 **Build slices:** {a}–{b} · {c}–{d} · …; why: {one line} | omit this line — the whole plan is one slice
@@ -46,7 +46,7 @@ An acceptance criterion a cut left without a step goes on the same line, rule li
 - **Follow** — apply the skill pattern. Adapt implementation specifics (e.g., SQLite instead of SQL Server) but never skip the pattern.
 - **Find or build** — the skill relies on something not in sight. The step names what was looked for and, when nothing was found, where it is built once (→ agents-workflow.md § Skill Authority); then follow the skill.
 - **None** — no skill covers this step. Describe what to accomplish + acceptance criteria. Do NOT write method-body logic flows. The developer decides internal decomposition. Log the gap to `lessons.md` `## Skill Gaps` per `lessons-format`.
-- **Never "Adapt"** — if you're about to write "adapted for this project's needs," you're skipping the skill. Either Follow (the pattern applies, specifics may differ) or Find or build (something the skill relies on is not in sight).
+- **Never "Adapt"** — if you're about to write "adapted for this project's needs," you're skipping the skill. Either Follow (the pattern applies, specifics may differ) or Find or build (something the skill relies on is not in sight). A line a mapped skill itself tells the step to carry is not this, whatever its wording — the ban is for a step that softens a skill it was told to follow.
 - **TDD column (process skill — every plan has it, even all-`None` plans).** The architect marks each step at plan time: `yes` = testable behavior (domain logic, endpoint request/response, business rules) — the developer invokes the `tdd` skill on it; `no` = pure wiring (DI, config, migrations). `Skill: None` means no *pattern* skill — it never waives TDD. (Measured failure: an all-`None` plan read as "no skills at all" and 34+ tests shipped test-after.)
 - **Several skills — only where the header carries `**Skills per step:** on`.** The Skill cell names every pattern skill whose description covers one of the step's actions, comma-separated (`{skill-a}, {skill-b}`); the Disposition cell holds their shared keyword, and where they differ it holds each skill's own in the Skill cell's order, the step text carrying one disposition each. Process skills stay in their own column, and the five preloaded format skills are never named (SKILL.md step 4). Without the line, one skill per row, as above.
 - **`Gap?` column vocabulary (exactly two legal values).** `gap: {what's missing}` — a real gap; the
@@ -76,6 +76,8 @@ For each step:
 - Skill reference (from the mapping table) — if Follow or Find or build, say "Follow {skill-name}" or "Find or build {what}, then follow {skill-name}"; under `**Skills per step:** on`, every skill the row names — "Follow {skill-a}, {skill-b}", or one disposition each where they differ
 - Feature-specific inputs only (entity names, property types, route paths)
 - Dependencies on previous steps
+- **Long runs:** (only where the step waits on one) — what runs and roughly how long
+- **Effort points:** {n} — added at the sweep after the review (SKILL.md § Step Effort); not on close- or operator-owned steps
 - **`Satisfies:`** (optional, recommended) — the acceptance criterion the step delivers, e.g.
   `Satisfies: AC-3`. For an ad-hoc pass with no spec ACs, cite the **ADR unit** instead
   (`Satisfies: ADR-26 RESEARCH-stage`), consistent with the ad-hoc ADR-mapping done-check. This is the
@@ -153,7 +155,7 @@ Out of scope: {one line}
 ## Implementation Steps
 
 ### Step N — {outcome}
-Accept: `{test file}` asserts {what} | `{exact grep or command}` gives {result} · Files: `{path}`, `{path}` · Follow {skill} | Follow {skill}, {skill} (under **Skills per step:** on) | None · TDD: yes (test-first steps only) · Risk: risky — {why} (risky steps only)
+Accept: `{test file}` asserts {what} | `{exact grep or command}` gives {result} · Files: `{path}`, `{path}` · Follow {skill} | Follow {skill}, {skill} (under **Skills per step:** on) | None · TDD: yes (test-first steps only) · Risk: risky — {why} (risky steps only) · Long runs: {what runs, about how long} (only where the step waits on one) · Effort points: {n}
 Satisfies: (where a rule list is joined)
 - {ruleName} — {one-line statement}
 

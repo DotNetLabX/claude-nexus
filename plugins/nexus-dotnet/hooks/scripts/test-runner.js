@@ -11,6 +11,23 @@
  * project. A file no project owns leaves the run to the declared unit whole. A step close is
  * timed from a trx report; a red run's failures are read from the VSTest summary line of each failing
  * assembly.
+ *
+ * A full run reads each `dotnet test` stage from its own trx files and blame Sequence files, in the folder the
+ * run gives it: every failed result with its message, per test project its time and counts. Each test project
+ * the stage selects needs a trx — its project target; a solution's listed test projects (every test project
+ * under its folder when the solution cannot be read); with no target, the one solution or project in its
+ * folder. A test a Sequence file marks not completed was running when its project's run ended: a stuck test,
+ * set aside as a timeout and re-run without (`rerunWithout`), only while the output's hang-timeout lines cover
+ * every such project — a crash otherwise, which sets nothing aside. Stuck tests are told only where the
+ * declared stage carries `--blame-hang-timeout`; without it a hang runs to the full run's limit, and an abort
+ * no Sequence file places leaves the stage unaccounted. A `stuck` entry adds `path`, its project's absolute
+ * path.
+ *
+ * This runner also reads a full run's `vitest run` stage (directly or through `npx`), the front end beside a
+ * .NET back end: vitest's json report, written when the run ends, gives each failed assertion as a failure of
+ * its file, and a file that failed with none (a collection or import error) as one failure of that file. A
+ * vitest timeout stays a failure — the report gives it no mark of its own — and a stage cut before its end
+ * wrote no report, so it reads unfinished.
  */
 const fs = require('fs');
 const path = require('path');
@@ -67,6 +84,143 @@ function parseTrx(xml) {
   }
   return entries;
 }
+
+// ── a full run's results ─────────────────────────────────────────────────────────────────────────────
+
+const MESSAGE_CAP = 400;
+const unescapeXml = (s) => String(s)
+  .replace(/&#x([0-9a-f]+);/gi, (m, hex) => String.fromCodePoint(parseInt(hex, 16)))
+  .replace(/&#(\d+);/g, (m, dec) => String.fromCodePoint(Number(dec)))
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+const messageLine = (text) => {
+  const line = String(text || '').split(/\r?\n/).map((l) => l.trim()).find(Boolean) || '';
+  return line.slice(0, MESSAGE_CAP);
+};
+const assemblyOf = (dll) => path.basename(String(dll).replace(/\\/g, '/')).replace(/\.dll$/i, '').toLowerCase();
+
+// Every result of a .trx report, with its outcome and its failure's message, and the run's own time.
+function parseTrxResults(xml) {
+  const text = String(xml);
+  const methods = new Map();
+  for (const m of text.matchAll(/<UnitTest\b([^>]*)>([\s\S]*?)<\/UnitTest>/g)) {
+    const method = String(m[2]).match(/<TestMethod\b([^>]*?)\/?>/);
+    if (method) methods.set(attributes(m[1]).id, attributes(method[1]));
+  }
+  const results = [];
+  for (const m of text.matchAll(/<UnitTestResult\b([^>]*?)(?:\/>|>([\s\S]*?)<\/UnitTestResult>)/g)) {
+    const a = attributes(m[1]);
+    const def = methods.get(a.testId) || {};
+    const message = (String(m[2] || '').match(/<Message>([\s\S]*?)<\/Message>/) || [])[1];
+    results.push({
+      outcome: a.outcome, test: unescapeXml(a.testName || ''), className: def.className || '', method: def.name || '',
+      codeBase: def.codeBase || '', message: message === undefined ? '' : messageLine(unescapeXml(message)),
+    });
+  }
+  const times = attributes((text.match(/<Times\b([^>]*?)\/?>/) || [])[1] || '');
+  const ms = Date.parse(times.finish) - Date.parse(times.start);
+  return { results, ms: Number.isFinite(ms) && ms >= 0 ? ms : 0, assemblies: [...new Set([...methods.values()].map((d) => assemblyOf(d.codeBase || '')).filter(Boolean))] };
+}
+
+// The tests of a blame Sequence file, each with the assembly it ran from and whether it completed.
+function parseSequence(xml) {
+  return [...String(xml).matchAll(/<Test\b([^>]*?)\/?>/g)].map((m) => {
+    const a = attributes(m[1]);
+    return { name: unescapeXml(a.Name || ''), source: a.Source || '', completed: a.Completed !== 'False' };
+  });
+}
+
+// `Ns.Class.Method(args)` → { className: 'Ns.Class', method: 'Method', full: 'Ns.Class.Method' }.
+function splitTestName(name) {
+  const full = String(name).replace(/\(.*$/s, '');
+  const dot = full.lastIndexOf('.');
+  return { className: dot < 0 ? '' : full.slice(0, dot), method: dot < 0 ? full : full.slice(dot + 1), full };
+}
+
+// The words of a stage with where each sits, so one can be replaced in place.
+const stageTokens = (stage) => [...String(stage).matchAll(/"[^"]*"|'[^']*'|\S+/g)]
+  .map((m) => ({ text: m[0], value: m[0].replace(/["']/g, ''), start: m.index, end: m.index + m[0].length }));
+// The first word after a stage's leading assignments: a tool is a stage's own only there, never as a wrapper's argument.
+const afterAssignments = (toks) => {
+  let i = 0;
+  while (i < toks.length && /^[A-Za-z_]\w*=/.test(toks[i].text)) i++;
+  return i;
+};
+const dotnetAt = (toks) => {
+  const i = afterAssignments(toks);
+  return toks[i] && /(^|[\\/])dotnet(\.exe)?$/i.test(toks[i].value) && toks[i + 1] && toks[i + 1].value === 'test' ? i : -1;
+};
+// The `dotnet test` options whose value is the next word.
+const VALUED = new Set(['--filter', '--logger', '-l', '--results-directory', '-r', '--runtime', '-c', '--configuration', '-f',
+  '--framework', '-a', '--arch', '-s', '--settings', '-o', '--output', '-d', '--diag', '--blame-hang-timeout',
+  '--blame-hang-dump-type', '--blame-crash-dump-type', '--collect', '--os', '-v', '--verbosity', '--test-adapter-path', '-e', '--environment']);
+const isSwitch = (v) => v.startsWith('-') || /^\/\w+[:=]/.test(v);
+
+// The options of a `dotnet test` stage, each with its value and the tokens it spans, and its target word.
+function readStage(stage) {
+  const toks = stageTokens(stage);
+  const at = dotnetAt(toks);
+  if (at < 0) return null;
+  const options = [];
+  let target = null;
+  let tail = null;
+  for (let i = at + 2; i < toks.length; i++) {
+    const v = toks[i].value;
+    if (v === '--') { tail = toks[i]; break; }
+    if (isSwitch(v)) {
+      const sep = v.search(/[=:]/);
+      const name = sep > 0 ? v.slice(0, sep) : v;
+      if (sep < 0 && VALUED.has(name) && toks[i + 1]) {
+        options.push({ name, value: toks[i + 1].value, from: toks[i], to: toks[i + 1] });
+        i++;
+      } else options.push({ name, value: sep > 0 ? v.slice(sep + 1) : null, from: toks[i], to: toks[i] });
+    } else if (!target) target = toks[i];
+  }
+  return { toks, at, options, target, tail };
+}
+
+// The `run` word of a `vitest run` stage (directly, or through `npx`), after any leading assignments; -1 otherwise.
+function vitestRunAt(toks) {
+  let i = afterAssignments(toks);
+  if (toks[i] && toks[i].value === 'npx') i++;
+  return toks[i] && /(^|[\\/])vitest(\.cmd)?$/i.test(toks[i].value) && toks[i + 1] && toks[i + 1].value === 'run' ? i + 1 : -1;
+}
+
+// A `vitest run` stage's reporters and output files, each with the tokens it spans: { at, reporters, json, file }.
+function readVitestStage(stage) {
+  const toks = stageTokens(stage);
+  const at = vitestRunAt(toks);
+  if (at < 0) return null;
+  const options = [];
+  for (let i = at + 1; i < toks.length; i++) {
+    const m = toks[i].value.match(/^(--reporter|--outputFile(?:\.json)?)(?:=(.*))?$/);
+    if (!m) continue;
+    if (m[2] !== undefined || !toks[i + 1]) options.push({ name: m[1], value: m[2] || '', from: toks[i], to: toks[i] });
+    else { options.push({ name: m[1], value: toks[i + 1].value, from: toks[i], to: toks[i + 1] }); i++; }
+  }
+  const reporters = options.filter((o) => o.name === '--reporter');
+  const namesJson = reporters.some((o) => o.value === 'json');
+  const json = options.find((o) => o.name === '--outputFile.json') || (namesJson ? options.find((o) => o.name === '--outputFile') : null) || null;
+  return { at: toks[at], reporters, json, drop: [...reporters.filter((o) => o.value === 'json'), ...(json ? [json] : [])] };
+}
+
+const isTrxLogger = (o) => (o.name === '--logger' || o.name === '-l') && /^trx(;|$)/i.test(String(o.value || ''));
+
+// The stage with the spans of `drop` (options) removed.
+function without(stage, drop) {
+  let out = String(stage);
+  for (const o of [...drop].sort((a, b) => b.from.start - a.from.start)) out = out.slice(0, o.from.start).replace(/\s+$/, '') + out.slice(o.to.end);
+  return out;
+}
+
+// A test name inside a vstest filter, its operator characters escaped.
+const escapeFilter = (s) => String(s).replace(/[\\()&|=!~]/g, (c) => `\\${c}`);
+
+const VITEST_REPORT = 'vitest.json';
+const INACTIVITY = /The specified inactivity time of [^\n]*? has elapsed\./g;
+const ABORT_LINE = /The active test run was aborted\. Reason:/g;
+const NO_MATCH = /No test matches the given testcase filter .*? in (.+?\.dll)/g;
+const FAILURE_LINE = /\[FAIL\]|^\s*Failed[\s!]|^\s*Error Message:|Test Run Aborted|test run was aborted|inactivity time of/i;
+const VITEST_FAILURE_LINE = /^\s*FAIL\s|^\s*×\s|Test timed out/;
 
 // ── labels ───────────────────────────────────────────────────────────────────────────────────────────
 
@@ -640,6 +794,211 @@ function create(h) {
     return [...byFile].map(([file, classes]) => ({ file, edit: (text) => retagDotnetSource(text, classes) }));
   }
 
+  // ── a full run ─────────────────────────────────────────────────────────────────────────────────────
+
+  function withRunReport(stage, dir) {
+    const vitest = readVitestStage(stage);
+    if (vitest) {
+      const plain = without(stage, vitest.drop);
+      const shown = vitest.reporters.some((o) => o.value !== 'json') ? '' : ' --reporter=default';
+      const runEnd = stageTokens(plain)[vitestRunAt(stageTokens(plain))].end;
+      return `${plain.slice(0, runEnd)}${shown} --reporter=json --outputFile.json=${h.quote(`${slashes(dir)}/${VITEST_REPORT}`)}${plain.slice(runEnd)}`;
+    }
+    const read = readStage(stage);
+    if (!read) return stage;
+    const plain = without(stage, read.options.filter((o) => isTrxLogger(o) || o.name === '--results-directory'));
+    return h.insertAfter(plain, /dotnet(\.exe)?"?\s+test(?=\s|$)/i, ` --logger trx --results-directory ${h.quote(dir)}`);
+  }
+
+  // The test projects a stage selects, read against the folder it ran in (`cwd`): its project; a solution's
+  // listed projects that are test projects; with no target, the one solution or project in `cwd`. A solution
+  // that cannot be read, or a folder holding no single one, expects every test project under it. `unknown` for
+  // a target of any other kind.
+  function selectedProjects(tree, cwd, read, projects) {
+    const rel = (abs) => slashes(path.relative(tree, abs));
+    const under = (abs) => {
+      const dir = rel(abs);
+      return projects.filter((p) => p.test && (dir === '' || p.file.startsWith(`${dir}/`)));
+    };
+    let target = read.target ? path.resolve(cwd, read.target.value) : cwd;
+    let isDir = false;
+    try { isDir = fs.statSync(target).isDirectory(); } catch { /* a file, or gone */ }
+    if (isDir) {
+      let names = [];
+      try { names = fs.readdirSync(target); } catch { /* unreadable */ }
+      const solutions = names.filter((n) => /\.slnx?$/i.test(n));
+      const csprojs = names.filter((n) => /\.csproj$/i.test(n));
+      if (solutions.length === 1) target = path.join(target, solutions[0]);
+      else if (solutions.length === 0 && csprojs.length === 1) target = path.join(target, csprojs[0]);
+      else return { selected: under(target) };
+    }
+    if (/\.csproj$/i.test(target)) return { selected: projects.filter((p) => p.test && p.file === rel(target)) };
+    if (!/\.slnx?$/i.test(target)) return { selected: [], unknown: true };
+    let text;
+    try { text = fs.readFileSync(target, 'utf8'); } catch { return { selected: under(path.dirname(target)) }; }
+    const listed = /\.slnx$/i.test(target)
+      ? [...text.matchAll(/<Project\b[^>]*\bPath="([^"]+\.csproj)"/gi)]
+      : [...text.matchAll(/^\s*Project\([^)]*\)\s*=\s*"[^"]*"\s*,\s*"([^"]+\.csproj)"/gmi)];
+    const files = new Set(listed.map((m) => rel(path.resolve(path.dirname(target), slashes(m[1])))));
+    return { selected: projects.filter((p) => p.test && files.has(p.file)) };
+  }
+
+  // A vitest stage's results, from its json report under `dir`: each failed assertion a failure of its file.
+  function readVitest({ tree, dir, cwd, stage }) {
+    const own = readVitestStage(stage).json;
+    const report = path.join(dir, VITEST_REPORT);
+    const copies = own && own.value && fs.existsSync(report) ? [{ from: report, to: own.value }] : [];
+    return { ...vitestResults({ tree, dir, cwd }), copies };
+  }
+
+  function vitestResults({ tree, dir, cwd }) {
+    const folder = slashes(path.relative(tree, path.resolve(cwd || tree))) || '.';
+    const project = { project: folder, runner: 'vitest', ms: 0, state: 'unfinished', failed: 0, passed: 0 };
+    let report = null;
+    try { report = JSON.parse(fs.readFileSync(path.join(dir, VITEST_REPORT), 'utf8')); } catch { /* no report: the run never ended */ }
+    const results = report && Array.isArray(report.testResults) ? report.testResults : null;
+    if (!results) return { failed_tests: [], timed_out: [], projects: [project], complete: false, explained: false, stuck: [], copies: [] };
+    const failed = [];
+    let end = 0;
+    let explained = true;
+    for (const file of results) {
+      const target = h.relativeFile(file.name, tree);
+      if (!['passed', 'failed', 'skipped'].includes(file.status)) explained = false;
+      end = Math.max(end, Number(file.endTime) || 0);
+      const before = failed.length;
+      for (const a of Array.isArray(file.assertionResults) ? file.assertionResults : []) {
+        if (a.status === 'passed') { project.passed++; continue; }
+        if (a.status !== 'failed') continue;
+        failed.push({ file: target, line: null, test: a.fullName, target, runner: 'vitest', message: messageLine((a.failureMessages || [])[0]) });
+      }
+      if (file.status === 'failed' && failed.length === before) {
+        failed.push({ file: target, line: null, test: null, target, runner: 'vitest', message: messageLine(file.message) });
+      }
+    }
+    project.failed = failed.length;
+    project.ms = end && Number(report.startTime) ? Math.max(0, end - Number(report.startTime)) : 0;
+    project.state = 'finished';
+    return { failed_tests: failed, timed_out: [], projects: [project], complete: true, explained, stuck: [], copies: [] };
+  }
+
+  // A full-run stage's results, from the .trx and blame Sequence files under `dir`.
+  function readRunResults({ tree, dir, cwd, output = '', stage }) {
+    if (vitestRunAt(stageTokens(stage)) >= 0) return readVitest({ tree, dir, cwd, stage });
+    const read = readStage(stage);
+    if (!read) return null;
+    const text = String(output || '');
+    const projects = readProjects(tree, h.listFiles(tree));
+    const byAssembly = (name) => projects.find((p) => p.test && p.assembly.toLowerCase() === name) || null;
+    const { selected, unknown } = selectedProjects(tree, path.resolve(cwd || tree), read, projects);
+    let explained = !unknown;
+    const cache = new Map();
+    const sources = new Map();
+    const place = (codeBase, name) => {
+      const { className, method } = splitTestName(name);
+      const short = className.split('.').pop();
+      const abs = codeBase ? classFile(tree, codeBase, short, cache) : null;
+      if (!abs) return { file: null, line: null, class: short, method };
+      const file = slashes(path.relative(tree, abs));
+      if (!sources.has(file)) sources.set(file, fs.readFileSync(abs, 'utf8'));
+      return { file, line: dotnetMethodLine(sources.get(file), short, method) || null, class: short, method };
+    };
+    const state = new Map(selected.map((p) => [p.file, { project: p.file, runner: 'vstest', ms: 0, state: 'unfinished', failed: 0, passed: 0, seen: false }]));
+    const entry = (p) => {
+      if (!state.has(p.file)) state.set(p.file, { project: p.file, runner: 'vstest', ms: 0, state: 'unfinished', failed: 0, passed: 0, seen: false });
+      return state.get(p.file);
+    };
+    const failed = [];
+    const timedOut = [];
+    const trxFiles = (() => { try { return h.sourceFiles(dir, '.trx'); } catch { return []; } })();
+    for (const trx of trxFiles) {
+      const run = parseTrxResults(fs.readFileSync(trx, 'utf8'));
+      const owners = run.assemblies.map(byAssembly);
+      if (owners.some((p) => !p)) explained = false;
+      for (const p of owners.filter(Boolean)) { const e = entry(p); e.seen = true; e.ms += run.ms; }
+      for (const r of run.results) {
+        const p = byAssembly(assemblyOf(r.codeBase));
+        const e = p ? entry(p) : null;
+        if (r.outcome === 'Passed') { if (e) e.passed++; continue; }
+        if (r.outcome === 'NotExecuted') continue;
+        if (r.outcome !== 'Failed' && r.outcome !== 'Error') { explained = false; continue; }
+        if (e) e.failed++;
+        else explained = false;
+        const at = place(r.codeBase, r.className && r.method ? `${r.className}.${r.method}` : r.test);
+        failed.push({ file: at.file, line: at.line, test: r.test, class: at.class, method: at.method, project: p ? p.file : null, target: p ? p.file : null, runner: 'vstest', message: r.message });
+      }
+    }
+    for (const m of text.matchAll(NO_MATCH)) {
+      const p = byAssembly(assemblyOf(m[1]));
+      if (p && state.has(p.file)) state.get(p.file).seen = true;
+    }
+    // A blame Sequence file names the project each test ran in; a test it marks not completed was running
+    // when its run ended — stuck where the blame collector's inactivity lines cover every such project, a
+    // crash otherwise.
+    const incomplete = new Map();
+    let sequences = [];
+    try { sequences = h.sourceFiles(dir, '.xml').filter((f) => /^Sequence_.*\.xml$/i.test(path.basename(f))); } catch { /* none */ }
+    for (const file of sequences) {
+      for (const t of parseSequence(fs.readFileSync(file, 'utf8'))) {
+        const p = byAssembly(assemblyOf(t.source));
+        if (!p || !state.has(p.file)) { explained = false; continue; }
+        if (t.completed) continue;
+        if (!incomplete.has(p.file)) incomplete.set(p.file, { p, source: t.source, tests: [] });
+        incomplete.get(p.file).tests.push(t.name);
+      }
+    }
+    const inactivity = [...text.matchAll(INACTIVITY)];
+    const aborts = [...text.matchAll(ABORT_LINE)].length;
+    const hung = incomplete.size > 0 && inactivity.length >= incomplete.size;
+    const stuck = [];
+    for (const { p, source, tests } of incomplete.values()) {
+      if (!hung) { explained = false; continue; }
+      for (const name of tests) {
+        if (name.includes('(')) explained = false;
+        const at = place(source, name);
+        timedOut.push({ file: at.file, line: at.line, test: name, class: at.class, method: at.method, project: p.file, target: p.file, runner: 'vstest', message: messageLine(inactivity[0][0]), cause: 'timeout' });
+      }
+      stuck.push({ project: p.file, path: path.join(tree, p.file), tests });
+    }
+    let complete = !unknown && aborts <= incomplete.size;
+    if (!complete) explained = false;
+    // A confirmed hang can stop a project before it wrote any result; its Sequence file shows it ran.
+    for (const e of state.values()) {
+      if (!e.seen && !(hung && incomplete.has(e.project))) explained = false;
+      e.state = e.seen && !incomplete.has(e.project) ? 'finished' : 'unfinished';
+      if (e.state !== 'finished') complete = false;
+    }
+    const logger = read.options.find(isTrxLogger);
+    const own = read.options.find((o) => o.name === '--results-directory');
+    const copies = logger ? trxFiles.map((from) => ({ from, to: path.join(own && own.value ? own.value : 'TestResults', path.basename(from)) })) : [];
+    return {
+      failed_tests: failed, timed_out: timedOut,
+      projects: [...state.values()].map(({ seen, ...e }) => e).sort((a, b) => (a.project < b.project ? -1 : 1)),
+      complete, explained, stuck, copies,
+    };
+  }
+
+  // The declared stage narrowed to `project` (absolute, or relative to the stage's folder), built no more,
+  // without `tests` — a theory case's whole method, since vstest filters by method — its results under `dir`.
+  function rerunWithout({ stage, project, tests, dir }) {
+    const read = readStage(stage);
+    if (!read) return stage;
+    let out = String(stage);
+    const quoted = h.quote(project);
+    out = read.target ? out.slice(0, read.target.start) + quoted + out.slice(read.target.end) : h.insertAfter(out, /dotnet(\.exe)?"?\s+test(?=\s|$)/i, ` ${quoted}`);
+    out = noBuild(out);
+    const clause = [...new Set((tests || []).map((t) => `FullyQualifiedName!=${escapeFilter(splitTestName(t).full)}`))].join('&');
+    const filter = out.match(FILTER);
+    if (filter) {
+      const expr = filter[2] ?? filter[3] ?? filter[4];
+      const joined = `${h.hasTopLevelOr(expr) ? `(${expr})` : expr}&${clause}`;
+      out = out.slice(0, filter.index) + `--filter${filter[1]}"${joined}"` + out.slice(filter.index + filter[0].length);
+    } else {
+      const tail = out.match(/\s--(\s|$)/);
+      out = tail ? `${out.slice(0, tail.index)} --filter "${clause}"${out.slice(tail.index)}` : `${out.replace(/\s+$/, '')} --filter "${clause}"`;
+    }
+    return withRunReport(out, dir);
+  }
+
   return {
     filesCommand({ files, exclude, cwd = process.cwd(), note, stopSeconds }) {
       const list = Array.isArray(files) ? files : [];
@@ -711,6 +1070,10 @@ function create(h) {
       return times;
     },
     labelSource,
+    withRunReport,
+    readRunResults,
+    rerunWithout,
+    failureLines: (text) => String(text || '').split(/\r?\n/).filter((l) => FAILURE_LINE.test(l) || VITEST_FAILURE_LINE.test(l)),
     timingEntries: ({ dir }) => h.sourceFiles(dir, '.trx').flatMap((f) => parseTrx(fs.readFileSync(f, 'utf8'))),
     reportCount: (dir) => h.sourceFiles(dir, '.trx').length,
     buildKey,

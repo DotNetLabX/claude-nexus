@@ -2,7 +2,7 @@
 
 Only run this workflow if `CaptureCommonAxes.md` resolved to archetype = **Domain**.
 
-A Domain module owns its own aggregates, persistence, and (optionally) its own API layer. It is a mini-service without a process host — the host provides the process, and often the database.
+A Domain module is the business module: it owns its business rules, aggregates and tables, and (optionally) its own API layer. It cannot stand alone — a service or a host runs it and provides the process, and by default the database it keeps its own schema in.
 
 ## Mandatory warning — read to the user before asking questions
 

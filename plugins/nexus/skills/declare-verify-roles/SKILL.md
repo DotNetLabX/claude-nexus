@@ -90,6 +90,11 @@ owner is away.
    the process it started, so call `endLegs` there, never in a process the script starts. A script whose own check
    failed exits without `endLegs`, and `endLegs` states nothing while an `exit` listener is registered,
    since that listener runs after it; every red exit `endLegs` did not end stays a real failure.
+
+   **A full run names its failures itself.** `full` needs no results-file option of its own: the runner
+   asks each test stage for its tool's results file and reads it, and an output the stage already
+   names gets a copy. Keep `--blame-hang-timeout` on its `dotnet test` stage — without it a stuck test
+   is never told apart, and runs to the full-run limit.
 3. **Run each role command once through the runner** — `verify-run.js --role {r}`; for `unit`
    `verify-run.js --role unit --timeout-ms 110000`, since no step limit is set yet and the bare form
    would cut at the 90 s default; and for `full`

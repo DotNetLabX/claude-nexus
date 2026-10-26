@@ -1,6 +1,18 @@
 # nexus-dotnet — Changelog
 
 
+## [2.0.11] — 2026-10-26
+- F292: every full run names each failed test and why, for .NET, vitest, Flutter and Node, even when cut; a .NET or Flutter timeout in a test the change did not touch no longer holds the close
+  - hook behavior/enforcement change
+
+## [2.0.10] — 2026-10-25
+- PATCH bump.
+  - F302-ReusableUnitKinds: the three kinds of reusable unit — a generic module (no business rules), a business module (rules and its own tables, living inside a service or a host) and a service (self-contained, could ship as a product) — told apart by whether the unit could stand alone, not by its endpoints; stated once in `conventions/coding-conventions.md` (§ Kinds of Reusable Unit) and copied into `system-design`, `create-service-claude-md` and `create-module-claude-md`, with pointers from `create-module`, `create-service` and `create-host`.
+  - The data rule, once in `conventions/ef-core.md` (§ Data Ownership) and copied into `system-design` and `persistence-patterns`: every unit owns its tables and migration history; a module defaults to its own schema, a service to its own database, either may take the other; no foreign key, join or shared table crosses units. Replaces "never share a database" and "a service has no schema of its own".
+  - skill change (create-service-claude-md, create-service): a self-running service stays the default; in a repo that already has a host the setup asks whether the service runs on its own or inside a host, and `create-service` builds the library form directly (`workflows/ScaffoldHostedApi.md`, the end state `create-host`'s conversion leaves); a SQL Server or PostgreSQL service may take its own schema in a shared database.
+  - skill change (create-host): a host may run a service another host also runs, each with its own connection strings; its verify no longer fails on a self-running service elsewhere in the repo.
+  - estate raise: 16 nexus-dotnet skill files, +18,049 B in all against 9bfb6c1a (`ScaffoldHostedApi.md` +5,427 B new, `system-design` +2,070 B, `create-service` +1,738 B) — F302.
+
 ## [2.0.9] — 2026-10-23
 - PATCH bump.
   - F47-FlowAtlas: two flow-atlas profiles (need nexus-pro) — `flow-atlas-dotnet` (entry kinds: FastEndpoints, controllers, minimal APIs, MCP tools, hosted services, consumers, handlers, executables; the closed `reg:` binding vocabulary; `tools/extract-dotnet.mjs`) and `flow-atlas-vue` (route → view → store → API module; `tools/extract-vue.mjs` with the client-to-server join). Test code is left out by default. Both need the repo's `features.flowAtlas` switch on.

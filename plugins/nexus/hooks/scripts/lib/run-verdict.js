@@ -7,14 +7,19 @@
  * pipeline-gate.js invariant (4), lib/gear-close.js and the campaign plugin's closing check read it, so
  * the three agree; the campaign loads it from the installed core and keeps its own rule without it.
  *
- * markTouched is what verify-run.js runs before it writes: a timed-out test is touched when its file is in
- * the change or tied to a changed file (lib/tied-tests.js). The change is every file that differs from the
- * merge-base with the repo's default branch — `origin/HEAD`, else `.claude/nexus-agents.json`
- * `defaultBranch` — plus untracked files. Files the tree hash leaves out and prose (`.md`, `.txt`) never
- * make a change untied: prose cannot make a test hang, so a prose-only change touches nothing. Every entry
- * is touched when the base cannot be read, when any other changed file ties to no test or sits outside the
- * tree, or when the runner is not node; an entry with no file is always touched — the safe direction:
- * nothing the change may have caused is passed on.
+ * The runners whose timeouts reach it: node, vstest (.NET), flutter and vitest, each entry naming its own.
+ *
+ * markTouched is what verify-run.js runs before it writes. Each entry is marked by its own `runner`, else the
+ * record's. The change is every file that differs from the merge-base with the repo's default branch —
+ * `origin/HEAD`, else `.claude/nexus-agents.json` `defaultBranch` — plus untracked files. Files the tree
+ * hash leaves out and prose (`.md`, `.txt`) never make a change untied: prose cannot make a test hang, so a
+ * change with no code touches nothing, whatever the runner. Otherwise a node timeout is touched when its file
+ * is in the change or tied to a changed file, a vstest one when its test project is tied to a changed file
+ * (each runner's `tiedSet`, lib/tied-tests.js); every entry of that runner is touched when any changed file
+ * ties to no test or sits outside the tree. A runner with no tie (flutter, vitest) has every entry touched
+ * once the change holds code: a `pubspec.yaml` or a config file can make a test hang. Every entry is touched
+ * when the base cannot be read, and an entry with no runner, or none of the file or project its runner
+ * places it by, always is — the safe direction: nothing the change may have caused is passed on.
  */
 const fs = require('fs');
 const path = require('path');
@@ -77,20 +82,38 @@ function changedFiles(repo) {
   }
 }
 
-// An entry the events could not place in a file is touched: no change can be shown not to reach it.
+// The runners whose tie decides an entry, and the field each places its entry by: the test file, or the
+// .NET test project. Every other runner has no tie and places by the file.
+const TIED_BY = { node: 'file', vstest: 'project' };
+
+// An entry no change can be shown not to reach is touched: one its runner could not place, or one whose
+// runner cannot be told.
 function markTouched({ entries, repo, runner }) {
   if (!Array.isArray(entries)) return entries;
-  const placed = (e) => typeof e.file === 'string' && e.file !== '';
-  const all = (touched) => entries.map((e) => ({ ...e, touched: touched || !placed(e) }));
-  if (runner !== 'node') return all(true);
+  const runnerOf = (e) => (typeof e.runner === 'string' && e.runner ? e.runner : runner || '');
+  const keyOf = (e) => {
+    const value = e[TIED_BY[runnerOf(e)] || 'file'];
+    return typeof value === 'string' && value !== '' ? value.replace(/\\/g, '/') : null;
+  };
   const changed = changedFiles(repo);
-  if (changed === null) return all(true);
-  const code = changed.filter((f) => !isExcluded(f) && !PROSE.test(f));
-  if (code.length === 0) return all(false);
-  const set = tiedSet({ repo, changed: code, runner: 'node' });
-  if (set.fallback) return all(true);
-  const hit = new Set([...set.targets, ...code]);
-  return entries.map((e) => ({ ...e, touched: !placed(e) || hit.has(e.file.replace(/\\/g, '/')) }));
+  const code = changed === null ? [] : changed.filter((f) => !isExcluded(f) && !PROSE.test(f));
+  const ties = new Map();
+  const hits = (name) => {
+    if (!ties.has(name)) {
+      const set = tiedSet({ repo, changed: code, runner: name });
+      ties.set(name, set.fallback ? null : new Set(set.targets));
+    }
+    return ties.get(name);
+  };
+  return entries.map((e) => {
+    const name = runnerOf(e);
+    const key = keyOf(e);
+    if (!name || key === null || changed === null) return { ...e, touched: true };
+    if (code.length === 0) return { ...e, touched: false };
+    if (!TIED_BY[name]) return { ...e, touched: true };
+    const hit = hits(name);
+    return { ...e, touched: hit === null || hit.has(key) };
+  });
 }
 
 module.exports = { countsAsPassing, untouchedTimeouts, markTouched };

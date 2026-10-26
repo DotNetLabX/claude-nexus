@@ -5,12 +5,15 @@ description: Scaffolds an empty module skeleton from its CLAUDE.md. Branches on 
 
 # Create Module
 
-Scaffolds a new module as an empty skeleton. A module is a set of class libraries that host services compose; it
-never runs alone. Two archetypes, recorded in the module's CLAUDE.md:
+Scaffolds a new module as an empty skeleton. A module is a set of class libraries that a service or a host composes;
+it never runs alone. Two archetypes, recorded in the module's CLAUDE.md:
 
-- **Component** — a contracts project plus one or more implementations: a stateless adapter to an outside system.
-- **Domain** — Domain and Persistence (plus an optional Application project and an optional API class library): owns
-  its aggregates and its tables.
+- **Component** — the generic module: a contracts project plus one or more implementations, with no business rules,
+  often a stateless adapter to an outside system.
+- **Domain** — the business module: Domain and Persistence (plus an optional Application project and an optional API
+  class library); owns its business rules, its aggregates and its tables.
+
+Which kind a unit is — and whether it is a service instead: `system-design` § Kinds of Reusable Unit.
 
 Afterwards the developer runs `create-aggregate` (Domain only) and `create-feature`.
 

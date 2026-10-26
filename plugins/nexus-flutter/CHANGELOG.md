@@ -1,6 +1,10 @@
 # Changelog — nexus-flutter
 
 
+## [0.5.8] — 2026-10-26
+- F292: every full run names each failed test and why, for .NET, vitest, Flutter and Node, even when cut; a .NET or Flutter timeout in a test the change did not touch no longer holds the close
+  - hook behavior/enforcement change
+
 ## [0.5.7] — 2026-10-23
 - PATCH bump.
   - F291-DotnetTestSelection: the Flutter test runner moves here (`hooks/scripts/test-runner.js`), with its exclusion reader for the timing pass. Needs nexus 2.4.50.

@@ -1,7 +1,8 @@
 # Scaffold Infrastructure
 
 Wire the service into the repo: the solution file, the Dockerfile, the compose entry. After this step the solution
-compiles and the service can be started.
+compiles and a self-running service can be started. A service a host runs (`**Runs:** host`) gets neither a
+Dockerfile nor a compose entry — the host's image runs it — and starts once `create-host` adds it to its host.
 
 ## Step 1: Add the projects to the solution
 
@@ -15,7 +16,7 @@ dotnet sln src/{SolutionFile} add \
 Add the Application project where one was scaffolded. Use `--solution-folder Services/{Name}` where the solution
 groups services in folders (read `{SolutionFile}` first).
 
-## Step 2: The Dockerfile (Docker on)
+## Step 2: The Dockerfile (Docker on, never for a service a host runs)
 
 `src/Services/{Name}/{Name}.API/Dockerfile`, on the current .NET images:
 
@@ -46,7 +47,7 @@ ENTRYPOINT ["dotnet", "{Name}.API.dll"]
 Copy the project file of every project the service references — its Application project, each shared or contracts
 project — before the restore; a missing one fails the restore inside the container.
 
-## Step 3: The compose entry (Docker on)
+## Step 3: The compose entry (Docker on, never for a service a host runs)
 
 ```yaml
   {name}.api:
@@ -65,7 +66,9 @@ project — before the restore; a missing one fails the restore inside the conta
 ```
 
 `depends_on`: the database container by the database axis; `rabbitmq` with integration events. Reuse the shared
-database container with a database of the service's own; never a new container per service.
+database container with a database of the service's own; never a new container per service. On `Data: schema` the
+connection string names the shared database the `**Database:**` line gives, not a database of the service's own — in
+the compose entry and in the API project's settings alike.
 
 ## Step 4: Final build
 

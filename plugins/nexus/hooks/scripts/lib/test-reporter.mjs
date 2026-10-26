@@ -6,9 +6,20 @@
 // Per event: `kind` (test | suite), `skip`, `todo`, `file`, `line`, `column`, `test` (the name), `ms`,
 // `failureType` (the runner's own — `testTimeoutFailure`, `cancelledByParent`, `testCodeFailure`, … —
 // null on a pass) and `causeCode` (the thrown error's `code`, which carries the child-call preload's
-// ERR_NEXUS_TEST_STOP), and `pid`, this runner process's, which tells apart two legs running at the same
-// time over one file. verify-run.js's readTestEvents is the reader.
+// ERR_NEXUS_TEST_STOP), `message` (the thrown error's message, its first line capped; null on a pass), and
+// `pid`, this runner process's, which tells apart two legs running at the same time over one file.
+// readTestEvents (test-events.js beside this file) is the reader.
 import { appendFileSync } from 'node:fs';
+
+const MESSAGE_CAP = 400;
+
+// The failure's own error, inside the runner's wrapper, as its first non-empty line.
+function messageOf(error) {
+  const cause = error && error.cause;
+  const text = cause && typeof cause === 'object' && cause.message ? cause.message : (error && error.message) || (cause ? String(cause) : '');
+  const line = String(text).split(/\r?\n/).map((l) => l.trim()).find(Boolean) || '';
+  return line.slice(0, MESSAGE_CAP) || null;
+}
 
 function write(line) {
   const file = process.env.NEXUS_TEST_EVENTS;
@@ -33,6 +44,7 @@ export default async function* testReporter(source) {
       ms: details.duration_ms,
       failureType: error ? error.failureType || 'unknown' : null,
       causeCode: error && error.cause && error.cause.code ? String(error.cause.code) : null,
+      message: error ? messageOf(error) : null,
       pid: process.pid,
     });
   }

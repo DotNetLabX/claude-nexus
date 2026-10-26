@@ -6,6 +6,12 @@
  * Slow tests carry `tags: ['slow']` on a `test()`/`testWidgets()` call, or `@Tags(['slow'])` on a whole
  * file, with `slow: {}` declared in the project's dart_test.yaml; `-x slow` leaves them out. A step close is
  * timed from the `--reporter json` stream on stdout. It ties no tests: a step close runs the declared unit.
+ *
+ * A full run reads each `flutter test` (or `dart test`) stage from a json file reporter pointed at the folder the
+ * run gives it: every test that ended other than in success is named — a timeout when its first error says
+ * `TimeoutException`, a failure otherwise, whatever the event's `isFailure` says — and an error loading a suite
+ * is a failure of its file. The stream is complete once it holds its `done` event; a stage cut before that keeps
+ * the failures named so far and reads unfinished.
  */
 const fs = require('fs');
 const path = require('path');
@@ -47,6 +53,66 @@ function parseFlutterJson(text, tree) {
     }
   }
   return entries;
+}
+
+const MESSAGE_CAP = 400;
+const RUN_REPORT = 'flutter.json';
+const messageLine = (text) => (String(text || '').split(/\r?\n/).map((l) => l.trim()).find(Boolean) || '').slice(0, MESSAGE_CAP);
+
+// A full run's `--file-reporter json:` stream: every test that ended other than in success — a timeout when
+// its error says so, a failure otherwise — its passes counted, and whether the stream reached its end.
+function parseFlutterResults(text, tree) {
+  const tests = new Map();
+  const suites = new Map();
+  const errors = new Map();
+  const failed = [];
+  const timedOut = [];
+  let passed = 0;
+  let done = null;
+  for (const line of String(text).split(/\r?\n/)) {
+    let event;
+    try { event = JSON.parse(line); } catch { continue; }
+    if (!event || typeof event !== 'object') continue;
+    if (event.type === 'testStart' && event.test) tests.set(event.test.id, event.test);
+    else if (event.type === 'suite' && event.suite) suites.set(event.suite.id, event.suite.path);
+    else if (event.type === 'error' && !errors.has(event.testID)) errors.set(event.testID, String(event.error || ''));
+    else if (event.type === 'done') done = event;
+    else if (event.type === 'testDone' && !event.skipped) {
+      const test = tests.get(event.testID);
+      if (!test) continue;
+      if (event.result === 'success') { if (!event.hidden) passed++; continue; }
+      // A hidden test is the suite's loading: its failure is the file's, with no test of its own.
+      const url = test.root_url || test.url;
+      const suite = suites.get(test.suiteID);
+      const file = url ? relativeFile(fileURLToPath(url), tree) : suite ? relativeFile(suite, tree) : null;
+      const error = errors.get(event.testID) || '';
+      const entry = event.hidden
+        ? { file, line: null, test: null, target: file, runner: 'flutter', message: messageLine(error) }
+        : { file, line: test.root_url ? test.root_line : test.line, test: test.name, target: file, runner: 'flutter', message: messageLine(error) };
+      if (/^TimeoutException\b/.test(error)) timedOut.push({ ...entry, cause: 'timeout' });
+      else failed.push(entry);
+    }
+  }
+  return { failed, timedOut, passed, done };
+}
+
+// A `flutter test` or `dart test` stage: the end of its `test` word and its own json file reporter, with the
+// span it takes and the file it names; null for any other stage.
+function readRunStage(stage) {
+  const s = String(stage);
+  const toks = [...s.matchAll(/"[^"]*"|'[^']*'|\S+/g)].map((m) => ({ value: m[0].replace(/["']/g, ''), start: m.index, end: m.index + m[0].length }));
+  // The tool is the stage's own only as its first word after leading assignments, never a wrapper's argument.
+  let at = 0;
+  while (at < toks.length && /^[A-Za-z_]\w*=/.test(toks[at].value)) at++;
+  if (!(toks[at] && /(^|[\\/])(flutter|dart)(\.bat|\.exe)?$/i.test(toks[at].value) && toks[at + 1] && toks[at + 1].value === 'test')) return null;
+  let own = null;
+  for (let i = at + 2; i < toks.length && !own; i++) {
+    const m = toks[i].value.match(/^--file-reporter(?:=(.*))?$/);
+    if (!m) continue;
+    const value = m[1] !== undefined ? m[1] : (toks[i + 1] || {}).value || '';
+    if (/^json:/.test(value)) own = { file: value.slice(5), start: toks[i].start, end: (m[1] !== undefined ? toks[i] : toks[i + 1]).end };
+  }
+  return { testEnd: toks[at + 1].end, own };
 }
 
 function skipDartString(text, i) {
@@ -359,6 +425,30 @@ function create(h) {
       return edits;
     },
     untagSource: (text) => untagDartSource(text).text,
+    failureLines: (text) => String(text || '').split(/\r?\n/).filter((l) => /\[E\]\s*$/.test(l)),
+    withRunReport(stage, dir) {
+      const read = readRunStage(stage);
+      if (!read) return stage;
+      let s = String(stage);
+      if (read.own) s = s.slice(0, read.own.start).replace(/\s+$/, '') + s.slice(read.own.end);
+      const report = ` --file-reporter json:"${String(dir).replace(/\\/g, '/')}/${RUN_REPORT}"`;
+      return s.slice(0, read.testEnd) + report + s.slice(read.testEnd);
+    },
+    readRunResults({ tree, dir, cwd, stage }) {
+      const read = readRunStage(stage);
+      if (!read) return null;
+      let text = '';
+      try { text = fs.readFileSync(path.join(dir, RUN_REPORT), 'utf8'); } catch { /* no stream: the stage never started its tests */ }
+      const { failed, timedOut, passed, done } = parseFlutterResults(text, tree);
+      const complete = Boolean(done);
+      const project = {
+        project: relativeFile(path.resolve(cwd || tree), tree) || '.', runner: 'flutter', ms: done ? Number(done.time) || 0 : 0,
+        state: complete ? 'finished' : 'unfinished', failed: failed.length, passed,
+      };
+      const report = path.join(dir, RUN_REPORT);
+      const copies = read.own && read.own.file && fs.existsSync(report) ? [{ from: report, to: read.own.file }] : [];
+      return { failed_tests: failed, timed_out: timedOut, projects: [project], complete, explained: complete, stuck: [], copies };
+    },
   };
 }
 

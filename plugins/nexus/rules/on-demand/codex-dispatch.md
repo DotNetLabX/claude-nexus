@@ -299,12 +299,12 @@ review's at its default, the done check's with `--max-seconds 5`, so the review 
 an early window, is seen at the pace it would be seen alone.
 
 **The brief** points Codex at the rules and the evidence; every path is absolute, resolved by the
-dispatcher:
+dispatcher — the feature's spec and rule list through `sdd-read.js` (→ agents-workflow.md § Slug and Path Resolution):
 ```
 Step 1 done check (Codex).
 Read-only run: do not modify any file; this is a check, not a fix.
 Rules: {installed agents/architect.md} § Step 1: Done Check, and the done-check layout in {installed skills/review-format/SKILL.md}.
-Plan: {plan.md}. Implementation record: {implementation.md}. Spec: {spec.md}. Rule list: {spec-rules.md | none}. Questions: {questions.md | none}.
+Plan: {plan.md}. Implementation record: {implementation.md}. Spec: {the resolved spec, and the development spec where one is named}. Rule list: {the resolved rule list | none}. Questions: {questions.md | none}.
 Audit logs, in both homes ({session root}/.claude/audit/ and, in a worktree round, {tree}/.claude/audit/): skill-invocations.log, violations.log, verify-verdict.json, handoff.jsonl.
 Pipeline token at the developer's dispatch: {token}. Session: {session id}. Window from: {ISO time}. Lane: {team | architect-led | light}. Tree: {worktree path | session root}. Check: {k}.
 {light lane, the complete record not yet landed: Suite: running — record pending.}

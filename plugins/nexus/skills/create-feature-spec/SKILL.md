@@ -69,7 +69,7 @@ The `{slug}` is determined by the PO before invoking this skill, following the n
 - Internal feature: `F{N}-{Name}` (e.g., `F5-SprintSummaryCard`)
 - Jira issue: `{KEY}-{2-3-words}` (e.g., `ABC-1240-split-config`)
 - Jira epic: `{KEY}-{2-3-words}` (e.g., `ABC-1234-invoice-export`) — writes `epic.md`, not `spec.md`
-- Bug: `BUG-{N}-{name}` (e.g., `BUG-1-bug-count-zero`) — writes `bug.md`, not `spec.md`
+- Bug: `B{N}-{Name}` (e.g., `B1-BugCountZero`) — writes `bug.md`, not `spec.md`. An older `BUG-{N}-{name}` bug folder stays valid and is never renamed; a new bug takes the number after the highest of either form. A bug's related feature goes in its `bug.md` header (`**Related:**`), never in the folder name.
 - Gap: `GAP-{N}-{name}` (e.g., `GAP-3-sub-team-management-ui`)
 
 For an issue nested under an epic, the path becomes `docs/specs/{epic-slug}/{issue-slug}/definition/spec.md`.

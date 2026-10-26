@@ -21,7 +21,7 @@ After a Ready definition exists — a spec, bug or epic file under `docs/specs/{
 Before writing, ensure you have:
 
 1. **Grep the feature name before authoring** — grep the feature name / slug keywords across `docs/proposals/`, `docs/specs/`, and `docs/backlog.md`. A same-name or same-topic artifact found is **surfaced in the plan's Context**, or a light plan's `Related:` line (→ § Light Plan Format) — stale? superseded? already covering part of the scope? — never silently re-planned. (Measured near-miss: a stale same-name proposal was nearly re-planned.)
-2. **Feature spec** — read `docs/specs/{slug}/definition/spec.md` (or `epic.md` / `bug.md` depending on slug type)
+2. **Feature spec** — read `docs/specs/{slug}/definition/spec.md` (or `epic.md` / `bug.md` depending on slug type); for a feature with an `sdd/` folder, read the SDD spec and any development spec that the core's `sdd-read.js` resolves (`rules/on-demand/agents-workflow.md` § Slug and Path Resolution)
 3. **Architecture doc** — read for system shape and existing decisions
 4. **Skill inventory** — if the architecture doc has a Skill Inventory section, use it; otherwise build one from **the skills surfaced in your context** (plugin skills live in the version-keyed cache — globbing `.claude/skills/` under-reports them) plus the project's own `.claude/skills/`.
 5. **Existing plans** — read `docs/specs/*/delivery/plan.md` for format consistency
@@ -32,7 +32,7 @@ Before writing, ensure you have:
 
 2. **Run the reading protocol.** Grep for prior same-name/same-topic artifacts, then read the feature spec, architecture doc, skill inventory, and existing plans.
 
-3. **Draft the implementation steps.** Each step is one focused task with full file paths.
+3. **Draft the implementation steps.** Each step is one focused task with full file paths. A step that waits on a long machine run carries a `Long runs:` line — what runs and roughly how long (`complete test run, about 7 minutes; each mutation run, 10–40 minutes`) — only where it applies; its `Effort points:` is added at the sweep (→ § Step Effort).
 
 4. **Build the Skill Mapping** — for each step, determine the disposition:
    - **Follow** — a skill covers this pattern. Provide only feature-specific inputs (entity names, file paths, property types). Do NOT restate how the pattern works.
@@ -46,7 +46,7 @@ Before writing, ensure you have:
    **TDD marking (every step, every plan):** alongside the disposition, set the step's `TDD` column — `yes` for testable behavior (domain logic, endpoint request/response, business rules), `no` for pure wiring (DI, config, migrations). This is a *process-skill* mapping, independent of the pattern-skill disposition: a `Skill: None` step can still be `TDD: yes`, and the developer invokes the `tdd` skill on every `yes` step.
 
 5. **Anti-pattern check.** Scan the draft for:
-   - The word "adapted" or "adapt" near a skill reference — violation. Either `Follow` or `Find or build`, never Adapt.
+   - The word "adapted" or "adapt" near a skill reference — violation. Either `Follow` or `Find or build`, never Adapt. A line a mapped skill itself tells the step to carry is not this, whatever its wording — the ban is for a step that softens a skill it was told to follow.
    - A skill dismissed as "too simple" or "not needed for this case" — violation. Skills ensure consistency; complexity is not the criterion.
    - Implementation pattern details restated when a skill exists — over-specification. Delete and reference the skill.
    - A mapped skill whose step text lacks the disposition keyword — violation. Write `Follow {name}` / `Find or build {x}, then follow {name}`, never a bare skill name with a parenthetical scope. The keyword is the developer's binding invocation trigger (measured failure: a plan dropped it and 9 mapped steps shipped with zero invocations). Under `**Skills per step:** on` a list takes one keyword: one disposition keyword binds every skill in its list, so `Follow a, b` — or one disposition each where they differ — is the sanctioned form, never this violation.
@@ -74,7 +74,7 @@ Before writing, ensure you have:
    one-line `Satisfies:` annotation citing the acceptance criterion it delivers (`Satisfies: AC-3`), or
    — for an ad-hoc pass with no spec ACs — the **ADR unit** it satisfies (`Satisfies: ADR-26
    RESEARCH-stage`), or — when the slug has a rule list — a **`{ruleName}`** referent that resolves to a
-   row in `docs/specs/{slug}/definition/spec-rules.md` (`Satisfies: credit-limit-boundary-inclusive`). This is the
+   row in `docs/specs/{slug}/definition/spec-rules.md`, or the `specRules` path `sdd-read.js` prints (`Satisfies: credit-limit-boundary-inclusive`). This is the
    lightweight SDD requirement→task link (the research's chosen weight, a one-line annotation, not a full
    requirement-ID chain), and it is the defense against intent drift (code that runs but does the wrong
    thing). For acceptance criteria and ADR units it is **additive and optional** — a step may
@@ -101,7 +101,7 @@ Pass the feature name: `create-implementation-plan Sprint`
 ## Required Reading
 
 Before invoking this skill, ensure you have read:
-- `docs/specs/{slug}/definition/spec.md` — feature requirements to plan against
+- `docs/specs/{slug}/definition/spec.md` — feature requirements to plan against (for a feature with an `sdd/` folder, the specs `sdd-read.js` resolves — reading protocol item 2)
 - `docs/architecture/index.md` — system shape and existing decisions (read it if present — nothing is auto-loaded)
 - The skill inventory (context-surfaced plugin skills + project `.claude/skills/`) — needed for the Skill Mapping table
 - `docs/specs/*/delivery/plan.md` (1-2 recent examples) — format consistency
@@ -129,6 +129,28 @@ Each slice is built by a fresh developer, so the `**Build slices:**` header line
 - **With a `**Developers:**` line:** slices nest inside the declared ranges and never cross one; one developer's range may hold several slices. A plan that declares developers and carries no slice line has one slice per declared developer.
 - **What the plan review checks.** Mechanically: the line holds more than one range; the ranges cover every developer-built step exactly once, in plan order, inside the declared developer ranges; and the line is present where the plan has more than 8 developer-built steps. Checked by judgment, and stated as judgment in the review: each slice is sized for its steps, and no cut splits related steps but a declared developer boundary or a fold's divide (the exception above) — a slice line cut there replaces a split and is no finding.
 
+## Step Effort
+
+The steps are scored in one sweep, at the moment the architect's rules set (→ architect.md § Check Level and Plan Size).
+
+- **The score.** Score every developer-built step for the work one developer spends on it — what it reads, changes,
+  builds and tests, and its likely failures — using only 1, 2, 3, 5, 8, 13 and 21, relative inside the plan. The
+  widening gaps are deliberate: the bigger the step, the less exactly its cost can be known, so pick the nearest
+  value, never one between. A step marked `Owner: close` or `Owner: operator` is not scored. The score is written on
+  the step as `Effort points: {n}` — the light step line's last field, or a bullet of the full step. It carries over
+  when a light plan is expanded to the full format.
+- **The split.** At the same sweep, a step scored 21 that touches over about 100 files is split by area — counting
+  every file it creates, changes, moves or deletes, its tests and documents included, a folder or glob counted as the
+  files it holds today. Each half changes its own part and ends on a green build with its own acceptance; a step with
+  no green midpoint stays whole. Each half is scored.
+- **Reconciling a split.** A split gives each half its own Accept and Files fields, its risk re-rated (a risk field
+  only on a risky half, as the light step line says), its Skill Mapping row or step line and its where-to-look entry,
+  and is reconciled as a cut is — renumber, re-point every step reference (Decisions and Cut candidates rows,
+  Must-NOT-Change rows, `Satisfies:` cites), recount the Size line and any `Build slices` and `Developers` ranges.
+  Where the split takes the developer-built steps past 8, the plan carries a `**Build slices:**` line by § Build
+  Slices.
+- **Why.** The team lead reads the scores to decide, at each step hand-back, whether the next step goes to a fresh developer (→ team-lead.md § Message Handoffs (you are the hub)); a split adds a hand-back, never a developer (ADR-117).
+
 ## Light Plan Format
 
 A shorter plan for a plan built at the light check level — a standalone plan, or one a gear builds with lighter checks (→ architect.md § Light Lane (standalone only)); its template is the light block in `references/plan-template.md`. Draft it when you expect the light level or when the owner picked the light plan. Under a gear, draft it when the gear names a light plan. **A light format is valid only under a light level — standalone, or picked by a gear; the full format is valid under either.** A plan made full — by the level pick or the owner — is expanded into the full format before its review starts or continues, or its build starts; a plan lowered to light keeps the format it was written in. A refactoring plan always uses the full format, for its Must-NOT-Change table. A one-sentence fix is solo's, not a light plan.
@@ -137,7 +159,7 @@ A light plan holds:
 - **The header** as in the full format, `**Size:**` and `**Lane:**` included.
 - **A `Related:` line** on every light plan — the same-name or same-topic artifacts the reading protocol's grep found, each with its state, or `none`.
 - **A goal** — on a plan-only definition, 2–4 lines and an out-of-scope line, in place of Context and Scope; a spec'd plan points to its spec instead.
-- **Steps**, each a `### Step N — {outcome}` heading (the step count and the handover recheck read these headings) and one body line: `Accept:` the test file and what it asserts, or an exact grep or command · `Files:` each file the step creates or modifies, in backticks · `Follow {skill}` — under `**Skills per step:** on`, every skill step 4 names, as `Follow {skill}, {skill}` — or `None` · `TDD: yes` where the step is test-first · `Risk: risky — {why}` on a risky step only, a safe step carrying no risk field. Where a rule list is joined, the step's `Satisfies:` rule lines follow its line (step 6's grammar), and the *Not delivered by this feature* list is a header line.
+- **Steps**, each a `### Step N — {outcome}` heading (the step count and the handover recheck read these headings) and one body line: `Accept:` the test file and what it asserts, or an exact grep or command · `Files:` each file the step creates or modifies, in backticks · `Follow {skill}` — under `**Skills per step:** on`, every skill step 4 names, as `Follow {skill}, {skill}` — or `None` · `TDD: yes` where the step is test-first · `Risk: risky — {why}` on a risky step only, a safe step carrying no risk field · `Effort points: {n}`, added at the sweep (→ § Step Effort). Where a rule list is joined, the step's `Satisfies:` rule lines follow its line (step 6's grammar), and the *Not delivered by this feature* list is a header line.
 - **A where-to-look list** — per step, the file and the class, method, document section or configuration key the developer starts from; for a new file, the existing file it follows or `no precedent`; never a line number.
 - **`## Decisions`**, which may read the one-line None sentence — a call that adds behaviour no source asks for still gets its `Adds:` row, and, under a `**Mirrors:**` header line, a call that builds differently from the named pattern its `Departs from` row, as the template's § Decisions says — **`## Decisions and why`**, which may read its own one-line None sentence, and **`## Open Questions`**.
 - **`## Cut candidates`**, only when a part qualifies (→ architect.md § Check Level and Plan Size), laid out as in the full format; a light plan expanded to the full format keeps it.
@@ -193,6 +215,8 @@ Refactoring passes (rename, extract, relocate, delete, type-move) fail in ways f
 - **Type-move / rename passes need an explicit old→new rename table + the wire-stability invariants stated as binding rules.** Give a byte-checkable `OldName → NewName` table so the done-check is a deterministic field-by-field read instead of a judgment call. State what must NOT change as a rule with a diff-based accept: anything that keys a serialized/wire contract (field order, serialized property names, route strings) survives a code-level rename only if the wire-visible parts are untouched — and when a rename DOES change a serialized name, every hand-written consumer of that contract must change in the same plan. Wire-only envelope types stay at the boundary — never mirror them into the domain or list them in the domain rename table.
 
 - **A refactor/regeneration plan states its Must-NOT-change invariants as a table — `invariant | pinned by | disposition` (the plan template owns the shape) — and every row names the mechanical check that pins it:** a test assertion, or the diff-based accept of the bullet above. An unpinnable row is either given a new test by a numbered step or explicitly declared an accepted gap; a prose claim alone is not a safety contract. Measured: a data-wipe ordering invariant had **zero** pins tree-wide — the gated suite's only scenario left the order unobserved, so every suite the plan scheduled would have passed a silent order swap, and only a code-grounded critic pass caught it.
+
+- **A step that moves, creates or deletes files on disk gives the developer searches that also see files not yet committed** — `git grep --untracked …`, `git ls-files --cached --others --exclude-standard …`, or a plain file search — and the plan says never to stage files to make a search see them: staging is a git write the developer seat may not make.
 
 - **Before planning a dependency removal, grep the *dependent* modules' global imports and all property/field/return-type signatures — not just the declared dependency list.** A transitive import or a type used only in a signature breaks the removal even when no direct call exists.
 

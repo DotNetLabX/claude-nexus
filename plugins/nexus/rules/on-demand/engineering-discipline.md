@@ -1,6 +1,6 @@
 # Engineering Discipline
 
-> Read when: planning/writing/reviewing code and a smell, a skill-vs-pattern/adherence call, or a gate/validation contract needs its failure-mode direction, reachability, or diagnosis precedence.
+> Read when: planning, writing or reviewing code meets a smell, a skill-vs-pattern/adherence call, a gate/validation contract, or a design that shares, merges or generalizes code across callers.
 
 Universal coding-quality constraints. Applies to every agent that plans, writes, or reviews code.
 
@@ -42,6 +42,20 @@ direction is in play, pick the loud one.
 2. **No skill, or the skill itself smells** → derive the pattern from the project's **reference implementation** (a project names it in `docs/conventions/` if it has one), then **fix or create the skill** so the next person inherits the right way.
 
 Never invent a pattern when a skill or the project's reference implementation already defines one.
+
+## Share by fit
+
+Share code as far as it naturally divides, and no further.
+
+- **The test.** Name what each caller needs from the shared part. A part that needs a per-caller flag,
+  type switch or mode to serve them is **forced**: keep the separate shapes, and share only what every
+  caller uses the same way.
+- **Look-alikes that change for different reasons stay apart.** Shared structure is not shared meaning;
+  the same rule inside one file is the boy-scout skill's semantic test.
+  (→ boy-scout/SKILL.md § The Semantic Test (critical))
+- **Warn before a forced share.** When the owner or an agent proposes one, say so before going on: what
+  is forced, why it does not fit, and the smaller shape that fits. Never rewrite it silently, and never
+  comply silently.
 
 ## Skill-adherence guards
 

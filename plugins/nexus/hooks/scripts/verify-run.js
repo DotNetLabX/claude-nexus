@@ -20,7 +20,7 @@
  * `speedUpSeconds` (5), are read as `stepLimitSeconds` is; `slow.labelled: true` says the repo's slow
  * tests carry their label, and only then does a fast test run under the fast stop
  * (lib/compose-test-command.js composes the legs; the two legs of a split unit run at the same time, sharing
- * its test concurrency). readTestEvents reads the core reporter's events into the record's `timed_out` and
+ * its test concurrency). readTestEvents (lib/test-events.js) reads the core reporter's events into the record's `timed_out` and
  * `failed_tests`, and each timed-out test is marked `touched` by the change before the record is written
  * (lib/run-verdict.js `markTouched`, where the close rule lives too). A red run reads `tests-timed-out` only
  * when every failure is a timed-out test and every red exit is explained: a leg's by its own events, a
@@ -53,7 +53,8 @@
  * reason in `runner_missing` (a too-old or missing language plugin). An undeclared unit exits 3
  * and writes nothing. A full record carries `file_hashes` (lib/tree-hash.js's per-file form) and `failed`: the test files or projects its output names as
  * failing, `[]` when it passed, `null` when the run was cut or crashed, names a failure it cannot place,
- * was aborted, or ran anything but the test runner invoked directly as its last stage, after setup stages only. A fast record with a slug, written after a full
+ * was aborted, or ran anything but the test runner invoked directly as its last stage, after setup stages only
+ * — where no runner reads the run's own results (A FULL RECORD NAMES ITS FAILURES, below). A fast record with a slug, written after a full
  * record of that slug on the same tree, carries `delta_base` (that record's `ts`) and `delta_hashes`
  * (the files whose content then differed from its `file_hashes`, at their content then) — the content a
  * gear's close repair ran at (lib/gear-close.js).
@@ -72,6 +73,44 @@
  * build that overlapped another, or a start the ledger cannot show ended, voids reuse. A record in the session root's log or the
  * tree's own log of a run the ledger does not hold voids it too, unless that run ended before the last build
  * started.
+ *
+ * A FULL RECORD NAMES ITS FAILURES from each test tool's own results file, read by the stage's runner (the
+ * contract's withRunReport and readRunResults, lib/test-runners.js). Every installed runner that reads them is
+ * offered each stage, and the first that rewrites it for a report owns it. A declared command of stages joined
+ * by `&&` alone is split into groups when every stage before its last test stage is a setup stage or a test
+ * stage a runner owns: one test stage with the setup stages since the previous one, and the stages after the
+ * last test stage as the last group; each folder change and environment assignment before a group is carried in
+ * front of it. Every group runs, a red one included, within the one limit; a cut ends the run and the groups
+ * after it are not run. A readable chain that fails the rule runs as one group, `&&` kept; a command no runner
+ * owns a stage of, or one whose stages cannot be read, runs whole as today, `unsplit` saying why; a command that
+ * is one node stage keeps its legs. Each test stage reports to a folder of its own under
+ * `.claude/audit/test-reports-{run_id}/{group}/{k}`, removed at the end; its runner reads it after the group on
+ * any outcome, and the result is copied to the output the stage named. A .NET project a hang stopped runs once
+ * more without its stuck tests (`rerunWithout`), behind the carried stages, from a folder of its own; the
+ * re-run adds what it names and drops nothing. After every full run stderr carries a short summary of what
+ * it named — each failed or timed-out test with its message, the finished projects with their times, the
+ * unfinished ones and the stages not run — or the one-line reason it named nothing. Every red record's
+ * excerpt keeps, between its head and tail, the lines each installed runner marks as a failure
+ * (`failureLines`), up to a cap and with the count left out; the core keeps no runner's patterns of its own.
+ * A group is accounted for when every stage in it ran, its runner read every selected project or
+ * file whole, and its red, if any, is explained by the failures and timeouts named; a non-test stage that went
+ * red, a stage `&&` skipped, a cut, or a stuck theory case leaves it unaccounted. These fields are written on
+ * full records only:
+ *   `failed_tests`, `timed_out` — complete lists only: written when every group is accounted for, else null;
+ *     never capped. Each entry carries `message` (first line, capped), `runner` and `target`; a .NET entry
+ *     adds `project`, `class` and `method`.
+ *   `failed` — the targets of the real failures and the touched timeouts: `[]` on a pass, and on a red whose
+ *     only failures are untouched timeouts; null on a red run with any group unaccounted.
+ *   `failures_partial` — where the lists are null, the failures named so far, in the same shape; on a run of
+ *     the whole command or of a node stage's legs, only where its events named one. No close rule reads it:
+ *     the printed summary shows it, and the handover ladder re-runs its failures by name.
+ *   `projects` — `{ project, runner, ms, state: finished | unfinished | not-run, failed, passed }`, one per
+ *     .NET test project and one per vitest, Flutter or node stage.
+ *   `stages` — one per group of stages, not per stage: `{ command, kind: test | other, state: passed | failed
+ *     | cut | not-run, ms }`, `command` the group as declared with its carried stages, where the run split the
+ *     declared chain; absent where it ran the command whole, which `unsplit` says why.
+ *   `reruns` — `{ project, without, verdict }`, one per stuck .NET project run again without its stuck tests.
+ *   `events` — the lists are complete, whichever reader made them.
  *
  * EVERY RECORD CARRIES `tree_hash` (lib/tree-hash.js), and a `full` record adds `filtered` (its command
  * carries a filter clause) and `fast_green` (the latest whole fast record's verdict on the same tree at
@@ -144,12 +183,13 @@ const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 const { resolveDeclaredTree } = require('./lib/worktree-target');
 const { filesCommand, isFilteredFull, nodeLegs, shareConcurrency, nodeSupportsSkipPattern, PRELOAD_URL } = require('./lib/compose-test-command');
-const { loadRunner, RUNNERS, stagesOf, isAssignment } = require('./lib/test-runners');
+const { loadRunner, RUNNERS, stagesOf, isAssignment, splitChain, setupStage } = require('./lib/test-runners');
 const { hashTree, buildHash, fileHash, sameTree } = require('./lib/tree-hash');
 const { readBuildEntries, hasBuildLedger, startBuild, endBuild, mayHaveBuilt, lastBuildReusable } = require('./lib/build-ledger');
 const { tiedSet, failedTargets, declaredFor, nodeInvocation, runnerOf } = require('./lib/tied-tests');
 const { deltaSince } = require('./lib/gear-close');
 const { markTouched } = require('./lib/run-verdict');
+const { readTestEvents } = require('./lib/test-events');
 
 // The full run, from the main session where the Bash tool's cap does not apply: a repo whose suite
 // runs longer declares `fullLimitSeconds`, so the cut is never clamped.
@@ -175,6 +215,11 @@ const NODE_TEST_FILE = /\.test\.(mjs|js|cjs)$/;
 const MAX_OUTPUT_BYTES = 32 * 1024 * 1024;
 const EXCERPT_HEAD = 400;
 const EXCERPT_TAIL = 1200;
+const EXCERPT_FAILURE_LINES = 40;
+const EXCERPT_LINE_CHARS = 300;
+// The full run's printed summary: its entries and each one's message, capped; the record keeps every one whole.
+const SUMMARY_ENTRIES = 20;
+const SUMMARY_MESSAGE_CHARS = 200;
 // A process outside the ended tree can still hold the output pipes open; past this the runner closes
 // them itself rather than wait on it.
 const PIPE_GRACE_MS = 2000;
@@ -300,11 +345,32 @@ function runCommand(cmd, cwd, timeoutMs, platform = process.platform) {
   });
 }
 
-function excerpt(text) {
+// The excerpt keeps its head and tail and, from the middle it elides, the lines a runner marks as failures
+// (`pick`, each loaded runner's `failureLines`) — up to a cap, each line cut to a width, the rest counted.
+function excerpt(text, pick = null) {
   const s = String(text || '');
   if (s.length <= EXCERPT_HEAD + EXCERPT_TAIL) return s;
   const dropped = s.length - EXCERPT_HEAD - EXCERPT_TAIL;
-  return `${s.slice(0, EXCERPT_HEAD)}\n… [${dropped} chars elided] …\n${s.slice(-EXCERPT_TAIL)}`;
+  let found = [];
+  if (pick) {
+    try { found = pick(s.slice(EXCERPT_HEAD, s.length - EXCERPT_TAIL)); } catch { /* the head and tail stand alone */ }
+  }
+  const kept = found.slice(0, EXCERPT_FAILURE_LINES).map((l) => (l.length > EXCERPT_LINE_CHARS ? `${l.slice(0, EXCERPT_LINE_CHARS)}…` : l));
+  const more = found.length - kept.length;
+  const failures = kept.length
+    ? `\n… failure lines from the elided middle:\n${kept.join('\n')}${more ? `\n… ${more} more failure lines left out` : ''}`
+    : '';
+  return `${s.slice(0, EXCERPT_HEAD)}\n… [${dropped} chars elided] …${failures}\n${s.slice(-EXCERPT_TAIL)}`;
+}
+
+// The lines of `text`, in order, that any of `runners` marks as a failure (`failureLines`).
+function failureLinesIn(text, runners) {
+  const marked = new Set();
+  for (const r of runners) {
+    if (typeof r.failureLines !== 'function') continue;
+    try { for (const l of r.failureLines(text)) marked.add(l); } catch { /* that runner marks nothing */ }
+  }
+  return marked.size ? String(text).split(/\r?\n/).filter((l) => marked.has(l)) : [];
 }
 
 // The failure classes a reader cannot otherwise diagnose: a timeout often ends with no output at all,
@@ -672,82 +738,6 @@ function testSettings(cfg, note = () => {}) {
   };
 }
 
-const slashed = (p) => String(p).replace(/\\/g, '/');
-
-// The events file the core reporter (lib/test-reporter.mjs) wrote, read into the record's lists. The
-// events are complete when every expected leg reported its end — the legs a wrapper announced plus `legs`,
-// the number this runner ran itself, and a `shell` command among them announced its own; without that both
-// lists are null, never empty. Only tests
-// count: a suite's own failure is judged from its tests. A test is timed out when its failure carries
-// the child-call stop (`child-stopped`), is the runner's timeout (`timeout`) or was cancelled under an
-// ancestor that itself timed out (`cancelled-by-parent`); any other failure is a real one, a cancellation
-// with no timed-out ancestor among them.
-function readTestEvents(text, { legs = 0, shell = false, tree = '' } = {}) {
-  const events = [];
-  for (const line of String(text || '').split('\n')) {
-    try { const e = JSON.parse(line); if (e && typeof e === 'object') events.push(e); } catch { /* a torn or blank line */ }
-  }
-  const announced = events.filter((e) => e.kind === 'legs' && Number.isInteger(e.legs));
-  const expected = announced.reduce((n, e) => n + e.legs, 0) + legs;
-  const ended = events.filter((e) => e.kind === 'run-end').length;
-  // A command run through a shell that announced no legs may have stopped early: its events never count.
-  const complete = expected > 0 && ended >= expected && (!shell || announced.length > 0);
-  const fileOf = (f) => {
-    if (!f) return null;
-    const p = /^file:/.test(f) ? require('url').fileURLToPath(f) : f;
-    return slashed(tree && path.isAbsolute(p) ? path.relative(tree, p) : p);
-  };
-  // A parent reports after its children, so the events still open at a deeper nesting of the same file when
-  // a parent's own event arrives are its descendants. A test cancelled under a parent that failed for a real
-  // reason — a hook that threw — did not time out: the parent's failure is the one counted.
-  // Two legs running at the same time over one file are told apart by their runner's `pid`.
-  const nodes = events.filter((e) => e.kind === 'test' || e.kind === 'suite').map((e) => ({ e, parent: null }));
-  const open = new Map();
-  for (const node of nodes) {
-    const key = `${node.e.pid === undefined ? '' : node.e.pid}|${node.e.file || ''}`;
-    const depth = Number(node.e.nesting) || 0;
-    const pending = open.get(key) || [];
-    open.set(key, pending.filter((child) => {
-      if ((Number(child.e.nesting) || 0) <= depth) return true;
-      if (!child.parent) child.parent = node;
-      return false;
-    }).concat(node));
-  }
-  const NOT_REAL = new Set(['subtestsFailed', 'testTimeoutFailure', 'cancelledByParent']);
-  const realFailure = (e) => Boolean(e.failureType) && !NOT_REAL.has(e.failureType) && e.causeCode !== 'ERR_NEXUS_TEST_STOP';
-  const timedOutItself = (e) => e.failureType === 'testTimeoutFailure' || e.causeCode === 'ERR_NEXUS_TEST_STOP';
-  const above = (node, is) => { for (let p = node.parent; p; p = p.parent) if (is(p.e)) return true; return false; };
-  const underRealFailure = (node) => above(node, realFailure);
-  const timedOut = [];
-  const failed = [];
-  const times = [];
-  for (const node of nodes) {
-    const { e } = node;
-    if (e.skip || e.todo) continue;
-    const at = { file: fileOf(e.file), line: e.line, test: e.test };
-    if (e.kind === 'suite') {
-      if (realFailure(e)) failed.push(at);
-      continue;
-    }
-    if (!e.failureType) {
-      if (typeof e.ms === 'number') times.push({ file: at.file, line: e.line, column: e.column, test: e.test, ms: e.ms });
-      continue;
-    }
-    if (e.failureType === 'subtestsFailed') continue;
-    let cause = null;
-    if (e.causeCode === 'ERR_NEXUS_TEST_STOP') cause = 'child-stopped';
-    else if (e.failureType === 'testTimeoutFailure') cause = 'timeout';
-    else if (e.failureType === 'cancelledByParent') {
-      if (underRealFailure(node)) cause = 'covered';
-      else if (above(node, timedOutItself)) cause = 'cancelled-by-parent';
-    }
-    if (cause === 'covered') continue;
-    if (cause) timedOut.push({ ...at, cause });
-    else failed.push(at);
-  }
-  return { complete, timed_out: complete ? timedOut : null, failed_tests: complete ? failed : null, test_times: times };
-}
-
 // The node options whose value is the next word, so that word is never read as the script.
 const NODE_VALUED = new Set(['-r', '--require', '--import', '--loader', '--experimental-loader', '-C', '--conditions',
   '--env-file', '--input-type', '--title', '-e', '--eval', '-p', '--print']);
@@ -1032,12 +1022,20 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
       endBuild(tree, { id: runId, ts: record.ts, source: 'verify-run', run_id: runId, builds: Array.isArray(record.builds) ? record.builds : null });
     }
     out(JSON.stringify(record) + '\n');
+    if (role === 'full' && record.verdict !== 'undeclared') process.stderr.write(fullSummary(record));
   };
 
   if (!command) {
     write({ verdict: 'undeclared', reason: `no roles.${role} declared in .claude/verify.json` });
     return 0; // visible, never silent — and never a blocker: a repo may legitimately declare no suite
   }
+  // A full run names its failures from each test tool's own results, stage group by stage group; a command it
+  // cannot split runs whole as declared, its record saying why.
+  let runnerSet = null;
+  const installed = () => runnerSet || (runnerSet = fullRunners(root, { ...process.env, ...env }));
+  const pick = (middle) => failureLinesIn(middle, installed().all);
+  const full = role === 'full' && !composed ? fullPlan(command, { ...installed(), tree }) : null;
+  const unsplitField = full && full.unsplit ? { unsplit: full.unsplit } : {};
 
   const stepForm = profile === 'fast' || role === 'unit';
   const timeoutMs = timeoutFor(profile, args['timeout-ms'], {
@@ -1091,6 +1089,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
       try { timedOut = markTouched({ entries: timedOut, repo: tree, runner }); } catch { timedOut = timedOut.map((t) => ({ ...t, touched: true })); }
     }
     const fields = { events: read.complete, timed_out: timedOut, failed_tests: read.failed_tests };
+    if (role === 'full' && Array.isArray(read.failures_partial) && read.failures_partial.length) fields.failures_partial = read.failures_partial;
     if (plan.stop || (read.complete && text.includes('"kind":"legs"'))) fields.stop_ms = { fast: settings.fastMs, slow: settings.slowMs };
     // A step close times its tests: each executed test, those over the speed-up line, and the content hash
     // of every file it timed or timed out — what label-tests.js checks a file against before it labels from
@@ -1128,6 +1127,61 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   const started = Date.now();
   const slowTimer = usual ? setTimeout(() => warnSlow(SLOW_RATIO), Math.ceil(SLOW_RATIO * usual.usual_ms)) : null;
   if (slowTimer) slowTimer.unref();
+  if (full && full.groups) {
+    const reportsRoot = path.join(tree, '.claude', 'audit', `test-reports-${runId}`);
+    const ran = await runFullGroups(full, { tree, run, env: runEnv, timeoutMs, started, reportsRoot });
+    removeQuietly(eventsFile);
+    try { fs.rmSync(reportsRoot, { recursive: true, force: true }); } catch { /* left for the next run's sweep */ }
+    const durationMs = Date.now() - started;
+    const red = ran.reds.length ? (ran.reds.find((r) => r.code || typeof r.status !== 'number') || ran.reds.at(-1)) : null;
+    releaseTurn(!red || red.tree !== false);
+    const reads = ran.groups.flatMap((o) => o.reads);
+    const accounted = ran.groups.every(groupAccounted);
+    const failedTests = reads.flatMap((r) => r.failed_tests);
+    let timedOut = reads.flatMap((r) => r.timed_out);
+    if (accounted && timedOut.length) {
+      try { timedOut = markTouched({ entries: timedOut, repo: tree, runner }); } catch { timedOut = timedOut.map((t) => ({ ...t, touched: true })); }
+    }
+    const targetOf = (t) => t.target || t.file;
+    const named = accounted
+      ? { failed_tests: failedTests, timed_out: timedOut }
+      : { failed_tests: null, timed_out: null, failures_partial: [...failedTests, ...timedOut] };
+    const fields = {
+      command,
+      verdict: red ? 'fail' : 'pass',
+      duration_ms: durationMs,
+      failed: !red ? [] : accounted ? [...new Set([...failedTests, ...timedOut.filter((t) => t.touched !== false)].map(targetOf))] : null,
+      events: accounted,
+      ...named,
+      projects: ran.groups.flatMap((o) => o.reads.flatMap((r) => r.projects.map((p) => (o.state === 'not-run' ? { ...p, state: 'not-run' } : p)))),
+      ...(full.unsplit ? { unsplit: full.unsplit } : {
+        stages: ran.groups.map((o) => ({
+          command: [...o.group.carried, ...o.group.stages].map((s) => s.text).join(' && '),
+          kind: o.group.stages.some((s) => s.owner) ? 'test' : 'other', state: o.state, ms: o.ms,
+        })),
+      }),
+      ...(ran.reruns.length ? { reruns: ran.reruns } : {}),
+    };
+    if (!red) {
+      write(fields);
+      return 0;
+    }
+    const cause = failureCause(red);
+    const endedLine = red.tree === null ? '' : red.tree ? '; process tree ended' : `; process tree NOT ended (pid ${red.pid})`;
+    let raise = '';
+    if (cause === 'ETIMEDOUT') {
+      const given = typeof args['timeout-ms'] === 'string' && Number(args['timeout-ms']) > 0 ? ' (from --timeout-ms)' : '';
+      raise = `the full run was cut at its limit of ${timeoutMs / 1000} s${given} — to give it longer, raise fullLimitSeconds in .claude/verify.json`;
+      process.stderr.write(`verify-run: ${raise}\n`);
+    }
+    const timedOutOnly = accounted && failedTests.length === 0 && timedOut.length > 0;
+    write({
+      ...fields,
+      reason: cause === 'ETIMEDOUT' ? 'timeout' : timedOutOnly ? 'tests-timed-out' : cause,
+      output_excerpt: excerpt(`${ran.outputs.join('')}\n[verify-run] command failed: ${cause}${endedLine}\n${raise ? `[verify-run] ${raise}\n` : ''}`, pick),
+    });
+    return 1;
+  }
   const outputs = [];
   const reds = [];
   const eventsSize = () => { try { return fs.statSync(eventsFile).size; } catch { return 0; } };
@@ -1198,16 +1252,254 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
       // not have to pattern-match an errno to tell them apart.
       reason: cause === 'ETIMEDOUT' ? 'timeout' : timedOutOnly ? 'tests-timed-out' : cause,
       ...(role === 'full' ? { failed: res.code || typeof res.status !== 'number' ? null : failedTargets({ output: captured, repo: tree, command, root }) } : {}),
+      ...unsplitField,
       ...tests,
       ...buildsField(),
-      output_excerpt: excerpt(`${captured}\n[verify-run] command failed: ${cause}${ended}\n${raise ? `[verify-run] ${raise}\n` : ''}`),
+      output_excerpt: excerpt(`${captured}\n[verify-run] command failed: ${cause}${ended}\n${raise ? `[verify-run] ${raise}\n` : ''}`, pick),
     });
     return 1;
   }
   const durationMs = Date.now() - started;
   releaseTurn(true);
-  write({ command, verdict: 'pass', duration_ms: durationMs, ...(role === 'full' ? { failed: [] } : {}), ...testFields(), ...buildsField() });
+  write({ command, verdict: 'pass', duration_ms: durationMs, ...(role === 'full' ? { failed: [] } : {}), ...unsplitField, ...testFields(), ...buildsField() });
   return 0;
+}
+
+// ── a full run, by stage groups ───────────────────────────────────────────────────────────────────────
+
+// The core reporter's file in a node stage's own folder: the one hand-off that is no function (lib/test-runners.js).
+const NODE_EVENTS = 'node-events.jsonl';
+const FOLDER_STAGE = new Set(['cd', 'pushd', 'chdir']);
+// A runner owns a stage when it rewrites the stage for a report; this folder is only offered, never written.
+const PROBE_DIR = path.resolve(path.sep, 'nexus-full-run-probe');
+
+// Every installed runner of the core's table (`all`), those that read a full run's own results — any with
+// `withRunReport` and `readRunResults`, the contract's other two being optional — and each runner's shape.
+function fullRunners(root, env) {
+  const all = [];
+  const readers = [];
+  const shapes = new Map();
+  for (const name of RUNNERS) {
+    const { runner } = loadRunner(name, { root, env });
+    shapes.set(name, runner && runner.commandShape ? runner.commandShape : null);
+    if (!runner) continue;
+    all.push(runner);
+    if (typeof runner.withRunReport === 'function' && typeof runner.readRunResults === 'function') readers.push(runner);
+  }
+  return { all, readers, shapeOf: (name) => shapes.get(name) || null };
+}
+
+const cap = (text, n) => { const s = String(text == null ? '' : text); return s.length > n ? `${s.slice(0, n)}…` : s; };
+
+/**
+ * What a full run named, as the lines printed to stderr after it: the verdict and counts; each failed or
+ * timed-out test with its message (the failures seen so far where the lists are not whole), capped; the
+ * finished projects with their times, the unfinished and the not-run ones, and the stages not run; or, where
+ * nothing was named, why — the command ran whole, the run was cut before any result was written, a stage that
+ * runs no tests went red, or no test results were written.
+ */
+function fullSummary(record) {
+  const whole = Array.isArray(record.failed_tests);
+  const entries = whole
+    ? [...record.failed_tests, ...record.timed_out]
+    : (Array.isArray(record.failures_partial) ? record.failures_partial : []);
+  const head = record.verdict === 'pass' ? 'passed' : `failed (${record.reason})`;
+  const lines = [whole
+    ? `verify-run: full run ${head}: ${record.failed_tests.length} failed, ${record.timed_out.length} timed out`
+    : `verify-run: full run ${head}`];
+  if (!whole && entries.length) lines.push('  named so far (the run did not name every failure):');
+  for (const t of entries.slice(0, SUMMARY_ENTRIES)) {
+    const what = t.cause ? `timed out${t.touched === false ? ', untouched' : ''}` : 'failed';
+    lines.push(`  ${t.target || t.file || '?'} › ${t.test || '(the file)'} — ${cap(t.message || what, SUMMARY_MESSAGE_CHARS)}${t.cause ? ` (${what})` : ''}`);
+  }
+  if (entries.length > SUMMARY_ENTRIES) lines.push(`  … and ${entries.length - SUMMARY_ENTRIES} more — the record lists every one`);
+  const projects = Array.isArray(record.projects) ? record.projects : [];
+  const named = (state, withTime) => projects.filter((p) => p.state === state)
+    .map((p) => (withTime ? `${p.project} (${((p.ms || 0) / 1000).toFixed(1)} s)` : p.project));
+  const finished = named('finished', true);
+  const unfinished = named('unfinished', false);
+  const notRun = named('not-run', false);
+  const stagesNotRun = (record.stages || []).filter((s) => s.state === 'not-run').map((s) => s.command);
+  if (finished.length) lines.push(`  finished: ${finished.join(', ')}`);
+  if (unfinished.length) lines.push(`  unfinished: ${unfinished.join(', ')}`);
+  if (notRun.length) lines.push(`  projects not run: ${notRun.join(', ')}`);
+  if (stagesNotRun.length) lines.push(`  stages not run: ${stagesNotRun.join(' | ')}`);
+  if (record.verdict !== 'pass' && entries.length === 0) {
+    const redOther = (record.stages || []).find((s) => s.kind === 'other' && s.state === 'failed');
+    let why = 'the run went red without naming a failure';
+    if (record.unsplit && !projects.length) why = `the command ran whole — ${record.unsplit}`;
+    else if (record.reason === 'timeout' && !finished.length) why = 'the run was cut before any test result was written';
+    else if (redOther) why = `a stage that runs no tests went red — ${redOther.command}`;
+    else if (unfinished.length) why = `no test results were written for ${unfinished.join(', ')}`;
+    lines.push(`  nothing named: ${why}`);
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+// A setup stage that sets where or how the next stages run, so it is carried in front of every later group.
+function carriedStage(words) {
+  const head = words[0].text.toLowerCase();
+  if (FOLDER_STAGE.has(head)) return true;
+  if (head === 'set' || head === 'export') return true;
+  return words.every(isAssignment);
+}
+
+/**
+ * The groups a full run's declared command splits into — `{ groups }`, each `{ carried, stages }` — or
+ * `{ unsplit }` naming why it runs whole as today, or null for a command that is one node stage, whose legs
+ * already name its failures (the built-in node runner always reads results). A command `stagesOf` reads is split when every
+ * stage before its last test stage is a setup stage or a test stage a runner owns: each group is a test
+ * stage and the setup stages since the previous one, and the stages after the last test stage form the last
+ * group; any other readable chain is one group, `unsplit` saying why. Each stage carries the folder it runs
+ * in (`cwd`, after the folder changes before it) and the carried stages before it (`before`).
+ */
+function fullPlan(command, { readers, shapeOf, tree }) {
+  const words = stagesOf(command);
+  const texts = splitChain(command).map((s) => s.trim());
+  if (!words || texts.length !== words.length) return { unsplit: 'its stages cannot be read apart: only stages of plain words joined by && are split' };
+  const ownerOf = (text) => readers.find((r) => { try { return r.withRunReport(text, PROBE_DIR) !== text; } catch { return false; } }) || null;
+  let cwd = tree;
+  const before = [];
+  const stages = texts.map((text, i) => {
+    const owner = ownerOf(text);
+    const setup = setupStage(words[i], shapeOf);
+    const stage = { text, owner, setup, cwd, before: [...before] };
+    if (setup && carriedStage(words[i])) before.push(stage);
+    if (setup && FOLDER_STAGE.has(words[i][0].text.toLowerCase()) && words[i].length === 2) cwd = path.resolve(cwd, words[i][1].text);
+    return stage;
+  });
+  const last = stages.findLastIndex((s) => s.owner);
+  if (last < 0) return { unsplit: 'no installed test runner owns a stage of it' };
+  if (stages.length === 1 && stages[0].owner.name === 'node') return null;
+  const blocking = stages.slice(0, last).find((s) => !s.owner && !s.setup);
+  if (blocking) return { groups: [{ carried: [], stages }], unsplit: `a stage before its last test stage is neither a setup stage nor a test stage a runner reads (${blocking.text}), so it runs as one chain` };
+  const groups = [];
+  let own = [];
+  for (const [i, s] of stages.entries()) {
+    own.push(s);
+    if (s.owner || i === stages.length - 1) {
+      groups.push({ carried: own[0].before, stages: own });
+      own = [];
+    }
+  }
+  return { groups };
+}
+
+const EMPTY_READ = Object.freeze({ failed_tests: [], timed_out: [], projects: [], complete: false, explained: false, stuck: [], copies: [] });
+
+// One stage's results, from its runner; anything the runner cannot read reads incomplete and unexplained.
+function readStageResults(owner, args) {
+  let read = null;
+  try { read = owner.readRunResults(args); } catch { /* unreadable */ }
+  if (!read || typeof read !== 'object') return { ...EMPTY_READ };
+  const list = (v) => (Array.isArray(v) ? v : []);
+  return {
+    failed_tests: list(read.failed_tests), timed_out: list(read.timed_out), projects: list(read.projects),
+    complete: read.complete === true, explained: read.explained === true, stuck: list(read.stuck), copies: list(read.copies),
+  };
+}
+
+// A stage's results file copied to the exact file its runner names, against the folder the stage ran in; the
+// runner, not the name's extension, says whether the stage named a file or a folder. A failed copy changes nothing.
+function copyResults(copies, cwd) {
+  for (const c of copies) {
+    try {
+      const file = path.resolve(cwd, String(c.to));
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.copyFileSync(c.from, file);
+    } catch { /* the record stands without it */ }
+  }
+}
+
+// A stuck project's re-run adds evidence and drops nothing: its failures join the first run's, its timeouts
+// too, and the project reads as the re-run left it — finished only when the re-run read it whole.
+function mergeRerun(read, again, project) {
+  const key = (t) => `${t.target}|${t.test}`;
+  const seen = new Set(read.failed_tests.map(key));
+  read.failed_tests.push(...again.failed_tests.filter((t) => !seen.has(key(t))));
+  read.timed_out.push(...again.timed_out);
+  const fresh = again.projects.find((p) => p.project === project);
+  read.projects = read.projects.map((p) => (p.project === project && fresh ? { ...fresh, ms: (p.ms || 0) + (fresh.ms || 0) } : p));
+  read.explained = read.explained && again.explained;
+  read.complete = read.complete || (read.explained && read.projects.every((p) => p.state === 'finished'));
+}
+
+/**
+ * Runs a full run's groups one after the other, every group whatever the one before did, all within the
+ * limit: a cut, an overflow, a crash or a signal ends the run and the groups after it are not run. Each test
+ * stage reports to `{reportsRoot}/{group}/{k}`; a group with a node stage hands its reporter that stage's
+ * folder. After a group, on any outcome, each test stage's runner reads its folder and the stage's own
+ * output is copied; each project a .NET hang stopped runs once more without its stuck tests, behind the
+ * carried stages before it, reporting to `{group}/rerun-{n}`. Returns each group's outcome and reads, the
+ * re-runs, the reds and the output.
+ */
+async function runFullGroups(plan, { tree, run, env, timeoutMs, started, reportsRoot }) {
+  const outputs = [];
+  const reds = [];
+  const reruns = [];
+  const groups = [];
+  let halted = false;
+  const left = () => Math.max(1, timeoutMs - (Date.now() - started));
+  const ended = (res) => Boolean(res.code) || typeof res.status !== 'number';
+  for (const [g, group] of plan.groups.entries()) {
+    const dirs = group.stages.map((s, k) => (s.owner ? path.join(reportsRoot, String(g), String(k)) : null));
+    const outcome = { group, state: 'not-run', ms: 0, reads: [] };
+    groups.push(outcome);
+    if (halted) {
+      for (const [k, s] of group.stages.entries()) {
+        if (s.owner) outcome.reads.push(readStageResults(s.owner, { tree, dir: dirs[k], cwd: s.cwd, output: '', stage: s.text }));
+      }
+      continue;
+    }
+    for (const d of dirs) if (d) fs.mkdirSync(d, { recursive: true });
+    const node = group.stages.findIndex((s) => s.owner && s.owner.name === 'node');
+    const groupEnv = node >= 0 ? { ...env, NEXUS_TEST_EVENTS: path.join(dirs[node], NODE_EVENTS) } : env;
+    const shell = [...group.carried.map((s) => s.text), ...group.stages.map((s, k) => (s.owner ? s.owner.withRunReport(s.text, dirs[k]) : s.text))].join(' && ');
+    const t0 = Date.now();
+    const res = await run({ shell, env: groupEnv }, tree, left());
+    outcome.ms = Date.now() - t0;
+    const output = `${res.stdout}${res.stderr}`;
+    outputs.push(output);
+    outcome.state = res.code === 'ETIMEDOUT' ? 'cut' : !res.code && res.status === 0 ? 'passed' : 'failed';
+    if (res.code || res.status !== 0) reds.push(res);
+    if (ended(res)) halted = outcome.ended = true;
+    let n = 0;
+    for (const [k, s] of group.stages.entries()) {
+      if (!s.owner) continue;
+      const read = readStageResults(s.owner, { tree, dir: dirs[k], cwd: s.cwd, output, stage: s.text });
+      copyResults(read.copies, s.cwd);
+      for (const stuck of halted || typeof s.owner.rerunWithout !== 'function' ? [] : read.stuck) {
+        const dir = path.join(reportsRoot, String(g), `rerun-${++n}`);
+        fs.mkdirSync(dir, { recursive: true });
+        let narrowed;
+        try { narrowed = s.owner.rerunWithout({ stage: s.text, project: stuck.path || stuck.project, tests: stuck.tests, dir }); } catch { continue; }
+        const again = await run({ shell: [...s.before.map((c) => c.text), narrowed].join(' && '), env: groupEnv }, tree, left());
+        const out = `${again.stdout}${again.stderr}`;
+        outputs.push(out);
+        mergeRerun(read, readStageResults(s.owner, { tree, dir, cwd: s.cwd, output: out, stage: narrowed }), stuck.project);
+        reruns.push({ project: stuck.project, without: stuck.tests, verdict: again.code === 'ETIMEDOUT' ? 'timeout' : !again.code && again.status === 0 ? 'pass' : 'fail' });
+        if (ended(again)) {
+          reds.push(again);
+          halted = outcome.ended = true;
+          if (again.code === 'ETIMEDOUT') outcome.state = 'cut';
+          break;
+        }
+      }
+      outcome.reads.push(read);
+    }
+  }
+  return { groups, reruns, reds, outputs };
+}
+
+// A group is accounted for when it ran to its end and its runners read every test stage whole, and, where it
+// went red, its last stage is a test stage whose red the named failures and timeouts explain: a non-test
+// stage that went red, a stage `&&` skipped, a cut, an overflow, a crash or a signal leaves it unaccounted.
+function groupAccounted({ group, state, ended, reads }) {
+  if (ended || (state !== 'passed' && state !== 'failed')) return false;
+  if (!reads.every((r) => r.complete)) return false;
+  if (state === 'passed') return true;
+  return Boolean(group.stages.at(-1).owner) && reads.every((r) => r.explained)
+    && reads.some((r) => r.failed_tests.length > 0 || r.timed_out.length > 0);
 }
 
 // How a run's commands are executed. A node run is the composer's legs, as argument lists with no shell:

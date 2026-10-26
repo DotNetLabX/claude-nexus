@@ -20,6 +20,24 @@ This skill is for the **Architect agent only**. It produces `src/Services/{Name}
 
 When a new service has been decided (via `system-design` or direct discussion with the user) and the Architect needs to capture the decisions before handing off to the Developer.
 
+Confirm first that the unit is a service by the kinds below — a unit that could not stand alone is a module, captured by `create-module-claude-md` instead.
+
+<!-- nexus-gen coding-conventions sections="unit-kinds" BEGIN -->
+#### Kinds of Reusable Unit
+
+A unit's kind comes from whether it could stand alone. Neither having endpoints nor being shared by two apps decides it.
+
+| Kind | What it holds | The test |
+|---|---|---|
+| Generic module | a capability usable anywhere, often a contract with swappable implementations | it holds no business rules |
+| Business module | business rules and its own tables, with endpoints or without | it depends on other services, so it lives inside a service or a host and never stands alone |
+| Service | its own data, endpoints, integration events and gRPC calls — everything it needs | it is self-contained, so it could ship as a product of its own |
+
+A service runs on its own by default. In a repo that has a host, a service may instead run inside one host or several
+(`create-host`). In the module skills, the Component archetype is the generic module and the Domain archetype the
+business module; a generic module that keeps its own tables takes the Domain scaffold.
+<!-- nexus-gen coding-conventions END -->
+
 ## Steps
 
 1. **Pre-fill from conversation context.** The Architect has typically been discussing the service before invoking this skill. Pull every answer you can from the existing conversation. Do not re-ask what the user already said.

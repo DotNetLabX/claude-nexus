@@ -85,10 +85,37 @@ If the domain has a state machine:
 When decomposing into services:
 
 ### Bounded Context Rules
-- Each service owns its data — no shared databases
+- Each service and each business module owns its data, by the data rule below
 - Each service defines its own representation of cross-cutting entities
 - Communication: integration events for state propagation, with the data a reader needs replicated locally; gRPC only for write-path hydration or a check that must be live, served by the owner of the data
-- Default to module first; extract to microservice only when deployment/scaling/ownership demands it
+- Each unit's kind — generic module, business module or service — comes from the kinds table below, never from how it is deployed. A service runs on its own by default; in a repo with a host it may instead run inside one, and it is deployed on its own where deployment, scaling or ownership demands it (`create-service-claude-md` asks)
+
+<!-- nexus-gen coding-conventions sections="unit-kinds" BEGIN -->
+#### Kinds of Reusable Unit
+
+A unit's kind comes from whether it could stand alone. Neither having endpoints nor being shared by two apps decides it.
+
+| Kind | What it holds | The test |
+|---|---|---|
+| Generic module | a capability usable anywhere, often a contract with swappable implementations | it holds no business rules |
+| Business module | business rules and its own tables, with endpoints or without | it depends on other services, so it lives inside a service or a host and never stands alone |
+| Service | its own data, endpoints, integration events and gRPC calls — everything it needs | it is self-contained, so it could ship as a product of its own |
+
+A service runs on its own by default. In a repo that has a host, a service may instead run inside one host or several
+(`create-host`). In the module skills, the Component archetype is the generic module and the Domain archetype the
+business module; a generic module that keeps its own tables takes the Domain scaffold.
+<!-- nexus-gen coding-conventions END -->
+
+<!-- nexus-gen ef-core sections="data-ownership" BEGIN -->
+#### Data Ownership
+
+- **Every service and business module owns its own tables and its own migration history.**
+- **A business module defaults to its own schema in the database it shares; a service defaults to its own
+  database.** Either may take the other: a module may keep a database of its own, and a service its own schema in a
+  shared database.
+- **No foreign key, join or shared table ever crosses from one unit's tables to another's.** A unit reaches another
+  unit's data through that unit's contract — a call or an event — never through its tables.
+<!-- nexus-gen ef-core END -->
 
 ### Per-Service Decisions
 For each service, the Architect specifies in the plan:
@@ -139,4 +166,4 @@ After scaffolding, the Developer continues with `create-aggregate` and `create-f
 - If a decision **must rest on the owner's live answer** → gRPC, before the change
 - If the caller **doesn't care** about the response timing → integration event
 - If the data triggers **local state creation** → integration event + consumer + factory method
-- **Never** share a database between services
+- **Never** a foreign key, join or shared table across two units' tables — the data rule in § 3

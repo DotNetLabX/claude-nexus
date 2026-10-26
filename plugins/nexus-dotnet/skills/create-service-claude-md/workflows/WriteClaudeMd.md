@@ -21,6 +21,8 @@ Match the shape of existing service CLAUDE.md files. Check `src/Services/` for e
 **Database:** {persistence details — e.g., "SQL Server ({Name}Db)", "PostgreSQL ({Name}Db)", "Redis ({Name}.OM)", "SQL Server ({Name}Db) + MongoGridFS (files)"}
 **Port:** {http} / {https}
 **Docker:** {Y | N}
+**Runs:** host
+**Data:** {own database | schema {Schema} in a shared database}
 
 ## Purpose
 
@@ -77,6 +79,14 @@ None — new service. Populated as features are added.
 **Published:** {list or "None"}
 **Consumed:** {list or "None"}
 ```
+
+### The run and data lines
+
+- `**Runs:** host` — written only for a service a host runs (axis 5a); that service writes `**Port:** none` and
+  `**Docker:** N`. A self-running service omits the line.
+- `**Data:**` — written for EF Core on SQL Server or PostgreSQL (axis 4a); a SQLite or Redis service omits it.
+- A service CLAUDE.md with neither line reads as today's defaults: the service runs on its own, in a database of its
+  own.
 
 ## Folder structure note (for reference only — skill does NOT scaffold folders)
 

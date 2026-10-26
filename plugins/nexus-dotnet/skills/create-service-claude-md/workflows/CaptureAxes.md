@@ -26,6 +26,15 @@ Choose one or combine:
 - **Redis** — only when the domain is shallow and read-heavy. Max 1-2 services per system.
 - **Combined** — a service may add a file-storage secondary store (e.g., MongoGridFS, Azure Blob). Capture as "primary + secondary".
 
+### 4a. Where its data lives (SQL Server or PostgreSQL only)
+Asked only for EF Core on SQL Server or PostgreSQL. A SQLite service, which has no schemas, keeps its own database,
+and a Redis service is not asked; neither gets a `**Data:**` line. Choose one:
+- **Own database** (default) — a database of the service's own.
+- **Own schema in a shared database** — the schema name defaults to the service name; the service's tables and its
+  migration history table live in that schema, and the `**Database:**` line names the shared database.
+
+Either way no foreign key, join or shared table crosses into another unit's tables.
+
 ### 5. Cross-feature shared state? (Y/N)
 Does the service need a `.Application` project?
 
@@ -38,14 +47,26 @@ Skip `.Application` when the service has none of these — logic lives entirely 
 
 **Important:** this is NOT determined by the endpoint framework. A FastEndpoints service CAN have a `.Application` project if it holds shared state. Do not force-collapse.
 
+### 5a. How it runs (only in a repo with a host)
+Asked only when the repo has a host: a web-SDK project (`Sdk="Microsoft.NET.Sdk.Web"`) that references another
+project's API project — the shape `create-host` builds. With no host, do not ask: the service runs on its own and its
+CLAUDE.md gets no `**Runs:**` line. With a host, choose one:
+- **On its own** — its own process, port and Docker entry.
+- **Run by a host** — a class library a host runs, with no port and no Docker entry of its own.
+
+Recommend from the repo: run by a host where the service is meant for a host the repo has, or two apps share it; on its
+own where the design deploys it alone. Run by a host skips axes 6 and 7.
+
 ### 6. Port assignment
 - Check root CLAUDE.md for the current service index table. Next available index = last assigned + 1.
 - Ports derive from the repo's port convention, as its root CLAUDE.md writes it — for example a prefix, a
   protocol slot and the service index.
+- Not asked for a service a host runs (axis 5a) — its CLAUDE.md writes `**Port:** none`.
 
 ### 7. Uses docker? (Y/N)
 - Y (default) → the scaffold writes the service's `Dockerfile` and adds a service block to the repo's compose file.
 - N → no docker files generated; the CLAUDE.md carries a `**Docker:** N` line, which the scaffold reads.
+- Not asked for a service a host runs (axis 5a) — it is always N.
 
 ### 8. gRPC clients consumed
 - List the interfaces from `{ProjectName}.Grpc.Contracts` that this service will call.

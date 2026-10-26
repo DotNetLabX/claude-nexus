@@ -5,10 +5,16 @@
  * Its slow label is the ` @slow` suffix on a test call's name literal, found at the position a reporter gave
  * (never by searching for a name). The per-test stops and the fast/slow legs a node run splits into are the
  * core's own (../compose-test-command.js `nodeLegs`), not this file's.
+ *
+ * In a full run whose declared command is a chain, a direct `node --test` stage gets the core events reporter
+ * beside its own reporters; the run names the events file in the stage's folder (NEXUS_TEST_EVENTS), and
+ * this runner reads it there as one leg (../test-events.js). A full role that is one `node --test` stage runs
+ * as the core's legs instead.
  */
 const fs = require('fs');
 const path = require('path');
 const { fileURLToPath, pathToFileURL } = require('url');
+const { readTestEvents } = require('../test-events');
 
 const SLOW_SUFFIX = ' @slow';
 const TEST_FILE = /\.test\.(mjs|js|cjs)$/;
@@ -156,6 +162,10 @@ function nodeEdits(keys, tagged, meta, blocks) {
 
 // The spec reporter's `test at {file}:{line}:{col}` and the TAP reporter's `location: '{file}:…'`.
 const FAILURE = /(?:^\s*test at |location:\s*')(.+?):\d+:\d+/gm;
+// A failed test's line in the spec reporter (`✖ name`) and in TAP (`not ok n - name`).
+const FAILURE_LINE = /^\s*(?:✖\s|not ok\b)/;
+// The events file a full-run stage's reporter writes in its folder; the run names it in NEXUS_TEST_EVENTS.
+const RUN_EVENTS = 'node-events.jsonl';
 
 const VALUE = () => true;
 const oneOf = (...allowed) => (v) => allowed.includes(v);
@@ -218,8 +228,42 @@ function create(h) {
     return { targets: sorted, untied, commands: untied.length ? [] : filesCommand({ files: sorted, exclude: false }) };
   }
 
+  // A full-run stage this runner owns: a direct `node … --test` run in its listed shape — a `--test` inside an
+  // option's value, or after a script, is no test run. The core reporter joins the stage's own reporters (or
+  // `spec` on stdout where it names none), each own reporter keeping its destination.
+  function withRunReport(stage) {
+    const s = String(stage);
+    if (!h.invocationsOf(s, 'node', shape).calls || s.includes(REPORTER_URL)) return s;
+    const reporters = (s.match(/(^|\s)--test-reporter(?=[\s=])/g) || []).length;
+    const destinations = (s.match(/(^|\s)--test-reporter-destination(?=[\s=])/g) || []).length;
+    const own = reporters ? Array.from({ length: Math.max(0, reporters - destinations) }, () => ' --test-reporter-destination=stdout').join('') : ' --test-reporter=spec --test-reporter-destination=stdout';
+    const added = `${own} --test-reporter="${REPORTER_URL}" --test-reporter-destination=stderr`;
+    // Node pairs reporters and destinations by their order, so the core's pair goes after the stage's own.
+    const last = [...s.matchAll(/(^|\s)--test-reporter(?:-destination)?(?:=(?:"[^"]*"|\S+)|\s+(?:"[^"]*"|\S+))/g)].at(-1);
+    if (!last) return h.insertAfter(s, /(^|\s)--test(?=\s|$)/, added);
+    const at = last.index + last[0].length;
+    return s.slice(0, at) + added + s.slice(at);
+  }
+
+  // One stage's events, from its own folder: one leg, ended once its reporter wrote `run-end`.
+  function readRunResults({ tree, dir, cwd }) {
+    let text = '';
+    try { text = fs.readFileSync(path.join(dir, RUN_EVENTS), 'utf8'); } catch { /* the stage never reported */ }
+    const read = readTestEvents(text, { legs: 1, tree });
+    const seen = read.complete ? [...read.failed_tests, ...read.timed_out] : read.failures_partial;
+    const failed = seen.filter((t) => !t.cause);
+    const project = {
+      project: slashes(path.relative(tree, path.resolve(cwd || tree))) || '.', runner: 'node', ms: 0,
+      state: read.complete ? 'finished' : 'unfinished', failed: failed.length, passed: read.test_times.length,
+    };
+    return { failed_tests: failed, timed_out: seen.filter((t) => t.cause), projects: [project], complete: read.complete, explained: read.complete, stuck: [], copies: [] };
+  }
+
   return {
     filesCommand,
+    withRunReport,
+    readRunResults,
+    failureLines: (text) => String(text || '').split(/\r?\n/).filter((l) => FAILURE_LINE.test(l)),
     deltaTargets({ files }) {
       return { targets: (Array.isArray(files) ? files : []).map(String).filter((f) => TEST_FILE.test(f)), classes: {} };
     },

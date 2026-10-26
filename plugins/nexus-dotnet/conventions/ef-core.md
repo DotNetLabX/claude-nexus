@@ -31,6 +31,16 @@ context and the table configuration.
 - A query that joins several aggregates goes on the repository that owns the primary data (`OrderRepository` for
   order status history). A read-only query with a home of its own goes in a read store, named `…ReadStore`.
 
+## Data Ownership <!-- id: data-ownership -->
+
+- **Every service and business module owns its own tables and its own migration history.**
+- **A business module defaults to its own schema in the database it shares; a service defaults to its own
+  database.** Either may take the other: a module may keep a database of its own, and a service its own schema in a
+  shared database.
+- **No foreign key, join or shared table ever crosses from one unit's tables to another's.** A unit reaches another
+  unit's data through that unit's contract — a call or an event — never through its tables.
+<!-- id-end -->
+
 ## Migrations
 
 - `dotnet ef migrations add {Name} -p {Svc}.Persistence -s {Svc}.API` (project paths as the repo lays them out); in a service a host
