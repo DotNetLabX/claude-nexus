@@ -37,8 +37,8 @@ carries its own `using` lines (`conventions/csharp.md` § Namespaces and Usings)
 </Project>
 ```
 
-Add, by fit only, the shared project holding the aggregate base where the repo keeps one, and the module's own
-contracts project where the domain uses its types.
+Add, by fit only, the shared project holding the aggregate base where the repo keeps one. A Domain module has no
+contracts project: its callers reference it directly.
 
 ## `{Name}.Persistence.csproj`
 

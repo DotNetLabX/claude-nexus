@@ -1,6 +1,6 @@
 ---
 name: error-handling
-description: One family of errors, the guard helpers and throwing lookups, the validation-message helpers, and the one central error mapper that turns every error into its reply (400, 401, 404, 409, 500, and 499 on a cancelled request). Use when throwing or translating an error, adding an error type and its status, writing a guard or a not-found lookup, or choosing a validation message.
+description: One family of errors, the guard helpers and the not-found guard after a repository read, the validation-message helpers, and the one central error mapper that turns every error into its reply (400, 401, 404, 409, 500, and 499 on a cancelled request). Use when throwing or translating an error, adding an error type and its status, writing a guard or a not-found lookup, or choosing a validation message.
 user-invocable: true
 ---
 
@@ -22,12 +22,14 @@ broken rule throws the domain error, and the mapper chooses the status.
 #### Look First
 
 Before building anything a skill relies on — a guard helper, the central error mapper, a settings binder, an
-aggregate or repository base, a save interceptor, an event publisher — look at what the repo already has: first
-`project-lists.md` § Helpers, then the shared libraries, modules and packages the project can reach (its project
-references and the central package file). Use what you find. Only otherwise build it once, in the shared place: the
-lowest project every user of it already references; in a repo of one project, a `Shared` folder in it; where the
-users share no project, a new shared project each of them references, with no reference cycle. Never a copy beside
-each user. Add its row to `project-lists.md` § Helpers in the same change.
+aggregate or repository base, a table-configuration base, a save interceptor, an event publisher — look at what the
+repo already has: first `project-lists.md` § Helpers, then the shared libraries, modules and packages the project can
+reach (its project references and the central package file). Use what you find. Only otherwise build it once, in the
+shared place: the lowest project every user of it already references; in a repo of one project, a `Shared` folder in
+it; where the users share no project, a new shared project each of them references, with no reference cycle. Never a
+copy beside each user. Add its row to `project-lists.md` § Helpers in the same change. An ordinary class — a table
+configuration, a repository, an endpoint, a consumer — derives from the base the repo's libraries offer for its kind,
+picked by reading that base's members; a skill's sample is the form for a repo with no such library.
 <!-- nexus-gen coding-conventions END -->
 
 ## Prohibitions (load-bearing)
@@ -38,8 +40,11 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
   only place an error becomes a reply.
 - **A `catch` stands only at an I/O boundary, and only to clean up and rethrow:** an outside call, a stream or file,
   a transaction to roll back, a consumer undoing its own work so the bus delivers again. It never swallows and never
-  branches on a domain error. The one other `catch` is a background job's loop, which has no mapper above it: it
-  logs the failed pass and lets the next one run (`add-hosted-service`).
+  branches on a domain error. Two other `catch`es stand. A background job's loop, which has no mapper above it: it
+  logs the failed pass and lets the next one run (`add-hosted-service`). And the repository base's race-safe change
+  (`persistence-patterns` § A row two writers race on): it catches EF Core's concurrency error on the row's own
+  failed save to reload the row and apply the change once more, and on a second clash throws
+  `ConcurrencyConflictException`.
 - **No `Result<T>` or `Either` type for errors.** Errors flow as exceptions.
 
 ## Exception Hierarchy
@@ -51,6 +56,7 @@ One family. Each type lives in the Domain project and carries a message and noth
 | `DomainException` | a business rule is broken — its message written inline where the rule is | 400 |
 | `NotFoundException` | a required lookup finds nothing (through the guard helpers) | 404 |
 | `AlreadyExistsException` | a create would duplicate what exists | 409 |
+| `ConcurrencyConflictException` | a change lost a race with another writer twice (the repository base's race-safe change) | 409 |
 | `UnauthorizedException` | sign-in code rejects a credential or token | 401 |
 | A service's own error | a service-specific rule; derives `DomainException`, carries no extra data | 400 |
 
@@ -60,7 +66,7 @@ fault, in one short sentence and never `NotSupportedException`, and as an argume
 fault in the calling code, not bad input: the mapper answers it 500 with a fixed sentence, in every environment, and
 logs it once with its stack. A message meant for the user is raised as a business error (`DomainException`) instead.
 A service meets a configuration fault through a shared helper that throws it (the settings
-binder's `GetRequiredConnectionString`, the seed-file reader, the cached-table reader); a failure at run time, an
+binder's `GetRequiredConnectionString`, the seed-file reader); a failure at run time, an
 outside system's included, is one of the family's errors.
 
 ```csharp file=DomainException.cs
@@ -79,6 +85,10 @@ public class AlreadyExistsException(string message) : DomainException(message);
 public class UnauthorizedException(string message) : DomainException(message);
 ```
 
+```csharp file=ConcurrencyConflictException.cs
+public class ConcurrencyConflictException(string message) : DomainException(message);
+```
+
 A broken rule's message is written where the rule is: `throw new DomainException("An order ships only once.");`.
 
 **Adding an error type and its status** is two edits in one change: the type, and its arm in the mapper's switch
@@ -87,7 +97,7 @@ below. A type with no arm falls through to 500.
 ## Guard Utilities
 
 The guards throw the family's errors. A value object's factory guards its value; a handler loads through a
-throwing lookup; nothing else checks arguments (a service has no argument-checking preamble).
+repository read plus the not-found guard; nothing else checks arguments (a service has no argument-checking preamble).
 
 ```csharp file=Guard.cs
 using System.Runtime.CompilerServices;
@@ -118,14 +128,11 @@ public static class GuardExtensions
 }
 ```
 
-The throwing lookups (`…OrThrow…`) build on them — one per lookup a feature needs, never an inline check:
-
-- `GetByIdOrThrowAsync(id, ct)` on the repository base (`persistence-patterns`);
-- `GetBy{Key}Async(key, ct)` returning nothing, followed by `.OrThrowNotFound(key)` where that lookup is required;
-- a read store's `…OrThrowAsync` for a read model that must exist.
+A required lookup takes one form: the repository's read, which returns nothing when the row is missing, followed by
+`.OrThrowNotFound(key)` — never an inline check, and no repository read that throws (`persistence-patterns`):
 
 ```csharp
-var order = await _orderRepository.GetByIdOrThrowAsync(command.OrderId, ct);
+var order = (await _orderRepository.GetByIdAsync(command.OrderId, ct)).OrThrowNotFound(command.OrderId);
 var customer = (await _customerRepository.GetByEmailAsync(command.Email, ct)).OrThrowNotFound(command.Email);
 ```
 
@@ -193,6 +200,7 @@ public class GlobalExceptionMiddleware(RequestDelegate _next, ILogger<GlobalExce
             ValidationException => StatusCodes.Status400BadRequest,
             NotFoundException => StatusCodes.Status404NotFound,
             AlreadyExistsException => StatusCodes.Status409Conflict,
+            ConcurrencyConflictException => StatusCodes.Status409Conflict,
             UnauthorizedException => StatusCodes.Status401Unauthorized,
             DomainException => StatusCodes.Status400BadRequest,
             ArgumentException => StatusCodes.Status500InternalServerError,
@@ -232,5 +240,5 @@ errors.
 ## What this skill does NOT do
 
 - **Validation itself** — the validators are `create-feature`'s (`../create-feature/workflows/Validator.md`).
-- **The repository's throwing lookups** — `persistence-patterns` carries the base class.
+- **The repository's reads** — `persistence-patterns` carries the base class.
 - **Request logging** — the request-diagnostics middleware or pipeline behaviour (`add-pipeline-behavior`).

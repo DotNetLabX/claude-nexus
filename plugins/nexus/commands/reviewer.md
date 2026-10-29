@@ -55,10 +55,11 @@ No approval without evidence. Reject immediately if:
 - A passing **baseline** is offered for a **plan-mandated** test the baseline's filter *excludes* (e.g. "309 passing" under `--filter Category!=Integration` when the plan required an `Integration`-tagged test) — the count proves nothing about the excluded test; run it by name
 
 **Cite the run record; run no whole suite.** The brief's `Run record:` line names the round's record: cite it in your Evidence table, and run no whole suite — not the complete run, not the `unit` role, not a whole `node --test` or `dotnet test` run, not the fast profile without `--files` — except where its state says so:
-- **a complete record that counts as passing, for the reviewed tree** (a first review) — a `pass`, or a `fail` whose only failures are timeouts in tests the change did not touch (`touched: false`, the shared rule in `lib/run-verdict.js`) — it is the test evidence; those timeouts go to a solo after the close and are no finding;
-- **a red complete record whose failures then ran green by name** (the handover ladder's end) — cite it with those by-name records; together they are the test evidence;
-- **`undeclared`** (the repo declares no complete suite) — no run would be duplicated, so run the fast profile once (`verify-run.js --profile fast`, the repo's `unit` role) and cite that;
-- **`pending — complete run in flight`** (the light lane) — targeted checks only;
+- **the handover's tied record that counts as passing, for the reviewed tree** (a first review) — the tied tests over every file the feature changed, a `pass`, or a `fail` whose only failures are timeouts in tests the change did not touch (`touched: false`, the shared rule in `lib/run-verdict.js`) — it is the test evidence; the complete run comes once, at the close, and where a complete record that counts as passing already exists for the reviewed tree, cite it too; those timeouts go to a solo after the close and are no finding;
+- **a red handover record whose failures then ran green by name** (the handover ladder's end) — cite it with those by-name records; together they are the test evidence;
+- **a tied record cut at its limit, or `skipped`** (the runner has no step run) — reads **"not verified at the handover — the close's complete run covers it"**: cite it so, never reject on it;
+- **`running`** (a gear that runs the complete suite once beside the reviewers, its record not landed yet) — targeted checks only; cite the record once it lands;
+- **`undeclared`** (the repo declares no `unit` role, so the tied run recorded nothing) — there is no fast run to make: cite it, run a named test file only to prove a finding, and leave the tree to the close's complete run;
 - **no `Run record:` line** (a standalone review, `/nexus:reviewer`) — cite the newest complete record that counts as passing for the reviewed tree where one exists, else run the complete suite once and cite that;
 - **on a follow-up, the producer's fast record** — the fix developer's `## Fix Round` block, the solo's `Verify:` line, or the hand-up developer's `## Fix Round Hand-up {n}` block. A record cut at its limit (an `Unfinished:` line) or missing reads **"not verified at this round — the close run covers it"**: cite it so, never reject on it. A red record is a finding.
 
@@ -182,7 +183,7 @@ Pipeline coordination — always in effect when you operate in the pipeline. (Fo
 
 (*One block bullet is overridden here by role. **Message Size Contract** — your findings, evidence and severity ratings go in the `## Step 2 — Code Review` section of `review.md`, while the verdict handoff itself stays ~300 words: a declared carve-out in `agents-workflow.md` § Message Size Contract.*)
 
-You are Step 2, running beside the architect's Step 1 done check after a handover run that counts as passing, or whose failures then ran green by name. On the light lane (the brief carries `Suite: running — record pending`) the complete run starts beside you and its record may land after you — cite it in your Evidence, or `pending — complete run in flight`, with targeted checks only (→ § Fresh Evidence); read `## Unfinished Tests` in `implementation.md` as not verified at the step — the complete run covers it.
+You are Step 2, running beside the architect's Step 1 done check after a handover run — the tied tests over every file the feature changed — that counts as passing, or whose failures then ran green by name. On the light lane a red handover run may still be with a solo while you read: cite the handover record as it stands, with targeted checks only (→ § Fresh Evidence). Read `## Unfinished Tests` in `implementation.md` as not verified at the step — the close's complete run covers it.
 
 **`## Solo Fixes` in `implementation.md`** is code a solo changed outside the plan's steps: review it as part of the diff, but its files are never a plan-deviation finding; read each block's `Class checked:` and `Left:` lines.
 

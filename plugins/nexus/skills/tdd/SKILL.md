@@ -33,6 +33,8 @@ GOOD: Write 1 test → implement → green → write next test → implement →
 
 ## Workflow
 
+**Who runs what.** A developer runs only its two step runs (`developer.md` § The step test rule): each **Run** below is one of them or nothing, and nothing here adds a run. A solo runs its own calls (`solo.md` § Workflow, step 3).
+
 ### Step 0: Bootstrap (first time only)
 
 If no test project exists, set one up following the project's testing conventions if present (e.g. `docs/conventions/testing.md`) — project structure, frameworks, dependencies. If no testing convention file exists, create a minimal test project using the stack's standard test runner and register it in the build.
@@ -57,7 +59,7 @@ test), `not testable here` (with the reason) or `disputed` (a question to the ar
 
 Write one test using the project's test naming convention (e.g. `docs/conventions/testing.md`). Structure: Arrange (set up inputs), Act (call the unit), Assert (verify ONE behavior).
 
-**Run** `verify-run.js --profile fast` — **one call**, never a build call and then a test call. Confirm it fails for the RIGHT reason (not a compile error, not a wrong assertion — the actual behavior is missing). While you iterate, the test you are writing runs alone as `--profile fast --files {that file}`; the step close is the tied call (`--profile fast --tied --changed {every file the step changed} --slug {slug}`), and its labelling is the developer's agent file's.
+**Run** — one call, never a build call and then a test call (a developer: attempt 1; a solo: its own call). Confirm it fails for the RIGHT reason (not a compile error, not a wrong assertion — the actual behavior is missing).
 
 If it fails for the wrong reason: fix the test setup, not the production code.
 
@@ -65,7 +67,7 @@ If it fails for the wrong reason: fix the test setup, not the production code.
 
 Write the **minimum** code to make the test pass. No more. Hardcoding is acceptable if only one test exists — the next test will force generalization.
 
-**Run** `verify-run.js --profile fast` — one call — green.
+**Run** — one call — green (a developer: attempt 2, over the tests that failed).
 
 ### Step 4: Refactor (only when green)
 
@@ -76,7 +78,7 @@ With all tests passing, improve the code:
 
 **Rules:**
 - Never refactor while red
-- Run `verify-run.js --profile fast` after each refactoring move — one call each time — stay green
+- Stay green: a solo re-runs after each refactoring move, one call each time; a developer's moves run nothing (`developer.md` § The step test rule)
 - Don't anticipate future tests during refactoring
 
 ### Step 5: Next Slice
@@ -96,9 +98,9 @@ pre-implementation red) is what proves the test has teeth.
 
 **The retro-fit mutation loop, per test** (or one tight behavior cluster):
 
-**Every "run" in the loop below is one call of `verify-run.js --profile fast`** — the same rule as the
-main workflow, and it matters more here: this loop runs three times per mutant, once per guard, so a
-build-then-test pair doubles the most call-dense part of the skill.
+**Every "run" in the loop below is one call** — never a build-then-test pair, which would double the
+most call-dense part of the skill (three runs per mutant). A solo makes its own calls; a developer
+runs only its step runs (`developer.md` § The step test rule).
 
 1. Write the test → run → **green** (it passes against the shipped behavior).
 2. Introduce **ONE** temporary mutation into the covered code. Across the whole cluster, however, the
@@ -206,17 +208,11 @@ Before invoking this skill, ensure you have:
 - The plan step's acceptance criteria — what behavior needs to be verified
 - The test project path (check if a test project exists; if not, run Step 0 bootstrap)
 - An existing test file in the same project — for naming conventions and fixture setup patterns
-- **The runner each Run step above calls — `verify-run.js --profile fast`.** It runs the `unit` role a
-  repo declares in `.claude/verify.json` under `roles` (`build` / `unit` / `full` / `mutation`); an
-  implementation subagent is handed the resolved call at spawn, and a standalone session reads the
-  path from its plugin-paths block. `unit` is the **narrowest** command covering the change this step
-  makes — within the repo's step limit (`stepLimitSeconds`, 90 s when unset), never the whole
-  suite — run in a single
-  invocation — where the stack needs a build first, that invocation chains build and test rather than
-  splitting the cycle into two calls. If the repo declares
-  none, use the narrowest command covering the files this step changed, and reach for a separate `build` call
-  only inside a compile-fix loop. Never run the `full` suite from this loop: it belongs to the close
-  gate, in the main session.
+- **The runner each Run step above calls** — `verify-run.js`, in the form your role names: a
+  developer's step run (`developer.md` § The step test rule), a solo's own calls (`solo.md` §
+  Workflow, step 3). An implementation subagent is handed the resolved call at spawn; a standalone
+  session reads the path from its plugin-paths block. Never run the `full` suite from this loop: it
+  belongs to the close gate, in the main session.
 
 ## Anti-patterns
 

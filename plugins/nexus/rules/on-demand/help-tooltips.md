@@ -1,6 +1,6 @@
 # Help Tooltips
 
-> Read when: a slug's `definition/` contains `help.tooltips.md` (architect plans UI steps, developer wires them, reviewer verifies them).
+> Read when: a slug's `definition/` contains `help.tooltips.md`.
 
 If `docs/specs/{slug}/definition/help.tooltips.md` exists, wire the tooltip text to the corresponding UI elements during implementation.
 

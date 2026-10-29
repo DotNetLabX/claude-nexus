@@ -38,6 +38,12 @@
  * `ask me` lets the ask through; so does a learner or solo session, whatever context survives from a
  * paused feature. Any failure reading the state allows the call.
  *
+ * THE QUESTION-STYLE SWITCH: the fourteen checks run only in a repo that sets
+ * `features.nexusQuestionStyle` to the JSON `true` in its `.claude/nexus-agents.json`. Any other
+ * value, or no file, key or readable JSON, means Claude Code's own question style: the checks are
+ * skipped, foreground and background alike, and nothing is logged. The owner-away and gear refusals
+ * run before the switch is read.
+ *
  * REACH: the session's persona, one of the eight KNOWN_ROLES. A persona-less session and a
  * non-Nexus helper spawn (`Explore`, `general-purpose`) are untouched — allowed, unlogged — so the
  * plugin never polices an ordinary session's questions in a consuming repo. The owner-away refusal
@@ -573,6 +579,8 @@ function main(input) {
     if (geared) return deny(geared);
   }
 
+  if (!questionStyleOn(root)) return allow();
+
   const shipped = readAskWords();
   const lists = shipped
     ? { words: shipped.vocabulary, pointers: shipped.pointers, allow: readProjectAllowance(root) }
@@ -611,6 +619,13 @@ function logViolation(root, row) {
   } catch { /* observation must never wedge the call */ }
 }
 
+function questionStyleOn(root) {
+  try {
+    const raw = fs.readFileSync(path.join(root, '.claude', 'nexus-agents.json'), 'utf8');
+    return ((JSON.parse(raw) || {}).features || {}).nexusQuestionStyle === true;
+  } catch { return false; }
+}
+
 function deny(reason) {
   process.stdout.write(JSON.stringify({
     hookSpecificOutput: {
@@ -625,7 +640,7 @@ function deny(reason) {
 function allow() { process.exit(0); }
 
 module.exports = {
-  needsInspection, bareIds, checkQuestion, evaluate,
+  needsInspection, bareIds, checkQuestion, evaluate, questionStyleOn,
   PREFIXED_ID_RE, SLUG_ID_RE, LEDGER_ID_RE, WELL_KNOWN_PREFIXES,
   CHECK_NAMES, CHECK_ORDER, REWORD_TAIL, AWAY_REASON, GEAR_REASON,
 };

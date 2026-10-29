@@ -8,7 +8,8 @@ A handler of the domain event that turns it into the contract and publishes it.
 
 **Reload with what the contract needs.** The domain event's aggregate may not carry its collections loaded, and it
 references other aggregates by id only: load it again with its collections, load what it references, then map by
-hand.
+hand. Both reads are named no-tracking reads on their repositories, since the publisher changes nothing
+(`persistence-patterns` § Tier 3: A repository with its own reads).
 
 ## Mediator Event Bus
 
@@ -23,8 +24,8 @@ public class PublishIntegrationEventOnOrderPlacedHandler(
 {
     public async Task Handle(OrderPlaced domainEvent, CancellationToken ct)
     {
-        var order = await _orderRepository.GetByIdWithLinesOrThrowAsync(domainEvent.Order.Id, ct);
-        var customer = await _customerRepository.GetByIdOrThrowAsync(order.CustomerId, ct);
+        var order = (await _orderRepository.GetByIdNotTrackedAsync(domainEvent.Order.Id, ct)).OrThrowNotFound(domainEvent.Order.Id);
+        var customer = (await _customerRepository.GetByIdNotTrackedAsync(order.CustomerId, ct)).OrThrowNotFound(order.CustomerId);
 
         await _publishEndpoint.Publish(new OrderPlacedEvent(order.ToOrderContract(customer)), ct);
     }

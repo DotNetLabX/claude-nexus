@@ -5,8 +5,8 @@ description: "Declare a repo's verify roles (build / unit / full / mutation comm
 
 # Declare verify roles
 
-The developer closes each step with **one call** of the declared `unit` command, through
-`verify-run.js --profile fast`, and the close gate runs `full` once and keeps a record — but only
+The solo closes each change with **one call** of the declared `unit` command, through
+`verify-run.js --profile fast`, a developer's step runs go through the runner it names, and the close gate runs `full` once and keeps a record — but only
 in a repo that has **declared** those commands. The plugin never guesses them: they are the repo's
 facts. This recipe writes them, once — with the owner, or by the unattended path below when the
 owner is away.
@@ -23,7 +23,7 @@ owner is away.
 
    | role | means | bound |
    |---|---|---|
-   | `build` | an **incremental** build of what changed, used only in a compile-fix loop | never a clean or forced full rebuild — that guarantee belongs to CI and to the close |
+   | `build` | an **incremental** build of what changed, used only in a solo's compile-fix loop | never a clean or forced full rebuild — that guarantee belongs to CI and to the close |
    | `unit` | the **narrowest** command covering the step's change; where the repo's convention chains build and test, chain them here (`… && …`) rather than dropping the build | **the `stepLimitSeconds` you declare** (step 5); never the whole suite, and never the full command minus a filter clause — the slow-test exclusion below is added to a `unit` already scoped this way and never scopes it |
    | `full` | everything, the suite the close gate runs once (it may take minutes) | **once, at close, from the main session** — never in a subagent; within the `fullLimitSeconds` you declare (step 5), 10 minutes when unset |
 
@@ -52,7 +52,7 @@ owner is away.
    - **A `vstest` or `flutter` repo needs its language plugin** (`nexus-dotnet`, `nexus-flutter`): this
      plugin runs node tests itself, and each language plugin carries how its own tests run. Without it
      the composer's `join` and `join-stop` below exit 2 naming the missing plugin, named-files and tied
-     step closes run the declared `unit` whole, and slow tests cannot be timed; `filtered` answers either
+     calls run the declared `unit` whole, a developer's step runs run nothing, and slow tests cannot be timed; `filtered` answers either
      way. Tell the user which plugin to install before composing.
    - `targets` — the paths the `full` command names (a solution or project file, test globs, a test
      directory); `thresholdMs` — 2,000 unless the user picks another.
@@ -134,8 +134,9 @@ owner is away.
    was never timed by reading the declaration alone — running nothing. State that the nudge stops on
    the next session start.
 
-   **The step limit.** Propose a top-level `"stepLimitSeconds"` beside `roles`: the time one step
-   close may take — the fast profile, or `verify-run.js --role unit` — in whole seconds. Unset, it is
+   **The step limit.** Propose a top-level `"stepLimitSeconds"` beside `roles`: the time one fast
+   call by the solo or another non-developer seat may take — the fast profile, or `verify-run.js --role
+   unit` — in whole seconds; a developer's step runs keep their own (`developer.md` § The step test rule). Unset, it is
    90 s; above 110 s the runner clamps it to 110 s, under the Bash tool's 120 s cap; anything but a
    whole number above 0 is ignored, with one stderr line. The architect's light lane runs at
    `min(limit, max(15 s, limit / 2))`, `limit` being the value after the clamp — so a value set under
@@ -147,8 +148,8 @@ owner is away.
    "stepLimitSeconds": 75
    ```
 
-   A step close cut at this limit records `reason: "timeout"`. Where the repo declares `roles.full`,
-   the developer reads that as *not finished* rather than red — the complete run at close covers the
+   A fast call cut at this limit records `reason: "timeout"`. Where the repo declares `roles.full`,
+   the caller reads that as *not finished* rather than red — the complete run at close covers the
    tests that were cut — and without `roles.full` it stays red. Say so when you propose the value.
 
    **The full-run limit.** A full run — `--profile complete`, or `verify-run.js --role full` — is cut
@@ -176,7 +177,7 @@ owner is away.
    test `fastSeconds` — but only once the `slow` object carries `"labelled": true`, written when the
    repo's slow tests carry their label; without it every test gets `slowSeconds`, so an unlabelled
    repo never loses a slow test to the fast stop. `vstest` and `flutter` take `slowSeconds` alone.
-   `speedUpSeconds` is the line over which a developer gets one try to speed a test up before it is
+   `speedUpSeconds` is the line over which the solo gets one try to speed a test up before it is
    kept slow with a reason.
 6. **Do not commit** unless the user asks — the files are theirs; name them in your reply.
    Where the `tag-slow-tests` skill (`nexus-pro`) is in your skill list and `slow` was declared, end
@@ -208,7 +209,7 @@ declares the roles at the campaign's preparation, and the unit reads its worktre
 
 ## Anti-patterns
 
-- **Declaring from memory.** A command that "should work" and does not turns every step close red.
+- **Declaring from memory.** A command that "should work" and does not turns every fast call red.
 - **A `full` role under the quick gate.** The quick gate caps each command at 120 s; a multi-minute
   suite belongs in `roles.full` only.
 - **Silencing instead of declaring.** `"declarationsNudge": false` is for repos that will never run

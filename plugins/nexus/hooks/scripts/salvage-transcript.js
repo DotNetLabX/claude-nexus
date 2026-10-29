@@ -12,8 +12,10 @@
  * (this plugin optimizes feature production AND token consumption).
  *
  * Usage:
- *   node salvage-transcript.js --file <transcript>   # the spawn result's output_file / agent-{id}.jsonl
+ *   node salvage-transcript.js --file <transcript>   # {config dir}/projects/{slug}/{session}/subagents/agent-{id}.jsonl
  *   node salvage-transcript.js <agentId>             # best-effort search of known transcript roots
+ *   ({config dir} is CLAUDE_CONFIG_DIR, else ~/.claude. The spawn result's output_file is usually
+ *   empty — it is a pointer, not the transcript.)
  *   add --final to force the pre-1.5.0 selection (final substantive text, whatever its shape)
  *
  * Output: the stranded DELIVERABLE, verbatim, on stdout. Lifecycle stubs ("Ready when you
@@ -30,7 +32,7 @@
  * 2 usage.
  *
  * The transcript locations are an UNVERSIONED platform surface — both known layouts are
- * searched; pass --file (the path the spawn result prints) when in doubt.
+ * searched; pass --file with the subagents/agent-{id}.jsonl path when in doubt.
  */
 'use strict';
 const fs = require('fs');
@@ -48,48 +50,32 @@ const args = argv.filter((a) => a !== '--final');
 if (args.length === 0) usage();
 
 let file = null;
+let texts;
 if (args[0] === '--file') {
   file = args[1];
   if (!file) usage();
-} else {
-  file = findByAgentId(args[0]);
-  if (!file) {
-    process.stderr.write(`salvage-transcript: no transcript found for agent "${args[0]}" in known roots — pass --file <path> (the spawn result prints it as output_file).\n`);
+  let raw;
+  try {
+    raw = fs.readFileSync(file, 'utf8');
+  } catch {
+    process.stderr.write(`salvage-transcript: transcript not found or unreadable: ${file}\n`);
     process.exit(1);
   }
-}
-
-let raw;
-try {
-  raw = fs.readFileSync(file, 'utf8');
-} catch {
-  process.stderr.write(`salvage-transcript: transcript not found or unreadable: ${file}\n`);
-  process.exit(1);
-}
-
-// Collect every assistant text block, in order. Tolerant of shape drift: accept records where
-// type === 'assistant' OR message.role === 'assistant'; content as array-of-blocks or string.
-const texts = [];
-for (const line of raw.split('\n')) {
-  if (!line.trim()) continue;
-  let rec;
-  try { rec = JSON.parse(line); } catch { continue; }
-  const msg = rec && rec.message;
-  if (!msg) continue;
-  if (rec.type !== 'assistant' && msg.role !== 'assistant') continue;
-  if (typeof msg.content === 'string') {
-    if (msg.content.trim()) texts.push(msg.content);
-    continue;
+  texts = assistantTexts(raw);
+  if (texts.length === 0) {
+    process.stderr.write(`salvage-transcript: no assistant text in ${file}\n`);
+    process.exit(1);
   }
-  if (Array.isArray(msg.content)) {
-    const t = msg.content.filter((b) => b && b.type === 'text' && b.text).map((b) => b.text).join('\n\n');
-    if (t.trim()) texts.push(t);
+} else {
+  const found = findByAgentId(args[0]);
+  if (!found.hit) {
+    const tried = found.empty.length ? ` (found only files with no assistant text: ${found.empty.join(', ')})` : '';
+    process.stderr.write(
+      `salvage-transcript: no transcript with assistant text found for agent "${args[0]}"${tried} — ` +
+      `pass --file ${path.join(found.projectsRoot, '<session>', 'subagents', `agent-${args[0]}.jsonl`)}\n`);
+    process.exit(1);
   }
-}
-
-if (texts.length === 0) {
-  process.stderr.write(`salvage-transcript: no assistant text in ${file}\n`);
-  process.exit(1);
+  ({ file, texts } = found.hit);
 }
 
 // Lifecycle stubs (short single-liners — "Ready when you are.", "Standing by.", ".") are
@@ -127,32 +113,61 @@ if (pick === null) {
 process.stdout.write(pick.trim() + '\n');
 process.exit(0);
 
+// Every assistant text block, in order. Tolerant of shape drift: accept records where
+// type === 'assistant' OR message.role === 'assistant'; content as array-of-blocks or string.
+function assistantTexts(raw) {
+  const out = [];
+  for (const line of raw.split('\n')) {
+    if (!line.trim()) continue;
+    let rec;
+    try { rec = JSON.parse(line); } catch { continue; }
+    const msg = rec && rec.message;
+    if (!msg) continue;
+    if (rec.type !== 'assistant' && msg.role !== 'assistant') continue;
+    if (typeof msg.content === 'string') {
+      if (msg.content.trim()) out.push(msg.content);
+      continue;
+    }
+    if (Array.isArray(msg.content)) {
+      const t = msg.content.filter((b) => b && b.type === 'text' && b.text).map((b) => b.text).join('\n\n');
+      if (t.trim()) out.push(t);
+    }
+  }
+  return out;
+}
+
 // Best-effort agentId search across the layouts observed so far (both verified live):
-//   {tmpdir}/claude/{project-slug}/{run-id}/tasks/{agentId}.output
-//   ~/.claude/projects/{project-slug}/{session-id}/subagents/agent-{agentId}.jsonl
-// Newest match wins. The slug is the absolute project path with separators/colons/dots -> '-'.
+//   {config dir}/projects/{project-slug}/{session-id}/subagents/agent-{agentId}.jsonl  (the transcript)
+//   {CLAUDE_CODE_TMPDIR or tmpdir}/claude/{project-slug}/{run-id}/tasks/{agentId}.output  (a pointer, often empty)
+// {config dir} is CLAUDE_CONFIG_DIR, else ~/.claude. A candidate with no assistant text is skipped;
+// of the rest an agent-{id}.jsonl beats an .output, then the newest wins. The slug is the absolute
+// project path with separators/colons/dots -> '-'.
 function findByAgentId(agentId) {
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const slug = projectDir.replace(/[:\\/.]/g, '-');
-  const roots = [
-    path.join(os.tmpdir(), 'claude', slug),
-    path.join(os.homedir(), '.claude', 'projects', slug),
-  ];
-  const names = [`${agentId}.output`, `agent-${agentId}.jsonl`];
+  const configDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
+  const projectsRoot = path.join(configDir, 'projects', slug);
+  const roots = [projectsRoot, path.join(process.env.CLAUDE_CODE_TMPDIR || os.tmpdir(), 'claude', slug)];
+  const names = [`agent-${agentId}.jsonl`, `${agentId}.output`];
   const hits = [];
+  const empty = [];
   for (const root of roots) {
     let sessions = [];
     try { sessions = fs.readdirSync(root); } catch { continue; }
     for (const session of sessions) {
-      for (const sub of ['tasks', 'subagents', '']) {
+      for (const sub of ['subagents', 'tasks', '']) {
         for (const name of names) {
-          const candidate = path.join(root, session, sub, name);
-          try { hits.push({ candidate, mtime: fs.statSync(candidate).mtimeMs }); } catch { /* miss */ }
+          const file = path.join(root, session, sub, name);
+          let mtime;
+          let raw;
+          try { mtime = fs.statSync(file).mtimeMs; raw = fs.readFileSync(file, 'utf8'); } catch { continue; }
+          const texts = assistantTexts(raw);
+          if (texts.length === 0) { empty.push(file); continue; }
+          hits.push({ file, texts, mtime, transcript: name.endsWith('.jsonl') });
         }
       }
     }
   }
-  if (hits.length === 0) return null;
-  hits.sort((a, b) => b.mtime - a.mtime);
-  return hits[0].candidate;
+  hits.sort((a, b) => (b.transcript - a.transcript) || (b.mtime - a.mtime));
+  return { hit: hits[0] || null, empty, projectsRoot };
 }

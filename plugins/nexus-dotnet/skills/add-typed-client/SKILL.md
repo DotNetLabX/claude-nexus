@@ -22,12 +22,14 @@ service of the repo is `create-grpc-contract`'s, not this skill's.
 #### Look First
 
 Before building anything a skill relies on — a guard helper, the central error mapper, a settings binder, an
-aggregate or repository base, a save interceptor, an event publisher — look at what the repo already has: first
-`project-lists.md` § Helpers, then the shared libraries, modules and packages the project can reach (its project
-references and the central package file). Use what you find. Only otherwise build it once, in the shared place: the
-lowest project every user of it already references; in a repo of one project, a `Shared` folder in it; where the
-users share no project, a new shared project each of them references, with no reference cycle. Never a copy beside
-each user. Add its row to `project-lists.md` § Helpers in the same change.
+aggregate or repository base, a table-configuration base, a save interceptor, an event publisher — look at what the
+repo already has: first `project-lists.md` § Helpers, then the shared libraries, modules and packages the project can
+reach (its project references and the central package file). Use what you find. Only otherwise build it once, in the
+shared place: the lowest project every user of it already references; in a repo of one project, a `Shared` folder in
+it; where the users share no project, a new shared project each of them references, with no reference cycle. Never a
+copy beside each user. Add its row to `project-lists.md` § Helpers in the same change. An ordinary class — a table
+configuration, a repository, an endpoint, a consumer — derives from the base the repo's libraries offer for its kind,
+picked by reading that base's members; a skill's sample is the form for a repo with no such library.
 <!-- nexus-gen coding-conventions END -->
 
 ## Steps
@@ -51,7 +53,7 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
    family's errors, never a framework error type.
 6. **One registration line** — `AddHttpClient<I{System}, {System}Client>` with the base address from the bound
    settings and the retries on the same line. No caller builds an `HttpClient`, an address or a retry of its own.
-7. **Verify** — `dotnet build`; search the service for `new HttpClient(` and for a retry loop around the call — both
+7. **Verify:** `developer.md` § The step test rule; search the service for `new HttpClient(` and for a retry loop around the call — both
    0.
 
 ## Samples

@@ -75,7 +75,7 @@ verify step. Adopting it is optional.
    A relative path resolves against the repo root; an absolute one is used as written. Two limits hold for a root
    outside the repo: finding paths stay relative to the repo root found above the test project, and the shared
    build files above that outside root are not read.
-5. **Run it** — `dotnet test` on the test project — and read the failures (below). Fix the code, add the class to the
+5. **Run it** — verify: `developer.md` § The step test rule — and read the failures (below). Fix the code, add the class to the
    lists file where the rule allows an exception, or switch the check off; a check switched off is a decision the
    repo records in its conventions.
 

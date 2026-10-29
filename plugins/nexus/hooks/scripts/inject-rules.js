@@ -136,13 +136,13 @@ process.stdin.on('end', () => {
   // and team-lead.md + doc-anchoring.md both promise this block carries a resolved path.
   body +=
     `\n\n--- plugin paths (resolved at session start) ---\n` +
-    `Salvage script (recover a stranded subagent deliverable from its transcript):\n` +
+    `Salvage script (stranded subagent reply; <config dir>/projects/…/subagents/agent-<id>.jsonl):\n` +
     `  node "${path.join(pluginRoot, 'hooks', 'scripts', 'salvage-transcript.js')}" --file <transcript-path>\n` +
     `Anchor check (close gate, when docs/conventions/anchored-set.md exists):\n` +
     `  node "${path.join(pluginRoot, 'hooks', 'scripts', 'anchor-check.js')}"\n` +
     `Map drift meter (close gate, when docs/architecture-map/ exists):\n` +
     `  node "${path.join(pluginRoot, 'hooks', 'scripts', 'map-drift.js')}"\n` +
-    `Fast profile (the step close; add --files <test file>… to run only those files):\n` +
+    `Fast profile (solo step close; developer: developer.md § The step test rule):\n` +
     `  node "${path.join(pluginRoot, 'hooks', 'scripts', 'verify-run.js')}" --profile fast\n` +
     `Codex job helper: codex-job.js, beside verify-run.js above\n` +
     `Full suite (close gate, when .claude/verify.json declares roles.full):\n` +

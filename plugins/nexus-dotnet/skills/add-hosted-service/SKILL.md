@@ -20,12 +20,14 @@ loops until the host stops, and a **start-up task** that runs once while the ser
 #### Look First
 
 Before building anything a skill relies on — a guard helper, the central error mapper, a settings binder, an
-aggregate or repository base, a save interceptor, an event publisher — look at what the repo already has: first
-`project-lists.md` § Helpers, then the shared libraries, modules and packages the project can reach (its project
-references and the central package file). Use what you find. Only otherwise build it once, in the shared place: the
-lowest project every user of it already references; in a repo of one project, a `Shared` folder in it; where the
-users share no project, a new shared project each of them references, with no reference cycle. Never a copy beside
-each user. Add its row to `project-lists.md` § Helpers in the same change.
+aggregate or repository base, a table-configuration base, a save interceptor, an event publisher — look at what the
+repo already has: first `project-lists.md` § Helpers, then the shared libraries, modules and packages the project can
+reach (its project references and the central package file). Use what you find. Only otherwise build it once, in the
+shared place: the lowest project every user of it already references; in a repo of one project, a `Shared` folder in
+it; where the users share no project, a new shared project each of them references, with no reference cycle. Never a
+copy beside each user. Add its row to `project-lists.md` § Helpers in the same change. An ordinary class — a table
+configuration, a repository, an endpoint, a consumer — derives from the base the repo's libraries offer for its kind,
+picked by reading that base's members; a skill's sample is the form for a repo with no such library.
 <!-- nexus-gen coding-conventions END -->
 
 ## Registration
@@ -58,10 +60,13 @@ A constructor assigns, or builds in-memory state from its arguments; it does no 
 an application class reads neither the disk nor the environment. Work that must happen at start-up is one of:
 
 - **A line in the start-up file** when the service must not take requests before it is done — an index created, a
-  table seeded (`redis-patterns` creates its indexes this way).
+  table seeded (`redis-patterns` creates its indexes this way). A small table's cache that synchronous code reads is
+  the same case, filled by a warm-up hosted service whose `StartAsync` does the work
+  (`persistence-patterns` § Caching Small Tables).
 - **A start-up task** — a `BackgroundService` whose `ExecuteAsync` runs once, without a loop — when the service
-  may take requests while it runs: a cache warmed, a search index rebuilt. An `IHostedService` whose `StartAsync`
-  awaits the work holds the service back from taking requests just as the start-up line does; it is not this form.
+  may take requests while it runs: a cache no synchronous code waits on, a search index rebuilt. An
+  `IHostedService` whose `StartAsync` awaits the work holds the service back from taking requests just as the
+  start-up line does; it is not this form.
 
 ```csharp file=ProductSearchIndexHostedService.cs
 public class ProductSearchIndexHostedService(
@@ -150,7 +155,7 @@ Logging), recognised by its name (`…HostedService`, `…Worker`, `…Job`) or 
 
 ## Verify
 
-`dotnet build`; then search the service for `Task.Run(` and `_ = ` in front of a call (both 0 outside tests), and for
+Verify: `developer.md` § The step test rule. Then search the service for `Task.Run(` and `_ = ` in front of a call (both 0 outside tests), and for
 file, network or database calls in a constructor (0).
 
 ## What this skill does NOT do

@@ -43,8 +43,9 @@ public class ShipOrderCommandValidator : OrderCommandValidator<ShipOrderCommand>
 
 ## Handler File
 
-The handler loads through the throwing lookup, calls the aggregate's behaviour with the command as its action
-object, saves, and replies. Domain events go out when the data is saved; the handler never publishes them.
+The handler loads through the repository's tracked `GetByIdAsync` plus the not-found guard, calls the aggregate's
+behaviour with the command as its action object, saves, and replies. Domain events go out when the data is saved;
+the handler never publishes them.
 
 ```csharp file=ShipOrderCommandHandler.cs
 public class ShipOrderCommandHandler(OrderRepository _orderRepository)
@@ -52,7 +53,7 @@ public class ShipOrderCommandHandler(OrderRepository _orderRepository)
 {
     public async Task<IdResponse> Handle(ShipOrderCommand command, CancellationToken ct)
     {
-        var order = await _orderRepository.GetByIdOrThrowAsync(command.OrderId, ct);
+        var order = (await _orderRepository.GetByIdAsync(command.OrderId, ct)).OrThrowNotFound(command.OrderId);
 
         order.Ship(command.TrackingNumber, command);
 
@@ -63,7 +64,7 @@ public class ShipOrderCommandHandler(OrderRepository _orderRepository)
 }
 ```
 
-A query handler reads and maps by hand (`Mappings.md`):
+A query handler reads through a named no-tracking read, since it changes nothing, and maps by hand (`Mappings.md`):
 
 ```csharp file=GetOrderQueryHandler.cs
 public class GetOrderQueryHandler(OrderRepository _orderRepository)
@@ -71,7 +72,7 @@ public class GetOrderQueryHandler(OrderRepository _orderRepository)
 {
     public async Task<GetOrderResponse> Handle(GetOrderQuery query, CancellationToken ct)
     {
-        var order = await _orderRepository.GetByIdOrThrowAsync(query.OrderId, ct);
+        var order = (await _orderRepository.GetByIdNotTrackedAsync(query.OrderId, ct)).OrThrowNotFound(query.OrderId);
 
         return order.ToGetOrderResponse();
     }

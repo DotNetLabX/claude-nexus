@@ -15,6 +15,27 @@ about how the code behaves:
 3. **Read the KB entry, digest or registry row afterwards, for the why** — a decision, a ruling, a reason the code
    cannot show. Where a document and the code disagree, the code wins.
 
+## Known sources
+
+A known source is a design, document, picture or knowledge-base page named in the feature's documents, the repo's
+documentation or knowledge base, or by the user in the conversation. Every agent, before it gives an answer, an
+explanation or a decision that rests on a known source, opens that source:
+
+- **Open the copy on disk where there is one, else the original in its tool** — Figma, Google Docs or similar.
+  Before saying a tool is missing, search the tool list you have at that moment: a tool that connected after the
+  session started shows up there. A summary is not the source — a write-up of a design or a screen inventory points
+  to the original and never stands in for it.
+- **Never ask the user which source to use, and show nothing about sources on the screen but in two cases.** A known
+  source cannot be opened: say so in one short sentence, and treat what rests on it as unconfirmed. Two known sources
+  cover the same thing: use the one you judge most important, and show one short warning naming both and the one you
+  used. A spawned agent has no screen, so it puts that sentence or that warning in its hand-back.
+- **Before saying something in the product is a mock or not built, check the repo's knowledge base** for an existing
+  implementation. This sits beside § Reading order, not in place of it: an agent that reads code still searches the
+  code first, and the code wins; the knowledge-base check is the floor every agent meets.
+
+A corpus the repo declares as a knowledge channel keeps the channels plugin's own rules, and a published copy keeps
+§ Repo Grounding Contract, its "may be behind" note included; every other known source follows this section.
+
 ## Business-Rules Registries
 
 For a behavior question about a specific class/unit, after reading the unit's code, read `docs/business-rules/<area>/<unit>.md` for its rules and their reasons — if present it holds the unit's verified rules with per-row provenance (`source: code | spec | both`), status, and criticality (ADR-45). Skip silently when `docs/business-rules/` doesn't exist in the repo.

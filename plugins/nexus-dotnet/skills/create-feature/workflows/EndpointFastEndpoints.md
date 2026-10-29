@@ -34,7 +34,7 @@ public class ShipOrderEndpoint(OrderRepository _orderRepository)
 {
     public override async Task HandleAsync(ShipOrderCommand command, CancellationToken ct)
     {
-        var order = await _orderRepository.GetByIdOrThrowAsync(command.OrderId, ct);
+        var order = (await _orderRepository.GetByIdAsync(command.OrderId, ct)).OrThrowNotFound(command.OrderId);
 
         order.Ship(command.TrackingNumber, command);
 
@@ -49,18 +49,19 @@ The route value `orderId` binds onto `ShipOrderCommand.OrderId`, and the body on
 role check and the resource check — may this caller ship this order — are the attribute's policy, not code here
 (`authorization-patterns` § Phase 2 — Endpoint gate).
 
-A read binds its query-string values onto the query record:
+A read binds its query-string values onto the query record, and calls a named no-tracking read on the repository
+(`persistence-patterns` § Tier 3: A repository with its own reads):
 
 ```csharp file=ListOrdersEndpoint.cs
 [Authorize(Roles = Role.Clerk)]
 [HttpGet("orders")]
 [Tags("Orders")]
-public class ListOrdersEndpoint(OrderReadStore _orderReadStore)
+public class ListOrdersEndpoint(OrderRepository _orderRepository)
     : Endpoint<ListOrdersQuery, ListOrdersResponse>
 {
     public override async Task HandleAsync(ListOrdersQuery query, CancellationToken ct)
     {
-        var (orders, total) = await _orderReadStore.ListAsync(query.Status, query.Page, query.PageSize, ct);
+        var (orders, total) = await _orderRepository.ListAsync(query.Status, query.Page, query.PageSize, ct);
 
         await Send.OkAsync(new ListOrdersResponse(orders.Select(order => order.ToOrderDto()).ToList(), total), ct);
     }
@@ -93,7 +94,7 @@ FastEndpoints finds its endpoints, validators and summary classes itself — no 
 
 ## Errors
 
-No `try/catch` in an endpoint, and no reply built for an error: a missing entity is thrown by the throwing lookup,
+No `try/catch` in an endpoint, and no reply built for an error: a missing entity is thrown by the not-found guard,
 a broken rule by the domain, and the central mapper turns each into its status (`error-handling`). Never
 `Send.NotFoundAsync`, `Send.ForbiddenAsync` or a hand-written error status. `AddError` and `ThrowIfAnyErrors`
 belong to validation, never to business errors.

@@ -22,11 +22,13 @@ that belongs to one style says so. Where a rule allows a listed exception, the l
 - **Primary constructors.** An explicit constructor only when its body builds state.
 - **Every dependency is required.** No constructor parameter defaults to `null`, and no code path is chosen by a
   missing dependency.
-- **Interfaces.** An interface only where production code has two or more implementations (a provider that can be
-  swapped), or for an outside call a test must replace (a model, a database, another service). A test double is not a
+- **Interfaces.** An interface only where production code has two or more implementations, or a second is planned
+  (a provider that can be swapped), or for an outside call a test must replace (a model, a database, another service). A test double is not a
   second implementation. An interface gives no member a body; a derived property is the one exception.
-- **Visibility.** In a service and in a module every top-level type is public and there are no friend declarations
-  (`InternalsVisibleTo`); the layer tests guard what may reference what. A shared library keeps its internals
+- **Visibility.** In a service and in a Domain module every top-level type is public and there are no friend
+  declarations (`InternalsVisibleTo`); the layer tests guard what may reference what. A Component module's
+  implementation classes are `internal` — callers use its contracts project and its public registration entry point,
+  never an implementation — and its test project may be its friend. A shared library keeps its internals
   internal, because everything public there is a promise to every project that uses it; its own test project may be
   its friend.
 - **Not sealed by default.** A leaf infrastructure type that faces a framework — a middleware, a filter, an event
@@ -72,8 +74,9 @@ that belongs to one style says so. Where a rule allows a listed exception, the l
 - **Separate building data from saving it.** A method that returns data is testable and readable; a method that
   calls a repository is a side effect.
 - **Rule of three.** Don't extract a shared method for 2 call sites; wait for 3.
-- **Hiding a base method on purpose** (a derived repository's `UpsertAsync` with its own field copy) uses the `new`
-  modifier, which states the hiding — no warning suppression.
+- **Replacing a base method on purpose** says so: a virtual member is replaced with `override` (a derived
+  repository's `UpsertAsync` with its own field copy), and a non-virtual one is hidden with the `new` modifier — no
+  warning suppression.
 
 ## Namespaces and Usings
 
@@ -95,7 +98,7 @@ that belongs to one style says so. Where a rule allows a listed exception, the l
 - **Cross-aggregate references by id only** — never a navigation property.
 - **Domain events** are raised after a state change succeeds — they are facts, not intents — and carry the aggregate
   reference. A domain event stays inside its service; what crosses to another service is an integration event.
-- **No database queries inside entity methods.** Queries belong in handlers or repositories.
+- **No database queries inside entity methods.** Queries belong in repositories.
 
 ## Names and Small Forms
 
@@ -119,8 +122,9 @@ that belongs to one style says so. Where a rule allows a listed exception, the l
   attributes. A bundle of small sameness rules — worth holding where a check or a formatter does the work, not in a
   review comment.
 - **Methods are verb phrases.** If no verb fits, the method's scope is unclear — split it. A lookup by key is
-  `GetBy{Key}Async`; `Find…` is a search by something that is not a key and may return none or many; existence is
-  `Exists…`; writes are `AddAsync`, `Update`, `Remove`, `UpsertAsync`.
+  `GetBy{Key}Async`, and a repository base's own are `FindByIdAsync` and `GetByIdAsync`; `Find…` is a search by
+  something that is not a key and may return none or many; existence is `Exists…`; writes are `AddAsync`, `Update`,
+  `Remove`, `UpsertAsync`, `ChangeAsync`. No repository read throws when a row is missing — the caller adds the guard.
 - **Booleans read affirmatively:** `IsActive`, `CanEdit`, `HasChildren` — never `NotActive`.
 - **Events are past-tense verb phrases:** `OrderPlaced`, `OrderShipped` — never a bare noun (`OrderEvent`).
 - **No vague or abbreviated names:** not `data`, `info`, `result`, `temp`, `obj`, `item`, `req`, `cmd`, `res`. The one
@@ -133,7 +137,7 @@ that belongs to one style says so. Where a rule allows a listed exception, the l
 - **Never `.Result`, `.Wait()` or `.GetAwaiter().GetResult()`** — they block the thread and deadlock.
 - **Never `async void`** outside event handlers — an unhandled exception crashes the process.
 - **The cancellation token is named `ct`;** a signature a framework fixes keeps the framework's name. It is the last
-  parameter. It has `= default` on the methods of an interface, a repository or a read store, and none on an endpoint
+  parameter. It has `= default` on the methods of an interface or a repository, and none on an endpoint
   or a handler, which receive it from the framework. Every library and model defaults to the long name, so the
   convention check holds the name.
 - **The token is always passed on,** except where the called library takes none.
@@ -146,9 +150,9 @@ that belongs to one style says so. Where a rule allows a listed exception, the l
 ## Errors
 
 - **One family of errors.** A broken business rule throws the domain error, its message written inline where the rule
-  is. A required lookup throws not-found through the guard helpers (`…OrThrow…`); an optional lookup returns nothing
-  and its caller decides. A service's own error class derives the domain error. The `error-handling` skill carries
-  the helpers' samples.
+  is. A required lookup is a nullable read plus `.OrThrowNotFound(id)`, which throws not-found; an optional lookup
+  returns nothing and its caller decides. A service's own error class derives the domain error. The
+  `error-handling` skill carries the helpers' samples.
 - **One central mapper turns errors into replies.** An endpoint has no `try/catch` that builds a reply and writes no
   error status by hand.
 - **Validation runs at the edge,** in the request's validator, before the handler. In a FastEndpoints service

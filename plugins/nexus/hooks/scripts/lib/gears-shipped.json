@@ -152,12 +152,12 @@
       "row": 13,
       "setting": "Tests run per step",
       "catalogue": null,
-      "allowed": ["tied to the change", "as today", "ask me"],
+      "allowed": ["step test rule", "as today", "ask me"],
       "values": {
-        "fast": { "value": "tied to the change", "text": "always on — no longer a gear setting" },
-        "normal": { "value": "tied to the change", "text": "always on — no longer a gear setting" },
-        "quality": { "value": "tied to the change", "text": "always on — no longer a gear setting" },
-        "off": { "value": "tied to the change", "text": "always on — no longer a gear setting" }
+        "fast": { "value": "step test rule", "text": "the step test rule, under every gear — no longer a gear setting" },
+        "normal": { "value": "step test rule", "text": "the step test rule, under every gear — no longer a gear setting" },
+        "quality": { "value": "step test rule", "text": "the step test rule, under every gear — no longer a gear setting" },
+        "off": { "value": "step test rule", "text": "the step test rule, under every gear — no longer a gear setting" }
       }
     }
   ]

@@ -19,12 +19,14 @@ this skill: its helpers live in the shared place the conventions' Look First des
 #### Look First
 
 Before building anything a skill relies on — a guard helper, the central error mapper, a settings binder, an
-aggregate or repository base, a save interceptor, an event publisher — look at what the repo already has: first
-`project-lists.md` § Helpers, then the shared libraries, modules and packages the project can reach (its project
-references and the central package file). Use what you find. Only otherwise build it once, in the shared place: the
-lowest project every user of it already references; in a repo of one project, a `Shared` folder in it; where the
-users share no project, a new shared project each of them references, with no reference cycle. Never a copy beside
-each user. Add its row to `project-lists.md` § Helpers in the same change.
+aggregate or repository base, a table-configuration base, a save interceptor, an event publisher — look at what the
+repo already has: first `project-lists.md` § Helpers, then the shared libraries, modules and packages the project can
+reach (its project references and the central package file). Use what you find. Only otherwise build it once, in the
+shared place: the lowest project every user of it already references; in a repo of one project, a `Shared` folder in
+it; where the users share no project, a new shared project each of them references, with no reference cycle. Never a
+copy beside each user. Add its row to `project-lists.md` § Helpers in the same change. An ordinary class — a table
+configuration, a repository, an endpoint, a consumer — derives from the base the repo's libraries offer for its kind,
+picked by reading that base's members; a skill's sample is the form for a repo with no such library.
 <!-- nexus-gen coding-conventions END -->
 
 ## When to Use
@@ -39,7 +41,7 @@ These hold for a shared library and only for one; service and module code follow
 
 - **Internals stay internal.** Everything public in a shared library is a promise to every project that uses it, so
   only the entry points are public; its own test project may be its friend (`InternalsVisibleTo`). (Inside a service
-  or module the opposite holds: every top-level type is public.)
+  or a Domain module the opposite holds: every top-level type is public.)
 - **Its public entry points guard their arguments,** with the static throw helpers (`ArgumentNullException.ThrowIfNull`,
   `ArgumentOutOfRangeException.ThrowIfNegative`) — callers it cannot see may pass anything. A service has no such
   preamble.
@@ -72,7 +74,7 @@ These hold for a shared library and only for one; service and module code follow
 4. **Write the read-me** — `README.md` in the folder: purpose, registration line, one usage sample.
 5. **Create its test project** — `{Prefix}.{Concern}.Tests`, referencing the library.
 6. **Add both to the solution** — `dotnet sln add …`.
-7. **Build and test** — `dotnet build`, `dotnet test`.
+7. **Verify:** `developer.md` § The step test rule.
 8. **Report** — what was created and which services or modules should reference it.
 
 ## Arguments

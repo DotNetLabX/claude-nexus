@@ -24,8 +24,9 @@
  * `recorded` with its id, `started, id not recorded` for an intent with neither, or `none`, a missing
  * record file included; a record it cannot read whole is `unreadable`. --kind is validated as
  * `collect` validates it and recorded. A `collect` that returns `completed`, `failed` or `cancelled`
- * for a job the record holds appends one `end` line — its label, the job id, when it ended and the
- * state — once per job, so every job's run time can be read back; a job the record does not hold, a
+ * for a job the record holds appends one `end` line — its label, the job id, when it ended, the state
+ * and, for a failed or cancelled job, its reason — once per job, so every job's run time can be read
+ * back and its failures counted by cause; a job the record does not hold, a
  * companion not found, or a job still running writes none, and `jobs --label` reads past the line.
  *
  * CLOSING FORGOTTEN SERVERS. The Codex plugin keeps one background server per folder and, when its
@@ -84,7 +85,8 @@
  * ended here with `taskkill /PID {pid} /T /F`, no shell, then checked again. A lookup that errors, runs
  * past its 5 seconds or returns an empty command line is tried once more; two such are no answer, which
  * never reads as stopped. Only a job still running — by its process — is reported as that state with
- * the cancel's error, never as `cancelled`. Node's own warning lines never reach a `reason`.
+ * the cancel's error, never as `cancelled`. Node's own warning lines never reach a `reason`. A failed
+ * or cancelled job whose record carries no error message is reasoned from the last lines of its log.
  *
  * A WORKER THAT NEVER TOOK THE JOB. The companion starts its background worker before it saves the
  * job, and a worker that reads first exits: the job stays `queued` with no process behind it. `start`
@@ -136,6 +138,8 @@ const STALL_REASON = 'stalled — no Codex output for 6 minutes';
 const LOST_WORKER_REASON = 'the Codex worker exited before it took the job';
 const NO_VERDICT = 'no verdict returned';
 const NO_OUTPUT = 'no output returned';
+const TAIL_LINES = 5;
+const TAIL_CHARS = 400;
 const LOG_TIME = /^\[(\d{4}-\d{2}-\d{2}T[^\]\s]+)\]/;
 const NODE_WARNING = /^\(node:\d+\) (?:\[[A-Z]+\d+\] )?[A-Za-z]*Warning: /;
 const DONE_CHECK_VERDICT = /^\s*(?:[-*+]\s+)?\*\*Verdict: (?:(PASS)\*\*|(FAIL)\b)/;
@@ -408,7 +412,7 @@ function appendRecord(line) {
 }
 
 // A record that cannot be read whole writes no end line: a collect never fails on its timing line.
-function recordEnd(jobId, state) {
+function recordEnd(jobId, state, reason) {
   let lines;
   try {
     lines = fs.readFileSync(path.join(process.cwd(), RECORD_REL), 'utf8').split(/\r?\n/).filter((l) => l.trim() !== '').map((l) => JSON.parse(l));
@@ -419,7 +423,8 @@ function recordEnd(jobId, state) {
   const job = lines.filter((l) => l && l.type === 'job' && l.jobId === jobId).pop();
   const intent = job && lines.find((l) => l && l.type === 'intent' && l.intent === job.intent);
   if (!intent) return;
-  appendRecord({ type: 'end', label: intent.label, jobId, endedAt: new Date().toISOString(), state });
+  const why = reason && state !== 'completed' ? { reason } : {};
+  appendRecord({ type: 'end', label: intent.label, jobId, endedAt: new Date().toISOString(), state, ...why });
 }
 
 // Every job recorded under exactly this label, newest first. A record that cannot be read whole is
@@ -565,6 +570,17 @@ function readLog(record) {
   }
 }
 
+function logTail(record) {
+  const lines = dropWarnings(readLog(record || {})).split(/\r?\n/).map((l) => l.replace(LOG_TIME, '').trim()).filter(Boolean);
+  const tail = lines.slice(-TAIL_LINES).join(' | ');
+  return tail.length > TAIL_CHARS ? `…${tail.slice(-(TAIL_CHARS - 1))}` : tail;
+}
+
+function endedReason(s) {
+  const tail = logTail(s.record);
+  return tail ? `the job ended ${s.state} — its log ends: ${tail}` : `the job ended ${s.state}`;
+}
+
 function finished(script, job, s, kind) {
   if (s.state === 'completed') {
     const res = companion(script, ['result', job], 60000);
@@ -579,7 +595,7 @@ function finished(script, job, s, kind) {
       ? { state: 'completed', output: res.stdout, verdict }
       : { state: 'completed', output: res.stdout, verdict: null, reason: NO_VERDICT };
   }
-  const reason = s.reason || dropWarnings(s.record && s.record.errorMessage) || `the job ended ${s.state}`;
+  const reason = s.reason || dropWarnings(s.record && s.record.errorMessage) || endedReason(s);
   return { state: s.state, output: '', verdict: null, reason };
 }
 
@@ -704,7 +720,7 @@ function cmdCollect(opts) {
   if (s.pidFree) companion(script, ['cancel', a.job, '--json'], CANCEL_MS);
   const ended = (out) => {
     if (!TERMINAL.has(out.state)) return print(out);
-    recordEnd(a.job, out.state);
+    recordEnd(a.job, out.state, out.reason);
     return print({ ...out, ...closeServers('collect', a.job) });
   };
   if (TERMINAL.has(s.state)) {

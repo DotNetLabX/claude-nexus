@@ -21,7 +21,7 @@ src/
       {Svc}.API/               #   Feature folders (endpoint file + command or query file), DI, start-up
       {Svc}.Domain/            #   Aggregates, value objects, domain events
       {Svc}.Persistence/       #   EF Core context, table configurations, migrations, repositories
-  Modules/                     # Modular monolith (Contracts + Implementation per module), where used (TBD)
+  Modules/                     # Modular monolith (Component: Contracts + implementations; Domain: Domain + Persistence), where used (TBD)
   ApiGateway/                  # YARP reverse proxy
 docker-compose                 # Local dev environment
 ```

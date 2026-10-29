@@ -69,8 +69,8 @@ Carter finds its modules through `AddCarter()` and `app.MapCarter()` — no line
 
 ## Errors
 
-No `try/catch` in an endpoint and no `Results.Problem(…)` built for an error: the lookup throws, the domain throws,
-and the central mapper turns each into its status (`error-handling`).
+No `try/catch` in an endpoint and no `Results.Problem(…)` built for an error: the not-found guard throws, the domain
+throws, and the central mapper turns each into its status (`error-handling`).
 
 ## Access
 

@@ -16,7 +16,7 @@ tail (ADR-22 Extended):
 | Head | the title line, `**Model:**` | read the first few lines |
 | Solo fixes (only when a solo ran) | `## Solo Fixes`, right after the head, one `### Solo fix {n} — {date}` block per spawn | `grep '^### Solo fix '` |
 | Steps (variable) | `## Step N — {step name}`, one per plan step, in plan order | `grep '^## Step '` |
-| Tail (fixed) | `## Key Decisions`, `## Skills Used`, `## Carry-Over Findings`, `## KB Changes`, `## Unfinished Tests` (only when a step close or a light acceptance run was cut), `## Deviations from Plan`, `## Self-Review` (Fast lane only), the completion footer | `grep '^## '` — the step blocks match too; read past them |
+| Tail (fixed) | `## Key Decisions`, `## Skills Used`, `## Carry-Over Findings`, `## KB Changes`, `## Unfinished Tests` (only when a block carries a `Test problem:` or `Unfinished:` line), `## Deviations from Plan`, `## Self-Review` (Fast lane only), the completion footer | `grep '^## '` — the step blocks match too; read past them |
 
 Grep for the heading you need, then `Read` with `offset/limit` around it rather than reading the
 whole file. A crash-resume reads the **last step block** to find where work stopped.
@@ -37,10 +37,10 @@ verify it exists on a Fast run, so it is required there and absent everywhere el
 **Rules:** one entry per rule the step lists under `Satisfies:` — `{ruleName}: tested — {test file} › {test name}` | `{ruleName}: not testable here — {reason}` | `{ruleName}: disputed — Q{n}`; omit the line where the step lists none
 **Decisions:** implementation choices this step made that the plan did not specify — or `None`
 **Deviations:** what was done differently, and why — or `None`
-**Unfinished:** {files | whole unit run | {acceptance test file} (acceptance run)} — cut at {limit} s; only when this step's close, or its light acceptance run, was cut at its limit, else omit the line; one line per cut run
+**Test problem:** {test or build} — {the error | over the speed-up line} — {fixed, green on attempt 2 | fixed, not re-run | not fixed — tried: {what}}; one line per problem a step run showed, written even when attempt 2 is green, else omit the line
+**Unfinished:** {files | build} — attempt {1|2} cut at {limit} s, or {test} timed out; only for a cut step run or a timed-out test — never a `Test problem:` line for it as well — else omit the line; one line per cut run
 **Bug found:** {the symptom} — {the failing test or record} — {where it was}; only when this step met a bug it did not cause, else omit the line; one line per occurrence, so a block may carry several
 **Risk raised:** {why} — light lane only: where this step turned out riskier than its plan line says, else omit the line
-**Slow kept:** {test} — {reason}; only for a test this step wrote or touched that its one speed-up try left over the speed-up line, labelled slow with that reason, else omit the line; one line per test
 
 ## Step 2 — {step name}
 ...
@@ -66,7 +66,8 @@ verify it exists on a Fast run, so it is required there and absent everywhere el
 | `docs/kb/{area}/{entry}.md` | NEW/UPDATE | {brief description} |
 
 ## Unfinished Tests
-- Step {n}: {files | whole unit run} — cut at {limit} s
+- Step {n}: Test problem: {the line, as written}
+- Step {n}: Unfinished: {the line, as written}
 
 ## Deviations from Plan
 - Steps done differently, with reasons
@@ -92,18 +93,19 @@ that caused it, or in a tail section when it surfaces later. Both block the run'
 discharged — the rules are the Registry guardrail's and the close gate's; this format only fixes
 where they live.
 
-**A step close cut at its limit.** Where the repo declares a full suite, a step close whose record
-reads `reason: "timeout"` is not finished rather than red: the step block carries one `Unfinished:`
-line naming what was cut — the named files, or the whole unit run — and the limit it was cut at. On
-the light lane a cut acceptance run (`--files {the acceptance test file}`) writes its own `Unfinished:`
-line, naming that run, even when the step close passed. At
-the end of the run the developer gathers every such line — an acceptance run's and a solo block's included — into
-`## Unfinished Tests`, the way Key Decisions is gathered, without reopening an earlier block; the section is absent when nothing was
-cut. Its readers take each entry as not verified at the step — the complete run covers it.
+**What a step run leaves for the end.** Every problem a developer's step run shows
+(`developer.md` § The step test rule) — a failing test, a failed build, a test over the speed-up
+line — is one `Test problem:` line, fixed or not, with what was tried. A step run whose record reads `reason: "timeout"`, or a test in its
+`timed_out` list, is not finished rather than red: it writes one `Unfinished:` line, naming what was
+cut and the limit, and no `Test problem:` line. At the end of the run the developer gathers every
+such line — a solo block's `Unfinished:` lines included — into `## Unfinished Tests`, the way Key
+Decisions is gathered, without reopening an earlier block; the section is absent when there is
+none. Its readers take each entry as not verified at the step: the complete run, and the solo it
+sends a red to, start from them.
 
 **A fix round has no step of its own.** When the reviewer returns findings, every step block is
 already closed and there is no current step to append to. Add one `## Fix Round N` block in the step
-region, after the last step block, with the same four fields (plus an `Unfinished:` line when its close was cut, and a `Slow kept:` line per test the round kept slow) — `Files:` names what the fixes touched,
+region, after the last step block, with the same four fields, plus the round's `Test problem:` and `Unfinished:` lines as a step block writes them — `Files:` names what the fixes touched,
 `Deviations:` records any finding you did not act on and why. Never rewrite the original step blocks
 to make them look as though they had been right the first time: the sequence of what was built and
 what was corrected is what a resume and a re-review both read. A bug met in a fix round that this
@@ -135,7 +137,7 @@ not the completion message, so a stranded message costs nothing (ADR-17).
 
 ## Solo Fixes
 
-A solo spawned inside a feature's run — for a red complete run, for a bug a developer met and did
+A solo spawned inside a feature's run — for a red run on the handover ladder (the handover's tied run, or the complete run at close), for a merge-in conflict at close, for a bug a developer met and did
 not cause, or after the closing commit for the timed-out tests the change did not touch — records its work here, never in a step block. The section sits **immediately after the
 head, before the first step block**: a developer's step blocks are appended at the end of the file,
 so they never land after it, mid-build or at close. The first solo creates the section; each later
@@ -162,9 +164,9 @@ solo inserts its block inside it, after the last solo block. Solo appends its ow
 recorded apart, on `Verify:`, and the coordinator routes on them (`team-lead.md` § Message Handoffs (you are the hub)):
 mid-build, green stands, red resumes the solo once and then goes to the architect, unfinished is left
 to the complete run. On the handover ladder the solo's proof is each failed test file run by name plus its
-tied call: every failure green by name ends the red with no second complete run, a red proof is the
+tied call: every failure green by name ends the red, a red proof is the
 ladder's next attempt — at most three, then the architect — and only a failure that cannot be named, or a
-by-name run cut at its limit, waits for another complete run. `too big` — the fix is outside
+by-name run cut at its limit, waits for a complete run (at handover, the close's; at close, a second one). `too big` — the fix is outside
 solo's size rule, or would change something the plan or the spec decided; nothing is left half-done,
 and a `questions.md` entry to the architect points at the block. `not caused here` — the failure is
 real but nothing in this feature's change caused it (a default branch that moved, the environment, a
@@ -197,7 +199,7 @@ Note cell opens `solo fix {n} —`, which names its source.
 
 | Agent | What they read | Impact of stale data |
 |-------|---------------|---------------------|
-| Architect | The step blocks (files, decisions, deviations, and `Rules:` for the report-only rule count) plus `## Skills Used` against the plan's Skill Mapping; `## Unfinished Tests` as not verified at the step — the complete run covers it; `## Solo Fixes` as work done outside the plan's steps, never a step | Done check misses gaps or falsely fails |
-| Reviewer | All sections, especially `## Carry-Over Findings`; `## Solo Fixes` as code in the diff no step block names; `## Unfinished Tests` as not verified at the step — the complete run covers it | Reviewer misses developer-flagged risks, reads a cut step as verified, or leaves a solo fix unread |
+| Architect | The step blocks (files, decisions, deviations, and `Rules:` for the report-only rule count) plus `## Skills Used` against the plan's Skill Mapping; `## Unfinished Tests` as not verified at the step — the complete run and its solo start from it; `## Solo Fixes` as work done outside the plan's steps, never a step | Done check misses gaps or falsely fails |
+| Reviewer | All sections, especially `## Carry-Over Findings`; `## Solo Fixes` as code in the diff no step block names; `## Unfinished Tests` as not verified at the step — the complete run and its solo start from it | Reviewer misses developer-flagged risks, reads a cut step as verified, or leaves a solo fix unread |
 | Developer (resume) | The last `## Step N` block, to find where work stopped | Duplicate work or missed steps on resume |
 | Developer (fresh fix round or hand-up) | The round's fix list, `## Solo Fixes` for what a solo already found and changed, and the step blocks | Re-investigates a bug a solo already diagnosed, or undoes its fix |

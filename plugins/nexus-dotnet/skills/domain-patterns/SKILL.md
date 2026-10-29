@@ -24,12 +24,14 @@ lines, customers; substitute your own.
 #### Look First
 
 Before building anything a skill relies on — a guard helper, the central error mapper, a settings binder, an
-aggregate or repository base, a save interceptor, an event publisher — look at what the repo already has: first
-`project-lists.md` § Helpers, then the shared libraries, modules and packages the project can reach (its project
-references and the central package file). Use what you find. Only otherwise build it once, in the shared place: the
-lowest project every user of it already references; in a repo of one project, a `Shared` folder in it; where the
-users share no project, a new shared project each of them references, with no reference cycle. Never a copy beside
-each user. Add its row to `project-lists.md` § Helpers in the same change.
+aggregate or repository base, a table-configuration base, a save interceptor, an event publisher — look at what the
+repo already has: first `project-lists.md` § Helpers, then the shared libraries, modules and packages the project can
+reach (its project references and the central package file). Use what you find. Only otherwise build it once, in the
+shared place: the lowest project every user of it already references; in a repo of one project, a `Shared` folder in
+it; where the users share no project, a new shared project each of them references, with no reference cycle. Never a
+copy beside each user. Add its row to `project-lists.md` § Helpers in the same change. An ordinary class — a table
+configuration, a repository, an endpoint, a consumer — derives from the base the repo's libraries offer for its kind,
+picked by reading that base's members; a skill's sample is the form for a repo with no such library.
 <!-- nexus-gen coding-conventions END -->
 
 ## AggregateRoot
@@ -99,9 +101,10 @@ Persistence maps them as owned or complex types (`persistence-patterns`).
 
 ## Enums
 
-- **A closed set of values is an enum,** written as text on the wire and in storage — one converter for the wire (the
-  host's JSON settings), one for storage (the table configuration).
-- **An enum that needs data** (a display order, a limit per value) becomes a seeded table type instead.
+- **A closed set of values is an enum, stored in one of two forms.** As text by default, on the wire and in storage —
+  one converter for the wire (the host's JSON settings), one for storage (the table configuration). As a seeded
+  table of its own where each value carries data (a display order, a limit per value, the next allowed state) or
+  the database must refuse an unknown value (`persistence-patterns` § Entity Configuration). Never as a number.
 - **A `switch` over a closed set** is a sign the value should carry the answer itself.
 
 ## Partial Class Behavior Split

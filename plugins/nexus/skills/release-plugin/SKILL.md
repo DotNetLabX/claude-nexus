@@ -28,6 +28,7 @@ node scripts/bump-plugin.mjs             # apply: PATCH-bump plugin.json + prepe
 node scripts/bump-plugin.mjs --minor     # apply, escalated to MINOR (new capability)
 node scripts/bump-plugin.mjs --major     # apply, escalated to MAJOR (breaking / behavior reversal)
 node scripts/bump-plugin.mjs --tier nexus=major   # apply, MAJOR for that one plugin only; repeatable
+node scripts/bump-plugin.mjs --dry-run --base main   # also read what is committed since main
 node scripts/bump-plugin.mjs --check     # CI: exit 1 if a shipped-file change has NO bump
 ```
 
@@ -39,6 +40,15 @@ owner says the change is bigger than a patch. `--tier <plugin>=<patch|minor|majo
 tier and applies only when that plugin has a change (otherwise the run says it ignored the flag); it
 cannot be combined with `--minor`/`--major`, and naming a plugin twice or one the marketplace does not
 list is refused.
+
+**`--base {ref}` on apply and dry-run** reads a change that is already committed — a feature
+committed on its branch before the close, or under `per-step` — together with the working tree. The
+comparison point is where the branch left `{ref}` (their merge-base); a plugin whose version already
+moved since that point is reported `already bumped` and left alone. At a close that merged the
+default branch in, pass the default branch itself, read **after** the merge-in: a merge-base taken
+before it counts the merged commits as the feature's, so a version the default branch raised reads
+as this feature's bump and the feature's own change goes unreleased. `--base` beside `--staged`, or
+with no ref, is refused.
 
 Two `--check` readings that look like bugs and aren't — both follow from `--check` being
 **base-ref-scoped** (default `origin/main`): it is silent about uncommitted working-tree changes

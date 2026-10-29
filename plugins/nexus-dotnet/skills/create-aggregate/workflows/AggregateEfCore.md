@@ -72,7 +72,10 @@ Where the legal moves depend on the current state and the action, the check is a
 
 ## Table Configuration: `{Svc}.Persistence/Configurations/{Name}Configuration.cs`
 
-One configuration class per table; lengths from the field-length constants; the enum stored as text:
+One configuration class per table, derived from the table-configuration base the repo's libraries offer
+(`persistence-patterns` § Entity Configuration); the sample is the form for a repo with no such base. Lengths come
+from the field-length constants; an enum is stored as text, or as a table of its own where each value carries data
+(the two forms, same section):
 
 ```csharp file=OrderConfiguration.cs
 public class OrderConfiguration : IEntityTypeConfiguration<Order>
@@ -88,13 +91,16 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
 }
 ```
 
-The audit columns, the concurrency choice and the table names follow `persistence-patterns` § Entity Configuration.
+The audit columns and the table names follow `persistence-patterns` § Entity Configuration. A table two writers
+really race on takes a version column and changes through the repository base's race-safe change
+(`persistence-patterns` § A row two writers race on); every other table keeps the concurrency token off.
 
 ## Repository: `{Svc}.Persistence/Repositories/{Name}Repository.cs`
 
-A repository derives the repository base (`persistence-patterns` § Repository Pattern (3-Tier)) and adds only the
-lookups this aggregate needs, named `GetBy{Key}Async`, `Exists…` or `Find…`; a required lookup throws not-found.
-`persistence-patterns` § Tier 3: A repository with its own lookups owns the sample (`OrderRepository`, with
-`GetByIdWithLinesOrThrowAsync`).
+A repository derives the repository base (`persistence-patterns` § Repository Pattern). It overrides `Query()` to
+include the collections a change needs, so the base's `GetByIdAsync` loads them, and adds only the named reads this
+aggregate needs, named `GetBy{Key}Async`, `Exists…` or `Find…`. A read returns nothing for a missing row, and a
+caller adds `.OrThrowNotFound(id)` where the row is required. The sample is `OrderRepository`, in
+`persistence-patterns` § Tier 3: A repository with its own reads.
 
 Register it scoped, one line, in the Persistence registration: `services.AddScoped<OrderRepository>()`.

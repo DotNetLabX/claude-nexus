@@ -125,7 +125,7 @@ public class UploadOrderDocumentCommandHandler(OrderRepository _orderRepository,
 {
     public async Task<IdResponse> Handle(UploadOrderDocumentCommand command, CancellationToken ct)
     {
-        var order = await _orderRepository.GetByIdOrThrowAsync(command.OrderId, ct);
+        var order = (await _orderRepository.GetByIdAsync(command.OrderId, ct)).OrThrowNotFound(command.OrderId);
 
         await using var stream = command.File.OpenReadStream();
         var file = await _fileService.UploadAsync(

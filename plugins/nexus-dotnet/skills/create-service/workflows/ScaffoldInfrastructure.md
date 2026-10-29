@@ -72,11 +72,7 @@ the compose entry and in the API project's settings alike.
 
 ## Step 4: Final build
 
-```bash
-dotnet build src/{SolutionFile}
-```
-
-Zero errors and no new warnings. Then run the searches of the skill's § Verify.
+Verify: `developer.md` § The step test rule. Then run the searches of the skill's § Verify.
 
 ## Not scaffolded
 

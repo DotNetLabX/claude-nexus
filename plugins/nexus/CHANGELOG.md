@@ -1,5 +1,80 @@
 # nexus — Changelog
 
+## [2.4.71] — 2026-10-29
+- One full test run per feature, at close after main is merged in; tied tests at handover; a passing run on the same content closes any feature
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - skill change (implementation-format)
+  - skill change (release-plugin)
+  - skill change (review-format)
+  - skill change (summary-format)
+  - estate raise: plugins/nexus/agents/architect.md 234404→235434 B — F313: tied handover run, one complete run at close after the merge-in, BUG-79; F313 fix round 1: catch-up list from the complete run's commit, scoped commit only before a merge-in, release base read after the merge-in, release-plugin --base documented; F313 fix round 2: the close's own changes take a tied run with no commit or merge-in, the catch-up is for the default branch moving
+  - estate raise: plugins/nexus/agents/reviewer.md 31426→31913 B — F313: tied handover run, one complete run at close after the merge-in, BUG-79; F313 fix round 1: catch-up list from the complete run's commit, scoped commit only before a merge-in, release base read after the merge-in, release-plugin --base documented; F313 fix round 2: the close's own changes take a tied run with no commit or merge-in, the catch-up is for the default branch moving
+  - estate raise: plugins/nexus/agents/solo.md 35538→35696 B — F313: tied handover run, one complete run at close after the merge-in, BUG-79; F313 fix round 1: catch-up list from the complete run's commit, scoped commit only before a merge-in, release base read after the merge-in, release-plugin --base documented; F313 fix round 2: the close's own changes take a tied run with no commit or merge-in, the catch-up is for the default branch moving
+  - estate raise: plugins/nexus/agents/team-lead.md 244153→252039 B — F313: tied handover run, one complete run at close after the merge-in, BUG-79; F313 fix round 1: catch-up list from the complete run's commit, scoped commit only before a merge-in, release base read after the merge-in, release-plugin --base documented; F313 fix round 2: the close's own changes take a tied run with no commit or merge-in, the catch-up is for the default branch moving
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 119542→119711 B — F313: tied handover run, one complete run at close after the merge-in, BUG-79; F313 fix round 1: catch-up list from the complete run's commit, scoped commit only before a merge-in, release base read after the merge-in, release-plugin --base documented; F313 fix round 2: the close's own changes take a tied run with no commit or merge-in, the catch-up is for the default branch moving
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 29023→29027 B — F313: tied handover run, one complete run at close after the merge-in, BUG-79; F313 fix round 1: catch-up list from the complete run's commit, scoped commit only before a merge-in, release base read after the merge-in, release-plugin --base documented; F313 fix round 2: the close's own changes take a tied run with no commit or merge-in, the catch-up is for the default branch moving
+  - estate raise: plugins/nexus/skills/implementation-format/SKILL.md 16107→16228 B — F313: tied handover run, one complete run at close after the merge-in, BUG-79; F313 fix round 1: catch-up list from the complete run's commit, scoped commit only before a merge-in, release base read after the merge-in, release-plugin --base documented; F313 fix round 2: the close's own changes take a tied run with no commit or merge-in, the catch-up is for the default branch moving
+  - estate raise: plugins/nexus/skills/release-plugin/SKILL.md 10847→11658 B — F313: tied handover run, one complete run at close after the merge-in, BUG-79; F313 fix round 1: catch-up list from the complete run's commit, scoped commit only before a merge-in, release base read after the merge-in, release-plugin --base documented; F313 fix round 2: the close's own changes take a tied run with no commit or merge-in, the catch-up is for the default branch moving
+  - estate raise: plugins/nexus/skills/review-format/SKILL.md 30919→31106 B — F313: tied handover run, one complete run at close after the merge-in, BUG-79; F313 fix round 1: catch-up list from the complete run's commit, scoped commit only before a merge-in, release base read after the merge-in, release-plugin --base documented; F313 fix round 2: the close's own changes take a tied run with no commit or merge-in, the catch-up is for the default branch moving
+  - estate raise: plugins/nexus/skills/summary-format/SKILL.md 11380→11822 B — F313: tied handover run, one complete run at close after the merge-in, BUG-79; F313 fix round 1: catch-up list from the complete run's commit, scoped commit only before a merge-in, release base read after the merge-in, release-plugin --base documented; F313 fix round 2: the close's own changes take a tied run with no commit or merge-in, the catch-up is for the default branch moving
+
+## [2.4.70] — 2026-10-29
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 234326→234404 B — adhoc-CodexFailReason: a failed job names its cause
+  - estate raise: plugins/nexus/agents/learner.md 61879→61957 B — adhoc-CodexFailReason: a failed job names its cause
+  - estate raise: plugins/nexus/agents/po.md 77712→77790 B — adhoc-CodexFailReason: a failed job names its cause
+  - estate raise: plugins/nexus/agents/team-lead.md 244075→244153 B — adhoc-CodexFailReason: a failed job names its cause
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 28945→29023 B — adhoc-CodexFailReason: a failed job names its cause
+
+## [2.4.69] — 2026-10-29
+- PATCH bump.
+  - hook behavior/enforcement change
+  - skill change (diagnose)
+  - skill change (edit-shipped-plugin-skill)
+  - skill change (tdd)
+  - estate raise: plugins/nexus/skills/edit-shipped-plugin-skill/SKILL.md 15713→15886 B — adhoc-TddStepRunFix: skills point at the step test rule
+
+## [2.4.68] — 2026-10-28
+- F310-StepTestCap: a developer step makes at most two test runs, held by the hooks. The first runs the step's changed test files (the build they need included) within 2 minutes; only a real red is fixed, then a second run of the failed tests and any test file the fix changed, within 1 minute; a timeout or a cut is recorded, never fixed or re-run; every problem is written as a `Test problem:` line for the complete run at the end. The rule lives in one place, `developer.md` § The step test rule; the test-first and debugging skills, the plan skill, the coordinators and the shared rules point to it. The test-entry gate refuses every other developer test or build command, a declared-role suite script, a background step run, and a test command hidden in a script file (every gated seat); the verify gate runs nothing at a developer's stops; the labeller runs no two-leg check on a step run; a step run counts as close evidence only for the tests it ran. Every gear. Source: knowledge-gateway feedback `nexus-2.4.66-2026-10-28-test-runs-per-step` (F257: a step ran up to 29 test runs)
+  - agent instruction/behavior change (developer, solo, team lead, architect)
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - skill change (create-implementation-plan)
+  - skill change (declare-verify-roles)
+  - skill change (diagnose)
+  - skill change (implementation-format)
+  - skill change (tdd)
+
+## [2.4.67] — 2026-10-28
+- adhoc-SalvageConfigDir: the salvage script finds a stranded subagent's transcript under any Claude profile. It searches the running session's own config folder (`CLAUDE_CONFIG_DIR`, else `~/.claude`) and the session's temp folder, skips files with no assistant text, and prefers the `subagents/agent-{id}.jsonl` transcript over the `tasks/{id}.output` pointer. The not-found message, the session-start salvage line and the team lead's recovery order now name the transcript folder, never the spawn result's `output_file`, which is routinely empty. Feedback `nexus-2.4.66-2026-10-28-salvage-ignores-claude-config-dir` (knowledge-gateway).
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - estate raise: plugins/nexus/agents/team-lead.md 244220→244403 B — adhoc-SalvageConfigDir: team-lead Relay Contract salvage step names the transcript folder, not the empty output_file
+
+## [2.4.66] — 2026-10-27
+- F309-QuestionStyleFlag, default reversed on the owner's word: `features.nexusQuestionStyle` now ships **off**, like every other feature switch. A repo gets the Nexus question shape, and the question gate's shape checks, only where it sets the switch to `true`; elsewhere agents ask in Claude Code's own style, with the recommended option first and its confidence, the owner-away hold and a gear's answers kept. A repo that relied on the shape checks sets the switch to `true`
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/rules/on-demand/research-before-asking.md 42215→42218 B — F309-QuestionStyleFlag: the question-style switch ships off — the Nexus question shape applies only where nexusQuestionStyle is true
+
+## [2.4.65] — 2026-10-27
+- F309-QuestionStyleFlag: the Nexus question style is now a per-repo switch, `features.nexusQuestionStyle`, on by default. A repo that sets it to `false` gets Claude Code's own question style — the question-shaping rules and the shape checks of the question gate are off — while questions are still held when the owner is away, a gear still answers its questions, and the recommended option still leads with its confidence. Listed in the README's feature switches, the one switch that ships on
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/rules/on-demand/research-before-asking.md 41608→42215 B — F309-QuestionStyleFlag: a per-repo switch, nexusQuestionStyle, turns the Nexus question shape off for Claude Code's own style
+
+## [2.4.64] — 2026-10-27
+- F308-ReadKnownSources: a known source is read where it lives, quietly — before any agent explains or decides from a design, document, picture or knowledge-base page the repo or the user names, it opens the copy on disk, or the original in its tool (Figma, Google Docs or similar), checking its tools at that moment; a summary is not the source; nothing about sources reaches the screen except one short sentence when a source cannot be opened, or one short warning when two compete — never a question; before calling something a mock or not built, the knowledge base is checked. The rule lives in `kb-navigation.md` § Known sources and reaches every agent: one line in the always-on rules (paid for by four wording trims, the kernel budget unchanged) and one line in each start-of-spawn message — the pipeline-agent message now carries this one rule alone, an exception named in the hook header, its test and the README
+  - rule (always-on kernel, on-demand rule, spawn-time contract — injected at SubagentStart)
+
 ## [2.4.63] — 2026-10-26
 - F303: new bug folders are named `B{N}-{Name}` (a legacy `BUG-{N}-{name}` folder stays valid, never renamed; the next bug takes the number after the highest of either form; the close's carry-over bug row is `B{N}-CarryOver`), and the owner-question check flags a bug slug written with its name; a feature's spec and rule list are read through the new `sdd-read.js` — from `definition/`, a local `sdd/` folder, or a pinned specification repository at a pushed commit — by the architect's planning gates, the critic, the team lead's critic spawns and the Codex done-check brief; a rule list mined from a local `sdd/` spec is written beside it; the `Plan:` line goes only in a development spec
   - agent instruction/behavior change

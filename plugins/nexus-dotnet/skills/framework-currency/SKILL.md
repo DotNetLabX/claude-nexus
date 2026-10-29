@@ -31,7 +31,7 @@ Track the latest stable versions of the core stack declared centrally via CPM (s
 - **One version of each library everywhere.** Where the repo has a shared library, the services use the version it
   uses — the endpoint framework included; without one, the current stable version.
 - Verify each version against the package's release notes / NuGet before bumping; do not rely on memory.
-- After bumping, build immediately — breaking changes may appear as compile errors or runtime failures.
+- After bumping, verify at once — a developer through its step run (`developer.md` § The step test rule), a solo through its own call (`solo.md` § Workflow, step 3) — breaking changes may appear as compile errors or runtime failures.
 
 **Version-bump caution:** Bumping to latest can surface transitive breaking changes beyond the targeted package. Example: a dependency upgrade may pull a major version of a transitive library with API changes. See `central-package-management` for the three-form verification grep after a bump.
 
@@ -54,7 +54,7 @@ Read the installed `FastEndpoints` version from `src/Directory.Packages.props`. 
 | `await SendOkAsync(response, ct)` | `await Send.OkAsync(response, ct)` |
 | `await SendAsync(body, statusCode, ct)` | `await Send.ResponseAsync(body, statusCode, ct)` |
 | `await SendNoContentAsync(ct)` | `await Send.NoContentAsync(ct)` |
-| `await SendNotFoundAsync(ct)` | removed — the lookup throws not-found (below) |
+| `await SendNotFoundAsync(ct)` | removed — the not-found guard throws (below) |
 | `await SendErrorsAsync(cancellation: ct)` | `await Send.ErrorsAsync(cancellation: ct)` |
 | `await SendCreatedAtAsync(...)` | `await Send.CreatedAtAsync(...)` |
 | `await SendForbiddenAsync(ct)` | removed — access is declared on the endpoint (below) |
@@ -64,9 +64,9 @@ Read the installed `FastEndpoints` version from `src/Directory.Packages.props`. 
 - Three-arg `SendAsync(body, statusCode, ct)` → `Send.ResponseAsync(body, statusCode, ct)`
 - Two-arg `SendAsync(body, ct)` (no status code) → `Send.OkAsync(body, ct)`
 
-`Send.NotFoundAsync` and `Send.ForbiddenAsync` exist in the framework, but an endpoint never writes an error reply by hand: a missing
-entity is thrown by the lookup and access is declared (`error-handling`, `authorization-patterns`). Migrate a legacy
-call of either by removing it in favour of those, not by renaming it.
+`Send.NotFoundAsync` and `Send.ForbiddenAsync` exist in the framework, but an endpoint never writes an error reply
+by hand: a missing entity is thrown by the not-found guard and access is declared (`error-handling`,
+`authorization-patterns`). Migrate a legacy call of either by removing it in favour of those, not by renaming it.
 
 **Target state:** a fully migrated service uses `Send.OkAsync(...)` (and the other `Send.*` forms) throughout — zero legacy `Send*Async` instance calls remain.
 

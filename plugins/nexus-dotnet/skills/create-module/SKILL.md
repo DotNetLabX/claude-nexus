@@ -28,12 +28,14 @@ Afterwards the developer runs `create-aggregate` (Domain only) and `create-featu
 #### Look First
 
 Before building anything a skill relies on — a guard helper, the central error mapper, a settings binder, an
-aggregate or repository base, a save interceptor, an event publisher — look at what the repo already has: first
-`project-lists.md` § Helpers, then the shared libraries, modules and packages the project can reach (its project
-references and the central package file). Use what you find. Only otherwise build it once, in the shared place: the
-lowest project every user of it already references; in a repo of one project, a `Shared` folder in it; where the
-users share no project, a new shared project each of them references, with no reference cycle. Never a copy beside
-each user. Add its row to `project-lists.md` § Helpers in the same change.
+aggregate or repository base, a table-configuration base, a save interceptor, an event publisher — look at what the
+repo already has: first `project-lists.md` § Helpers, then the shared libraries, modules and packages the project can
+reach (its project references and the central package file). Use what you find. Only otherwise build it once, in the
+shared place: the lowest project every user of it already references; in a repo of one project, a `Shared` folder in
+it; where the users share no project, a new shared project each of them references, with no reference cycle. Never a
+copy beside each user. Add its row to `project-lists.md` § Helpers in the same change. An ordinary class — a table
+configuration, a repository, an endpoint, a consumer — derives from the base the repo's libraries offer for its kind,
+picked by reading that base's members; a skill's sample is the form for a repo with no such library.
 <!-- nexus-gen coding-conventions END -->
 
 ## Precondition
@@ -52,9 +54,15 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
      Application axis is yes, and `workflows/ScaffoldDomainApi.md` where the API axis is yes.
 3. **Hold the module's reference rules** while writing the project files:
    - **A contracts project holds interfaces, records and settings only** — no behaviour — and exists only where the
-     module has several implementations or several consumers.
-   - **A module references its own contracts and the repo's shared libraries** — never another module, and its core
-     projects never the web framework (only its optional API class library does). The exception is a module that
+     module has several implementations, or a second one is planned. Several consumers are no reason: they reference
+     the module itself, whose public types are its contract. A Component's implementation classes are `internal`
+     (the C# convention's Visibility rule). The one other split is
+     for a caller that must not carry the module's heavy dependencies (a job that must not load the web framework):
+     a small project holds only the types it needs, named for what it holds — a dependency split, not a contracts
+     project.
+   - **A module references its own contracts project where it has one, and the repo's shared libraries** — never
+     another module, and its core projects never the web framework (only its optional API class library does). The
+     exception is a module that
      orchestrates others: it may reference the modules it runs on, by the level rules the repo writes in that module's
      CLAUDE.md, and only those.
    - **A module's registration registers only its own services.** The modules are composed in one place, the host's
@@ -68,9 +76,8 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
    follows project references, so a change then ties to the few tests that cover it. It takes the test framework,
    assertion library and packages of the repo's existing test projects, else the stack's testing convention; tests
    needing the whole running app go to the app's one wiring test project, not here.
-6. **Verify:**
+6. **Verify:** `developer.md` § The step test rule — then:
    ```bash
-   dotnet build src/{SolutionFile}
    rg -n 'ProjectReference Include=.\.\..\.\..[^.]' src/Modules/{Name} --glob '*.csproj'   # another module — expect zero unless the CLAUDE.md names it
    rg -n 'Microsoft.AspNetCore' src/Modules/{Name} --glob '!**/{Name}.API/**' --glob '!**/{Name}.Tests/**' # no web framework outside the API library and its tests — expect zero
    rg --files src/Modules/{Name} -g '*.Tests.csproj'                                        # the module's one test project — expect one file

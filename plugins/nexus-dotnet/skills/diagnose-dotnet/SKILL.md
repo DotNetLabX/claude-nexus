@@ -12,7 +12,7 @@ The **stack adapter** for `diagnose` (the nexus core method). The method owns th
 
 - **ASP.NET Core** for the HTTP items (2, 4), and the SignalR / WebSocket stack for item 7.
 - **EF Core** for item 6's query trace, with a `DbContext` you can configure at composition time.
-- **xUnit** (v3 where the repo is current) plus `dotnet test` for item 1; the .NET SDK's `dotnet new console` for item 3.
+- **xUnit** (v3 where the repo is current) for item 1, run through the plugin's runner, never a raw `dotnet test`; the .NET SDK's `dotnet new console` for item 3.
 - **No shared library** — every fill below is a stock .NET SDK or first-party package facility, so no house framework is presumed.
 - **Without one of these, adapt by substituting the framework-native equivalent** — e.g. on Dapper or raw ADO.NET instead of EF Core, log the command text from a `DbCommand` interceptor rather than through `EnableSensitiveDataLogging()`. The method's menu item is unchanged; only the tool moves.
 
@@ -20,7 +20,7 @@ The **stack adapter** for `diagnose` (the nexus core method). The method owns th
 
 | Phase-1 item | .NET fill |
 |---|---|
-| 1. Failing test | an xUnit `[Fact]` in the service's test project, run with `dotnet test` — no test project yet? `mine-verify-cover-dotnet` (needs `nexus-miner`) scaffolds a self-contained one |
+| 1. Failing test | an xUnit `[Fact]` in the service's test project, run as a developer's step run (`developer.md` § The step test rule) or a solo's own call (`solo.md` § Workflow, step 3) — no test project yet? `mine-verify-cover-dotnet` (needs `nexus-miner`) scaffolds a self-contained one |
 | 2. Saved request file | a checked-in `.http` file beside the endpoint (Visual Studio and Rider run it natively; VS Code needs the REST Client extension) |
 | 3. Throwaway harness | a scratch `dotnet new console` project whose `Program.cs` calls the suspect type directly |
 | 4. Manual HTTP request | `Invoke-WebRequest` in PowerShell, or `curl` — capture expected vs actual status and body |

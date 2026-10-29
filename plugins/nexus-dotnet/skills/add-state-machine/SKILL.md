@@ -26,12 +26,14 @@ never a code change.
 #### Look First
 
 Before building anything a skill relies on — a guard helper, the central error mapper, a settings binder, an
-aggregate or repository base, a save interceptor, an event publisher — look at what the repo already has: first
-`project-lists.md` § Helpers, then the shared libraries, modules and packages the project can reach (its project
-references and the central package file). Use what you find. Only otherwise build it once, in the shared place: the
-lowest project every user of it already references; in a repo of one project, a `Shared` folder in it; where the
-users share no project, a new shared project each of them references, with no reference cycle. Never a copy beside
-each user. Add its row to `project-lists.md` § Helpers in the same change.
+aggregate or repository base, a table-configuration base, a save interceptor, an event publisher — look at what the
+repo already has: first `project-lists.md` § Helpers, then the shared libraries, modules and packages the project can
+reach (its project references and the central package file). Use what you find. Only otherwise build it once, in the
+shared place: the lowest project every user of it already references; in a repo of one project, a `Shared` folder in
+it; where the users share no project, a new shared project each of them references, with no reference cycle. Never a
+copy beside each user. Add its row to `project-lists.md` § Helpers in the same change. An ordinary class — a table
+configuration, a repository, an endpoint, a consumer — derives from the base the repo's libraries offer for its kind,
+picked by reading that base's members; a skill's sample is the form for a repo with no such library.
 <!-- nexus-gen coding-conventions END -->
 
 ## When to use
@@ -47,7 +49,8 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
    member changes and before the no-op return.
 3. **The guard's domain error is a sanctioned place to throw** outside the aggregate's behaviour files; do not move
    it.
-4. **The table is cached whole,** and the cache is filled at start-up.
+4. **The table is cached whole,** read through its cached repository, and warmed at start-up, because the factory
+   reads it from synchronous code (`persistence-patterns` § Caching Small Tables).
 5. **The domain never builds the machine.** A factory delegate, registered once, is passed into the behaviour.
 
 ## Phase 1 — Transition entity + seed data
@@ -79,9 +82,11 @@ public class OrderStateTransitionConfiguration : IEntityTypeConfiguration<OrderS
 }
 ```
 
-The rows are master data: a seed file named after the table, read by the configuration and seeded with `HasData`,
-so they ship in a migration (`persistence-patterns` § Seed Data (Dual Pattern)). A row whose current state equals its destination is a same-state
-re-entry (re-uploading a file):
+The transitions are a table of their own because each row carries data — the destination a state and an action lead
+to; the state and action enums in it stay text (`persistence-patterns` § Entity Configuration). The rows are
+master data: a seed file named after the table, read by the configuration and seeded with `HasData`, so they ship
+in a migration (`persistence-patterns` § Seed Data (Dual Pattern)). A row whose current state equals its
+destination is a same-state re-entry (re-uploading a file):
 
 ```json
 [
@@ -163,12 +168,13 @@ plain data are built with `new`. The registration is a lambda by necessity: it i
 
 ```csharp
 services.AddScoped<OrderStateMachineFactory>(provider => state =>
-    new OrderStateMachine(state, provider.GetRequiredService<IMemoryCache>().GetCachedTable<OrderStateTransition>()));
+    new OrderStateMachine(state, provider.GetRequiredService<CachedRepository<OrdersDbContext, OrderStateTransition>>().GetAll()));
 ```
 
-The table reaches the cache at start-up through the small-table cache loader, registered with the memory cache it
-fills (`persistence-patterns` § Caching Small Tables). A choice: a good pattern with few uses — reach for it where a behaviour object really is built per call, not
-for every class.
+The factory stays synchronous and reads the table through its cached repository, whose read is synchronous. The
+start-up warm-up fills the cache before the service takes requests, so building a machine never waits on the
+database (`persistence-patterns` § Caching Small Tables). A choice: a good pattern with few uses — reach for it
+where a behaviour object really is built per call, not for every class.
 
 ## Phase 4 — The guard in the aggregate behavior
 
@@ -206,11 +212,11 @@ No C# change unless an enum member is new:
 
 1. Add the row to the seed file (current state equal to destination for a re-entry).
 2. If the action or the state is new, add the enum member.
-3. Add a migration — the seeded rows change with it; the cache reloads the table at start-up.
+3. Add a migration — the seeded rows change with it; the warm-up fills the cache with them at the next start-up.
 
 ## What this skill does NOT do
 
 - Create the aggregate, its enums, or the command and handler — `create-aggregate`, `create-feature`.
-- Build the seeding step or the cache loader — `persistence-patterns`.
+- Build the seeding step, the cached repository or its warm-up — `persistence-patterns`.
 - Propagate the state change to other services — `add-integration-event`, `consumer-patterns`.
 - Decide where the machine sits in the design — `domain-patterns` § State Machine Pattern.

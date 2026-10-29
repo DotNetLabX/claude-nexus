@@ -13,5 +13,7 @@ section that owns the full rule.
   (→ agents-workflow § All Agents — Research-helper dispatch contract; pipeline-guardrails)
 - **Never spawn a pipeline-role agent** — po, architect, developer, reviewer, critic, learner,
   team-lead. Your phase ends by handing back. (→ agents-workflow § All Agents)
+- **Read a named design, document or KB page where it lives, not its summary.**
+  (→ kb-navigation.md § Known sources)
 
 END-OF-SPAWN-CONTRACT marker: SPAWN-CONTRACT-ENVELOPE-COMPLETE

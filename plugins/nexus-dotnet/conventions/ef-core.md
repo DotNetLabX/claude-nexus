@@ -5,17 +5,21 @@ context and the table configuration.
 
 ## Queries
 
-- **`.AsNoTracking()` on every read-only query** — reads for a reply, reports, background reads.
+- **A load that will be changed and saved is tracked; every other read is no-tracking.** A change loads through the
+  repository's tracked `GetByIdAsync`; a read for a reply, a report or a background job is a named repository read
+  over `QueryNotTracked()`.
 - **Never read a navigation property in a loop without `.Include()`** — that is N+1.
 - **`.AsSplitQuery()` when including 2 or more collection navigations** at the same level — it avoids a Cartesian
   explosion.
 - **Project with `.Select()` in the database**, instead of loading whole entities and mapping afterwards.
 - **No EF calls in a loop for bulk work.** Use `ExecuteUpdateAsync` / `ExecuteDeleteAsync`.
-- **Don't return `IQueryable<T>` from a method.** Compose the predicates in one place, then materialize. The one
-  seam is a repository base's `Query()`, composed only by the repository that derives the base — never handed to a
-  caller outside it.
+- **Don't return `IQueryable<T>` from a method.** Compose the predicates in one place, then materialize. The seams
+  are the repository base's `Query()` and `QueryNotTracked()`, both protected and composed only by the repository
+  that derives the base — never handed to a caller outside it.
 - **Check the generated SQL of a `GroupBy`** on an `IQueryable` — it can pull every row to the client.
-- **Repositories call `SaveChangesAsync`;** an endpoint or a handler never touches the context directly.
+- **Every query written in C# is an EF Core query in a repository,** and no class reads with SQL. The repository is
+  the unit of work: an endpoint, a handler or a consumer calls the repository's `SaveChangesAsync` and never touches
+  the context directly.
 
 ## Navigation Loading
 
@@ -29,7 +33,7 @@ context and the table configuration.
 ## Cross-Aggregate Queries
 
 - A query that joins several aggregates goes on the repository that owns the primary data (`OrderRepository` for
-  order status history). A read-only query with a home of its own goes in a read store, named `…ReadStore`.
+  order status history), as a named read.
 
 ## Data Ownership <!-- id: data-ownership -->
 
@@ -65,9 +69,9 @@ context and the table configuration.
 
 ## Additional Gotchas
 
-- **A required lookup goes through the guard helper** that throws not-found (`…OrThrowAsync`), which the central
-  mapper turns into a 404; an optional lookup uses `FirstOrDefaultAsync` and its caller decides. Never `First`, which
-  throws an unhandled 500.
+- **A required lookup is a nullable read plus `.OrThrowNotFound(id)`,** the guard helper that throws not-found, which
+  the central mapper turns into a 404; an optional lookup is the nullable read alone, and its caller decides. Never
+  `First`, which throws an unhandled 500.
 - `required int` on composite key members — a plain `int` defaults to 0 and can silently produce an invalid foreign
   key.
 - `HasData` and `ToJson()` do not combine: EF cannot seed an entity through `HasData` when it (or an owned type on it)

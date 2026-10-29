@@ -1,6 +1,151 @@
 # nexus-dotnet — Changelog
 
 
+## [2.1.2] — 2026-10-29
+- PATCH bump.
+  - skill change (central-package-management)
+  - skill change (diagnose-dotnet)
+  - skill change (framework-currency)
+  - estate raise: plugins/nexus-dotnet/skills/central-package-management/SKILL.md 6623→6628 B — adhoc-TddStepRunFix: skills point at the step test rule
+  - estate raise: plugins/nexus-dotnet/skills/diagnose-dotnet/SKILL.md 3393→3511 B — adhoc-TddStepRunFix: skills point at the step test rule
+  - estate raise: plugins/nexus-dotnet/skills/framework-currency/SKILL.md 7686→7820 B — adhoc-TddStepRunFix: skills point at the step test rule
+
+## [2.1.1] — 2026-10-28
+- F310-StepTestCap: the skills carry no build or test command of their own — each verify line points to the core's `developer.md` § The step test rule; the front end's type-check and build are the complete run's. The .NET runner, in a developer's step run, selects each test class by its full name (nested and generic classes included), splits an oversized filter into batches under the run's deadline, reads failed tests from its own report, and records a run that ran no test as `no test ran`, never a green.
+  - plugin payload (conventions/coding-conventions.md)
+  - hook behavior/enforcement change
+  - skill change (add-conventions-check)
+  - skill change (add-hosted-service)
+  - skill change (add-integration-event)
+  - skill change (add-typed-client)
+  - skill change (central-package-management)
+  - skill change (create-aggregate)
+  - skill change (create-building-blocks-package)
+  - skill change (create-domain-event-handler)
+  - skill change (create-feature)
+  - skill change (create-grpc-contract)
+  - skill change (create-host)
+  - skill change (create-module)
+  - skill change (create-service)
+  - skill change (create-vue-feature)
+  - skill change (diagnose-dotnet)
+  - skill change (extract-endpoint-types)
+
+
+## [2.1.0] — 2026-10-28
+- F312: the persistence skill follows the reference project — no read stores (every C# query is an EF Core read in a repository, the repository is the unit of work); the reference's repository base with a no-tracking read and no throwing members (callers add .OrThrowNotFound(id)); a row two writers race on takes EF Core's version check (SQL Server rowversion or PostgreSQL xmin) with one retry and a 409 conflict error; small tables through a cached repository, warmed at start-up where synchronous code reads them; enums as text or a table of their own; and every skill's look-first rule now says an ordinary class derives from the base the repo's libraries offer.
+  - plugin payload (conventions/coding-conventions.md)
+  - plugin payload (conventions/csharp.md)
+  - plugin payload (conventions/ef-core.md)
+  - skill change (add-hosted-service)
+  - skill change (add-integration-event)
+  - skill change (add-pipeline-behavior)
+  - skill change (add-state-machine)
+  - skill change (add-typed-client)
+  - skill change (authorization-patterns)
+  - skill change (central-package-management)
+  - skill change (consumer-patterns)
+  - skill change (cqrs-patterns)
+  - skill change (create-aggregate)
+  - skill change (create-building-blocks-package)
+  - skill change (create-domain-event-handler)
+  - skill change (create-feature)
+  - skill change (create-grpc-contract)
+  - skill change (create-host)
+  - skill change (create-module)
+  - skill change (create-service)
+  - skill change (domain-patterns)
+  - skill change (domain-service)
+  - skill change (error-handling)
+  - skill change (file-storage-patterns)
+  - skill change (framework-currency)
+  - skill change (persistence-patterns)
+  - skill change (redis-patterns)
+  - skill change (service-infra-conventions)
+  - skill change (service-registration)
+  - owner-escalated to minor
+  - estate raise: plugins/nexus-dotnet/skills/add-hosted-service/SKILL.md 7809→8302 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/add-integration-event/SKILL.md 3984→4263 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/add-integration-event/workflows/Publisher.md 3134→3374 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/add-pipeline-behavior/SKILL.md 6137→6416 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/add-state-machine/SKILL.md 10150→10931 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/add-typed-client/SKILL.md 8731→9010 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/authorization-patterns/SKILL.md 16553→17008 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/central-package-management/SKILL.md 6324→6603 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/consumer-patterns/SKILL.md 5839→6331 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/consumer-patterns/references/projection-consumer.md 2779→3549 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/consumer-patterns/references/write-side-consumer.md 3864→4430 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/cqrs-patterns/SKILL.md 4212→4829 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/create-aggregate/SKILL.md 7613→7892 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/create-aggregate/workflows/AggregateEfCore.md 3477→4079 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/create-building-blocks-package/SKILL.md 5389→5668 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/create-domain-event-handler/SKILL.md 7967→8568 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/create-feature/SKILL.md 15358→15745 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/create-feature/workflows/EndpointCarter.md 2718→2727 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/create-feature/workflows/EndpointFastEndpoints.md 4165→4318 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/create-feature/workflows/EndpointMinimalApi.md 2765→2774 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/create-feature/workflows/Handler.md 3277→3446 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/create-grpc-contract/SKILL.md 4891→5400 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/create-grpc-contract/workflows/Server.md 2029→2361 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/create-host/SKILL.md 17910→18189 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/create-module/SKILL.md 7278→7557 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/create-service/SKILL.md 9316→9595 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/domain-patterns/SKILL.md 9053→9498 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/domain-service/SKILL.md 7292→7751 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/error-handling/SKILL.md 11441→12243 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/file-storage-patterns/SKILL.md 7448→7727 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/file-storage-patterns/references/templates.md 6498→6526 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/framework-currency/SKILL.md 7678→7686 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/persistence-patterns/SKILL.md 20652→26536 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/redis-patterns/SKILL.md 7464→7743 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/service-infra-conventions/SKILL.md 19601→19880 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+  - estate raise: plugins/nexus-dotnet/skills/service-registration/SKILL.md 13386→13744 B — F312-PersistenceLikeReference: the look-first base-class sentence in 25 .NET skills; the persistence skill and its samples follow the reference (no read stores, repository reads, version check, cached repository, two enum forms)
+
+## [2.0.14] — 2026-10-27
+- Narrows 2.0.13 (owner): only a Component module's implementation classes are `internal`, its test project its
+  friend (the scaffold names it); services and Domain modules are public throughout again, the layer tests guarding
+  references.
+- PATCH bump.
+  - plugin payload (conventions/csharp.md)
+  - skill change (create-building-blocks-package)
+  - skill change (create-module)
+  - estate raise: plugins/nexus-dotnet/skills/create-module/SKILL.md 7256→7278 B — adhoc-ContractsOnlyForImplementations: internal implementations for Component modules only (owner, 2026-10-27)
+  - estate raise: plugins/nexus-dotnet/skills/create-module/workflows/ScaffoldComponent.md 4107→4187 B — adhoc-ContractsOnlyForImplementations: internal implementations for Component modules only (owner, 2026-10-27)
+
+## [2.0.13] — 2026-10-27
+- A module shows only its contract: the types its callers use are public, everything else `internal`, so no caller
+  reaches its internals; its own projects and its test project may be its friends. A service stays public
+  throughout. The Component scaffold's implementation class is `internal` (knowledge-gateway feedback, owner).
+- PATCH bump.
+  - plugin payload (conventions/csharp.md)
+  - skill change (create-building-blocks-package)
+  - skill change (create-module)
+  - estate raise: plugins/nexus-dotnet/skills/create-building-blocks-package/SKILL.md 5380→5404 B — adhoc-ContractsOnlyForImplementations: a module shows only its contract, the rest internal (owner, 2026-10-27)
+  - estate raise: plugins/nexus-dotnet/skills/create-module/SKILL.md 7182→7256 B — adhoc-ContractsOnlyForImplementations: a module shows only its contract, the rest internal (owner, 2026-10-27)
+  - estate raise: plugins/nexus-dotnet/skills/create-module/workflows/ScaffoldComponent.md 4105→4107 B — adhoc-ContractsOnlyForImplementations: a module shows only its contract, the rest internal (owner, 2026-10-27)
+
+## [2.0.12] — 2026-10-27
+- A module gets a contracts project only for several implementations or a planned second, never for several
+  consumers: a business module is referenced directly; a dependency split is named as the one other reason for a
+  separate project; integration-event and gRPC contracts stay shared projects. The interface rule takes the same
+  planned-second case, and the service scaffold and repo template stop giving every module a contracts project
+  (knowledge-gateway feedback).
+- PATCH bump.
+  - plugin payload (conventions/coding-conventions.md)
+  - plugin payload (conventions/csharp.md)
+  - skill change (create-module-claude-md)
+  - skill change (create-module)
+  - skill change (create-service-claude-md)
+  - skill change (create-service)
+  - skill change (system-design)
+  - plugin payload (templates/CLAUDE.md)
+  - estate raise: plugins/nexus-dotnet/skills/create-module-claude-md/SKILL.md 4163→4584 B — adhoc-ContractsOnlyForImplementations: a contracts project only for several implementations (knowledge-gateway feedback)
+  - estate raise: plugins/nexus-dotnet/skills/create-module/SKILL.md 6766→7182 B — adhoc-ContractsOnlyForImplementations: a contracts project only for several implementations (knowledge-gateway feedback)
+  - estate raise: plugins/nexus-dotnet/skills/create-module/workflows/ScaffoldDomain.md 4048→4053 B — adhoc-ContractsOnlyForImplementations: a contracts project only for several implementations (knowledge-gateway feedback)
+  - estate raise: plugins/nexus-dotnet/skills/create-service-claude-md/SKILL.md 3852→4236 B — adhoc-ContractsOnlyForImplementations: a contracts project only for several implementations (knowledge-gateway feedback)
+  - estate raise: plugins/nexus-dotnet/skills/create-service/workflows/ScaffoldCsprojFiles.md 4463→4549 B — adhoc-ContractsOnlyForImplementations: a contracts project only for several implementations (knowledge-gateway feedback)
+  - estate raise: plugins/nexus-dotnet/skills/system-design/SKILL.md 10711→11095 B — adhoc-ContractsOnlyForImplementations: a contracts project only for several implementations (knowledge-gateway feedback)
+
 ## [2.0.11] — 2026-10-26
 - F292: every full run names each failed test and why, for .NET, vitest, Flutter and Node, even when cut; a .NET or Flutter timeout in a test the change did not touch no longer holds the close
   - hook behavior/enforcement change

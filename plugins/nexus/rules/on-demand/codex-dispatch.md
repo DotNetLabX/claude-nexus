@@ -32,10 +32,11 @@ findings: the independent reading is the point.
 
 **What the brief carries:** the plan path, `implementation.md` with its carry-over findings table
 (Codex confirms or refutes each row), the registry and digest of every touched unit, and the round's
-run record — the complete-run record on a first review (`pending — complete run in flight` on the
-light lane, where that run starts beside the review), the producer's fast record on a follow-up
+run record — the handover's tied-run record on a first review (the complete run comes once, at
+the close; under a gear that runs the complete suite once beside the reviewers the handover run is
+that complete run, which may still be `running` when the review starts), the producer's fast record on a follow-up
 (the fix developer's, the solo's or the hand-up developer's; `not verified at this round` where it is
-cut or missing), or `undeclared` where the repo declares no complete suite. Every reader takes the
+cut or missing), or `undeclared` where the repo declares no `unit` role, so the tied run records nothing. Every reader takes the
 same line and cites it; none re-runs the suite (→ reviewer.md § Fresh Evidence). The skill log, the test-entry log
 and plan conformance are the done check's, which runs beside the review.
 
@@ -46,7 +47,7 @@ Tree: {worktree path | session root}. Diff: the working tree against {base ref}.
 Plan: docs/specs/{slug}/delivery/plan.md. Implementation record: docs/specs/{slug}/delivery/implementation.md
 — confirm or refute each row of its Carry-Over Findings table.
 Registries and digests of the touched units: {list | none}.
-Run record: {record path and verdict | pending — complete run in flight | undeclared | the follow-up's producer record, or "not verified at this round"}.
+Run record: {record path and verdict | running — the gear's complete run, not landed yet | undeclared | the follow-up's producer record, or "not verified at this round"}.
 Read-only run: do not modify any file; this is a review, not a fix.
 Return in your completion message one line `## Verdict: GO` or `## Verdict: NO-GO`, then every
 finding: severity (CRITICAL, HIGH, MEDIUM or LOW), file:line, the issue, the suggested fix.
@@ -188,7 +189,8 @@ starts the readers of a round whose record is missing, it runs `jobs --label {th
   seat's fallback, the reason in the round's header note.
 
 A `collect` that returns a finished, failed or cancelled job started with a label adds one `end`
-line to the same record — when the job ended and its state — so the job's run time can be read back.
+line to the same record — when the job ended, its state and, for a failed or cancelled job, its reason
+— so the job's run time can be read back and its failures counted by cause.
 
 **Holding for the other readers.** On `deadlinePassed`, while any other reader of the round is not yet
 in — its verdict landed, or its stall handling ended with no verdict; a fallback reader counts as the
@@ -307,7 +309,6 @@ Rules: {installed agents/architect.md} § Step 1: Done Check, and the done-check
 Plan: {plan.md}. Implementation record: {implementation.md}. Spec: {the resolved spec, and the development spec where one is named}. Rule list: {the resolved rule list | none}. Questions: {questions.md | none}.
 Audit logs, in both homes ({session root}/.claude/audit/ and, in a worktree round, {tree}/.claude/audit/): skill-invocations.log, violations.log, verify-verdict.json, handoff.jsonl.
 Pipeline token at the developer's dispatch: {token}. Session: {session id}. Window from: {ISO time}. Lane: {team | architect-led | light}. Tree: {worktree path | session root}. Check: {k}.
-{light lane, the complete record not yet landed: Suite: running — record pending.}
 {re-check: Prior check: {the prior check block}. Fix dispatched: {ISO time}.}
 Return the check block's body only — the disposition table, process slips, rule counts, notes and exactly
 one verdict line, **Verdict: PASS** or **Verdict: FAIL — {why}** — with no heading, no Model line and no
@@ -334,8 +335,7 @@ the pipeline is persisted by its dispatcher. A Codex done check writes no lesson
 writes none on its behalf.
 
 **A re-check** is a new Codex job, never a resume — Codex jobs are not resumable — carrying the prior
-block and `Fix dispatched:`. **The light lane:** the brief reads `Lane: light` and carries the `Suite:`
-line where the complete record has not landed, the job starts with the lowered `--effort` the light
+block and `Fix dispatched:`. **The light lane:** the brief reads `Lane: light`, the job starts with the lowered `--effort` the light
 lane names (→ pipeline-guardrails.md § Effort in the light lane), and there is no re-check.
 
 **The fallback.** Codex surfaces absent while the setting stays `codex`, any `unavailable` start, a job

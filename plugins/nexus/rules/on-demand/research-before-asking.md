@@ -184,6 +184,13 @@ owner must choose. A blocking question, the decision part of a checkpoint report
 `AskUserQuestion` call, a `To: user` question in `questions.md`. Unlike the sections above, it binds
 **every agent that writes one**.
 
+**The switch.** The shaping rules of this section and of § Routine questions — the two forms, the line and
+sentence limits, the routine line, the plain-words lists and a relay's shape check — apply only in a repo
+that sets `features.nexusQuestionStyle` to the JSON `true` in `.claude/nexus-agents.json`, and only there
+does `owner-ask-gate.js` check an ask's shape. Off, the default, an ask is written in Claude Code's own
+style; it still carries a catalogued question's options and recommendation, the recommended option first
+with its confidence clause, and a gear still answers its questions unasked.
+
 The obligations fall on the **writer** of the ask. A team lead relaying one is the last surface
 before the owner, so it also **checks** the shape — and on an agent-grade ask sends it back to the
 asker for a rewrite rather than authoring the gloss itself, which would need artifact knowledge the

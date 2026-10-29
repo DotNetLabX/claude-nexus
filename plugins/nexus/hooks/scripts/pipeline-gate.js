@@ -21,7 +21,10 @@
  *      gear, a stale or red latest record can still discharge it on the close evidence
  *      (lib/gear-close.js): each failure re-run green by name, every later change covered by a green
  *      run. The deny names what is not covered; a record that cannot stand as evidence (cut, crashed,
- *      or with no file hashes) keeps its own cause, and under a gear names the evidence's.
+ *      or with no file hashes) keeps its own cause, and under a gear names the evidence's. Before all of that,
+ *      the newest slug-stamped complete record in this tree at its current content is judged, whatever its
+ *      slug or session: content makes a record valid, so it discharges when it counts as passing, and
+ *      another slug's red denies (`failing`) — this slug's later runs cannot repair it.
  *   5) Lessons evidence (F99, ADR-100 K5). "Write lessons before you close" was the one affirmative
  *      duty the always-on prohibitions envelope carried, and the W4 subagent probes measured it at
  *      0.000 — the prose was carrying nothing. The duty leaves the envelope and becomes observed:
@@ -253,10 +256,12 @@ process.stdin.on('end', () => {
     const tree = resolveDeclaredTree(root, data.session_id);
     const denial = fullSuiteDeclared(tree) ? fullSuiteDenial(tree, root, data, slug) : null;
     if (denial) {
-      const { cause, gear, files } = denial;
-      const gloss = EVIDENCE_CAUSES[cause]
-        ? `${gear ? `under the ${gear} gear, ` : ''}${EVIDENCE_CAUSES[cause]}${files.length ? `: ${files.join(', ')}` : ''}`
-        : DENY_CAUSES[cause];
+      const { cause, gear, files, foreign } = denial;
+      const gloss = foreign
+        ? `the newest record at this content is ${foreign}'s and did not pass; this feature's own complete run, the newer record, is the remedy`
+        : EVIDENCE_CAUSES[cause]
+          ? `${gear ? `under the ${gear} gear, ` : ''}${EVIDENCE_CAUSES[cause]}${files.length ? `: ${files.join(', ')}` : ''}`
+          : DENY_CAUSES[cause];
       return deny(
         `summary.md needs a passing full-suite record for ${slug} (cause: ${cause} — ${gloss}). ` +
         'This repo declares .claude/verify.json → roles.full. Run:\n' +
@@ -598,7 +603,8 @@ const EVIDENCE_CAUSES = {
 
 /**
  * Why does the LATEST in-scope full-suite record not discharge this close? `{cause}` — plus `files`, and
- * the `gear` when one is set, when the close evidence fell short — or `null` when it does.
+ * the `gear` when one is set, when the close evidence fell short, or `foreign` (that record's slug) when
+ * another feature's red at this content denies — or `null` when it does.
  *
  * Latest, not any. The audit file is append-only, so a run/fix/re-run cycle leaves several
  * full-suite records for one round; "any pass discharges" would let an early green shadow the red
@@ -631,8 +637,17 @@ const EVIDENCE_CAUSES = {
  * a label label-tests.js wrote (lib/gear-close.js labelsOnly) is not stale. The order is the
  * remedy's: a red record from another tree or an earlier state needs a re-run, and reading it as
  * `failing` would send the closer into a fix loop for a failure the current tree may not have. Matching
- * the hash is what lets the close reuse the handover run instead of paying the suite twice. A `stale` or
+ * the hash is what lets the close reuse a complete record still at this content (a gear's handover run, or
+ * the record the newest-at-content rule below reads) instead of paying the suite twice. A `stale` or
  * `failing` record is then read once more, as close evidence (lib/gear-close.js `closeEvidence`).
+ *
+ * THE NEWEST RECORD AT THIS CONTENT FIRST. Before the two factors, the newest `full` record that names a
+ * slug, ran in THIS tree and carries the current hash — any slug, any session — is judged as the latest
+ * would be: passing discharges; this slug's red is read as close evidence; another slug's red denies
+ * `failing`, because this slug's fast records carry `delta_base` from this slug's own complete record
+ * (lib/gear-close.js `deltaSince`) and so can never repair it — its remedy is this slug's complete run,
+ * which becomes the newer record. Judging the newest, never the newest PASS, keeps any older green from
+ * hiding a newer red. A tree with no hash skips this, and with no record at the content the factors decide.
  *
  * A missing, empty or unparseable verdict file yields no records and therefore denies — that is
  * invariant (4)'s sanctioned exception, not an oversight (see the header).
@@ -650,9 +665,13 @@ function fullSuiteDenial(tree, root, data, slug) {
     lines = fs.readFileSync(path.join(root, '.claude', 'audit', 'verify-verdict.json'), 'utf8').split('\n');
   } catch { return { cause: 'missing' }; }
 
+  // The hash factor fails open on one condition only: a tree git cannot list has no hash, so the factor
+  // is skipped whole — a record without `tree_hash` included — while the tree and verdict still bind.
+  const hash = treeHash(tree);
   const records = [];
   let latest = null;
   let index = -1;
+  let atContent = -1;
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
@@ -660,24 +679,33 @@ function fullSuiteDenial(tree, root, data, slug) {
     try { rec = JSON.parse(trimmed); } catch { continue; } // per-line tolerance, as every reader of this file has
     if (rec) records.push(rec);
     if (!rec || rec.role !== 'full') continue;
+    if (hash !== null && rec.slug && rec.tree_hash === hash && sameTree(rec.tree, tree)) atContent = records.length - 1;
     // Factor 1: the round key. An absent or empty slug fails here — never compared as '' === '',
     // which would make every unsigned record match every close.
     if (!rec.slug || String(rec.slug) !== slug) continue;
     // Factor 2: which run of that round. Both comparisons are against a NON-EMPTY value — an empty
     // token must not match an empty token, or one unscoped record would discharge every close.
-    if (!inThisRound(rec, token, session)) continue; // an out-of-scope record never displaces this round's answer, in either direction
+    if (!inThisRound(rec, token, session)) continue; // out of scope for the own-record path, in either direction; the newest-at-content read above takes any session
     latest = rec; // append-only: the last in-scope record wins
     index = records.length - 1;
   }
+  if (atContent >= 0) {
+    const newest = records[atContent];
+    if (countsAsPassing(newest)) return null;
+    if (String(newest.slug) !== slug) return { cause: 'failing', foreign: String(newest.slug) };
+    return evidenceDenial('failing', { records, index: atContent, tree, root, slug });
+  }
   if (!latest) return { cause: 'missing' };
   if (!sameTree(latest.tree, tree)) return { cause: 'wrong-tree' };
-  // The hash factor fails open on one condition only: a tree git cannot list has no hash, so the factor
-  // is skipped whole — a record without `tree_hash` included — while the tree and verdict still bind.
-  const hash = treeHash(tree);
   let cause = null;
   if (hash !== null && latest.tree_hash !== hash && !labelsOnly({ records, index, tree })) cause = 'stale';
   else if (!countsAsPassing(latest)) cause = 'failing';
   if (!cause) return null;
+  return evidenceDenial(cause, { records, index, tree, root, slug });
+}
+
+/** A `stale` or `failing` complete record read once more, as close evidence: `null` when it stands. */
+function evidenceDenial(cause, { records, index, tree, root, slug }) {
   const evidence = closeEvidence({ records, index, tree, slug });
   if (evidence.ok) return null;
   const gear = closeGear(slug, { tree, root });

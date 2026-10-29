@@ -1,5 +1,20 @@
 # nexus-dotnet
 
+**Your agents build .NET services the way a senior team does.**
+
+- **113 settled .NET coding rules, taught by example.** Every code sample obeys the rules it teaches.
+- **A skill for every piece of a service**: services, modules and feature slices, aggregates and domain events, CQRS, EF Core, gRPC, integration events, background jobs, typed HTTP clients, authorization, Redis, file storage.
+- **The front end too**: Vue 3, Pinia and Tailwind, with a review checklist.
+- **Your conventions, enforced by a test.** The check fails when code breaks a convention, and names the rule.
+- **It looks before it builds.** Your own helpers and shared libraries are reused, not written twice.
+- **Architecture problems found before they cost you**: coupling hotspots, leaky boundaries, thin domain models.
+- **Always on the latest stable .NET.**
+- **95%+ test coverage on your C# classes** — with the paid `nexus-miner`.
+
+nexus-dotnet is a free plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), part of [Nexus](../../README.md).
+
+## What's inside
+
 A **thin .NET / Vue stack extension** for the `nexus` core pipeline. It declares `dependencies: ["nexus"]`,
 so installing it auto-installs and enables `nexus`, then layers the stack on top.
 

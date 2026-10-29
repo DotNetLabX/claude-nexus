@@ -16,7 +16,10 @@
  *               the payload the feature exists for: it is the only carrier those spawns have.
  *   SECONDARY — rules/spawn-contract/role-boundary.md, reinforcement for pipeline agents. It is
  *               NEVER a rule's sole carrier: every line restates a rule the agent file already owns
- *               and still owns, so nothing breaks if this block is dropped.
+ *               and still owns, so nothing breaks if this block is dropped. One exception: the
+ *               known-sources line (open a named source, never its summary) reaches spawned
+ *               pipeline agents here alone; its owner is kb-navigation.md § Known sources, and no
+ *               agent file copies it.
  *
  * AUDIENCE = A MEMBERSHIP TEST, NEVER AN EMPTINESS TEST. `resolveRole` returns the STRIPPED TOKEN for
  * an unknown type (`general-purpose` -> `"general-purpose"`, `Explore` -> `"explore"`); it returns

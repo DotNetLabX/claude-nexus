@@ -23,12 +23,14 @@ A code-first gRPC contract with its server and client — plain C# with `protobu
 #### Look First
 
 Before building anything a skill relies on — a guard helper, the central error mapper, a settings binder, an
-aggregate or repository base, a save interceptor, an event publisher — look at what the repo already has: first
-`project-lists.md` § Helpers, then the shared libraries, modules and packages the project can reach (its project
-references and the central package file). Use what you find. Only otherwise build it once, in the shared place: the
-lowest project every user of it already references; in a repo of one project, a `Shared` folder in it; where the
-users share no project, a new shared project each of them references, with no reference cycle. Never a copy beside
-each user. Add its row to `project-lists.md` § Helpers in the same change.
+aggregate or repository base, a table-configuration base, a save interceptor, an event publisher — look at what the
+repo already has: first `project-lists.md` § Helpers, then the shared libraries, modules and packages the project can
+reach (its project references and the central package file). Use what you find. Only otherwise build it once, in the
+shared place: the lowest project every user of it already references; in a repo of one project, a `Shared` folder in
+it; where the users share no project, a new shared project each of them references, with no reference cycle. Never a
+copy beside each user. Add its row to `project-lists.md` § Helpers in the same change. An ordinary class — a table
+configuration, a repository, an endpoint, a consumer — derives from the base the repo's libraries offer for its kind,
+picked by reading that base's members; a skill's sample is the form for a repo with no such library.
 <!-- nexus-gen coding-conventions END -->
 
 ## When to Use — decide before the mechanics
@@ -53,7 +55,7 @@ A read-model service registers no gRPC client at all — a client there means th
 2. **Write the server** in the owning service — `workflows/Server.md`.
 3. **Register the client** in each caller — `workflows/Client.md`. **The channel is created in one place only:** the
    client's registration, from bound settings; no handler or service ever builds a channel.
-4. **Build:** `dotnet build`.
+4. **Verify:** `developer.md` § The step test rule.
 
 ## Handler usage — the two ways a handler calls the client
 
@@ -62,7 +64,7 @@ The token is always passed on.
 1. **Lazy get-or-create hydration:**
 
    ```csharp
-   var customer = await _customerRepository.GetByIdAsync(command.CustomerId, ct);
+   var customer = await _customerRepository.GetByIdNotTrackedAsync(command.CustomerId, ct);
    if (customer is null)
    {
        var reply = await _customerDirectory.GetCustomerAsync(new GetCustomerRequest { Id = command.CustomerId }, new CallOptions(cancellationToken: ct));
@@ -70,6 +72,9 @@ The token is always passed on.
        await _customerRepository.AddAsync(customer, ct);
    }
    ```
+
+   The handler does not change a customer it already holds, so the local read is the named no-tracking read on
+   `CustomerRepository` (`workflows/Server.md`); the order keeps the customer by id, never as a navigation.
 
 2. **Authoritative gate before a change:**
 

@@ -22,12 +22,14 @@ reads. Registration is written out line by line, so a reader sees what runs.
 #### Look First
 
 Before building anything a skill relies on — a guard helper, the central error mapper, a settings binder, an
-aggregate or repository base, a save interceptor, an event publisher — look at what the repo already has: first
-`project-lists.md` § Helpers, then the shared libraries, modules and packages the project can reach (its project
-references and the central package file). Use what you find. Only otherwise build it once, in the shared place: the
-lowest project every user of it already references; in a repo of one project, a `Shared` folder in it; where the
-users share no project, a new shared project each of them references, with no reference cycle. Never a copy beside
-each user. Add its row to `project-lists.md` § Helpers in the same change.
+aggregate or repository base, a table-configuration base, a save interceptor, an event publisher — look at what the
+repo already has: first `project-lists.md` § Helpers, then the shared libraries, modules and packages the project can
+reach (its project references and the central package file). Use what you find. Only otherwise build it once, in the
+shared place: the lowest project every user of it already references; in a repo of one project, a `Shared` folder in
+it; where the users share no project, a new shared project each of them references, with no reference cycle. Never a
+copy beside each user. Add its row to `project-lists.md` § Helpers in the same change. An ordinary class — a table
+configuration, a repository, an endpoint, a consumer — derives from the base the repo's libraries offer for its kind,
+picked by reading that base's members; a skill's sample is the form for a repo with no such library.
 <!-- nexus-gen coding-conventions END -->
 
 ## Layer Structure
@@ -70,8 +72,9 @@ the repo has modules, they have their own composition, called by the host the sa
 ### Persistence layer (`AddPersistenceServices`)
 
 - The data context, with its save interceptor; it reads its connection string itself
-- Each repository and read store, scoped, one line each (`persistence-patterns`)
-- The cache loader of a small, stable table, where one is cached
+- Each repository, scoped, one line each (`persistence-patterns`)
+- Where a small, stable table is cached: the memory cache, its cached repository, and the start-up warm-up where
+  synchronous code reads the table (`persistence-patterns` § Caching Small Tables)
 
 Middleware lives in the API project's `Middlewares` folder and takes only injected services.
 
@@ -111,7 +114,6 @@ services.AddDbContext<OrdersDbContext>((provider, options) => options
     .AddInterceptors(provider.GetServices<ISaveChangesInterceptor>()));
 services.AddScoped<OrderRepository>();
 services.AddScoped<CustomerRepository>();
-services.AddScoped<OrderReadStore>();
 ```
 
 The save interceptor is `persistence-patterns`'; it publishes domain events after a successful save.

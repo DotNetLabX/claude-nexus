@@ -3,7 +3,7 @@
  * The one entry to every runner's test-command grammar. Consumers import it or call the CLI form at the
  * bottom; none carries a local copy of a rule here, because a drifted exclusion fails green.
  *
- * Each runner-keyed export (filesCommand, timingCommand, deltaTargets, stopFlags, joinExclusion, joinStop)
+ * Each runner-keyed export (filesCommand, buildCommand, timingCommand, deltaTargets, stopFlags, joinExclusion, joinStop)
  * refuses a runner outside the core's table, then hands the work to that runner, found by lib/test-runners.js
  * (which holds the contract): node is built in, every other runner ships in its language plugin. A runner no
  * installed plugin serves is refused with the loader's reason. `root` is the session's checkout, which decides
@@ -58,10 +58,17 @@ function stopFlags(runner, seconds, { root } = {}) {
 }
 
 // `stopSeconds` adds the stop flags to a run whose runner stops in the command; a node run takes its stop as
-// legs.
-function filesCommand({ runner, files, exclude, cwd = process.cwd(), note, stopSeconds, root }) {
+// legs. `step` marks a developer's step run (the runner's own selection rule for it).
+function filesCommand({ runner, files, exclude, cwd = process.cwd(), note, stopSeconds, root, step = false }) {
   const r = runnerFor(runner, 'filesCommand', root);
-  return r.filesCommand({ files: Array.isArray(files) ? files : [], exclude, cwd, note, stopSeconds: runner === 'node' ? 0 : stopSeconds });
+  return r.filesCommand({ files: Array.isArray(files) ? files : [], exclude, cwd, note, stopSeconds: runner === 'node' ? 0 : stopSeconds, step });
+}
+
+// A step run that names no test file: the runner's build of the projects owning `files`, or [] where the
+// runner builds nothing of its own.
+function buildCommand({ runner, files, cwd = process.cwd(), root }) {
+  const r = runnerFor(runner, 'buildCommand', root);
+  return typeof r.buildCommand === 'function' ? r.buildCommand({ files: Array.isArray(files) ? files : [], cwd }) : [];
 }
 
 // The changed-files restriction of a timing pass: what it re-times, and for a runner that filters by class,
@@ -257,7 +264,7 @@ function endLegs(statuses, env = process.env, proc = process) {
 }
 
 module.exports = {
-  filesCommand, timingCommand, deltaTargets, parseClasses, isFilteredFull, joinExclusion, nodeSupportsSkipPattern,
+  filesCommand, buildCommand, timingCommand, deltaTargets, parseClasses, isFilteredFull, joinExclusion, nodeSupportsSkipPattern,
   splitChain, inferRunner, stopFlags, joinStop, labelledFiles, nodeLegs, shareConcurrency, announceLegs, endLegs,
   REPORTER_URL, PRELOAD_URL,
 };

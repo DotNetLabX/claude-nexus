@@ -15,8 +15,8 @@ The samples use an ordering domain — a fulfilment service reacting to `OrderPl
 - **MassTransit** as the bus, registered by one call that finds the consumers (`service-registration` § Registration
   Patterns); in a service a host runs, the host registers it and calls the service's `Add{Service}Consumers`
   (`create-host`).
-- **The repository base** with `ExistsAsync`, `UpsertAsync` and the throwing lookups, and the queryable
-  `SingleOrThrowAsync` (`persistence-patterns`); the error family (`error-handling`).
+- **The repository base** with `ExistsAsync`, `UpsertAsync` and `GetByIdAsync` (`persistence-patterns`); the error
+  family and the not-found guard, `.OrThrowNotFound(id)` (`error-handling`).
 - **The contract records** of the event (`add-integration-event`).
 - No shared library: every helper named here has a sample in the skill that owns it.
 
@@ -24,12 +24,14 @@ The samples use an ordering domain — a fulfilment service reacting to `OrderPl
 #### Look First
 
 Before building anything a skill relies on — a guard helper, the central error mapper, a settings binder, an
-aggregate or repository base, a save interceptor, an event publisher — look at what the repo already has: first
-`project-lists.md` § Helpers, then the shared libraries, modules and packages the project can reach (its project
-references and the central package file). Use what you find. Only otherwise build it once, in the shared place: the
-lowest project every user of it already references; in a repo of one project, a `Shared` folder in it; where the
-users share no project, a new shared project each of them references, with no reference cycle. Never a copy beside
-each user. Add its row to `project-lists.md` § Helpers in the same change.
+aggregate or repository base, a table-configuration base, a save interceptor, an event publisher — look at what the
+repo already has: first `project-lists.md` § Helpers, then the shared libraries, modules and packages the project can
+reach (its project references and the central package file). Use what you find. Only otherwise build it once, in the
+shared place: the lowest project every user of it already references; in a repo of one project, a `Shared` folder in
+it; where the users share no project, a new shared project each of them references, with no reference cycle. Never a
+copy beside each user. Add its row to `project-lists.md` § Helpers in the same change. An ordinary class — a table
+configuration, a repository, an endpoint, a consumer — derives from the base the repo's libraries offer for its kind,
+picked by reading that base's members; a skill's sample is the form for a repo with no such library.
 <!-- nexus-gen coding-conventions END -->
 
 ## When to use
@@ -42,8 +44,8 @@ domain-event handler — an in-process `INotificationHandler` or `IEventHandler`
 
 1. **The class and its dependencies.** A consumer is named for the event it receives — `{Event}Consumer`
    (`OrderPlacedConsumer` for `OrderPlacedEvent`); a class named for its effect is a domain-event handler instead.
-   It takes the service's data context and repositories as concrete classes; an outside system it calls (a file
-   store) comes through that system's interface.
+   It takes the service's repositories as concrete classes, never the data context; an outside system it calls (a
+   file store) comes through that system's interface.
 2. **Idempotency, first.** Guard against a second delivery before any write, so a redelivery is cheap. Pick one of
    the three variants below.
 3. **Local reference-data hydration.** Foreign data is replicated by events, never fetched on demand: look it up in
@@ -51,9 +53,12 @@ domain-event handler — an in-process `INotificationHandler` or `IEventHandler`
    `GetOrCreate{Thing}Async` step, mapping by hand. Reference data that changes on its own (a product's name) is
    kept fresh by a `{Thing}Created` / `{Thing}Updated` consumer pair instead (`references/reference-data-consumer.md`).
 4. **The change.** A write-side service builds or changes the aggregate through its factory or behaviour method, so
-   its rules run. A read-model service sets the members of its projection — a plain data class with no behaviour.
+   its rules run. A read-model service sets the members of its projection — a plain data class on the entity base,
+   with no behaviour.
    When the event carries files, copy their bytes into this service's own store here (`file-storage-patterns`).
-5. **Save once,** at the end, passing `context.CancellationToken`. The data context is the unit of work.
+5. **Save once,** at the end, through a repository's `SaveChangesAsync`, passing `context.CancellationToken`. The
+   repository is the unit of work: every repository of the service shares the one data context, so one save writes
+   every change the consumer made.
 
 **No swallowing.** A consumer has no `catch`, or its `catch` undoes the consumer's own work and rethrows, so the bus
 delivers the message again. A consumer that swallows a failure loses the message for good. A consumer does not log.
@@ -64,7 +69,7 @@ delivers the message again. A consumer that swallows a failure loses the message
 |---|---|---|
 | Silent skip | `if (await _repository.ExistsAsync(id, ct)) return;` — or `UpsertAsync` for an update | a redelivery is normal and harmless — reference-data replication |
 | Throw on duplicate | `throw new AlreadyExistsException(…)` when the row exists | the row is created exactly once, and a second delivery is a bug to surface |
-| Load or throw | `SingleOrThrowAsync(…)`, then change it | a later event changes a row an earlier one created |
+| Load or throw | `GetByIdAsync(…)` plus `.OrThrowNotFound(id)`, then change it | a later event changes a row an earlier one created |
 
 Decision rule: reference data → silent skip. Aggregate creation where a duplicate is a bug worth seeing → throw.
 Aggregate creation where you would rather absorb the redelivery → silent skip. A later stage of the same row → load

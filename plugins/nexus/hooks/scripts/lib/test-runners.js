@@ -27,7 +27,8 @@
  * test, the same form in every language).
  *
  * THE OPERATIONS create() returns. `segment` is one invocation of the runner, cut from a chain by the core.
- *   filesCommand({ files, exclude, cwd, note, stopSeconds }) → [command]  the named-files run
+ *   filesCommand({ files, exclude, cwd, note, stopSeconds, step }) → [command]  the named-files run; `step`
+ *     marks a developer's step run, whose selection never widens past the named files' own tests
  *   timingCommand({ targets, tmp, n, classes, reporter, note, exclusion }) → [command]  the timing pass;
  *     `exclusion`, when given, is a clause this runner's exclusionOf returned, kept in every command
  *   deltaTargets({ files, cwd }) → { targets, classes }  what a changed-files timing pass re-times
@@ -52,6 +53,8 @@
  *   labelCompanions({ tree, files }) → [{ file, merge(text|null) → text|null }]  a project file the labels need
  *     beside them [none]
  *   buildKey(command) → key, noBuild(command) → command  build reuse [always build]
+ *   buildCommand({ files, cwd }) → [command]  the build of the projects that own the changed files, a
+ *     developer's step run that names no test file [nothing runs]
  *   exclusionOf(command) → { known, clause } | { none } | { unknown, why }  the tests a declared command leaves
  *     out, in this runner's own syntax, its slow label never among them; unknown unless every invocation is
  *     read whole (invocationsOf) and none selects tests [the timing pass refuses]

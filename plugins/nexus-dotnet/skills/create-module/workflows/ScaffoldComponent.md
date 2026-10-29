@@ -65,6 +65,10 @@ Leave `{Name}.Contracts/` alone; scaffold the new implementation only, and add i
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="{Name}.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\{Name}.Contracts\{Name}.Contracts.csproj" />
   </ItemGroup>
 
@@ -95,7 +99,7 @@ public class {ImplName}{Name}Options
 ```csharp
 using Microsoft.Extensions.Options;
 
-public class {ImplName}{ContractName}(IOptions<{ImplName}{Name}Options> options) : I{ContractName}
+internal class {ImplName}{ContractName}(IOptions<{ImplName}{Name}Options> options) : I{ContractName}
 {
     private readonly {ImplName}{Name}Options _options = options.Value;
 

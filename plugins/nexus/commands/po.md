@@ -408,7 +408,8 @@ starts the readers of a round whose record is missing, it runs `jobs --label {th
   seat's fallback, the reason in the round's header note.
 
 A `collect` that returns a finished, failed or cancelled job started with a label adds one `end`
-line to the same record — when the job ended and its state — so the job's run time can be read back.
+line to the same record — when the job ended, its state and, for a failed or cancelled job, its reason
+— so the job's run time can be read back and its failures counted by cause.
 
 **Holding for the other readers.** On `deadlinePassed`, while any other reader of the round is not yet
 in — its verdict landed, or its stall handling ended with no verdict; a fallback reader counts as the

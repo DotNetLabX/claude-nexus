@@ -22,12 +22,14 @@ Builds an aggregate the way `domain-patterns` describes it: state in `{Name}.cs`
 #### Look First
 
 Before building anything a skill relies on — a guard helper, the central error mapper, a settings binder, an
-aggregate or repository base, a save interceptor, an event publisher — look at what the repo already has: first
-`project-lists.md` § Helpers, then the shared libraries, modules and packages the project can reach (its project
-references and the central package file). Use what you find. Only otherwise build it once, in the shared place: the
-lowest project every user of it already references; in a repo of one project, a `Shared` folder in it; where the
-users share no project, a new shared project each of them references, with no reference cycle. Never a copy beside
-each user. Add its row to `project-lists.md` § Helpers in the same change.
+aggregate or repository base, a table-configuration base, a save interceptor, an event publisher — look at what the
+repo already has: first `project-lists.md` § Helpers, then the shared libraries, modules and packages the project can
+reach (its project references and the central package file). Use what you find. Only otherwise build it once, in the
+shared place: the lowest project every user of it already references; in a repo of one project, a `Shared` folder in
+it; where the users share no project, a new shared project each of them references, with no reference cycle. Never a
+copy beside each user. Add its row to `project-lists.md` § Helpers in the same change. An ordinary class — a table
+configuration, a repository, an endpoint, a consumer — derives from the base the repo's libraries offer for its kind,
+picked by reading that base's members; a skill's sample is the form for a repo with no such library.
 <!-- nexus-gen coding-conventions END -->
 
 ## Binding rules
@@ -53,9 +55,8 @@ Not preferences — an aggregate that breaks one is wrong here (`domain-patterns
 5. **EF Core: write the table configuration and the repository** (in `workflows/AggregateEfCore.md`), and add the
    migration: `dotnet ef migrations add Add{Name} -p {Svc}.Persistence -s {Svc}.API` — in a service a host runs,
    `-s {Host}` (`create-host`).
-6. **Verify** — build, then search the domain project for what must not be there:
+6. **Verify:** `developer.md` § The step test rule — then search the domain project for what must not be there:
    ```bash
-   dotnet build
    rg -n "DateTime(Offset)?\.UtcNow|Microsoft\.EntityFrameworkCore|AbstractValidator|\bsealed\b" {Svc}.Domain   # expect zero
    rg -n "public [A-Za-z<>?]+ \w+ \{ get; set; \}" {Svc}.Domain -g '!{Documents}/**'   # no public setter — expect zero
    ```

@@ -17,6 +17,8 @@ Disciplined, phased debugging for hard bugs and performance regressions. Prevent
 
 ## Phases
 
+**Who runs what.** A developer runs only its two step runs (`developer.md` § The step test rule): nothing below adds a run, and reproduction runs nothing more. A solo runs its own calls (`solo.md` § Workflow, step 3).
+
 ### Phase 1: Build a Feedback Loop
 
 Before touching anything, establish a way to **see** the bug reproduce on demand. Pick the lightest option that gives signal:
@@ -102,7 +104,7 @@ After each probe:
    - What was the root cause?
    - What would have prevented this?
    - Is there an architectural improvement needed? (flag for architect)
-4. **Verification** — one call of `verify-run.js --profile fast` (it runs `roles.unit` from `.claude/verify.json`) passes — the narrowest command covering the files this fix changed — within the repo's step limit (`stepLimitSeconds`, 90 s when unset), never the whole suite; where the repo declares none, that same narrowest command, per the project's build conventions (`docs/conventions/coding-conventions.md`, if defined)
+4. **Verification** — one run passes, never the whole suite: a developer's step run (`developer.md` § The step test rule), a solo's own call (`solo.md` § Workflow, step 3)
 
 ## Integration with Circuit Breaker
 

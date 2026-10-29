@@ -20,12 +20,14 @@ The name "domain service" is the pattern's; the class itself is never named `…
 #### Look First
 
 Before building anything a skill relies on — a guard helper, the central error mapper, a settings binder, an
-aggregate or repository base, a save interceptor, an event publisher — look at what the repo already has: first
-`project-lists.md` § Helpers, then the shared libraries, modules and packages the project can reach (its project
-references and the central package file). Use what you find. Only otherwise build it once, in the shared place: the
-lowest project every user of it already references; in a repo of one project, a `Shared` folder in it; where the
-users share no project, a new shared project each of them references, with no reference cycle. Never a copy beside
-each user. Add its row to `project-lists.md` § Helpers in the same change.
+aggregate or repository base, a table-configuration base, a save interceptor, an event publisher — look at what the
+repo already has: first `project-lists.md` § Helpers, then the shared libraries, modules and packages the project can
+reach (its project references and the central package file). Use what you find. Only otherwise build it once, in the
+shared place: the lowest project every user of it already references; in a repo of one project, a `Shared` folder in
+it; where the users share no project, a new shared project each of them references, with no reference cycle. Never a
+copy beside each user. Add its row to `project-lists.md` § Helpers in the same change. An ordinary class — a table
+configuration, a repository, an endpoint, a consumer — derives from the base the repo's libraries offer for its kind,
+picked by reading that base's members; a skill's sample is the form for a repo with no such library.
 <!-- nexus-gen coding-conventions END -->
 
 ## Governing Principles
@@ -106,8 +108,9 @@ public interface IOrderHistory
 }
 ```
 
-Never a generic repository, an `IQueryable<T>` or a data context in the Domain. The read port's implementation is a
-read store in the Persistence project, registered there (`persistence-patterns`).
+Never a generic repository, an `IQueryable<T>` or a data context in the Domain. The read port is implemented by the
+repository that owns the data, in the Persistence project — `OrderRepository : IOrderHistory`, the port's method one
+of its named reads — and registered against the port there (`persistence-patterns`).
 
 ## Output Boundary — Endpoint Always Owns the Response DTO
 
@@ -128,13 +131,14 @@ An outside shape — a contract, another system's reply — is mapped to domain 
 ## DI Registration
 
 Scoped, one line, where the service registers its application classes (`service-registration` § What Goes Where):
-`services.AddScoped<OrderTotalCalculator>()`. A read port's implementation is registered in Persistence:
-`services.AddScoped<IOrderHistory, OrderHistoryReadStore>()`.
+`services.AddScoped<OrderTotalCalculator>()`. A read port's implementation is registered in Persistence, beside the
+repository's own line: `services.AddScoped<IOrderHistory, OrderRepository>()`.
 
 ## When This Doesn't Apply — The Application-Layer Service (Contrast)
 
-Orchestration — loading, coordinating, saving — is not this pattern. It is a handler (or an endpoint), which may use
-the data context and repositories; the resource access checker (`authorization-patterns`) is the same kind of class.
+Orchestration — loading, coordinating, saving — is not this pattern. It is a handler (or an endpoint), which loads
+and saves through repositories, never the data context; the resource access checker (`authorization-patterns`) is
+the same kind of class.
 This skill's class computes; it never loads.
 
 ## Relationship to Other Skills
@@ -142,7 +146,7 @@ This skill's class computes; it never loads.
 | Skill | Relationship |
 |-------|-------------|
 | `domain-patterns` | The aggregates and value objects the class reads and returns |
-| `persistence-patterns` | The read store behind a read port |
+| `persistence-patterns` | The repository that implements a read port |
 | `create-feature` | Logic several endpoints share lives in a base endpoint, not in an operation class |
 | `service-registration` | Where the class is registered |
 

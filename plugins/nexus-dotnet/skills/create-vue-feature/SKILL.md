@@ -60,7 +60,7 @@ that concern lives in your app.
 
 7. **Add navigation.** Add `RouterLink` or nav entry in the app shell (`AppSidebar.vue` or equivalent).
 
-8. **Verify the build.** `npm run build` from `client/` (runs `vue-tsc -b` + Vite).
+8. **Verify:** `developer.md` § The step test rule.
 
 ## Arguments
 
@@ -122,7 +122,7 @@ client/src/
 - [ ] View is < 100 lines, delegates to components
 - [ ] Route uses lazy loading
 - [ ] Navigation wired in app shell
-- [ ] `npm run build` passes
+- [ ] Verified: `developer.md` § The step test rule
 
 ## Extending an existing slice
 

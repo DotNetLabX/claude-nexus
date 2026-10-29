@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Nexus label-tests: labels the tests a step close timed, from that run's record alone — it never re-times a
- * test. The one run it makes is a check: each node file it labelled runs its two legs apart once (below).
+ * test. The one run it makes is a check: each node file it labelled runs its two legs apart once (below), never
+ * for a developer's step run.
  *
  *   node label-tests.js --run <run_id> [--reason "<text>" --test <file>:<line>]…
  *
@@ -42,6 +43,11 @@
  * stay written. Each check is kept in the label record (`checks: {path: {hash, passed}}`): a check passed at
  * the file's content now is not run again, and a file whose check failed that has since changed keeps the run
  * failing — every call for that run exits 1 until a new step close labels it.
+ *
+ * A DEVELOPER'S STEP RUN IS LABELLED, NEVER CHECKED. For a record of verify-run.js `--step` (`step_run`) the
+ * call labels from that run and runs no leg, whatever flags it gets: a developer's step has two capped runs and
+ * a check would be a third; the complete run runs a file's labelled and other tests apart, so a test leaning on
+ * another's state fails there.
  */
 'use strict';
 const fs = require('fs');
@@ -156,7 +162,7 @@ function main(argv = process.argv.slice(2), { env = process.env, out = (s) => pr
   const hashes = run.timed_hashes && typeof run.timed_hashes === 'object' ? run.timed_hashes
     : run.file_hashes && typeof run.file_hashes === 'object' ? run.file_hashes : null;
   if (timed.length === 0 || !hashes) {
-    out(`label-tests: run ${args.run} timed no test — a step close (--files or --tied) times its tests, and any run records the ones it timed out\n`);
+    out(`label-tests: run ${args.run} timed no test — a fast call (--step, --files or --tied) times its tests, and any run records the ones it timed out\n`);
     return 2;
   }
   const threshold = slowLine(tree);
@@ -245,9 +251,9 @@ function main(argv = process.argv.slice(2), { env = process.env, out = (s) => pr
   const checks = {};
   for (const file of unproven) {
     apart = false;
-    out(`label-tests: ${file} — its two legs failed run apart for run ${args.run} and it changed since: time it again with a new step close and label from that run\n`);
+    out(`label-tests: ${file} — its two legs failed run apart for run ${args.run} and it changed since: time it again with a new fast call and label from that run\n`);
   }
-  if (split.length) {
+  if (split.length && run.step_run !== true) {
     // Both legs take the slow stop: the check is for a test leaning on another, never for its speed.
     const { slowMs } = testSettings(readConfig(tree));
     for (const { file, hash } of split) {

@@ -5,7 +5,10 @@
  *
  * Slow tests carry `[Trait("Speed", "Slow")]` on a class or a test method and are left out by the filter
  * clause `Speed!=Slow`. A named-files run is grouped per test project, each command filtered to the classes
- * its named files declare. A changed file ties to every test project that reaches its nearest project
+ * its named files declare. In a developer's step run each class is selected by the full name a run reports for
+ * its tests — its namespace, its enclosing types joined by `+`, a generic class by its name open before the
+ * type arguments — and a filter past the command budget is split into batches rather than dropped; with no test file named, the step
+ * run builds each project that owns a changed file (`buildCommand`). A changed file ties to every test project that reaches its nearest project
  * through any chain of ProjectReferences, that project included when it is a test project; a
  * Directory.Build.props/.targets, Directory.Packages.props, global.json or NuGet.config ties to every test
  * project. A file no project owns leaves the run to the declared unit whole. A step close is
@@ -494,25 +497,87 @@ function create(h) {
   };
 
   // Bounded by cwd: a .csproj above the tree belongs to some other checkout.
-  function nearestTestProject(absFile, cwd) {
+  function nearestProject(absFile, cwd) {
     const top = path.resolve(cwd);
     let dir = path.dirname(absFile);
     while (dir === top || dir.startsWith(top + path.sep)) {
       let projects = [];
       try { projects = fs.readdirSync(dir).filter((n) => n.endsWith('.csproj')).sort(); } catch { /* unreadable */ }
-      if (projects.length > 0) {
-        const proj = path.join(dir, projects[0]);
-        let text = '';
-        try { text = fs.readFileSync(proj, 'utf8'); } catch { /* unreadable */ }
-        return TEST_PROJECT.test(text) ? proj : null;
-      }
+      if (projects.length > 0) return path.join(dir, projects[0]);
       if (dir === top || path.dirname(dir) === dir) break;
       dir = path.dirname(dir);
     }
     return null;
   }
 
+  function nearestTestProject(absFile, cwd) {
+    const proj = nearestProject(absFile, cwd);
+    if (!proj) return null;
+    let text = '';
+    try { text = fs.readFileSync(proj, 'utf8'); } catch { /* unreadable */ }
+    return TEST_PROJECT.test(text) ? proj : null;
+  }
+
+  // Each class a source declares, as the start of the full name a test run reports for its tests: the namespace
+  // in force (file-scoped or block), the enclosing types joined by `+`, then the dot before the method — or, for
+  // a generic class, its name open before the type arguments (`Name<`). Comments, strings and character
+  // literals are blanked first, so a brace or a `class` word inside one is never read.
+  function qualifiedClasses(source) {
+    // One pass, so whichever opens first wins: a `//` inside a string is no comment.
+    const text = String(source).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*|@"(?:[^"]|"")*"|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)'/g,
+      (m) => (m.startsWith('/') ? ' ' : '""'));
+    const token = /\bnamespace\s+([A-Za-z_][\w.]*)\s*([;{])|\b(?:(class|struct|interface)|record(?:\s+(class|struct))?)\s+([A-Za-z_]\w*)(\s*<)?|[{};]/g;
+    const scopes = [];
+    let fileSpace = '';
+    let pending = null;
+    const names = [];
+    for (const m of text.matchAll(token)) {
+      if (m[1]) {
+        if (m[2] === ';') fileSpace = m[1];
+        else scopes.push({ space: m[1] });
+        continue;
+      }
+      if (m[5]) {
+        pending = { type: m[5], cls: m[3] === 'class', generic: Boolean(m[6]) };
+        continue;
+      }
+      if (m[0] === ';') { pending = null; continue; }
+      if (m[0] === '}') { scopes.pop(); continue; }
+      if (!pending) { scopes.push({}); continue; }
+      const space = [fileSpace, ...scopes.filter((s) => s.space).map((s) => s.space)].filter(Boolean).join('.');
+      const chain = [...scopes.filter((s) => s.type).map((s) => s.type), pending.type].join('+');
+      if (pending.cls) {
+        const name = `${space ? `${space}.` : ''}${chain}${pending.generic ? '<' : '.'}`;
+        if (!names.includes(name)) names.push(name);
+      }
+      scopes.push({ type: pending.type });
+      pending = null;
+    }
+    return names;
+  }
+
   const disjunction = (classes) => classes.map((c) => `FullyQualifiedName~${c}`).join('|');
+
+  // A step run selects each class by the start of its tests' full names (qualifiedClasses), so no class whose
+  // name ends in another's is selected beside it; a filter past the budget is split into batches, never dropped.
+  function stepBatches(head, classes, clause) {
+    const expr = (list) => {
+      const or = list.map((c) => `FullyQualifiedName~${c}`).join('|');
+      return clause ? `${list.length > 1 ? `(${or})` : or}&${clause}` : or;
+    };
+    const command = (list) => `${head} --filter "${expr(list)}"`;
+    const batches = [];
+    let current = [];
+    for (const c of classes) {
+      if (current.length && command([...current, c]).length > COMMAND_BUDGET) {
+        batches.push(current);
+        current = [];
+      }
+      current.push(c);
+    }
+    if (current.length) batches.push(current);
+    return batches.map(command);
+  }
 
   // A filter that would take the command past the budget is dropped, keeping only the exclusion `clause`:
   // the whole project runs, which is slower and never wrong.
@@ -596,8 +661,8 @@ function create(h) {
   }
 
   // `strict` refuses what a changed-files restriction drops: a named-files run names only test files, while a
-  // diff over a test root also lists the code under test.
-  function classesByProject(files, cwd, strict) {
+  // diff over a test root also lists the code under test. `qualified` names each class with its namespace.
+  function classesByProject(files, cwd, strict, qualified = false) {
     const byProject = new Map();
     for (const f of files) {
       const abs = path.resolve(cwd, f);
@@ -607,7 +672,10 @@ function create(h) {
         continue;
       }
       let classes = [];
-      try { classes = h.parseClasses(fs.readFileSync(abs, 'utf8')); } catch { /* unreadable → no classes */ }
+      try {
+        const source = fs.readFileSync(abs, 'utf8');
+        classes = qualified ? qualifiedClasses(source) : h.parseClasses(source);
+      } catch { /* unreadable → no classes */ }
       if (classes.length === 0) {
         if (strict) throw new Error(`filesCommand: ${f} declares no class to filter on`);
         continue;
@@ -721,18 +789,23 @@ function create(h) {
   }
 
   // The source file declaring the class `short` in the test project above `codeBase` (the test assembly's
-  // path), or null. `cache` keeps one class index per project across calls.
-  function classFile(tree, codeBase, short, cache = new Map()) {
+  // path), or null — by its full name `full` first, where a run reports one, so two classes of one short name in
+  // different namespaces are told apart. `cache` keeps one class index per project across calls.
+  function classFile(tree, codeBase, short, cache = new Map(), full = '') {
     const project = h.projectDir(path.dirname(codeBase), tree, (n) => n.endsWith('.csproj'));
     if (!project) return null;
     if (!cache.has(project)) {
       const index = new Map();
+      const qualified = new Map();
       for (const f of h.sourceFiles(project, '.cs')) {
-        for (const c of h.parseClasses(fs.readFileSync(f, 'utf8'))) if (!index.has(c)) index.set(c, f);
+        const source = fs.readFileSync(f, 'utf8');
+        for (const c of h.parseClasses(source)) if (!index.has(c)) index.set(c, f);
+        for (const q of qualifiedClasses(source)) if (!qualified.has(q)) qualified.set(q, f);
       }
-      cache.set(project, index);
+      cache.set(project, { index, qualified });
     }
-    return cache.get(project).get(short) || null;
+    const { index, qualified } = cache.get(project);
+    return (full && qualified.get(`${full}.`)) || index.get(short) || null;
   }
 
   // A .NET method is labelled by its name, never its line, so the attribute and comment lines the edits add
@@ -896,7 +969,7 @@ function create(h) {
     const place = (codeBase, name) => {
       const { className, method } = splitTestName(name);
       const short = className.split('.').pop();
-      const abs = codeBase ? classFile(tree, codeBase, short, cache) : null;
+      const abs = codeBase ? classFile(tree, codeBase, short, cache, className) : null;
       if (!abs) return { file: null, line: null, class: short, method };
       const file = slashes(path.relative(tree, abs));
       if (!sources.has(file)) sources.set(file, fs.readFileSync(abs, 'utf8'));
@@ -1000,11 +1073,25 @@ function create(h) {
   }
 
   return {
-    filesCommand({ files, exclude, cwd = process.cwd(), note, stopSeconds }) {
+    filesCommand({ files, exclude, cwd = process.cwd(), note, stopSeconds, step = false }) {
       const list = Array.isArray(files) ? files : [];
       const stop = stopSeconds ? ` ${stopFlags(stopSeconds)}` : '';
-      return [...classesByProject(list, cwd, true)].map(([proj, classes]) =>
-        filtered(`dotnet test ${h.quote(proj)}${stop}`, classes, exclude ? SLOW_CLAUSE : '', note));
+      const clause = exclude ? SLOW_CLAUSE : '';
+      return [...classesByProject(list, cwd, true, step)].flatMap(([proj, classes]) => (step
+        ? stepBatches(`dotnet test ${h.quote(proj)}${stop}`, classes, clause)
+        : [filtered(`dotnet test ${h.quote(proj)}${stop}`, classes, clause, note)]));
+    },
+    // The projects that own the changed files, each built once; a file no project owns builds nothing.
+    buildCommand({ files, cwd = process.cwd() }) {
+      const projects = [];
+      for (const f of Array.isArray(files) ? files : []) {
+        const abs = path.resolve(cwd, String(f));
+        const proj = String(f).endsWith('.csproj') ? abs : nearestProject(abs, cwd);
+        if (!proj) continue;
+        const rel = path.relative(cwd, proj).replace(/\\/g, '/');
+        if (!projects.includes(rel)) projects.push(rel);
+      }
+      return projects.map((p) => `dotnet build ${h.quote(p)}`);
     },
     // The test projects of the changed .cs files, each with only the classes that live in it.
     deltaTargets({ files, cwd = process.cwd() }) {
@@ -1057,7 +1144,7 @@ function create(h) {
         for (const trx of h.sourceFiles(dir, '.trx')) {
           for (const e of parseTrx(fs.readFileSync(trx, 'utf8'))) {
             const short = e.className.split('.').pop();
-            const abs = e.codeBase ? classFile(tree, e.codeBase, short, cache) : null;
+            const abs = e.codeBase ? classFile(tree, e.codeBase, short, cache, e.className) : null;
             if (!abs) continue;
             const file = path.relative(tree, abs).split(path.sep).join('/');
             if (!sources.has(file)) sources.set(file, fs.readFileSync(abs, 'utf8'));

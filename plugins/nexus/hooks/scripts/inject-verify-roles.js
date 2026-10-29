@@ -12,8 +12,8 @@
  *
  * WHAT RIDES HERE — a DATA CARRIER, not prose (ADR-94's placement rule: prohibitions always-on,
  * procedures on demand). This states what the repo declared plus the two limits on USING it. It
- * carries no rules and no procedure: the one-call step-close rule is developer.md's and tdd's, the
- * close gate's full-suite duty is team-lead.md's. Duplicating either here would give two owners to
+ * carries no rules and no procedure: the step test rule is developer.md's, the solo's one-call step close
+ * is solo.md's, the close gate's full-suite duty is team-lead.md's. Duplicating either here would give two owners to
  * one rule.
  *
  * WHO GETS IT. Implementation roles only (developer / solo) — resolved through lib/resolve-role.js
@@ -45,10 +45,13 @@
  *
  * THIRD PAYLOAD — the runner block (F147), FIRST in the payload. When the tree declares a non-empty
  * `roles.unit` — the same arming condition as test-entry-gate.js — the carrier delivers the resolved
- * verify-run.js call for the step close (the tied form), its named-files form (both with `--slug`, so a
- * feature's test time counts every run its developer made), and the label-tests.js
- * call that labels from the step close's record. Same reason as the commit block: nothing else in a
- * background spawn's context can locate either script.
+ * verify-run.js call and the label-tests.js call that labels from its record. A developer gets the step-run
+ * form (`--step`), its own `agent_id` filled in and the unit and attempt as slots it fills, the Bash tool
+ * timeout the call needs (180 s), and a roster note pointing at developer.md § The step test rule (where no
+ * runner block is delivered, the note says no step run is given instead of pointing above); a solo
+ * gets the tied step close and its named-files form (both with `--slug`, so a feature's test time counts
+ * every run). Same reason as the commit block: nothing else in a background spawn's context can locate either
+ * script.
  *
  * BUDGET PRIORITY. All three payloads share the 2,000-byte delivery budget. The ROSTER yields first
  * (it is verify.json, a file the developer can open), the commit block second, and the runner block
@@ -122,10 +125,20 @@ function commitBlock(tree, role) {
     '```';
 }
 
-function runnerBlock(roles) {
+function runnerBlock(roles, role, agentId) {
   if (typeof roles.unit !== 'string' || roles.unit.trim() === '') return '';
   const runner = path.join(__dirname, 'verify-run.js').replace(/\\/g, '/');
   const labeller = path.join(__dirname, 'label-tests.js').replace(/\\/g, '/');
+  // The unit state is written after this event, so the unit and the attempt are slots the developer
+  // fills; the test-entry gate checks both and names the right ones when it refuses.
+  if (role === 'developer') {
+    return '```\n' +
+      `run tests: node "${runner}" --profile fast --step --attempt <1|2> --agent ${agentId || '<your agent id>'} ` +
+      '--unit <the step you are building | fix-c{N} in a fix round> --slug <slug> --changed <every file this step changed> [--files <test files>]\n' +
+      'a step run: attempt 2 only after a red; the Bash tool timeout for it is 180000 ms\n' +
+      `then label from that run: node "${labeller}" --run <run_id>\n` +
+      '```';
+  }
   return '```\n' +
     `run tests: node "${runner}" --profile fast --tied --changed <every file this step changed> --slug <slug>\n` +
     `the test file you are writing: node "${runner}" --profile fast --files <test file>... --slug <slug>\n` +
@@ -172,15 +185,19 @@ process.stdin.on('end', () => {
 
     const commit = commitBlock(tree, role);
     if (present.length === 0 && !commit) return process.exit(0);
-    const runner = runnerBlock(roles);
+    const runner = runnerBlock(roles, role, String(data.agent_id || ''));
+    const note = role === 'developer'
+      ? `${runner ? 'Test runs = the step run above, at most two a step,' : 'No step run is given here (no roles.unit declared): test'}` +
+        ' as developer.md § The step test rule says; never a build or a role run; the full suite is never run by a subagent.\n'
+      : 'Step-close = ONE call of verify-run.js --profile fast --tied, then label-tests.js --run; never a separate build call outside a ' +
+        'compile-fix loop; the full suite is never run by a subagent.\n';
 
     const assemble = (roster, withCommit = true) => [
       runner,
       roster && ('```\n' +
         'Nexus verification roles (.claude/verify.json → roles):\n' +
         `${roster}\n` +
-        'Step-close = ONE call of verify-run.js --profile fast --tied, then label-tests.js --run; never a separate build call outside a ' +
-        'compile-fix loop; the full suite is never run by a subagent.\n' +
+        note +
         '```'),
       withCommit && commit,
     ].filter(Boolean).join('\n');

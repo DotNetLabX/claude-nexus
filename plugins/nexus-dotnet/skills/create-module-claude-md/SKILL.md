@@ -30,14 +30,19 @@ A unit's kind comes from whether it could stand alone. Neither having endpoints 
 A service runs on its own by default. In a repo that has a host, a service may instead run inside one host or several
 (`create-host`). In the module skills, the Component archetype is the generic module and the Domain archetype the
 business module; a generic module that keeps its own tables takes the Domain scaffold.
+
+A module gets a contracts project only where it has several implementations or a second is planned (a generic
+module's swappable ones), never because it has several consumers: a business module is referenced directly by the
+service or host that composes it. The contracts of integration events and gRPC are always shared projects, whatever
+the count, because they cross deployables.
 <!-- nexus-gen coding-conventions END -->
 
 ## Assumes
 
 - **A design conversation or plan** that decided the module; the axes come from it first.
-- **The module rules `create-module` scaffolds against** — a contracts project only for several implementations or
-  consumers, no reference to another module except the orchestrating case named here, its own schema where it owns
-  tables.
+- **The module rules `create-module` scaffolds against** — a contracts project only for several implementations or a
+  planned second (never for several consumers), no reference to another module except the orchestrating case named
+  here, its own schema where it owns tables.
 - No shared library: the template names none.
 
 ## Precondition

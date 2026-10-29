@@ -1,7 +1,7 @@
 # Nexus — spawn contract (role boundary)
 
-Reinforcement only. Your agent file remains the owner of every rule below, and nothing depends on
-this block arriving; each pointer names the section that owns the full rule.
+Reinforcement: each pointer names the section that owns the full rule; every line but the
+known-sources one also sits in your agent file.
 
 - **Never advance the pipeline yourself.** `.claude/.pipeline-state` is the team lead's — a phase
   ends by handing back, never by routing around a blocked gate.
@@ -18,5 +18,6 @@ this block arriving; each pointer names the section that owns the full rule.
   (→ workflow-core § Hard rules (every agent))
 - **The four capability pins hold here too: no-git-push, no-git-config, no-history-rewrite,
   no-permission-change.** (→ agents-workflow § All Agents — Spawn-tasking contract)
+- **Open a named source where it lives, never its summary.** (→ kb-navigation.md § Known sources)
 
 END-OF-SPAWN-CONTRACT marker: SPAWN-CONTRACT-ENVELOPE-COMPLETE

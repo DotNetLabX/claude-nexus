@@ -19,12 +19,14 @@ bare `<PackageReference Include="…" />` lines with no version.
 #### Look First
 
 Before building anything a skill relies on — a guard helper, the central error mapper, a settings binder, an
-aggregate or repository base, a save interceptor, an event publisher — look at what the repo already has: first
-`project-lists.md` § Helpers, then the shared libraries, modules and packages the project can reach (its project
-references and the central package file). Use what you find. Only otherwise build it once, in the shared place: the
-lowest project every user of it already references; in a repo of one project, a `Shared` folder in it; where the
-users share no project, a new shared project each of them references, with no reference cycle. Never a copy beside
-each user. Add its row to `project-lists.md` § Helpers in the same change.
+aggregate or repository base, a table-configuration base, a save interceptor, an event publisher — look at what the
+repo already has: first `project-lists.md` § Helpers, then the shared libraries, modules and packages the project can
+reach (its project references and the central package file). Use what you find. Only otherwise build it once, in the
+shared place: the lowest project every user of it already references; in a repo of one project, a `Shared` folder in
+it; where the users share no project, a new shared project each of them references, with no reference cycle. Never a
+copy beside each user. Add its row to `project-lists.md` § Helpers in the same change. An ordinary class — a table
+configuration, a repository, an endpoint, a consumer — derives from the base the repo's libraries offer for its kind,
+picked by reading that base's members; a skill's sample is the form for a repo with no such library.
 <!-- nexus-gen coding-conventions END -->
 
 ## The CPM Convention
@@ -91,7 +93,7 @@ one a pinned package needs), and a comment only directly above a setting it expl
 3. **Strip every version from every project file** — the `Version` attribute, the `<Version>` child, and
    `VersionOverride` (keep an override only with a stated reason, as a pin).
 4. **Run the search** again — zero hits in project files.
-5. **Build** — `dotnet build`.
+5. **Verify:** `developer.md` § The step test rule.
 
 ## Verification Search — Three Forms
 
@@ -117,8 +119,8 @@ Exactly one hit, `src/Directory.Packages.props`. Fold any nested file into the r
 
 ## Interplay with `framework-currency`
 
-A bump can bring a breaking change through a transitive package beyond the one bumped. Build and run after every
-bump; `framework-currency` owns the currency rule.
+A bump can bring a breaking change through a transitive package beyond the one bumped. Verify after every bump, as
+`framework-currency` says; it owns the currency rule.
 
 ## What This Skill Does NOT Cover
 

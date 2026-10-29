@@ -20,8 +20,8 @@ styles exist, and a rule that belongs to one of them says so:
   input has a validator that runs before the logic.
 - **One central error mapper** turns errors into replies, so an endpoint never catches to build a reply. Where the
   repo has none yet, `error-handling` carries its sample; build it once under Look First below.
-- **A repository with throwing lookups** (`GetByIdOrThrowAsync`) — `persistence-patterns` carries the base
-  class's sample.
+- **A repository over one base** — `persistence-patterns` carries the base class's sample; a required row is its
+  nullable read plus `.OrThrowNotFound(id)` (`error-handling` § Guard Utilities).
 - No shared library, building block or module layout is assumed: every helper a sample here calls is named by its
   job and has a sample in the skill that owns it.
 
@@ -29,12 +29,14 @@ styles exist, and a rule that belongs to one of them says so:
 #### Look First
 
 Before building anything a skill relies on — a guard helper, the central error mapper, a settings binder, an
-aggregate or repository base, a save interceptor, an event publisher — look at what the repo already has: first
-`project-lists.md` § Helpers, then the shared libraries, modules and packages the project can reach (its project
-references and the central package file). Use what you find. Only otherwise build it once, in the shared place: the
-lowest project every user of it already references; in a repo of one project, a `Shared` folder in it; where the
-users share no project, a new shared project each of them references, with no reference cycle. Never a copy beside
-each user. Add its row to `project-lists.md` § Helpers in the same change.
+aggregate or repository base, a table-configuration base, a save interceptor, an event publisher — look at what the
+repo already has: first `project-lists.md` § Helpers, then the shared libraries, modules and packages the project can
+reach (its project references and the central package file). Use what you find. Only otherwise build it once, in the
+shared place: the lowest project every user of it already references; in a repo of one project, a `Shared` folder in
+it; where the users share no project, a new shared project each of them references, with no reference cycle. Never a
+copy beside each user. Add its row to `project-lists.md` § Helpers in the same change. An ordinary class — a table
+configuration, a repository, an endpoint, a consumer — derives from the base the repo's libraries offer for its kind,
+picked by reading that base's members; a skill's sample is the form for a repo with no such library.
 <!-- nexus-gen coding-conventions END -->
 
 ## Steps
@@ -51,7 +53,7 @@ each user. Add its row to `project-lists.md` § Helpers in the same change.
 6. **Map by hand** where a reply is built from an entity — `workflows/Mappings.md`.
 7. **Register** — FastEndpoints and Carter find their endpoints themselves; a minimal-API endpoint gets one line in
    the API project's endpoint registration (the minimal-API workflow).
-8. **Build** — `dotnet build`.
+8. **Verify:** `developer.md` § The step test rule.
 
 ## Feature Folder Structure
 
@@ -231,7 +233,7 @@ public class ShipOrderCommandValidator : OrderCommandValidator<ShipOrderCommand>
   expression, sends it with the token, and returns the reply. Route, access, name and tag are fluent calls on the
   route.
 - **No error handling in an endpoint.** It has no `try/catch` that builds a reply and writes no error status by
-  hand; a missing entity is thrown by the lookup and turned into a 404 by the central mapper
+  hand; a missing entity is thrown by the not-found guard and turned into a 404 by the central mapper
   (`error-handling` § Prohibitions (load-bearing)).
 - **No access check inside an endpoint.** Access is declared on the endpoint (`authorization-patterns`).
 - **Endpoints set no response headers and read no settings to branch on.** The one exception: an endpoint that
@@ -283,7 +285,7 @@ public abstract class OrderEndpoint<TCommand>(OrderRepository _orderRepository)
 {
     public override async Task HandleAsync(TCommand command, CancellationToken ct)
     {
-        var order = await _orderRepository.GetByIdOrThrowAsync(command.OrderId, ct);
+        var order = (await _orderRepository.GetByIdAsync(command.OrderId, ct)).OrThrowNotFound(command.OrderId);
 
         Apply(order, command);
 

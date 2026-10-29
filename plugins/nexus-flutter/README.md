@@ -1,5 +1,16 @@
 # nexus-flutter
 
+**From a Figma design to a pixel-accurate Flutter widget.**
+
+- **Figma node in, Flutter widget out.** Exact paddings, colours, typography and icons.
+- **Built from your design system**, read from the real design values — never guessed from a screenshot.
+- **95%+ test coverage on your Dart classes** — with the paid `nexus-miner`.
+- **Your user flows tested on a real device** — with the paid `nexus-miner`.
+
+nexus-flutter is a free plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), part of [Nexus](../../README.md).
+
+## What's inside
+
 A **thin Dart / Flutter stack extension** for the `nexus` core pipeline. It declares `dependencies: ["nexus"]`,
 so installing it auto-installs and enables `nexus`, then layers the stack on top.
 

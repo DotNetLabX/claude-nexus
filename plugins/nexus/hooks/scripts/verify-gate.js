@@ -12,16 +12,16 @@
  *
  * Why this hook does NOT read [UNATTENDED]: a hook is a separate process and cannot see the
  * launch-prompt token (it is prose the team lead reads behaviorally, not a hook-visible env
- * signal). So the gate is UNCONDITIONALLY advisory — it runs the verify set (a developer's step
- * checkpoint aside, below) and records the same verdict in both modes (AC-1.5, AC-1.2 "one
- * execution path"); the step-checkpoint skip reads the stop's own message, never the mode. The
+ * signal). So the gate is UNCONDITIONALLY advisory — it runs the verify set (a developer's stop
+ * aside, below) and records the same verdict in both modes (AC-1.5, AC-1.2 "one
+ * execution path"); the developer skip reads the stop's role and message, never the mode. The
  * mode fork (attended informs / unattended decides) lives entirely in team-lead.md, which reads
  * BOTH the prompt and this verdict.
  *
  * The three-way agent branch (HIGH-2, the false-green guard):
  *   - implementation role (developer/solo)        -> run verify, write a pass/fail verdict
- *                                                    (a developer's step checkpoint: verdict
- *                                                    "skipped", no command — see below)
+ *                                                    (a developer's stop: verdict "skipped",
+ *                                                    no command — see below)
  *   - a recognized NON-impl role (architect/…)    -> skip — not the impl boundary, no verdict
  *   - an ABSENT or UNRECOGNIZED agent_type        -> write a verdict marked agent:"unknown"
  *                                                    (verify NOT run, the reason recorded)
@@ -29,16 +29,15 @@
  * no-write would be the feared false-green. So the unknown branch WRITES — it never silently skips.
  * (A genuine parse error, by contrast, is zero-footprint fail-silent — see the catch.)
  *
- * The step checkpoint (F175, ADR-122): a spawned DEVELOPER hands back after every step with
- * `Step {n} done for …` (lib/step-checkpoint.js). At such a stop — and never "ready for Step 1" or
- * "range complete" — the gate runs NO command and appends verdict:"skipped", reason:"step checkpoint".
- * Why: the team lead consumes only a developer's latest verdict, at the build's end, so a mid-slice
- * verdict is never read, and the developer already ran its own quick check at that step's close;
- * running the set per step cost up to ~4 minutes a step in this repo. It still WRITES, so every stop
- * stays on the audit trail. Solo never takes this branch (it keeps every run), and a message the
- * matcher does not recognise runs the commands as before — the fail-safe side. The record uses the
- * resolved root's tree and token, like branch 3: the worktree redirect exists for decision-grade
- * verdicts, and this one decides nothing.
+ * A developer's stop runs nothing. A spawned DEVELOPER's tests are its step runs (developer.md § The step
+ * test rule, held by test-entry-gate.js), at most two a step, and a run here would be a third the count
+ * never sees; the complete run at close is the check of the whole. So at every developer stop the gate
+ * runs NO command and appends verdict:"skipped" — reason "step checkpoint" at a mid-slice
+ * `Step {n} done for …` hand-back (lib/step-checkpoint.js), "developer step-run rule" at every other one:
+ * "ready for Step 1", a range end, a fix round, anything else. It still WRITES, so every stop stays on
+ * the audit trail. Solo never takes this branch (it keeps every run). The record uses the resolved
+ * root's tree and token, like branch 3: the worktree redirect exists for decision-grade verdicts, and
+ * this one decides nothing.
  *
  * Platform surface note (LOW-2, informational): SubagentStop exposes the same per-subagent
  * transcript (agent_transcript_path -> agent-{agentId}.jsonl) that salvage-transcript.js already
@@ -47,8 +46,8 @@
  *
  * NON-EXECUTION CONTRACT — .claude/verify.json's `roles` block is NOT this gate's (F81).
  * The file now carries two independent declarations:
- *   `commands` — THIS gate's quick set, run at every implementation SubagentStop but a developer's
- *                step checkpoint, under a 120s per-command cap (hooks.json's outer cap is 180s).
+ *   `commands` — THIS gate's quick set, run at every solo SubagentStop, never a developer's, under a
+ *                120s per-command cap (hooks.json's outer cap is 180s).
  *   `roles`    — { build, unit, full, mutation }, each an optional command string, declared for
  *                READERS OTHER THAN THIS HOOK: the spawn-time carrier (inject-verify-roles.js)
  *                delivers them to the implementation subagent, and the close gate runs `full`
@@ -243,10 +242,11 @@ process.stdin.on('end', () => {
       return process.exit(0);
     }
 
-    // A developer's mid-slice step checkpoint: record it, run nothing (header, F175). Developer
+    // A developer's stop: record it, run nothing (header). Developer
     // only — solo keeps every run — and checked before the redirect, which decision-grade verdicts need.
-    if (role === 'developer' && stepCheckpoint(handbackText(data))) {
-      write({ ...base, tree: root, agent: role, verdict: 'skipped', reason: 'step checkpoint', commands: [], commands_count: 0, blocking_failed: false });
+    if (role === 'developer') {
+      const reason = stepCheckpoint(handbackText(data)) ? 'step checkpoint' : 'developer step-run rule';
+      write({ ...base, tree: root, agent: role, verdict: 'skipped', reason, commands: [], commands_count: 0, blocking_failed: false });
       return process.exit(0);
     }
 

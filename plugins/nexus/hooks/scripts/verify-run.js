@@ -6,6 +6,22 @@
  *   node verify-run.js --profile fast --tied --changed <file>... [--slug <slug>] [--light] …
  *   node verify-run.js --profile complete --slug <slug> [--timeout-ms N] [--tree <path>] [--session <id>]
  *   node verify-run.js --role <name> [--slug <slug>] …   (the same runs, addressed by role)
+ *   node verify-run.js --profile fast --step --attempt <1|2> --agent <identity> --unit <unit> --slug <slug>
+ *     [--changed <file>...] [--files <test file>...]   (a developer's step run)
+ *
+ * A DEVELOPER'S STEP RUN. `--step` runs the named test files through the runner's files path with its step
+ * selection (`filesCommand` with `step`), or, with no `--files`, the runner's build of the projects owning
+ * the `--changed` files (`buildCommand`) — `nothing to run` where the runner builds nothing of its own. Never
+ * a declared role, never a tied set, never the whole unit: a runner no installed plugin serves runs nothing
+ * (`no step run for this runner`). Both are `verdict: "skipped"`. Attempt 1 runs under 120 s and attempt 2
+ * under 60 s, every command in the call sharing that one deadline, from no setting; `--step` with
+ * `--timeout-ms`, `--light`, `--tied`, `--role`, `--profile complete`, or without `--attempt`, `--agent` and
+ * `--unit`, exits 2 and writes nothing. The record adds `step_run: true`, `attempt`, `agent`, `unit`, `files`
+ * (always, `[]` where no test file ran), `changed` and `changed_hashes` (over `changed` and `files` both), beside every field a `--files` run
+ * writes. It is evidence only for the test files it ran (lib/gear-close.js), and never the whole fast result.
+ * A step run timed from its runner's own report names its failed tests from that report (`readRunResults`),
+ * and one whose report shows no test executed (`timingEntries`) is `verdict: "fail"`, `reason: "no test ran"` —
+ * a selection that matched nothing is never a green.
  *
  * THE STEP LIMIT. A step close — `--profile fast`, or `--role unit` — runs under `--timeout-ms`, else
  * the repo's top-level `stepLimitSeconds` (a whole number > 0; anything else is ignored with a stderr
@@ -29,7 +45,7 @@
  * is one `node {script}` stage, running that script. Anything else, an exit status that merely matches a
  * leg's or a statement from a process the wrapper started included, is a real failure.
  *
- * A STEP CLOSE TIMES ITS TESTS. A `--files` or `--tied` record carries `test_times` and `over_speed_up`,
+ * A STEP CLOSE TIMES ITS TESTS. A `--files`, `--tied` or `--step` record carries `test_times` and `over_speed_up`,
  * executed tests only, and `timed_hashes` — the files it timed or timed out — which label-tests.js labels
  * from, with `companion_hashes` for a project file a label there needs (the runner's `labelCompanions`).
  * Node's times come from the core reporter's events; a command this runner composed for a runner that writes
@@ -114,7 +130,9 @@
  *
  * EVERY RECORD CARRIES `tree_hash` (lib/tree-hash.js), and a `full` record adds `filtered` (its command
  * carries a filter clause) and `fast_green` (the latest whole fast record's verdict on the same tree at
- * the same hash, else `none` — and `none` when that record was cut at its limit). The close gate reuses a passing record only while the hash still matches.
+ * the same hash, else `none` — and `none` when that record was cut at its limit). The close gate reuses a passing record only while the hash still matches,
+ * and reads the newest complete record at the current content whatever its slug — so a record's slug is
+ * its round key for the own-record path, never a fence around its reuse.
  *
  * WHY NOT A HOOK. The close gate has to run the repo's full suite, and that suite cannot live in
  * verify-gate.js: that hook caps each command at 120 s (hooks.json's outer cap is 180 s) and a
@@ -182,7 +200,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 const { resolveDeclaredTree } = require('./lib/worktree-target');
-const { filesCommand, isFilteredFull, nodeLegs, shareConcurrency, nodeSupportsSkipPattern, PRELOAD_URL } = require('./lib/compose-test-command');
+const { filesCommand, buildCommand, isFilteredFull, nodeLegs, shareConcurrency, nodeSupportsSkipPattern, PRELOAD_URL } = require('./lib/compose-test-command');
 const { loadRunner, RUNNERS, stagesOf, isAssignment, splitChain, setupStage } = require('./lib/test-runners');
 const { hashTree, buildHash, fileHash, sameTree } = require('./lib/tree-hash');
 const { readBuildEntries, hasBuildLedger, startBuild, endBuild, mayHaveBuilt, lastBuildReusable } = require('./lib/build-ledger');
@@ -202,6 +220,8 @@ const DEFAULT_TIMEOUT_MS = 1800000;
 // `--timeout-ms` is the caller's, who sizes that call too, so it passes through. `--light` halves a
 // declared or default limit, never below the floor and never above the limit itself.
 const FAST_TIMEOUT_MS = 90000;
+// A developer's step run, by attempt: fixed, from no setting, shared by every command in the call.
+const STEP_RUN_MS = { 1: 120000, 2: 60000 };
 const STEP_CEILING_MS = 110000;
 const LIGHT_FLOOR_MS = 15000;
 // The per-test stops (`testStop.fastSeconds`, `testStop.slowSeconds`) and the line over which a test the
@@ -413,7 +433,8 @@ function readLog(root) {
 }
 
 // "Was this tree fast-green when the complete run saw it?" — the latest whole-suite fast record on the
-// same tree at the same hash. A named-files record is a partial run, never a fast-green. Both hashes are
+// same tree at the same hash. A named-files record — a developer's step run among them, which always carries
+// `files` — is a partial run, never a fast-green. Both hashes are
 // post-run, so this reads `none` forever in a repo whose complete suite rewrites a tracked file the hash
 // counts (lib/tree-hash.js) that the fast run leaves alone: a `0 / 0` tally is diagnosed there first.
 function fastGreen(root, tree, hash) {
@@ -804,6 +825,20 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
     process.stderr.write('verify-run: pass --profile or --role, not both\n');
     return 2;
   }
+  const step = args.step !== undefined;
+  if (step) {
+    let refusal = '';
+    if (profile !== 'fast') refusal = 'runs only with --profile fast';
+    else if (args.tied !== undefined) refusal = 'runs the step\'s own test files, never --tied';
+    else if (args.light !== undefined || args['timeout-ms'] !== undefined) refusal = 'has fixed deadlines: no --light, no --timeout-ms';
+    else if (!Object.hasOwn(STEP_RUN_MS, String(args.attempt))) refusal = 'needs --attempt 1 or --attempt 2';
+    else if (typeof args.agent !== 'string' || args.agent === '') refusal = 'needs --agent <identity>';
+    else if (typeof args.unit !== 'string' || args.unit === '') refusal = 'needs --unit <work unit>';
+    if (refusal) {
+      process.stderr.write(`verify-run: --step ${refusal}\n`);
+      return 2;
+    }
+  }
   const role = profile ? PROFILE_ROLES[profile] : (typeof args.role === 'string' ? args.role : '');
   if (!role) {
     // Names the four conventional roles as a hint, but any key the repo declares under `roles` runs —
@@ -822,7 +857,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   }
   const tied = args.tied !== undefined;
   const changed = args.changed || null;
-  if (tied || changed) {
+  if (tied || (changed && !step)) {
     let refusal = '';
     if (profile !== 'fast') refusal = '--tied --changed <file>... runs only with --profile fast';
     else if (!tied) refusal = '--changed <file>... is read only with --tied';
@@ -882,7 +917,27 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   const runId = `${Date.now().toString(36)}-${require('crypto').randomBytes(4).toString('hex')}`;
   let composed = false;
   let relFiles = null;
-  if (files) {
+  const relOf = (f) => path.relative(tree, path.resolve(tree, f)).split(path.sep).join('/');
+  const relChanged = step ? (changed || []).map(relOf) : [];
+  // A step run runs only what its runner composes for the step: a runner no installed plugin serves runs
+  // nothing, never the declared unit.
+  let stepSkip = '';
+  if (step) {
+    relFiles = files ? files.map(relOf) : [];
+    if (!runner || !runnerOps || !RUNNERS.has(runner) || runner === 'mtp') stepSkip = 'no step run for this runner';
+    else {
+      try {
+        commands = files
+          ? filesCommand({ runner, files: relFiles, exclude: false, cwd: tree, stopSeconds, root, step: true, note: (line) => process.stderr.write(`verify-run: ${line}\n`) })
+          : buildCommand({ runner, files: relChanged, cwd: tree, root });
+      } catch (e) {
+        process.stderr.write(`verify-run: ${e.message}\n`);
+        return 2;
+      }
+      composed = Boolean(files);
+      if (commands.length === 0) stepSkip = 'nothing to run';
+    }
+  } else if (files) {
     if (!runner) {
       process.stderr.write('verify-run: --files needs a runner — no slow.runner in .claude/verify.json and no recognised test invocation in roles.unit; declare verify roles first\n');
       return 2;
@@ -890,7 +945,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
     if (runnerMissing) {
       process.stderr.write(`verify-run: --files: ${runnerMissing} — running roles.unit\n`);
     } else {
-      relFiles = files.map((f) => path.relative(tree, path.resolve(tree, f)).split(path.sep).join('/'));
+      relFiles = files.map(relOf);
       composed = true;
       try {
         commands = filesCommand({ runner, files: relFiles, exclude: false, cwd: tree, stopSeconds, root, note: (line) => process.stderr.write(`verify-run: ${line}\n`) });
@@ -972,6 +1027,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
     ...(profile ? { profile } : {}), ...(relFiles ? { files: relFiles } : {}), ...(slug ? { slug } : {}),
     session, token, tree, ...(tiedFields || {}),
     ...(runnerMissing && (files || tied) ? { runner_missing: runnerMissing } : {}),
+    ...(step ? { step_run: true, attempt: Number(args.attempt), agent: args.agent, unit: args.unit, files: relFiles, changed: relChanged, limit_ms: STEP_RUN_MS[args.attempt] } : {}),
   };
 
   // The audit file is the RESOLVED ROOT's, even when the command ran in a redirected tree — same
@@ -1001,7 +1057,9 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   const write = (fields) => {
     const hashed = hashTree(tree);
     const record = { ...base, ...turn.fields, tree_hash: hashed && hashed.hash, ...fields };
-    if (tiedFields) record.changed_hashes = Object.fromEntries(tiedFields.changed.map((f) => [f, fileHash(tree, f)]));
+    // A step run hashes the test files it ran too: the gate admits a file to attempt 2 only by its hash.
+    const hashedChanged = tiedFields ? tiedFields.changed : step ? [...new Set([...relChanged, ...(relFiles || [])])] : null;
+    if (hashedChanged) record.changed_hashes = Object.fromEntries(hashedChanged.map((f) => [f, fileHash(tree, f)]));
     if (profile === 'fast' && slug) Object.assign(record, deltaSince({ records: readLog(root), tree, slug, files: hashed && hashed.files }));
     if (role === 'full') {
       record.filtered = isFilteredFull(record.command || '');
@@ -1018,13 +1076,17 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
       fs.mkdirSync(path.join(root, '.claude', 'audit'), { recursive: true });
       fs.appendFileSync(path.join(root, '.claude', 'audit', 'verify-verdict.json'), JSON.stringify(record) + '\n');
     } catch { /* an unwritable audit dir must not also lose the stdout record below */ }
-    if (record.verdict !== 'undeclared' && ledgered()) {
+    if (record.verdict !== 'undeclared' && record.verdict !== 'skipped' && ledgered()) {
       endBuild(tree, { id: runId, ts: record.ts, source: 'verify-run', run_id: runId, builds: Array.isArray(record.builds) ? record.builds : null });
     }
     out(JSON.stringify(record) + '\n');
     if (role === 'full' && record.verdict !== 'undeclared') process.stderr.write(fullSummary(record));
   };
 
+  if (stepSkip) {
+    write({ verdict: 'skipped', reason: stepSkip });
+    return 0;
+  }
   if (!command) {
     write({ verdict: 'undeclared', reason: `no roles.${role} declared in .claude/verify.json` });
     return 0; // visible, never silent — and never a blocker: a repo may legitimately declare no suite
@@ -1038,7 +1100,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   const unsplitField = full && full.unsplit ? { unsplit: full.unsplit } : {};
 
   const stepForm = profile === 'fast' || role === 'unit';
-  const timeoutMs = timeoutFor(profile, args['timeout-ms'], {
+  const timeoutMs = step ? STEP_RUN_MS[args.attempt] : timeoutFor(profile, args['timeout-ms'], {
     role,
     stepLimitSeconds: cfg && cfg.stepLimitSeconds,
     fullLimitSeconds: cfg && cfg.fullLimitSeconds,
@@ -1079,6 +1141,8 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   if (nodeSupportsSkipPattern(process.versions.node) && !options.includes(PRELOAD_URL)) {
     runEnv.NODE_OPTIONS = `${options} --import=${PRELOAD_URL}`.trim();
   }
+  // A reported step run's executed tests, counted from its own reports before they are removed; null where unread.
+  let stepRan = null;
   const testFields = () => {
     let text = '';
     try { text = fs.readFileSync(eventsFile, 'utf8'); } catch { /* no runner wrote events */ }
@@ -1094,7 +1158,30 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
     // A step close times its tests: each executed test, those over the speed-up line, and the content hash
     // of every file it timed or timed out — what label-tests.js checks a file against before it labels from
     // this run — and of each project file a label there needs beside it (`labelCompanions`), as it stood.
-    if (composed || tied) {
+    if (composed || tied || step) {
+      // A reported step run names its failed tests from its own reports, which reportTimes below removes.
+      if (step && reported) {
+        const dirs = commands.map((c, i) => i).filter((i) => i >= ownFrom).map((i) => ({ i, dir: path.join(tree, reportDir, String(i)) }));
+        // Each runner reads its own report: a folder (a folder the run never wrote holds no test that ran) or
+        // the output.
+        const stdout = outputs.join('');
+        stepRan = 0;
+        for (const { dir } of dirs) {
+          try { stepRan += runnerOps.timingEntries({ dir, tree, stdout }).length; } catch (e) {
+            if (!(e && e.code === 'ENOENT')) { stepRan = null; break; }
+          }
+        }
+        if (typeof runnerOps.readRunResults === 'function') {
+          const failed = [];
+          for (const { i, dir } of dirs) {
+            try {
+              const read = runnerOps.readRunResults({ tree, dir, cwd: tree, output: stdout, stage: commands[i] });
+              if (read && Array.isArray(read.failed_tests)) failed.push(...read.failed_tests);
+            } catch { /* an unreadable report names no failure */ }
+          }
+          if (failed.length) fields.failed_tests = failed;
+        }
+      }
       fields.test_times = reported ? [...read.test_times, ...runnerOps.reportTimes({ tree, reportDir, stdout: outputs.join('') })] : read.test_times;
       fields.over_speed_up = fields.test_times.filter((t) => t.ms > settings.speedUpMs).map(({ file, line, test, ms }) => ({ file, line, test, ms }));
       const hashed = [...new Set([...fields.test_times, ...(timedOut || [])].map((t) => t.file).filter((f) => typeof f === 'string'))].sort();
@@ -1261,7 +1348,12 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   }
   const durationMs = Date.now() - started;
   releaseTurn(true);
-  write({ command, verdict: 'pass', duration_ms: durationMs, ...(role === 'full' ? { failed: [] } : {}), ...unsplitField, ...testFields(), ...buildsField() });
+  const passed = testFields();
+  if (step && stepRan === 0) {
+    write({ command, verdict: 'fail', reason: 'no test ran', duration_ms: durationMs, ...passed, ...buildsField() });
+    return 1;
+  }
+  write({ command, verdict: 'pass', duration_ms: durationMs, ...(role === 'full' ? { failed: [] } : {}), ...unsplitField, ...passed, ...buildsField() });
   return 0;
 }
 

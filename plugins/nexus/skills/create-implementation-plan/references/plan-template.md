@@ -76,6 +76,7 @@ For each step:
 - Skill reference (from the mapping table) — if Follow or Find or build, say "Follow {skill-name}" or "Find or build {what}, then follow {skill-name}"; under `**Skills per step:** on`, every skill the row names — "Follow {skill-a}, {skill-b}", or one disposition each where they differ
 - Feature-specific inputs only (entity names, property types, route paths)
 - Dependencies on previous steps
+- **Accept:** a test file or an exact grep or command (SKILL.md § Plan Grounding & Deviation Rules)
 - **Long runs:** (only where the step waits on one) — what runs and roughly how long
 - **Effort points:** {n} — added at the sweep after the review (SKILL.md § Step Effort); not on close- or operator-owned steps
 - **`Satisfies:`** (optional, recommended) — the acceptance criterion the step delivers, e.g.

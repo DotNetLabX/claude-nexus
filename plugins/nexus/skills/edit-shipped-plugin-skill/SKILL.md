@@ -185,9 +185,11 @@ When the edit adds an obligation to an agent file:
   - **E6** — a cited path must resolve skill-relative or at the repo root; a **sibling** skill's file
     is cited by its resolvable sibling path (`../{skill}/...`), never a bare `references/`- or
     `scripts/`-rooted path that dangles for a light skill.
-- **Repo lint suite** — run it in the glob form:
+- **Repo lint suite** — green before the release bump. A developer runs only its step runs
+  (`developer.md` § The step test rule) and a solo its own calls (`solo.md` § Workflow, step 3); the
+  whole suite runs from the main session, in the glob form
   `node --test "tests/lint/*.test.mjs" "tests/unit/*.test.mjs" "tests/mined/*.test.mjs"`
-  (the bare-directory form fails on this repo's Node). Green before the release bump.
+  (the bare-directory form fails on this repo's Node).
 
 ### 6. Release obligations
 

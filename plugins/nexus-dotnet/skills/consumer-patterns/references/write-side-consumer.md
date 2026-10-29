@@ -9,9 +9,8 @@ Folder convention: the consumer lives in `Features/{Area}/{Operation}/` of the p
 
 ```csharp file=OrderPlacedConsumer.cs
 public class OrderPlacedConsumer(
-    FulfilmentDbContext _dbContext,
     ShipmentRepository _shipmentRepository,
-    Repository<Customer> _customerRepository,
+    CustomerRepository _customerRepository,
     IFileService _fileService,
     IFileService<OrderingFileStorageOptions> _orderingFileService)
     : IConsumer<OrderPlacedEvent>
@@ -30,12 +29,12 @@ public class OrderPlacedConsumer(
         var shipment = Shipment.FromOrder(order.Id, customer, documents, ShipmentAction.FromOrder(order));
         await _shipmentRepository.AddAsync(shipment, ct);
 
-        await _dbContext.SaveChangesAsync(ct);
+        await _shipmentRepository.SaveChangesAsync(ct);
     }
 
     private async Task<Customer> GetOrCreateCustomerAsync(CustomerContract contract, CancellationToken ct)
     {
-        var customer = await _customerRepository.GetByIdAsync(contract.Id, ct);
+        var customer = await _customerRepository.GetByIdNotTrackedAsync(contract.Id, ct);
         if (customer is not null)
             return customer;
 
@@ -68,14 +67,20 @@ public class OrderPlacedConsumer(
 
 Read it by phase:
 
-1. **The class and its dependencies** — the data context and the repositories as concrete classes; the two file
+1. **The class and its dependencies** — the repositories as concrete classes, never the data context; the two file
    stores through their interface, the foreign one told apart by its options marker type (`file-storage-patterns`).
 2. **Idempotency** — throw on duplicate: a second shipment for one order is a bug to surface; the bus moves the
    message to its error queue, where it is seen.
 3. **Hydration** — `GetOrCreateCustomerAsync` looks local first and maps the contract by hand only when missing.
+   The consumer does not change an existing customer, so it reads it through a named no-tracking read:
+   `CustomerRepository` holds `GetByIdNotTrackedAsync` the way `OrderRepository` does
+   (`persistence-patterns` § Tier 3: A repository with its own reads). The shipment keeps the customer by id, never
+   as a navigation (`domain-patterns`, cross-aggregate references), so adding the shipment never adds the customer
+   again.
 4. **The change** — the aggregate's factory runs its rules; the action object comes from the event (who acted and
    when, as the publishing service recorded them).
-5. **One save,** with the token.
+5. **One save,** through a repository, with the token: both repositories share the service's one data context, so the
+   save writes the shipment and a newly copied customer together.
 
 **The silent-skip variant** replaces the throw: `if (await _shipmentRepository.ExistsForOrderAsync(order.Id, ct)) return;`
 — for a service that would rather absorb a redelivery than report it.

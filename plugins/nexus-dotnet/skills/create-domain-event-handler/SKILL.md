@@ -26,12 +26,14 @@ interceptor — then each handler is written in the feature folder whose effect 
 #### Look First
 
 Before building anything a skill relies on — a guard helper, the central error mapper, a settings binder, an
-aggregate or repository base, a save interceptor, an event publisher — look at what the repo already has: first
-`project-lists.md` § Helpers, then the shared libraries, modules and packages the project can reach (its project
-references and the central package file). Use what you find. Only otherwise build it once, in the shared place: the
-lowest project every user of it already references; in a repo of one project, a `Shared` folder in it; where the
-users share no project, a new shared project each of them references, with no reference cycle. Never a copy beside
-each user. Add its row to `project-lists.md` § Helpers in the same change.
+aggregate or repository base, a table-configuration base, a save interceptor, an event publisher — look at what the
+repo already has: first `project-lists.md` § Helpers, then the shared libraries, modules and packages the project can
+reach (its project references and the central package file). Use what you find. Only otherwise build it once, in the
+shared place: the lowest project every user of it already references; in a repo of one project, a `Shared` folder in
+it; where the users share no project, a new shared project each of them references, with no reference cycle. Never a
+copy beside each user. Add its row to `project-lists.md` § Helpers in the same change. An ordinary class — a table
+configuration, a repository, an endpoint, a consumer — derives from the base the repo's libraries offer for its kind,
+picked by reading that base's members; a skill's sample is the form for a repo with no such library.
 <!-- nexus-gen coding-conventions END -->
 
 ## Binding rule — pick the handler shape from the event bus, not the endpoint framework
@@ -124,6 +126,10 @@ Name it by its **effect** — `{Effect}On{Event}Handler` — put it in the featu
 match its interface to the publisher (`workflows/Handler.md`). The bus finds its handlers itself; there is no
 registration line per handler.
 
+A handler acts on other aggregates or on outside systems, never on the aggregate that raised the event: a change to
+that aggregate belongs in the aggregate's own behaviour method, beside the event it raises. The one retry of a row
+two writers race on relies on this (`persistence-patterns` § A row two writers race on).
+
 ## Steps
 
 1. **Define the event record** — it implements `IDomainEvent`, in the aggregate's `Events/` folder
@@ -138,8 +144,8 @@ registration line per handler.
    ```bash
    rg -n "IDomainEventPublisher" {Svc}          # one publisher registered
    rg -n "ISaveChangesInterceptor" {Svc}        # the interceptor registered (EF Core stores)
-   dotnet build
    ```
+   Verify: `developer.md` § The step test rule.
 
 ## What this skill does NOT do
 

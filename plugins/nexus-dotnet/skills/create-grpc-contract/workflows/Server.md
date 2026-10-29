@@ -10,14 +10,14 @@ public class CustomerDirectoryServer(CustomerRepository _customerRepository) : I
 {
     public async ValueTask<GetCustomerReply> GetCustomerAsync(GetCustomerRequest request, CallContext context = default)
     {
-        var customer = await _customerRepository.GetByIdOrThrowAsync(request.Id, context.CancellationToken);
+        var customer = (await _customerRepository.GetByIdNotTrackedAsync(request.Id, context.CancellationToken)).OrThrowNotFound(request.Id);
 
         return new GetCustomerReply { Customer = customer.ToCustomerInfo() };
     }
 
     public async ValueTask<GetCustomerStatusReply> GetCustomerStatusAsync(GetCustomerRequest request, CallContext context = default)
     {
-        var customer = await _customerRepository.GetByIdOrThrowAsync(request.Id, context.CancellationToken);
+        var customer = (await _customerRepository.GetByIdNotTrackedAsync(request.Id, context.CancellationToken)).OrThrowNotFound(request.Id);
 
         return new GetCustomerStatusReply { IsActive = customer.IsActive };
     }
@@ -26,7 +26,10 @@ public class CustomerDirectoryServer(CustomerRepository _customerRepository) : I
 
 The signature matches the contract: `ValueTask<T>` and `CallContext context = default`; the token is
 `context.CancellationToken`, passed on. The reply is built by hand from the entity (`{Subject}Extensions`), never the
-entity itself. A Redis-backed owner calls the same lookup on its document repository (`redis-patterns`).
+entity itself. The server changes nothing, so it reads through a named no-tracking read on the owner's repository —
+`CustomerRepository` holds `GetByIdNotTrackedAsync` the way `OrderRepository` does
+(`persistence-patterns` § Tier 3: A repository with its own reads). A Redis-backed owner reads through its document
+repository instead (`redis-patterns`).
 
 ## Registration
 
@@ -45,6 +48,6 @@ calls (`create-host`).
 
 ## Errors
 
-A missing record throws not-found through the lookup, as everywhere. gRPC has no HTTP error mapper: where the repo has
-no gRPC interceptor that turns the error family into gRPC status codes, a caller sees a generic failure — build that
-interceptor once, under Look First, before relying on the status a caller receives.
+A missing record throws not-found through the guard after the read, as everywhere. gRPC has no HTTP error mapper:
+where the repo has no gRPC interceptor that turns the error family into gRPC status codes, a caller sees a generic
+failure — build that interceptor once, under Look First, before relying on the status a caller receives.

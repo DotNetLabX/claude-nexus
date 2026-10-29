@@ -62,11 +62,7 @@ This keeps host adoption an explicit decision per service.
 
 ## Step 4: Final build
 
-```bash
-dotnet build src/{SolutionFile}
-```
-
-The solution must compile with zero errors and zero new warnings. If the build fails, fix csproj references or DI stubs before reporting success — do not leave a broken solution.
+Verify: `developer.md` § The step test rule. A failed build means fixing csproj references or DI stubs before reporting success — do not leave a broken solution.
 
 ## After this step
 

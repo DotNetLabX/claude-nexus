@@ -39,15 +39,18 @@
  *
  * One state file per developer (F176), .claude/audit/dev-steps/{agentId}.json —
  * `{ name, range: {from, to} | null, phase: "analyze" | "review-fixes" | "fixes" | null, step | null,
- * total?, cycle?, phaseDone?, ts }` — kept for a renderer of the agents list, which cannot afford to
- * scan this log every few seconds (none ships with this plugin):
+ * total?, cycle?, phaseDone?, slug?, ts }` — kept for a renderer of the agents list, which cannot afford to
+ * scan this log every few seconds (none ships with this plugin), and read by test-entry-gate.js for the
+ * developer's work unit and feature:
  *   - an unnamed developer spawn (the Agent result carries `agentId`) writes it: the name is the
  *     description's first word, `phase: "analyze"` when the prompt opens with `Analyze`,
  *     `phase: "review-fixes"` with `cycle: "N/M"` when it carries `Fix round for … Cycle N/M`, and the
  *     range comes from the prompt (`Your slice: a–b` beats `Your steps: a–b`; `Build {slug}, steps
  *     a–b`; `Implement. Steps: a–b`; en dash or hyphen); `total` is the plan's highest step
  *     number, every step counted — read from the `Plan:` path the prompt names, else `docs/specs/{slug}/delivery/plan.md` (under its `Tree:` when named), and
- *     left out when no plan is found; a resume keeps it;
+ *     left out when no plan is found; a resume keeps it; `slug` is the feature the prompt opens with
+ *     (`Analyze`, `Fix round for`, `Build {slug}, steps`), else the folder its `Plan:` path names under
+ *     docs/specs, and a resume that names one replaces it;
  *   - a SendMessage to an id that has a file replaces the range when the message carries one,
  *     `Implement. Steps:` clears the phase, a fix-round line sets `review-fixes`, and any other
  *     resume of a developer whose range is finished sets `fixes`; every resume clears `phaseDone`;
@@ -212,8 +215,9 @@ function onDevResume(root, id, message) {
   if (cycle) phase = 'review-fixes';
   else if (/\bImplement\.\s*Steps:/.test(text)) phase = null;
   else if (!phase && pastEnd) phase = 'fixes';
+  const slug = dispatchSlug(text);
   writeDevState(root, id, {
-    ...state, range: range || state.range, phase, cycle: cycle || state.cycle || null, phaseDone: false,
+    ...state, range: range || state.range, phase, cycle: cycle || state.cycle || null, phaseDone: false, ...(slug ? { slug } : {}),
   });
 }
 
@@ -239,13 +243,26 @@ function parseResponse(resp) {
   return resp && typeof resp === 'object' ? resp : {};
 }
 
+// The feature a dispatch opens with: `Analyze {slug}`, `Fix round for {slug}`, `Build {slug}, steps`.
+function openingSlug(text) {
+  const s = String(text || '');
+  const m = /^\s*(?:Analyze|Fix round for)\s+([A-Za-z0-9][\w.-]*?)\.?(?:\s|$)/.exec(s) || /\bBuild\s+([A-Za-z0-9][\w.-]*),\s*steps\b/.exec(s);
+  return m ? m[1] : '';
+}
+
+// The feature a dispatch names: its opening, else the folder its `Plan:` path names under docs/specs — the
+// innermost, for a story's plan under its epic.
+function dispatchSlug(text) {
+  const plan = /\bPlan:\s*`?[^\s`]*?docs[/\\]specs[/\\](?:[^\s`/\\]+[/\\])*?([^\s`/\\]+)[/\\]delivery[/\\]plan\.md/.exec(String(text || ''));
+  return openingSlug(text) || (plan ? plan[1] : '');
+}
+
 // The plan a dispatch names: its `Plan:` path, else the slug's default plan, under the dispatch's
 // `Tree:` when it names one, else the session root.
 function planPaths(root, prompt) {
   const explicit = /\bPlan:\s*`?([^\s`]+\.md)/.exec(prompt);
-  const slug = /^\s*(?:Analyze|Fix round for)\s+([A-Za-z0-9][\w.-]*?)\.?(?:\s|$)/.exec(prompt)
-    || /\bBuild\s+([A-Za-z0-9][\w.-]*),\s*steps\b/.exec(prompt);
-  const rel = explicit ? explicit[1] : slug ? `docs/specs/${slug[1]}/delivery/plan.md` : '';
+  const slug = openingSlug(prompt);
+  const rel = explicit ? explicit[1] : slug ? `docs/specs/${slug}/delivery/plan.md` : '';
   if (!rel) return [];
   if (path.isAbsolute(rel)) return [rel];
   const tree = /\bTree:\s*`?([^\s`]+)/.exec(prompt);
@@ -274,8 +291,9 @@ function onDevSpawn(root, ti, resp) {
   const cycle = fixRound(prompt);
   const phase = cycle ? 'review-fixes' : /^Analyze\b/.test(prompt.trimStart()) ? 'analyze' : null;
   const total = planTotal(root, prompt);
+  const slug = dispatchSlug(prompt);
   writeDevState(root, id, {
-    name, range: parseRange(prompt), phase, step: null, ...(total ? { total } : {}), ...(cycle ? { cycle } : {}),
+    name, range: parseRange(prompt), phase, step: null, ...(total ? { total } : {}), ...(cycle ? { cycle } : {}), ...(slug ? { slug } : {}),
   });
 }
 

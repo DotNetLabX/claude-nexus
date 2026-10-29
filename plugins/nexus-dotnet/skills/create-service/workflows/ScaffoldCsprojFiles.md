@@ -91,7 +91,8 @@ Where the Application axis is Y; the mediator and validation packages only in th
 ```
 
 Add, by axis and only then: `MassTransit.RabbitMQ` and the event contracts project for integration events; the gRPC
-contracts project for gRPC clients; a module's contracts project for each module the service runs on.
+contracts project for gRPC clients; for each module the service runs on, a Component module's contracts project
+and the implementation it uses, or a Domain module's own projects directly.
 
 ## API
 

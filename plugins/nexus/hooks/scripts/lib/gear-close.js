@@ -27,6 +27,11 @@
  * append order, every coverage of that content recorded before it — a label, a green record holding it, a
  * whole-unit green, a named repair of it — until a newer check there passes or green evidence follows it.
  *
+ * A developer's step run (`step_run`, verify-run.js `--step`) is read as a tied record naming the test files it
+ * ran — it repairs those files and covers its `changed_hashes` — and is never a whole-unit record; one that ran
+ * no test file (`files` empty: a build alone, `nothing to run`, a runner with no step run) is no evidence at all,
+ * green or red, and takes back nothing.
+ *
  * A cut record is never green, and a newer red takes back an older green. Records of another slug or
  * tree never count. `closeGear` names the plan header's gear (`lib/gears.js`) only where its complete run
  * runs once beside the reviewers, for the routing: there a red joins that gear's fix round. pipeline-gate.js
@@ -58,6 +63,8 @@ const hashIn = (m, p) => (has(m, p) ? m[p] : null);
 const green = (r) => Boolean(r) && r.verdict === 'pass';
 const unfiltered = (r) => !isFilteredFull(r.command || '') && !NAME_FILTER.test(String(r.command || ''));
 const differing = (a, b) => [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((p) => hashIn(a, p) !== hashIn(b, p));
+// A developer's step run that ran no test file.
+const noEvidence = (r) => r.step_run === true && !(Array.isArray(r.files) && r.files.length > 0);
 // The item a failure is re-run by: its `target` (a .NET test project, a test file), else its file in an older record.
 const targetOf = (t) => (typeof t.target === 'string' && t.target !== '' ? t.target : t.file);
 
@@ -98,7 +105,7 @@ function closeEvidence({ records, index, tree, slug }) {
 
   // `laterAt` holds each later record's place in the log, the append order a failed check is weighed by.
   const laterAt = [];
-  records.forEach((r, k) => { if (k > index && r && r.profile === 'fast' && r.slug === slug && sameTree(r.tree, tree)) laterAt.push(k); });
+  records.forEach((r, k) => { if (k > index && r && r.profile === 'fast' && r.slug === slug && sameTree(r.tree, tree) && !noEvidence(r)) laterAt.push(k); });
   const later = laterAt.map((k) => records[k]);
   const now = fileHashes(tree);
   const changed = now === null ? [] : differing(complete.file_hashes, now).sort();

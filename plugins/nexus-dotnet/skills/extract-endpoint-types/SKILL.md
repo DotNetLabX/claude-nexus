@@ -37,7 +37,7 @@ Never as a step of a new feature: `create-feature` writes the split form directl
    area's `_Shared` folder when another reply does too.
 5. **Keep in the endpoint file** only the endpoint class and the `using` lines it needs; move the rest of the
    `using` lines with the types that need them.
-6. **Build** — `dotnet build` — and run the convention check where the repo has adopted it
+6. **Verify:** `developer.md` § The step test rule — with the convention check where the repo has adopted it
    (`add-conventions-check`).
 
 ## File Layout After
