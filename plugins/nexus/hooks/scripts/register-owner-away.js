@@ -22,8 +22,9 @@
  * and only a synchronous hook's output reaches the model. It answers in one line — set, or cleared —
  * and only after the record really changed, so a session is never told of a mark it does not have.
  *
- * Subagent events are ignored: they carry agent_type and the PARENT's session_id, so a spawned
- * agent writing the trigger would mark, or unmark, the main session.
+ * Subagent events are ignored: they carry agent_id and the PARENT's session_id, so a spawned
+ * agent writing the trigger would mark, or unmark, the main session. A `--agent` main session
+ * carries agent_type but no agent_id, so its own trigger write counts.
  *
  * A session id that is not a plain file name is REFUSED, never sanitised — a cleaned-up id would
  * record a mark no reader looks up. Anything else this hook cannot act on — other content, another
@@ -34,6 +35,7 @@ const fs = require('fs');
 const path = require('path');
 const { isSafeId } = require('./lib/safe-id');
 const { ownerAwayFile } = require('./lib/read-owner-away');
+const { isSpawned } = require('./lib/is-spawned');
 
 const TRIGGER = '.owner-away';
 
@@ -46,7 +48,7 @@ process.stdin.on('end', () => {
 });
 
 function handle(evt) {
-  if (!evt || evt.agent_type) return;
+  if (!evt || isSpawned(evt)) return;
   if (!isSafeId(evt.session_id)) return;
 
   const ti = evt.tool_input || {};

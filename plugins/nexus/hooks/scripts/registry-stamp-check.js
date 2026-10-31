@@ -54,8 +54,8 @@ process.stdin.on('end', () => {
     // regex below is tool-agnostic, so the gate must never advertise less coverage than the matcher.
     if (!/^(Bash|PowerShell)$/.test(data.tool_name || '')) return process.exit(0);
 
-    // Anchored-regex substring on the lowercased command (guard.js / boundary-detector.js house
-    // style) — NOT a prefix scan, so a chained `git status && git commit -m x` still triggers. The
+    // Anchored-regex substring on the lowercased command (guard.js house style) — NOT a prefix
+    // scan, so a chained `git status && git commit -m x` still triggers. The
     // trailing (\s|$) is load-bearing: `\bcommit\b` alone matches inside `git commit-graph`, which
     // is a maintenance command that creates no commit and must never trigger an advisory. The
     // flag-tolerant group lets global flags (`git --no-pager commit`) through.

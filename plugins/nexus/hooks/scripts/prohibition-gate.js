@@ -17,9 +17,13 @@
  *       double-count in the team lead's triage.
  *
  *   (b) APPROVAL SCOPE. "An approval is scoped to the facts you presented" reduced to the one thing
- *       a hook can see: the set of paths the ask named. The asking persona stamps them to
- *       .claude/.approval-scope; while that stamp is live (same session, younger than the 16 h
- *       personas TTL) a file edit outside the declared set is refused. The platform's scratch and
+ *       a hook can see: the set of paths the ask named. The asking persona stamps them to its own
+ *       session's file, .claude/approval-scope/{session_id}.json — one file per session, so two
+ *       sessions in one checkout never replace each other's stamp. The gate reads only the file named
+ *       by the payload's own session id (an id lib/safe-id.js refuses has no file); the legacy
+ *       single-slot .claude/.approval-scope is never read. While that stamp is live (its content
+ *       names the same session, younger than the 16 h personas TTL) a file edit outside the
+ *       declared set is refused. The platform's scratch and
  *       memory folders (lib/is-code-file.js `isScratchPath`, `isMemoryPath`) are never scope: they lie
  *       outside the project, so no ask could name them, and refusing them would bar every approved run
  *       from its own scratch files and memories.
@@ -38,10 +42,12 @@
 const fs = require('fs');
 const path = require('path');
 const { resolveRole, KNOWN_ROLES } = require('./lib/resolve-role');
+const { isSpawned } = require('./lib/is-spawned');
 const { readSessionPersona } = require('./lib/read-session-persona');
 const { isScratchPath, isMemoryPath } = require('./lib/is-code-file');
+const { isSafeId } = require('./lib/safe-id');
 
-const STAMP_REL = path.join('.claude', '.approval-scope');
+const STAMP_DIR_REL = path.join('.claude', 'approval-scope');
 const TTL_MS = 16 * 60 * 60 * 1000; // the personas TTL — register-persona.js owns the number
 const FILE_TOOLS = /^(Write|Edit|MultiEdit|NotebookEdit)$/;
 const SHELL_TOOLS = /^(Bash|PowerShell)$/;
@@ -141,13 +147,14 @@ function main(input) {
   try { data = JSON.parse(input || '{}'); } catch { return allow(); }
 
   const root = process.env.CLAUDE_PROJECT_DIR || data.cwd || process.cwd();
-  const stampPath = path.join(root, STAMP_REL);
+  const sid = data && data.session_id;
+  const stampPath = isSafeId(sid) ? path.join(root, STAMP_DIR_REL, `${sid}.json`) : null;
   let stampExists = false;
-  try { stampExists = fs.existsSync(stampPath); } catch { /* fail open */ }
+  try { stampExists = Boolean(stampPath) && fs.existsSync(stampPath); } catch { /* fail open */ }
 
   if (!needsInspection(data, stampExists)) return allow();
 
-  const background = Boolean(data.agent_type);
+  const background = isSpawned(data);
   const role = resolveRole(data.agent_type || readSessionPersona(data.session_id, root) || 'main');
   const tool = String(data.tool_name || '');
   const ti = data.tool_input || {};
@@ -192,7 +199,7 @@ function main(input) {
   return deny(
     `\`${rel}\` is outside the approved scope (${n} paths stamped ${stamp.ts} for ${stamp.slug}). ` +
     'The approval covered the facts you presented — re-present the ask with the new fact, then ' +
-    're-stamp `.claude/.approval-scope` (or delete it to proceed unscoped).'
+    `re-stamp \`.claude/approval-scope/${sid}.json\` (or delete it to proceed unscoped).`
   );
 }
 

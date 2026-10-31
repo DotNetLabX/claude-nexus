@@ -9,7 +9,7 @@
  * background subagents anyway (ADR-13) — so the only honest mechanism is rule + nudge +
  * deterministic detection, the same shape boundary-detector.js uses for spawns:
  *   - 2nd same-round read of a file  -> corrective systemMessage, for the MAIN session only. A
- *     helper's event (it carries agent_type) is counted but sends none: a helper's hook output
+ *     helper's event (it carries agent_id) is counted but sends none: a helper's hook output
  *     is delivered into its parent's context, not the helper's — measured in a team lead's
  *     transcript, thousands of reminders about its helpers' reads, none of them the lead's
  *   - 3rd+ same-round read           -> one line in .claude/audit/violations.log, which the
@@ -52,6 +52,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { isSpawned } = require('./lib/is-spawned');
 
 // A repeat read counts only within this window of the previous read of the same file; outside it,
 // the count resets. Bounds a token-less, hours-long session that never rolls its round (ADR-61
@@ -201,7 +202,7 @@ process.stdin.on('end', () => {
     // Persistence above is unconditional — the count is durable even for a silent first read.
     const repeats = counted.filter((c) => c.n >= 2);
     if (!repeats.length) return process.exit(0);
-    const helper = Boolean(data.agent_type);
+    const helper = isSpawned(data);
 
     for (const { fp, n } of repeats.filter((c) => c.n >= 3)) {
       fs.appendFileSync(

@@ -1,5 +1,32 @@
 # nexus — Changelog
 
+## [2.4.74] — 2026-10-30
+- PATCH bump.
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 119788→119981 B — F318-F282RunToolFixes: the miner's Tag-scan scope names docs/specs; the violations.log row in agents-workflow states the git watcher's every-change rule
+
+## [2.4.73] — 2026-10-30
+- F315: no tracker writes around the product lane; a spawned agent is one with an agent id
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - estate raise: plugins/nexus/agents/po.md 77790→78085 B — F315: tracker-write rule in po/team-lead, publish-tickets earlier-yes rule, tracker writes.json contract, setup old-lane sub-step
+  - estate raise: plugins/nexus/agents/team-lead.md 252193→252517 B — F315: tracker-write rule in po/team-lead, publish-tickets earlier-yes rule, tracker writes.json contract, setup old-lane sub-step
+
+## [2.4.72] — 2026-10-29
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - rule (always-on prohibitions envelope — injected every session)
+  - estate raise: plugins/nexus/agents/architect.md 235434→235588 B — BUG-17: per-session approval stamp — the always-on line names the new address
+  - estate raise: plugins/nexus/agents/solo.md 35696→35880 B — BUG-17: per-session approval stamp — the always-on line names the new address
+  - estate raise: plugins/nexus/agents/team-lead.md 252039→252193 B — BUG-17: per-session approval stamp — the always-on line names the new address
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 119711→119788 B — BUG-17: per-session approval stamp — the always-on line names the new address
+  - estate raise: plugins/nexus/rules/prohibitions/prohibitions.md 3469→3496 B — BUG-17: per-session approval stamp — the always-on line names the new address
+
 ## [2.4.71] — 2026-10-29
 - One full test run per feature, at close after main is merged in; tied tests at handover; a passing run on the same content closes any feature
   - agent instruction/behavior change

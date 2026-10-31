@@ -201,7 +201,7 @@ const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 const { resolveDeclaredTree } = require('./lib/worktree-target');
 const { filesCommand, buildCommand, isFilteredFull, nodeLegs, shareConcurrency, nodeSupportsSkipPattern, PRELOAD_URL } = require('./lib/compose-test-command');
-const { loadRunner, RUNNERS, stagesOf, isAssignment, splitChain, setupStage } = require('./lib/test-runners');
+const { loadRunner, RUNNERS, stagesOf, isAssignment, splitChain, setupStage, inferRunner } = require('./lib/test-runners');
 const { hashTree, buildHash, fileHash, sameTree } = require('./lib/tree-hash');
 const { readBuildEntries, hasBuildLedger, startBuild, endBuild, mayHaveBuilt, lastBuildReusable } = require('./lib/build-ledger');
 const { tiedSet, failedTargets, declaredFor, nodeInvocation, runnerOf } = require('./lib/tied-tests');
@@ -1366,19 +1366,22 @@ const FOLDER_STAGE = new Set(['cd', 'pushd', 'chdir']);
 const PROBE_DIR = path.resolve(path.sep, 'nexus-full-run-probe');
 
 // Every installed runner of the core's table (`all`), those that read a full run's own results — any with
-// `withRunReport` and `readRunResults`, the contract's other two being optional — and each runner's shape.
+// `withRunReport` and `readRunResults`, the contract's other two being optional — each runner's shape, and
+// for each runner that reads none, why (`unread`).
 function fullRunners(root, env) {
   const all = [];
   const readers = [];
   const shapes = new Map();
+  const unread = new Map();
   for (const name of RUNNERS) {
-    const { runner } = loadRunner(name, { root, env });
+    const { runner, reason } = loadRunner(name, { root, env });
     shapes.set(name, runner && runner.commandShape ? runner.commandShape : null);
-    if (!runner) continue;
+    if (!runner) { unread.set(name, reason); continue; }
     all.push(runner);
     if (typeof runner.withRunReport === 'function' && typeof runner.readRunResults === 'function') readers.push(runner);
+    else unread.set(name, `the installed ${name} runner reads no full-run results; update the plugin that serves it`);
   }
-  return { all, readers, shapeOf: (name) => shapes.get(name) || null };
+  return { all, readers, unread, shapeOf: (name) => shapes.get(name) || null };
 }
 
 const cap = (text, n) => { const s = String(text == null ? '' : text); return s.length > n ? `${s.slice(0, n)}…` : s; };
@@ -1443,9 +1446,10 @@ function carriedStage(words) {
  * stage before its last test stage is a setup stage or a test stage a runner owns: each group is a test
  * stage and the setup stages since the previous one, and the stages after the last test stage form the last
  * group; any other readable chain is one group, `unsplit` saying why. Each stage carries the folder it runs
- * in (`cwd`, after the folder changes before it) and the carried stages before it (`before`).
+ * in (`cwd`, after the folder changes before it) and the carried stages before it (`before`). Where no runner
+ * owns a stage, `unsplit` names each runner a stage invokes by its tool that reads no results, and why.
  */
-function fullPlan(command, { readers, shapeOf, tree }) {
+function fullPlan(command, { readers, shapeOf, tree, unread = new Map() }) {
   const words = stagesOf(command);
   const texts = splitChain(command).map((s) => s.trim());
   if (!words || texts.length !== words.length) return { unsplit: 'its stages cannot be read apart: only stages of plain words joined by && are split' };
@@ -1461,7 +1465,11 @@ function fullPlan(command, { readers, shapeOf, tree }) {
     return stage;
   });
   const last = stages.findLastIndex((s) => s.owner);
-  if (last < 0) return { unsplit: 'no installed test runner owns a stage of it' };
+  if (last < 0) {
+    const needed = [...new Set(texts.map(inferRunner))].filter((name) => unread.has(name));
+    const why = needed.map((name) => `${name}: ${unread.get(name)}`).join('; ');
+    return { unsplit: `no installed test runner owns a stage of it${why ? ` (${why})` : ''}` };
+  }
   if (stages.length === 1 && stages[0].owner.name === 'node') return null;
   const blocking = stages.slice(0, last).find((s) => !s.owner && !s.setup);
   if (blocking) return { groups: [{ carried: [], stages }], unsplit: `a stage before its last test stage is neither a setup stage nor a test stage a runner reads (${blocking.text}), so it runs as one chain` };

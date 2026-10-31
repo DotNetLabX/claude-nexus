@@ -22,6 +22,8 @@
  */
 'use strict';
 
+const { isSpawned } = require('./lib/is-spawned');
+
 const ROLE = /^[a-z][a-z-]{1,30}$/;
 const COMMAND = /^\/(?:([a-z0-9][a-z0-9._-]*):)?([a-z][a-z-]{1,30})(?=\s|$)/;
 
@@ -36,10 +38,11 @@ function run() {
   let evt = {};
   try { evt = JSON.parse(raw || '{}'); } catch { return; }
 
-  // Subagent events carry agent_type AND the PARENT's session_id (Probe P1, 2026-06-10) — a
+  // Subagent events carry agent_id AND the PARENT's session_id (Probe P1, 2026-06-10) — a
   // background subagent's event would silently reassign the MAIN session's persona. Persona
-  // commands run main-thread only; ignore every subagent event.
-  if (evt.agent_type || !evt.session_id) return;
+  // commands run main-thread only; ignore every subagent event. A `--agent` main session carries
+  // agent_type but no agent_id, and registers like any main session.
+  if (isSpawned(evt) || !evt.session_id) return;
 
   const isPrompt = evt.hook_event_name === 'UserPromptSubmit' || typeof evt.prompt === 'string';
   if (isPrompt) {

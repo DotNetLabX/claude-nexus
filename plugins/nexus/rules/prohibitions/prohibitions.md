@@ -9,7 +9,7 @@ Read-Index resolves the path.
   (→ agents-workflow.md § Branch Pre-Flight & Default-Branch Resolution — the matrix, Worktree duties)
 - **An approval is scoped to the facts you presented when you asked.** A fact found wrong — the
   size, the current behavior, what already shipped — re-opens it: stop and re-present, standing yes
-  or not. (→ agents-workflow § All Agents; `prohibition-gate.js` refuses a file edit outside the stamped `.claude/.approval-scope` set)
+  or not. (→ agents-workflow § All Agents; `prohibition-gate.js` refuses a file edit outside the session's stamped `.claude/approval-scope/{session id}.json` set)
 - **Never poll another agent's output file to infer its progress.** A 0-byte `output_file` is the
   normal case, not a hang; wait on a real completion signal. (→ agents-workflow § All Agents)
 - **Never let a spawned subagent make a git write — except a step commit through the plugin's

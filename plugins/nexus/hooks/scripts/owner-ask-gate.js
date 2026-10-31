@@ -70,6 +70,7 @@
 const fs = require('fs');
 const path = require('path');
 const { resolveRole, KNOWN_ROLES } = require('./lib/resolve-role');
+const { isSpawned } = require('./lib/is-spawned');
 const { readSessionPersona } = require('./lib/read-session-persona');
 const { readOwnerAway } = require('./lib/read-owner-away');
 const { readCatalogue, normalizeName } = require('./lib/standard-questions');
@@ -562,7 +563,7 @@ function main(input) {
   if (!data || typeof data !== 'object') return allow();
 
   const root = process.env.CLAUDE_PROJECT_DIR || data.cwd || process.cwd();
-  const background = Boolean(data.agent_type);
+  const background = isSpawned(data);
 
   // Ahead of `needsInspection` and of the role: a marked session is refused with no persona
   // registered and with no questions to read.

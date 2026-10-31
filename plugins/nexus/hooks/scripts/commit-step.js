@@ -17,10 +17,11 @@
  * detector still flags every `git <verb>` a subagent runs through Bash) — this is a narrow, named,
  * inspectable hole in it, not a general relaxation.
  *
- * NOT DETECTOR-AWARE BY DESIGN. boundary-detector.js flags a subagent Bash command matching
- * `\bgit\s+(commit|add|…)`. This script's invocation contains no such token, so it is silent by
- * construction — no carve-out, no branch-awareness, nothing for a forged command to imitate. That
- * is the whole reason the helper runs git INSIDE node instead of shelling out a git line.
+ * NOT DETECTOR-AWARE BY DESIGN. boundary-detector.js flags a subagent shell command in which `git`
+ * is followed by a verb that changes the repository. This script's invocation names no such verb
+ * after a `git`, so it is silent by construction — no carve-out, no branch-awareness, nothing for a
+ * forged command to imitate. That is the whole reason the helper runs git INSIDE node instead of
+ * shelling out a git line.
  *
  * ONE TREE, NEVER A REDIRECT. Root is `--tree` → CLAUDE_PROJECT_DIR → cwd, then the enclosing
  * repository (`git rev-parse --show-toplevel`). The session-keyed `.worktree-target` redirect that
@@ -81,8 +82,8 @@ function parseArgs(argv) {
   return { flags, paths };
 }
 
-function git(cwd, args) {
-  return spawnSync('git', args, { cwd, encoding: 'utf8' });
+function git(cwd, args, input) {
+  return spawnSync('git', args, { cwd, encoding: 'utf8', input });
 }
 
 // The message the caller wrote, plus the provenance trailer. Appended in node rather than passed
@@ -186,13 +187,22 @@ function main() {
     return refuse('at least one path is required after `--` — this helper never stages by itself');
   }
 
-  // Existence is checked HERE, before anything is staged, so the refusal is this helper's and names
-  // the offending path. Leaving it to `git add` would work by accident (git's add is atomic) but the
-  // message would be git's, and the guard would sit after the point where staging begins.
-  const missing = paths.filter((p) => !fs.existsSync(path.resolve(root, p)));
+  // A path missing from the tree is a deletion when HEAD tracks it — a file, or a folder whose files it
+  // tracks — and is committed as one. Any other missing path is refused HERE, before anything is
+  // staged, so the refusal is this helper's and names the path rather than git's add error.
+  const rel = (p) => path.relative(root, path.resolve(root, p)).replace(/\\/g, '/');
+  const lists = (args) => {
+    const r = git(root, args);
+    return r.status === 0 && (r.stdout || '').trim() !== '';
+  };
+  const absent = paths.filter((p) => !fs.existsSync(path.resolve(root, p)));
+  const missing = absent.filter((p) => !lists(['ls-tree', '-r', '--name-only', 'HEAD', '--', rel(p)]));
   if (missing.length) {
     return refuse(`these paths do not exist: ${missing.join(', ')}`, { missing });
   }
+  // A deletion already staged leaves nothing in the index for the path to match, and `git add` refuses
+  // a pathspec that matches nothing, so such a path reaches the commit without being added.
+  const toAdd = paths.filter((p) => !absent.includes(p) || lists(['ls-files', '--', rel(p)]));
 
   // The registry co-commit check, run over the paths about to be staged. registry-stamp-check.js
   // keys on a Bash `git … commit`, which this commit never passes through, so without this call the
@@ -207,24 +217,41 @@ function main() {
   } catch { /* the advisory is best-effort; it never decides whether the commit happens */ }
   for (const w of warnings) process.stderr.write(w + '\n');
 
-  // What the caller had already staged before we touched anything. Needed to undo OUR staging
-  // precisely if the commit fails below — unstaging a path the caller had staged itself would
-  // destroy work this script was never given.
-  const preStaged = new Set(
-    (git(root, ['diff', '--cached', '--name-only']).stdout || '')
-      .split('\n').map((l) => l.trim()).filter(Boolean));
+  // The index entries under the paths about to be staged — mode, object, stage and name, as `ls-files -s`
+  // prints them — before we touch anything. Needed to undo OUR staging precisely if the commit fails
+  // below: what the caller had staged under a listed path is put back as it was, content and mode, since
+  // dropping it would destroy work this script was never given. `-z`: a name with a non-ASCII character
+  // or a tab comes back verbatim, never quoted, so the undo can name it.
+  const entriesNow = () => {
+    const entries = new Map();
+    const out = toAdd.length ? (git(root, ['ls-files', '-s', '-z', '--', ...toAdd]).stdout || '') : '';
+    for (const line of out.split('\0').filter(Boolean)) {
+      const name = line.slice(line.indexOf('\t') + 1);
+      entries.set(name, [...(entries.get(name) || []), line]);
+    }
+    return entries;
+  };
+  const before = entriesNow();
 
   // Stage ONLY what was listed. `--` separates paths from revisions so a file named like a branch
   // cannot be reinterpreted, and there is no code path here that can widen this set.
-  const add = git(root, ['add', '--', ...paths]);
-  if (add.status !== 0) return refuse(`git add failed: ${(add.stderr || '').trim()}`);
+  if (toAdd.length) {
+    const add = git(root, ['add', '--', ...toAdd]);
+    if (add.status !== 0) return refuse(`git add failed: ${(add.stderr || '').trim()}`);
+  }
 
   // Undo our own staging, and only ours. Called when the commit fails: a refusal that left files
   // staged would (a) leave a tree the caller cannot clean up, since it may not run git, and (b) feed
-  // the NEXT step commit foreign content.
+  // the NEXT step commit foreign content. Compared entry by entry: an entry the call changed or added is
+  // dropped, and the one it replaced, if any, is written back.
   const unstageOurs = () => {
-    const ours = paths.filter((p) => !preStaged.has(path.relative(root, path.resolve(root, p)).replace(/\\/g, '/')));
-    if (ours.length) git(root, ['restore', '--staged', '--', ...ours]);
+    const after = entriesNow();
+    const changed = [...new Set([...before.keys(), ...after.keys()])]
+      .filter((name) => String(before.get(name)) !== String(after.get(name)));
+    const added = changed.filter((name) => after.has(name));
+    if (added.length) git(root, ['update-index', '--force-remove', '--', ...added]);
+    const back = changed.flatMap((name) => before.get(name) || []);
+    if (back.length) git(root, ['update-index', '-z', '--index-info'], back.map((line) => `${line}\0`).join(''));
   };
 
   // A temp file rather than stdin: `-F` is the shape a human uses for a multi-line message, and the

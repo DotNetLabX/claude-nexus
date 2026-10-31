@@ -122,8 +122,8 @@
  *      the plan. Only spec.md: an epic, a bug or a tech-spec is not judged here.
  *
  * REMOVED — invariant (3), state-file integrity (blocking a pipeline subagent's write to
- * .claude/.pipeline-state): the only callers it could ATTRIBUTE (data.agent_type is present
- * solely on subagent tool calls) are background subagents, whose PreToolUse deny the platform
+ * .claude/.pipeline-state): the only callers it could ATTRIBUTE (data.agent_id is present
+ * solely on spawned agents' tool calls) are background subagents, whose PreToolUse deny the platform
  * drops (ADR-13). There was no caller both attributable AND blockable — unreachable code.
  * State-file ownership ("team lead is the sole writer") is enforced by ADR-18 agent hard rules
  * + the team lead's verify-and-intervene, not by this gate.
@@ -169,6 +169,7 @@ const { closeGear, closeEvidence, labelsOnly } = require('./lib/gear-close');
 const { countsAsPassing } = require('./lib/run-verdict');
 const { isNonRegistry } = require('./lib/registry-stamp');
 const { checkSpec, readCommitted, isReady } = require('./lib/spec-sources');
+const { isSpawned } = require('./lib/is-spawned');
 
 // The calibration script, addressed from this file. `hooks/` and `skills/` are siblings under the
 // plugin root in the source repo AND under the version root of a consuming repo's version-keyed
@@ -238,7 +239,7 @@ process.stdin.on('end', () => {
 
   // (10) Spec sources: a write that flips a spec to Ready with an unsourced or unkept rule.
   const specMatch = fp.match(/(?:^|\/)docs\/specs\/([^/]+(?:\/[^/]+)?)\/definition\/spec\.md$/);
-  if (specMatch && !data.agent_type) {
+  if (specMatch && !isSpawned(data)) {
     const reason = unsourcedSpecRules(root, fp, tool, ti, specMatch[1]);
     if (reason) return deny(reason);
   }
@@ -249,7 +250,7 @@ process.stdin.on('end', () => {
   // makes the deny undischargeable: if the root declares roles.full and the worktree does not,
   // verify-run records `undeclared` forever while this gate keeps demanding a pass.
   const summaryMatch = fp.match(/(?:^|\/)docs\/specs\/([^/]+)\/delivery\/summary\.md$/);
-  if (summaryMatch && !data.agent_type) {
+  if (summaryMatch && !isSpawned(data)) {
     // The ROUND KEY is taken from the path being written, never from configuration: that path is the
     // one place that unambiguously names which feature this close belongs to.
     const slug = summaryMatch[1];
@@ -279,7 +280,7 @@ process.stdin.on('end', () => {
   // TOKEN HOME IS `root`, the one place (5) diverges from (4): (4) reads its token from the tree
   // verify-run would MEASURE, because its evidence is produced there; the lessons log is written by
   // an always-root-resolved PostToolUse hook, so its round key must be read from the same root.
-  if (summaryMatch && !data.agent_type && !hasLessonsThisRound(root, data, summaryMatch[1])) {
+  if (summaryMatch && !isSpawned(data) && !hasLessonsThisRound(root, data, summaryMatch[1])) {
     return deny(
       `summary.md needs a lessons write this round for ${summaryMatch[1]} — append your ` +
       `\`## {Role} Lessons\` to docs/specs/${summaryMatch[1]}/delivery/lessons.md (the lessons-format ` +
@@ -293,20 +294,20 @@ process.stdin.on('end', () => {
   // `{epic}/{issue}` — the addressing it already documents. For a flat slug the capture is
   // byte-identical to summaryMatch[1].
   const criticMatch = fp.match(/(?:^|\/)docs\/specs\/([^/]+(?:\/[^/]+)?)\/delivery\/summary\.md$/);
-  if (criticMatch && !data.agent_type) {
+  if (criticMatch && !isSpawned(data)) {
     const reason = unmeasurableCriticRecord(root, criticMatch[1]);
     if (reason) return deny(reason);
   }
 
   // (7) Unruled registry rows, read in (4)'s tree. `lib/worktree-target.js` is the only which-tree
   // rule a hook may use, so the tree is never derived from the summary.md path.
-  if (summaryMatch && !data.agent_type) {
+  if (summaryMatch && !isSpawned(data)) {
     const reason = unruledRegistryRows(resolveDeclaredTree(root, data.session_id), summaryMatch[1]);
     if (reason) return deny(reason);
   }
 
   // (9) Summary mode line: a whole-file Write of summary.md carries a line beginning `Mode: `.
-  if (criticMatch && !data.agent_type && tool === 'Write' && !/^Mode: /m.test(String(ti.content || ''))) {
+  if (criticMatch && !isSpawned(data) && tool === 'Write' && !/^Mode: /m.test(String(ti.content || ''))) {
     return deny(
       `summary.md for ${criticMatch[1]} has no mode line. Put one right under its title, in the ` +
       'summary-format grammar (its Producers paragraph): `Mode: team pipeline ({definition})` from the ' +

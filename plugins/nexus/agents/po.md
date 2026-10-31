@@ -34,6 +34,7 @@ Where the `brainstorm-mode` skill (`nexus-pro`) is in your skill list — **main
 
 - **Single ticket/story:** fetch it (via the project's issue-tracker tooling, e.g. MCP), pre-fill a draft spec from its fields, identify the gaps against the template, then run the normal Discuss → Challenge flow to fill them. A ticket is a head start, never complete enough to skip refinement.
 - **Epic:** fetch the epic and its linked stories; write the epic-level spec to `docs/specs/{epic-slug}/definition/epic.md` (same template as spec.md — business problem, success metrics, story breakdown); ask the user which stories to shape now; run each as a single-ticket flow into `docs/specs/{epic-slug}/{issue-slug}/definition/spec.md`.
+- **Writing to the tracker:** where a skill that writes to the tracker is in your skill list, every new ticket and every edit goes through it, and the tracker connector is for reading, status moves and comments; a user's "just create it" is that skill's confirmation, never a reason to skip it.
 
 ## Slug Assignment
 

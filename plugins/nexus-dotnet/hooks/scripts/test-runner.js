@@ -291,11 +291,31 @@ function insertAttribute(lines, declIndex) {
 
 const classIndex = (lines, name) => lines.findIndex((l) => new RegExp(`\\bclass\\s+${escapeRegex(name)}\\b`).test(l));
 const methodDecl = (method) => new RegExp(`\\b(?:void|Task|ValueTask)(?:<[^>]*>)?\\s+${escapeRegex(method)}\\s*\\(`);
+const TYPE_DECL = /\b(?:class|struct|record|interface)\s+\w+/;
+const indentOf = (line) => line.match(/^\s*/)[0].length;
 
+// Where a class's own members end: the next type declared at its indent or less — a type nested in it sits
+// deeper — else the end of the file.
+function classEnd(lines, from) {
+  const indent = indentOf(lines[from]);
+  for (let i = from + 1; i < lines.length; i++) if (TYPE_DECL.test(lines[i]) && indentOf(lines[i]) <= indent) return i;
+  return lines.length;
+}
+
+// The line of a method declared in the class, never in another class after it in the same file; -1 when none.
 function methodIndex(lines, className, method) {
   const from = classIndex(lines, className);
-  return from < 0 ? -1 : lines.findIndex((l, i) => i > from && methodDecl(method).test(l));
+  if (from < 0) return -1;
+  const end = classEnd(lines, from);
+  for (let i = from + 1; i < end; i++) if (methodDecl(method).test(lines[i])) return i;
+  return -1;
 }
+
+// The source with comments blanked and string and character literals emptied, in one pass, so whichever opens
+// first wins: a `//` inside a string is no comment.
+const codeOnly = (source) => String(source).replace(
+  /\/\*[\s\S]*?\*\/|\/\/[^\n]*|@"(?:[^"]|"")*"|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)'/g,
+  (m) => (m.startsWith('/') ? ' ' : '""'));
 
 function tagDotnetSource(source, { classes = [], methods = [] }) {
   const lines = String(source).split('\n');
@@ -354,8 +374,10 @@ function removeLabelAbove(lines, at) {
 
 // The labels of the timed tests set from their times, in place; a test the pass did not time keeps its label,
 // and a class label is written only when every test of the class was timed slow. `classes` maps a class's
-// short name to its timed methods, each true when slow.
-function retagDotnetSource(source, classes) {
+// short name to its timed methods, each true when slow. `split` maps a partial class's short name to
+// `{ inherited, complete }` read over all its files: such a class is never labelled whole, and a class label on
+// any of its declarations counts for the methods of this file.
+function retagDotnetSource(source, classes, split = new Map()) {
   const lines = String(source).split('\n');
   const missing = [];
   for (const [className, timed] of classes) {
@@ -366,13 +388,15 @@ function retagDotnetSource(source, classes) {
     // A class label needs the class's membership read whole from its source: every timed method among the
     // declared test methods, and every declared one timed slow. A class label over members that cannot all be
     // read stays, so none of them loses it.
+    const part = split.get(className);
     const { names: declared, complete } = testMethodsOf(lines, className);
-    const inherited = labelAbove(lines, classIndex(lines, className));
-    if (inherited && !complete) continue;
+    const ownLabel = labelAbove(lines, classIndex(lines, className));
+    const inherited = part ? part.inherited : ownLabel;
+    if (inherited && !(part ? part.complete : complete)) continue;
     const members = [...new Set([...declared, ...timed.keys()])];
-    const wholeClass = complete && declared.length > 0 && [...timed.keys()].every((m) => declared.includes(m))
+    const wholeClass = !part && complete && declared.length > 0 && [...timed.keys()].every((m) => declared.includes(m))
       && declared.every((m) => timed.has(m)) && [...timed.values()].every(Boolean);
-    if (!wholeClass && inherited) removeLabelAbove(lines, classIndex(lines, className));
+    if (!wholeClass && ownLabel) removeLabelAbove(lines, classIndex(lines, className));
     for (const method of members) {
       const at = methodIndex(lines, className, method);
       if (at < 0) {
@@ -523,9 +547,7 @@ function create(h) {
   // a generic class, its name open before the type arguments (`Name<`). Comments, strings and character
   // literals are blanked first, so a brace or a `class` word inside one is never read.
   function qualifiedClasses(source) {
-    // One pass, so whichever opens first wins: a `//` inside a string is no comment.
-    const text = String(source).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*|@"(?:[^"]|"")*"|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)'/g,
-      (m) => (m.startsWith('/') ? ' ' : '""'));
+    const text = codeOnly(source);
     const token = /\bnamespace\s+([A-Za-z_][\w.]*)\s*([;{])|\b(?:(class|struct|interface)|record(?:\s+(class|struct))?)\s+([A-Za-z_]\w*)(\s*<)?|[{};]/g;
     const scopes = [];
     let fileSpace = '';
@@ -788,24 +810,41 @@ function create(h) {
     return { targets: sorted, untied, commands: sorted.map((p) => tiedCommand(p, filter, Boolean(slow), stopSeconds)) };
   }
 
-  // The source file declaring the class `short` in the test project above `codeBase` (the test assembly's
-  // path), or null — by its full name `full` first, where a run reports one, so two classes of one short name in
-  // different namespaces are told apart. `cache` keeps one class index per project across calls.
-  function classFile(tree, codeBase, short, cache = new Map(), full = '') {
+  // Every source file declaring the class `short` in the test project above `codeBase` (the test assembly's
+  // path), with each file's text — by its full name `full` first, where a run reports one, so two classes of one
+  // short name in different namespaces are told apart; more than one file is a partial class. `cache` keeps one
+  // class index per project across calls.
+  function classFiles(tree, codeBase, short, cache = new Map(), full = '') {
     const project = h.projectDir(path.dirname(codeBase), tree, (n) => n.endsWith('.csproj'));
-    if (!project) return null;
+    if (!project) return [];
     if (!cache.has(project)) {
       const index = new Map();
       const qualified = new Map();
+      const texts = new Map();
+      const add = (map, key, f) => { if (!map.has(key)) map.set(key, []); if (!map.get(key).includes(f)) map.get(key).push(f); };
       for (const f of h.sourceFiles(project, '.cs')) {
         const source = fs.readFileSync(f, 'utf8');
-        for (const c of h.parseClasses(source)) if (!index.has(c)) index.set(c, f);
-        for (const q of qualifiedClasses(source)) if (!qualified.has(q)) qualified.set(q, f);
+        texts.set(f, source);
+        for (const c of h.parseClasses(source)) add(index, c, f);
+        for (const q of qualifiedClasses(source)) add(qualified, q, f);
       }
-      cache.set(project, { index, qualified });
+      cache.set(project, { index, qualified, texts });
     }
-    const { index, qualified } = cache.get(project);
-    return (full && qualified.get(`${full}.`)) || index.get(short) || null;
+    const { index, qualified, texts } = cache.get(project);
+    const files = (full && qualified.get(`${full}.`)) || index.get(short) || [];
+    return files.map((file) => ({ file, text: texts.get(file) }));
+  }
+
+  // Of the files declaring class `short`, the one whose declaration holds `method`, else the first. The one
+  // resolver the timing report, a full run's failure placement and the retag share.
+  function declaring(files, short, method) {
+    return (method && files.find(({ text }) => methodIndex(String(text).split('\n'), short, method) >= 0)) || files[0];
+  }
+
+  // The source file of one test; null when no file declares its class.
+  function classFile(tree, codeBase, short, cache = new Map(), full = '', method = '') {
+    const files = classFiles(tree, codeBase, short, cache, full);
+    return files.length === 0 ? null : declaring(files, short, method).file;
   }
 
   // A .NET method is labelled by its name, never its line, so the attribute and comment lines the edits add
@@ -856,15 +895,38 @@ function create(h) {
       const timed = new Map([...new Set(classKeys.map((k) => meta[k].method))]
         .map((method) => [method, allIn(classKeys.filter((k) => meta[k].method === method))]));
       const short = className.split('.').pop();
-      const file = classFile(tree, meta[classKeys[0]].codeBase, short, indexes);
-      if (!file) {
+      const files = classFiles(tree, meta[classKeys[0]].codeBase, short, indexes, className);
+      if (files.length === 0) {
         if ([...timed.values()].some(Boolean)) log(`could not find class ${className} under its test project — tag it by hand`);
         continue;
       }
-      if (!byFile.has(file)) byFile.set(file, new Map());
-      byFile.get(file).set(short, timed);
+      const at = (file) => {
+        if (!byFile.has(file)) byFile.set(file, { classes: new Map(), split: new Map() });
+        return byFile.get(file);
+      };
+      // Several files of one short name are one class only when each declares it `partial`; otherwise they
+      // are different classes the full name did not tell apart, and the first file is the one read. C# puts
+      // `partial` right before `class` (or `record`), with any space, line break or comment between.
+      const partial = new RegExp(`\\bpartial\\s+(?:record\\s+)?class\\s+${escapeRegex(short)}\\b`);
+      if (files.length === 1 || !files.every(({ text }) => partial.test(codeOnly(text)))) {
+        at(files[0].file).classes.set(short, timed);
+        continue;
+      }
+      // A partial class: each file is given the timed methods it declares, and a class label on any one
+      // declaration covers the methods of every file, so every file is edited while one stands.
+      const parts = files.map(({ file, text }) => ({ file, lines: String(text).split('\n') }));
+      const inherited = parts.some(({ lines }) => labelAbove(lines, classIndex(lines, short)));
+      const complete = parts.every(({ lines }) => testMethodsOf(lines, short).complete);
+      const holder = (method) => declaring(files, short, method).file;
+      for (const { file } of parts) {
+        const here = new Map([...timed].filter(([method]) => holder(method) === file));
+        if (here.size === 0 && !inherited) continue;
+        const entry = at(file);
+        entry.classes.set(short, here);
+        entry.split.set(short, { inherited, complete });
+      }
     }
-    return [...byFile].map(([file, classes]) => ({ file, edit: (text) => retagDotnetSource(text, classes) }));
+    return [...byFile].map(([file, { classes, split }]) => ({ file, edit: (text) => retagDotnetSource(text, classes, split) }));
   }
 
   // ── a full run ─────────────────────────────────────────────────────────────────────────────────────
@@ -969,7 +1031,7 @@ function create(h) {
     const place = (codeBase, name) => {
       const { className, method } = splitTestName(name);
       const short = className.split('.').pop();
-      const abs = codeBase ? classFile(tree, codeBase, short, cache, className) : null;
+      const abs = codeBase ? classFile(tree, codeBase, short, cache, className, method) : null;
       if (!abs) return { file: null, line: null, class: short, method };
       const file = slashes(path.relative(tree, abs));
       if (!sources.has(file)) sources.set(file, fs.readFileSync(abs, 'utf8'));
@@ -1144,7 +1206,7 @@ function create(h) {
         for (const trx of h.sourceFiles(dir, '.trx')) {
           for (const e of parseTrx(fs.readFileSync(trx, 'utf8'))) {
             const short = e.className.split('.').pop();
-            const abs = e.codeBase ? classFile(tree, e.codeBase, short, cache, e.className) : null;
+            const abs = e.codeBase ? classFile(tree, e.codeBase, short, cache, e.className, e.method) : null;
             if (!abs) continue;
             const file = path.relative(tree, abs).split(path.sep).join('/');
             if (!sources.has(file)) sources.set(file, fs.readFileSync(abs, 'utf8'));

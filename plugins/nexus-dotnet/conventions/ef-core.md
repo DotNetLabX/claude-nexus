@@ -15,7 +15,8 @@ context and the table configuration.
 - **No EF calls in a loop for bulk work.** Use `ExecuteUpdateAsync` / `ExecuteDeleteAsync`.
 - **Don't return `IQueryable<T>` from a method.** Compose the predicates in one place, then materialize. The seams
   are the repository base's `Query()` and `QueryNotTracked()`, both protected and composed only by the repository
-  that derives the base — never handed to a caller outside it.
+  that derives the base — never handed to a caller outside it. A private helper inside the repository may return
+  `IQueryable<T>` to compose shared predicates, because it never leaves the repository.
 - **Check the generated SQL of a `GroupBy`** on an `IQueryable` — it can pull every row to the client.
 - **Every query written in C# is an EF Core query in a repository,** and no class reads with SQL. The repository is
   the unit of work: an endpoint, a handler or a consumer calls the repository's `SaveChangesAsync` and never touches

@@ -1,6 +1,11 @@
 # nexus-dotnet — Changelog
 
 
+## [2.1.3] — 2026-10-30
+- PATCH bump.
+  - plugin payload (conventions/ef-core.md)
+  - hook behavior/enforcement change
+
 ## [2.1.2] — 2026-10-29
 - PATCH bump.
   - skill change (central-package-management)

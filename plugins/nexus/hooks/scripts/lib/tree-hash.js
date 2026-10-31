@@ -19,7 +19,8 @@
  *   .current-agent        the persona commands
  *   .personas.json        register-persona.js, restore-agent.js (and their `.personas.json.{pid}.tmp`)
  *   .pipeline-state       the team lead's phase token
- *   .approval-scope       the approval stamp (team lead, architect, solo)
+ *   .approval-scope       the approval stamp's legacy single slot, written by an older plugin version
+ *   approval-scope/**     the approval stamp, one file per session (team lead, architect, solo)
  *   .worktree-target      the cross-tree verify target (team lead, architect, solo)
  *   .campaign-unit        the campaign runner's unit marker
  *   .owner-away           the owner-away mark, when a session has no scratchpad
@@ -42,7 +43,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 
-const PIPELINE_DIRS = ['audit/', 'review-queue/', 'tmp/'];
+const PIPELINE_DIRS = ['audit/', 'review-queue/', 'tmp/', 'approval-scope/'];
 const PIPELINE_FILES = new Set([
   '.current-agent', '.personas.json', '.pipeline-state', '.approval-scope', '.worktree-target',
   '.campaign-unit', '.owner-away', 'test-times.json',
