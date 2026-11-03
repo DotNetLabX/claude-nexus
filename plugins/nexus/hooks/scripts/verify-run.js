@@ -19,6 +19,9 @@
  * `--unit`, exits 2 and writes nothing. The record adds `step_run: true`, `attempt`, `agent`, `unit`, `files`
  * (always, `[]` where no test file ran), `changed` and `changed_hashes` (over `changed` and `files` both), beside every field a `--files` run
  * writes. It is evidence only for the test files it ran (lib/gear-close.js), and never the whole fast result.
+ * On the node runner a step run also runs the tests the repo declares for its `--changed` files (`stepTests` in
+ * .claude/verify.json, lib/prose-tests.js), at either attempt, `--files` or none: printed, recorded in
+ * `step_tests_added` and hashed in `changed_hashes`, while `files` stays the files the call named.
  * A step run timed from its runner's own report names its failed tests from that report (`readRunResults`),
  * and one whose report shows no test executed (`timingEntries`) is `verdict: "fail"`, `reason: "no test ran"` —
  * a selection that matched nothing is never a green.
@@ -70,7 +73,10 @@
  * and writes nothing. A full record carries `file_hashes` (lib/tree-hash.js's per-file form) and `failed`: the test files or projects its output names as
  * failing, `[]` when it passed, `null` when the run was cut or crashed, names a failure it cannot place,
  * was aborted, or ran anything but the test runner invoked directly as its last stage, after setup stages only
- * — where no runner reads the run's own results (A FULL RECORD NAMES ITS FAILURES, below). A fast record with a slug, written after a full
+ * — where no runner reads the run's own results (A FULL RECORD NAMES ITS FAILURES, below). A command run whole
+ * — a wrapper among them — names them instead from its events where they were read whole, named a failure, and
+ * explain its red exit as `tests-timed-out` requires (a leg's own, or the wrapper's `endLegs` statement): the
+ * targets of its real failures and touched timeouts. A fast record with a slug, written after a full
  * record of that slug on the same tree, carries `delta_base` (that record's `ts`) and `delta_hashes`
  * (the files whose content then differed from its `file_hashes`, at their content then) — the content a
  * gear's close repair ran at (lib/gear-close.js).
@@ -111,7 +117,9 @@
  * A group is accounted for when every stage in it ran, its runner read every selected project or
  * file whole, and its red, if any, is explained by the failures and timeouts named; a non-test stage that went
  * red, a stage `&&` skipped, a cut, or a stuck theory case leaves it unaccounted. These fields are written on
- * full records only:
+ * full records only, as below for a split run; a command run whole (`unsplit`) has no groups, so its
+ * `failed_tests` and `timed_out` are its events' lists, whole or null (readTestEvents), and its `failed` is read
+ * as above:
  *   `failed_tests`, `timed_out` — complete lists only: written when every group is accounted for, else null;
  *     never capped. Each entry carries `message` (first line, capped), `runner` and `target`; a .NET entry
  *     adds `project`, `class` and `method`.
@@ -194,12 +202,20 @@
  * whose heartbeat stalled past a minute (a machine asleep) is uncounted until its next heartbeat; a
  * hard-killed runner's claim stays in the folder until the sweep; a retained tree still alive past
  * its expiry is a runaway and no longer counts.
+ *
+ * EVERY RECORD SAYS WHETHER THE MACHINE WAS BUSY. `busy_machine` is true when another heavy run — another full
+ * run, from its turn on — was live at the run's start, at a read every 10 s (NEXUS_BUSY_SAMPLE_MS) while its
+ * command ran, or at its end (lib/heavy-runs.js). For that a full run keeps a presence marker in the `presence/`
+ * subfolder of the queue folder, whatever NEXUS_COMPLETE_RUNS_AT_ONCE says; the queue never reads it, so a marker
+ * takes no place and makes no run wait. A run never counts the run it runs under, nor the runs its own command
+ * starts. A full run that timed out tests on a busy machine says so beside them in its summary.
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 const { resolveDeclaredTree } = require('./lib/worktree-target');
+const { readRoundToken } = require('./lib/round-token');
 const { filesCommand, buildCommand, isFilteredFull, nodeLegs, shareConcurrency, nodeSupportsSkipPattern, PRELOAD_URL } = require('./lib/compose-test-command');
 const { loadRunner, RUNNERS, stagesOf, isAssignment, splitChain, setupStage, inferRunner } = require('./lib/test-runners');
 const { hashTree, buildHash, fileHash, sameTree } = require('./lib/tree-hash');
@@ -208,6 +224,8 @@ const { tiedSet, failedTargets, declaredFor, nodeInvocation, runnerOf } = requir
 const { deltaSince } = require('./lib/gear-close');
 const { markTouched } = require('./lib/run-verdict');
 const { readTestEvents } = require('./lib/test-events');
+const { HEAVY_RUN_ENV, holdMarker, othersLive, busyWatch } = require('./lib/heavy-runs');
+const { stepTestsFor } = require('./lib/prose-tests');
 
 // The full run, from the main session where the Bash tool's cap does not apply: a repo whose suite
 // runs longer declares `fullLimitSeconds`, so the cut is never clamped.
@@ -812,7 +830,35 @@ function wrapperExplained(item, res, last) {
     && typeof last.script === 'string' && samePath(direct.script, last.script));
 }
 
+// A red full run of the whole command names its failures from its events when they were read whole, named at
+// least one failure, and explain every red exit (`explained`): the targets of its real failures and touched
+// timeouts, `[]` when its only failures are untouched timeouts, null when one is placed in no file. Otherwise
+// its output names them (`fromOutput`), which a wrapper's never does.
+function wholeRunFailed(tests, explained, fromOutput) {
+  const lists = tests.events === true && Array.isArray(tests.failed_tests) && Array.isArray(tests.timed_out);
+  const all = lists ? [...tests.failed_tests, ...tests.timed_out] : [];
+  if (!explained || !all.length) return fromOutput();
+  if (!all.every((t) => t && typeof t.target === 'string' && t.target !== '')) return null;
+  return [...new Set([...tests.failed_tests, ...tests.timed_out.filter((t) => t.touched !== false)].map((t) => t.target))].sort();
+}
+
 let signalsWired = false;
+
+// Was this run started in `tree`: is it the repository the working folder sits in (the folder itself
+// where git cannot say), or does it hold the working folder? `path.relative` compares without case on
+// Windows, so a drive letter spelled two ways is one folder.
+function startedIn(tree) {
+  const cwd = process.cwd();
+  const same = (a, b) => path.relative(path.resolve(a), path.resolve(b)) === '';
+  const inside = (outer, inner) => {
+    const rel = path.relative(path.resolve(outer), path.resolve(inner));
+    return rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
+  };
+  if (inside(tree, cwd)) return true;
+  const top = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd, encoding: 'utf8', timeout: 5000, windowsHide: true });
+  const repo = top.status === 0 && top.stdout.trim() ? top.stdout.trim() : cwd;
+  return same(repo, tree);
+}
 
 async function main(argv = process.argv.slice(2), { env = process.env, run = runCommand, out = (s) => process.stdout.write(s) } = {}) {
   const args = parseArgs(argv);
@@ -870,7 +916,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   }
 
   // THE ROUND KEY. A token-or-session match alone is not round-scoped: a session outlives a feature,
-  // and a repo with no .pipeline-state has no token at all, so two closes in one session could
+  // and a session with no phase token file has no token at all, so two closes in one session could
   // discharge each other. Required for `full` because `full` is the role the close gate consumes — a
   // full record that cannot name its round is worse than an absent one, because it still reads as
   // evidence. Optional for every other role: only `full` is consumed at close, and demanding a slug
@@ -894,9 +940,12 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
     ? args.session
     : String(env.CLAUDE_CODE_SESSION_ID || env.CLAUDE_SESSION_ID || '');
   const tree = typeof args.tree === 'string' ? args.tree : resolveDeclaredTree(root, session);
+  if (typeof args.tree !== 'string' && path.relative(path.resolve(root), path.resolve(tree)) !== '' && !startedIn(tree)) {
+    process.stderr.write(`verify-run: measuring the worktree published for this session: ${tree}\n`);
+  }
 
-  let token = '';
-  try { token = fs.readFileSync(path.join(tree, '.claude', '.pipeline-state'), 'utf8').trim(); } catch { /* no token */ }
+  // The session's own token, at the root whatever tree is measured (lib/round-token.js).
+  const token = readRoundToken(root, session);
 
   let cfg = null;
   try { cfg = JSON.parse(fs.readFileSync(path.join(tree, '.claude', 'verify.json'), 'utf8')); }
@@ -922,19 +971,25 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   // A step run runs only what its runner composes for the step: a runner no installed plugin serves runs
   // nothing, never the declared unit.
   let stepSkip = '';
+  // The tests the repo declares for the step's changed files (`stepTests`), run beside the named ones on node.
+  let stepAdded = [];
+  let runFiles = null;
   if (step) {
     relFiles = files ? files.map(relOf) : [];
+    if (runner === 'node') stepAdded = stepTestsFor({ cfg, tree, changed: relChanged }).filter((f) => !relFiles.includes(f));
+    runFiles = [...relFiles, ...stepAdded];
+    if (stepAdded.length) process.stderr.write(`verify-run: the repo's step tests for the changed files (stepTests): ${stepAdded.join(', ')}\n`);
     if (!runner || !runnerOps || !RUNNERS.has(runner) || runner === 'mtp') stepSkip = 'no step run for this runner';
     else {
       try {
-        commands = files
-          ? filesCommand({ runner, files: relFiles, exclude: false, cwd: tree, stopSeconds, root, step: true, note: (line) => process.stderr.write(`verify-run: ${line}\n`) })
+        commands = runFiles.length
+          ? filesCommand({ runner, files: runFiles, exclude: false, cwd: tree, stopSeconds, root, step: true, note: (line) => process.stderr.write(`verify-run: ${line}\n`) })
           : buildCommand({ runner, files: relChanged, cwd: tree, root });
       } catch (e) {
         process.stderr.write(`verify-run: ${e.message}\n`);
         return 2;
       }
-      composed = Boolean(files);
+      composed = runFiles.length > 0;
       if (commands.length === 0) stepSkip = 'nothing to run';
     }
   } else if (files) {
@@ -1018,7 +1073,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   // The record keeps the unsplit command: the readers of `command` (the usual time, `filtered`, the
   // failure list's shape check) read the legs as one run.
   const command = commands.join(' && ');
-  const plan = runPlan({ commands, composed: composed || ownFrom !== null, runner, relFiles, settings, tree, root, changedTests });
+  const plan = runPlan({ commands, composed: composed || ownFrom !== null, runner, relFiles: runFiles || relFiles, settings, tree, root, changedTests });
 
   // `slug` is omitted rather than written empty when absent: the gate treats a record with no slug as
   // undischargeable, and an explicit `slug: ""` would be one `=== ''` bug away from matching.
@@ -1027,7 +1082,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
     ...(profile ? { profile } : {}), ...(relFiles ? { files: relFiles } : {}), ...(slug ? { slug } : {}),
     session, token, tree, ...(tiedFields || {}),
     ...(runnerMissing && (files || tied) ? { runner_missing: runnerMissing } : {}),
-    ...(step ? { step_run: true, attempt: Number(args.attempt), agent: args.agent, unit: args.unit, files: relFiles, changed: relChanged, limit_ms: STEP_RUN_MS[args.attempt] } : {}),
+    ...(step ? { step_run: true, attempt: Number(args.attempt), agent: args.agent, unit: args.unit, files: relFiles, step_tests_added: stepAdded, changed: relChanged, limit_ms: STEP_RUN_MS[args.attempt] } : {}),
   };
 
   // The audit file is the RESOLVED ROOT's, even when the command ran in a redirected tree — same
@@ -1045,6 +1100,11 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   // The queue's fields are read when the record is written: a release or a heartbeat that failed
   // after the turn was taken still reaches it.
   let turn = { fields: {}, claimFile: null };
+  let heavy = null;
+  let watch = null;
+  // A queue folder that cannot be found (no home folder) never stops a run: the mark then reads no other run.
+  const markerSlots = () => { try { return slotsDir(process.env); } catch { return null; } };
+  const busyNow = () => (watch ? watch.finish() : othersLive({ slots: markerSlots(), env: process.env, own: heavy && heavy.id }) > 0);
   // A tree whose runner reuses no build needs no ledger, unless one is already kept there.
   const reuses = Boolean(runnerOps && typeof runnerOps.buildKey === 'function' && typeof runnerOps.noBuild === 'function');
   const ledgered = () => reuses || hasBuildLedger(tree);
@@ -1056,9 +1116,9 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   };
   const write = (fields) => {
     const hashed = hashTree(tree);
-    const record = { ...base, ...turn.fields, tree_hash: hashed && hashed.hash, ...fields };
+    const record = { ...base, ...turn.fields, busy_machine: busyNow(), tree_hash: hashed && hashed.hash, ...fields };
     // A step run hashes the test files it ran too: the gate admits a file to attempt 2 only by its hash.
-    const hashedChanged = tiedFields ? tiedFields.changed : step ? [...new Set([...relChanged, ...(relFiles || [])])] : null;
+    const hashedChanged = tiedFields ? tiedFields.changed : step ? [...new Set([...relChanged, ...(runFiles || [])])] : null;
     if (hashedChanged) record.changed_hashes = Object.fromEntries(hashedChanged.map((f) => [f, fileHash(tree, f)]));
     if (profile === 'fast' && slug) Object.assign(record, deltaSince({ records: readLog(root), tree, slug, files: hashed && hashed.files }));
     if (role === 'full') {
@@ -1131,6 +1191,17 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
     }
     if (turn.claimFile) process.env.NEXUS_COMPLETE_RUN_CLAIM = turn.claimFile;
     else if (turn.fields.slot !== 'nested') delete process.env.NEXUS_COMPLETE_RUN_CLAIM;
+    heavy = holdMarker({ slots: markerSlots(), env: process.env, limitMs: timeoutMs });
+    if (heavy) {
+      const own = heavy;
+      process.env[HEAVY_RUN_ENV] = own.id;
+      const releaseClaim = releaseTurn;
+      releaseTurn = (treeEnded) => {
+        own.release(treeEnded);
+        if (process.env[HEAVY_RUN_ENV] === own.id) delete process.env[HEAVY_RUN_ENV];
+        releaseClaim(treeEnded);
+      };
+    }
     usual = usualTime(readLog(root), command);
   }
   // Every run hands its command the events file and, where this Node takes it, the child-call preload.
@@ -1211,6 +1282,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   };
 
   if (!builds || !builds.items.every((b) => b.reuse)) beginBuild();
+  watch = busyWatch({ slots: markerSlots(), env: process.env, own: heavy && heavy.id, everyMs: wholeMs(process.env.NEXUS_BUSY_SAMPLE_MS, HEARTBEAT_MS) });
   const started = Date.now();
   const slowTimer = usual ? setTimeout(() => warnSlow(SLOW_RATIO), Math.ceil(SLOW_RATIO * usual.usual_ms)) : null;
   if (slowTimer) slowTimer.unref();
@@ -1338,7 +1410,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
       // gate distinguishes "the suite is red" from "the suite never finished", and a reader should
       // not have to pattern-match an errno to tell them apart.
       reason: cause === 'ETIMEDOUT' ? 'timeout' : timedOutOnly ? 'tests-timed-out' : cause,
-      ...(role === 'full' ? { failed: res.code || typeof res.status !== 'number' ? null : failedTargets({ output: captured, repo: tree, command, root }) } : {}),
+      ...(role === 'full' ? { failed: res.code || typeof res.status !== 'number' ? null : wholeRunFailed(tests, explained, () => failedTargets({ output: captured, repo: tree, command, root })) } : {}),
       ...unsplitField,
       ...tests,
       ...buildsField(),
@@ -1387,7 +1459,8 @@ function fullRunners(root, env) {
 const cap = (text, n) => { const s = String(text == null ? '' : text); return s.length > n ? `${s.slice(0, n)}…` : s; };
 
 /**
- * What a full run named, as the lines printed to stderr after it: the verdict and counts; each failed or
+ * What a full run named, as the lines printed to stderr after it: the verdict and counts, with the busy machine
+ * beside any timed-out tests; each failed or
  * timed-out test with its message (the failures seen so far where the lists are not whole), capped; the
  * finished projects with their times, the unfinished and the not-run ones, and the stages not run; or, where
  * nothing was named, why — the command ran whole, the run was cut before any result was written, a stage that
@@ -1399,9 +1472,11 @@ function fullSummary(record) {
     ? [...record.failed_tests, ...record.timed_out]
     : (Array.isArray(record.failures_partial) ? record.failures_partial : []);
   const head = record.verdict === 'pass' ? 'passed' : `failed (${record.reason})`;
+  const timedOut = whole ? record.timed_out.length : entries.filter((t) => t.cause).length;
+  const busy = record.busy_machine === true && timedOut > 0 ? ' — on a busy machine: another heavy run shared it, so a timeout may be its load' : '';
   const lines = [whole
-    ? `verify-run: full run ${head}: ${record.failed_tests.length} failed, ${record.timed_out.length} timed out`
-    : `verify-run: full run ${head}`];
+    ? `verify-run: full run ${head}: ${record.failed_tests.length} failed, ${record.timed_out.length} timed out${busy}`
+    : `verify-run: full run ${head}${busy}`];
   if (!whole && entries.length) lines.push('  named so far (the run did not name every failure):');
   for (const t of entries.slice(0, SUMMARY_ENTRIES)) {
     const what = t.cause ? `timed out${t.touched === false ? ', untouched' : ''}` : 'failed';
@@ -1645,6 +1720,6 @@ function runPlan({ commands, composed, runner, relFiles, settings, tree, root = 
   };
 }
 
-module.exports = { main, timeoutFor, testSettings, readTestEvents, runPlan, endTree, runCommand, endRunning, runningPids, startOptions, usualTime, slowField, runsAtOnce, readClaims, mayStart, takeTurn };
+module.exports = { main, timeoutFor, testSettings, readTestEvents, runPlan, endTree, runCommand, endRunning, runningPids, startOptions, usualTime, slowField, runsAtOnce, readClaims, mayStart, takeTurn, fullSummary };
 
 if (require.main === module) main().then((code) => process.exit(code));

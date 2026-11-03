@@ -1,6 +1,6 @@
 ---
 name: add-conventions-check
-description: Adopts the shipped conventions check in a .NET repo — copies the check into the repo's architecture-test project, copies the lists file once, switches checks off by settings, and reads a failure. Use when a repo turns on the conventions check, sets up or repairs its architecture-test project for it, updates the check after a plugin update, or when a run fails with a convention rule id and someone needs to know what to change.
+description: Adopts the shipped conventions check in a .NET repo — copies the check into the repo's architecture-test project, copies the lists file once, switches checks off by settings, and reads a failure. Use when a repo turns on the conventions check, sets up or repairs its architecture-test project for it, updates the check after a plugin update, or when a run fails with a convention rule id and someone needs to know what to change. Also the skill a clean-up step maps when it applies the mechanical C# rules, whose rules and exceptions live in conventions/csharp.md.
 ---
 
 # Add Conventions Check
@@ -8,7 +8,8 @@ description: Adopts the shipped conventions check in a .NET repo — copies the 
 The plugin ships a test that reads a repo's C# and project files and fails on the mechanical rules of the
 conventions — the token name, the `Async` suffix, one type per file, central package versions, and the rest. It is
 an ordinary xUnit test, so the same suite fails code written by people and by agents, in CI and in the pipeline's
-verify step. Adopting it is optional.
+verify step. Adopting it is optional. A clean-up step that applies the mechanical C# rules maps this skill too; the
+rules and their exceptions live in `conventions/csharp.md`.
 
 ## Assumes
 

@@ -6,12 +6,29 @@
  * only when it names a posture below: argv[2] where a hooks.json passes one, else the
  * platform's CLAUDE_PLUGIN_OPTION_SECURITY_MODE variable, else the declared default `open`. An
  * unset, empty or unknown value falls through and never selects a posture.
- *   open      (default) — block catastrophic actions: root/home deletes, sudo,
+ *   open      (default) — block catastrophic actions: root/home deletes (a delete whose
+ *                         every target lies strictly inside the project folder is allowed —
+ *                         lib/recursive-deletes.js; whatever it cannot read stays refused), sudo,
  *                         force-push, reset --hard, remote-pipe-to-shell, publish/push,
  *                         secret-file access, writes outside the project root (bar the
  *                         platform's scratch and memory folders, lib/is-code-file.js, and the
  *                         folders listed in permissions.additionalDirectories), AND a
- *                         non-code pipeline role editing application source.
+ *                         non-code pipeline role editing application source, AND a reviewer
+ *                         (every seat name lib/resolve-role.js resolves to it, or the session
+ *                         persona) writing any file but its review files, lessons.md, plugin
+ *                         feedback, .claude/audit/lessons-append/, .claude/.current-agent,
+ *                         scratch and memory, or running one of a few in-place shell edits
+ *                         (sed -i, perl -i, git apply / restore / stash, git checkout with a
+ *                         `--` path list). The command is read as shell words
+ *                         (lib/shell-words.js): a quoted mention or a `#` comment runs
+ *                         nothing, a quoted script never splits a command, sed's and perl's
+ *                         options end at `--`, and the edit counts behind a launcher, a path,
+ *                         `.exe`, a `bash -c` / `cmd /c` / `pwsh -c` / `eval` string, `find
+ *                         -exec` or a `$(…)`. Not caught: a redirect, `tee` or a copy into
+ *                         the tree; an edit inside a `$(…)` that a quoted `)` ends early; an
+ *                         `env -S` string. The reviewer scope stops accidental edits by a
+ *                         cooperating reviewer, not deliberate evasion: a shell cannot be
+ *                         fully read, and those misses are its stated limits.
  *   hardened           — open PLUS: no git push at all, no network package installs,
  *                         no network fetches.
  *   off                — no enforcement (audit-logger still records).
@@ -26,6 +43,9 @@ const os = require('os');
 const path = require('path');
 const { isCodeFile, isScratchPath, isMemoryPath } = require('./lib/is-code-file');
 const { readSessionPersona } = require('./lib/read-session-persona');
+const { resolveRole } = require('./lib/resolve-role');
+const { exeName, commandsOf } = require('./lib/shell-words');
+const { liftable } = require('./lib/recursive-deletes');
 
 const POSTURES = new Set(['open', 'hardened', 'off']);
 const posture = (value) => {
@@ -37,6 +57,39 @@ const mode = posture(process.argv[2]) || posture(process.env.CLAUDE_PLUGIN_OPTIO
 // Pipeline roles that must never edit application source — they route code changes to the
 // developer (write findings/instructions instead). Code roles (developer, solo) are absent.
 const NONCODE_ROLES = new Set(['architect', 'reviewer', 'po', 'critic', 'team-lead', 'learner']);
+
+const REVIEWER_FILES = [
+  /(^|\/)docs\/specs\/(?:[^/]+\/)+delivery\/(?:review|review-second|review-third|lessons)\.md$/,
+  /(^|\/)docs\/plugin-feedback\//,
+  /(^|\/)\.claude\/audit\/lessons-append\//,
+  /(^|\/)\.claude\/\.current-agent$/,
+];
+const REVIEWER_FILES_REASON = 'a reviewer writes only its own review files during a review — review.md, review-second.md, ' +
+  'review-third.md or lessons.md under docs/specs/{slug}/delivery/, docs/plugin-feedback/, .claude/audit/lessons-append/, ' +
+  '.claude/.current-agent, and scratch or memory paths';
+const IN_PLACE_REASON = 'a reviewer never edits the tree under review; run a mutation battery with mutation-run.js';
+
+const GIT_VALUED = new Set(['-c', '-C', '--git-dir', '--work-tree', '--namespace', '--config-env', '--super-prefix', '--attr-source']);
+
+// One command, from its executable on. sed and perl read options only up to `--`.
+function editsInPlace(words) {
+  const exe = exeName(words[0]);
+  const rest = words.slice(1);
+  const end = rest.indexOf('--');
+  const options = end < 0 ? rest : rest.slice(0, end);
+  if (exe === 'sed') return options.some((x) => /^-(?!-)[a-z]*i/i.test(x) || /^--in-place(=|$)/.test(x));
+  // perl's switch counts only inside a cluster of argument-less switches, so `-Ilib` and `-Mstrict` pass.
+  if (exe === 'perl') return options.some((x) => /^-[pnlawsTtWX0-9]*i/.test(x));
+  if (exe === 'git') {
+    let at = 0;
+    while (at < rest.length && rest[at].startsWith('-')) at += GIT_VALUED.has(rest[at]) ? 2 : 1;
+    const sub = String(rest[at] || '').toLowerCase();
+    return ['apply', 'restore', 'stash'].includes(sub) || (sub === 'checkout' && rest.slice(at + 1).includes('--'));
+  }
+  return false;
+}
+
+const inPlaceEdit = (command) => commandsOf(String(command)).some(editsInPlace);
 
 let input = '';
 process.stdin.setEncoding('utf8');
@@ -76,14 +129,31 @@ function evaluate(tool, ti, cwd, mode, data) {
              `to the developer — write findings/instructions instead of editing the file`;
     }
   }
+  if (fp && isWriteTool && reviewerSeat(data) && !reviewerFile(fp, cwd, data)) {
+    return `${REVIEWER_FILES_REASON} (${fp})`;
+  }
   // Both shell tools carry the command in `command`. PowerShell was outside this gate until F81
   // Step 14, which meant badBash's own PowerShell branch (Remove-Item -Recurse -Force) could only
   // ever fire on PowerShell syntax typed into the Bash tool — never on a real PowerShell call.
   if (tool === 'Bash' || tool === 'PowerShell') {
-    const bad = badBash(ti.command || '', mode);
+    // `home` is a getter: it is looked up only when a delete would be refused, inside the reader's catch.
+    const place = { cwd, root: projectRoot(data), tool, platform: process.platform, get home() { return os.homedir(); } };
+    const bad = badBash(ti.command || '', mode, place);
     if (bad) return bad;
+    if (reviewerSeat(data) && inPlaceEdit(ti.command || '')) return IN_PLACE_REASON;
   }
   return null;
+}
+
+// Every reviewer seat counts: suffixed spawn names (`reviewer-second`) resolve, which activeRole's split does not.
+function reviewerSeat(data) {
+  return resolveRole(data.agent_type || readSessionPersona(data.session_id, projectRoot(data)) || '') === 'reviewer';
+}
+
+function reviewerFile(fp, cwd, data) {
+  if (isScratchPath(fp, cwd) || isMemoryPath(fp, cwd, data.transcript_path)) return true;
+  const p = path.resolve(cwd, String(fp).replace(/\\/g, '/')).replace(/\\/g, '/');
+  return REVIEWER_FILES.some((re) => re.test(p));
 }
 
 // Active pipeline role for this tool call. Subagent calls carry agent_type; the main-thread
@@ -145,8 +215,9 @@ function isAbsoluteOutside(fp, cwd) {
   return !(abs === root || abs.startsWith(root + '/'));
 }
 
-function badBash(cmd, mode) {
+function badBash(cmd, mode, place) {
   const c = cmd.toLowerCase();
+  const lifted = () => liftable(cmd, place);
 
   // recursive force-delete of a root / home / absolute path.
   // Flags may be split ("rm -r -f") — collect every flag token after rm, not just the first.
@@ -155,14 +226,14 @@ function badBash(cmd, mode) {
   const rmRF = rmFlags.includes('r') && rmFlags.includes('f');
   // Targets: POSIX (/, ~, $HOME) AND Windows shapes (C:\, C:/, UNC \\server) — this runs on
   // Windows-first machines where "rm -rf D:\foo" is just as catastrophic.
-  if (rmRF && /[\s='"]([a-z]:[\\/]|\\\\|\/(\s|\*|$)|~([\\/]|\s|\*|$)|\$home|\/[a-z])/i.test(c)) {
+  if (rmRF && /[\s='"]([a-z]:[\\/]|\\\\|\/(\s|\*|$)|~([\\/]|\s|\*|$)|\$home|\/[a-z])/i.test(c) && !lifted()) {
     return 'recursive force-delete of a root/home/absolute path';
   }
   // PowerShell equivalent: Remove-Item -Recurse -Force on an absolute/home path (flag order varies,
   // flags may be abbreviated -rec/-fo): basic coverage, fail-open beyond it.
   if (/\b(remove-item|ri|del|rmdir|rd)\b/.test(c)
       && /\s-rec\w*/.test(c) && /\s-fo\w*/.test(c)
-      && /[\s'"]([a-z]:[\\/]|\\\\|~[\\/]|\/)/i.test(c)) {
+      && /[\s'"]([a-z]:[\\/]|\\\\|~[\\/]|\/)/i.test(c) && !lifted()) {
     return 'recursive force-delete of a root/home/absolute path (PowerShell)';
   }
   if (/\bsudo\b/.test(c)) return 'sudo escalation';

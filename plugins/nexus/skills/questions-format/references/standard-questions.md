@@ -37,7 +37,7 @@ answer, the same whichever way the run was declared: the away answerer's, which 
 the recommended option. It is the one home of that answer, and the rule it serves is stated once
 (→ agents-workflow.md § Owner-away runs).
 
-Six entries carry an **Under a gear** line: the answer a feature's gear gives in place of the
+Seven entries carry an **Under a gear** line: the answer a feature's gear gives in place of the
 question, attended or away, or that the question is asked as written under any gear (→ agents-workflow.md § Gears).
 
 ## Entries
@@ -646,3 +646,35 @@ Which of these deviations from {the pattern} should be built as planned?
 ```
 Plan departures, routine: the plan for {the feature} deviates in {how many} places.
 ```
+
+### plan fixes
+
+**When asked:** asked at a plan's approval in the `fastest — lighter checks` lane, when its review ran round 1 only and that round fixed a CRITICAL or HIGH finding in the plan; after the `cut candidates` and `plan departures` questions.
+**Surfaces:** question box.
+**Options:**
+
+| label | consequence | offered when |
+|---|---|---|
+| a second round on the fixes | the reader who led the review checks the fixes again in about {the first round's minutes} minutes while the build starts, and anything it finds is fixed before the code is checked | always |
+| build now | the build starts on the fixes as written, and a gap they left shows only when the code is reviewed | always |
+
+**Recommended:** `a second round on the fixes` where any fix changes what the built code must do — a rule it applies, an input it accepts or refuses, a contract other code relies on; `build now` where every fix changes only wording, a name or where something is written. The recommended option is listed first.
+**With the owner away:** not asked; the second round runs, and the build waits on it only for the work touched by a fix it does not mark closed (→ agents-workflow.md § Gears).
+**Under a gear:** not asked where the gear's plan review already ran its round 2, which re-read the fixes; where it ran round 1 only, asked as above; under `off`, or where the gear says ask me, it is asked as above.
+**Long form:**
+
+```
+Nobody reads a plan's fixes before the build, and a gap they leave costs less to fix in the plan than in code.
+The first review round found {how many} serious problems: {each fix, in a few words}.
+Of these fixes, {how many} change what the code must do, not only how the plan says it.
+Re-check the plan's fixes while it builds, or build on them as they are?
+```
+
+**This run:**
+
+```
+Plan fixes, routine: the plan's one review round found {how many} serious problems, all fixed in the plan.
+The fixes are {each fix, in a few words}, and {how many} of them change what the code must do.
+```
+
+`{each fix, in a few words}` names every fix, about four words each and at most about 55 characters in all; a longer list shortens each fix, never drops one.

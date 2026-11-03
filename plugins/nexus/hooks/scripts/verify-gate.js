@@ -64,7 +64,7 @@
  * whole milliseconds around that one command, pass or fail — a reader's only source for a hook run's
  * time, since the record's `ts` is stamped when the hook starts.
  *
- * Plumbing mirrors read-tracker.js (root resolution, .pipeline-state round token, mkdir -p
+ * Plumbing mirrors read-tracker.js (root resolution, the session's round token, mkdir -p
  * .claude/audit, fail-silent) EXCEPT: it executes commands, so it is SYNCHRONOUS (not async) and
  * hooks.json gives it a generous timeout (the verify set can take seconds).
  *
@@ -72,10 +72,12 @@
  * carries an explicit do-not-make-this-worktree-aware decision, and it gave a real reason:
  *   "a split log would break the token-scoped round queries Step 3 depends on."
  * This gate diverges on WHERE IT MEASURES while honoring that reason exactly: on a session-matching
- * published target it resolves commands, the execution cwd, and the round token from that tree —
- * but the verdict still APPENDS TO THE RESOLVED ROOT'S audit file, so there is still ONE log home
- * and the token-scoped round queries keep working. Measuring and writing are separate choices; only
- * the first one moved. The only lines it writes in the measured tree are build-ledger lines, a start before its
+ * published target it resolves commands and the execution cwd from that tree — but the verdict still
+ * APPENDS TO THE RESOLVED ROOT'S audit file, so there is still ONE log home and the token-scoped round
+ * queries keep working. Measuring and writing are separate choices; only the first one moved. The
+ * round token is the session's own, read at the root (lib/round-token.js) in every branch: a worktree
+ * record carries it too, never the measured tree's, which holds no token file.
+ * The only lines it writes in the measured tree are build-ledger lines, a start before its
  * commands, starting the ledger where none is kept, and an end after them: its commands may have built there, and
  * build reuse reads the tree's ledger (lib/build-ledger.js, verify-run.js).
  *
@@ -96,6 +98,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 const { resolveRole } = require('./lib/resolve-role');
 const { readWorktreeTarget } = require('./lib/worktree-target');
+const { readRoundToken } = require('./lib/round-token');
 const { stepCheckpoint, handbackText } = require('./lib/step-checkpoint');
 const { hasBuildLedger, startBuild, endBuild } = require('./lib/build-ledger');
 
@@ -215,8 +218,7 @@ process.stdin.on('end', () => {
     const auditDir = path.join(root, '.claude', 'audit');
     const verdictFile = path.join(auditDir, 'verify-verdict.json');
 
-    let token = '';
-    try { token = fs.readFileSync(path.join(root, '.claude', '.pipeline-state'), 'utf8').trim(); } catch { /* no token */ }
+    const token = readRoundToken(root, data.session_id);
 
     // resolveRole strips a `nexus:` namespace AND resolves a custom/auto-suffixed spawn name
     // (developer-2, developer-f6) to its base role — without it a suffixed re-spawn lands in
@@ -257,7 +259,7 @@ process.stdin.on('end', () => {
     let signal = { status: 'absent' };
     try { signal = readWorktreeTarget(root, data.session_id); } catch { /* degrade to status quo — never a new silent-skip path */ }
 
-    let tree = root; // the tree whose token was read (= the execution tree, once redirected)
+    let tree = root; // the execution tree, once redirected
     let reason;
     if (signal.status === 'no-match') {
       // Loud rather than silently inert: a wrong publisher derivation is then one look to diagnose.
@@ -280,11 +282,7 @@ process.stdin.on('end', () => {
         write({ ...base, tree, agent: role, verdict: 'unknown', reason: `worktree-target invalid: ${signal.tree}`, commands: [], commands_count: 0, blocking_failed: false });
         return process.exit(0);
       }
-      if (path.resolve(declared) !== path.resolve(root)) {
-        tree = declared;
-        token = '';
-        try { token = fs.readFileSync(path.join(tree, '.claude', '.pipeline-state'), 'utf8').trim(); } catch { /* absent there → '' recorded, as today */ }
-      }
+      if (path.resolve(declared) !== path.resolve(root)) tree = declared;
     }
 
     const commands = resolveCommands(tree);

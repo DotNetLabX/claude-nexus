@@ -13,10 +13,10 @@ const props = defineProps<{
 </script>
 ```
 
-With defaults (Vue 3.5+ destructuring):
+With defaults (Vue 3.5+ destructuring — the default form):
 ```vue
 <script setup lang="ts">
-const { title, count = 0, items = () => [] } = defineProps<{
+const { title, count = 0, items = [] } = defineProps<{
   title: string
   count?: number
   items?: string[]
@@ -24,7 +24,12 @@ const { title, count = 0, items = () => [] } = defineProps<{
 </script>
 ```
 
-With defaults (Vue 3.4 and below — `withDefaults`):
+An array or object default is written as a plain literal: each instance gets its own copy, so no factory is
+needed (vuejs.org/guide/typescript/composition-api#props-default-values). In the same `<script setup>` the destructured names stay reactive;
+passed to another function they lose it, so pass a getter: `watch(() => count, …)`, `useFeature(() => items)`
+(vuejs.org/guide/components/props#reactive-props-destructure).
+
+With defaults (Vue 3.4 and below — `withDefaults`, where an array or object default must be a factory):
 ```vue
 <script setup lang="ts">
 const props = withDefaults(defineProps<{

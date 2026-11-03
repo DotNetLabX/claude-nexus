@@ -2,9 +2,9 @@
 
 Use this template for every `docs/specs/{slug}/delivery/plan.md` file — the full format first, and the light format after it, valid only under a light level (→ SKILL.md § Light Plan Format). **This template IS the plan format** — the `create-implementation-plan` skill owns it, and the coordination protocol (`rules/on-demand/agents-workflow.md` § Artifact Formats) points here rather than defining a second one.
 
-**Section map (targeting index).** `plan.md`'s fixed top-level headings — the set agents target for a section read (ADR-22 Extended). A light plan's: `## Goal` (plan-only definitions), `## Implementation Steps`, `## Where to Look`, `## Decisions`, `## Decisions and why`, `## Cut candidates` (when a part qualifies), `## Open Questions`. The full format's: `## Context`, `## Scope`, `## Skill Mapping`, `## Domain Model Changes`, `## Data Model Changes`, `## Implementation Steps`, `## Cross-Service Changes`, `## Migration Notes`, `## Must-NOT-Change`, `## Testing Strategy`, `## KB Impact`, `## Decisions`, `## Decisions and why`, `## Cut candidates` (when a part qualifies), `## Open Questions`. Grep `^##` for live line numbers, then `Read` with `offset/limit` around the section you need rather than the whole file.
+**Section map (targeting index).** `plan.md`'s fixed top-level headings — the set agents target for a section read (ADR-22 Extended). A light plan's: `## Goal` (plan-only definitions), `## Implementation Steps`, `## Where to Look`, `## Decisions`, `## Decisions and why`, `## Cut candidates` (when a part qualifies), `## Open Questions`, `## Plan check`. The full format's: `## Context`, `## Scope`, `## Skill Mapping`, `## Domain Model Changes`, `## Data Model Changes`, `## Implementation Steps`, `## Cross-Service Changes`, `## Migration Notes`, `## Must-NOT-Change`, `## Testing Strategy`, `## KB Impact`, `## Decisions`, `## Decisions and why`, `## Cut candidates` (when a part qualifies), `## Open Questions`, `## Plan check`. Grep `^##` for live line numbers, then `Read` with `offset/limit` around the section you need rather than the whole file.
 
-**The `Developers` header line is optional and usually absent** — keep it only where the content divides by kind of work (the rule is the architect's Plan Writing Rules). **The `Build slices` header line is optional too** — required only above 8 developer-built steps, for a heavy step, or in place of a split a fold finds under a lane built in the architect's session, omitted otherwise (the rule is this skill's § Build Slices). **The `Size`, `Lane`, `Build lane` and `Gear` header lines are the architect's**, counted and written by the rules in `architect.md` § Check Level and Plan Size: `Size` on every plan; `Lane` — the recommended check level, `light` or `full`, with a one-line why — on every plan a standalone architect writes, before the plan's review, and omitted on a plan written for the team pipeline; `Build lane` — the lane the owner chose and the one recommended — standalone plans only: with the owner present, written once the plan is written, before its review; with the owner away, nothing is asked and it is written after the review's last fold, holding the lane re-derived then. Under a gear (`agents-workflow.md` § Gears) every plan, the team pipeline's included, carries the `Lane` and `Build lane` lines the gear sets, and `Gear` is the line `gear.js fix` prints when the plan starts — the feature's fixed gear. **The `Skills per step` header line is the architect's too**, on any plan, the team pipeline's included: written `**Skills per step:** on` where the repo's switch is on (the rule is the architect's Plan Writing Rules, in `architect.md`), left out where it is off; with it, a step names every pattern skill that covers one of its actions (SKILL.md step 4). **The `Mirrors` header line** is written where the owner named an existing pattern to mirror, on any plan: the pattern is one more source, never a copy order, and the ticket wins where the two disagree (the rule is the architect's Plan Writing Rules).
+**The `Developers` header line is optional and usually absent** — keep it only where the content divides by kind of work (the rule is the architect's Plan Writing Rules). **The `Build slices` header line is optional too** — required only above 8 developer-built steps, for a heavy step, or in place of a split a fold finds under a lane built in the architect's session, omitted otherwise (the rule is this skill's § Build Slices). **The `Size`, `Lane`, `Build lane` and `Gear` header lines are the architect's**, counted and written by the rules in `architect.md` § Check Level and Plan Size: `Size` on every plan; `Lane` — the recommended check level, `light` or `full`, with a one-line why — on every plan a standalone architect writes, before the plan's review, and omitted on a plan written for the team pipeline; `Build lane` — the lane the owner chose and the one recommended — standalone plans only: with the owner present, written once the plan is written, before its review; with the owner away, nothing is asked and it is written after the review's last fold, holding the lane re-derived then. Under a gear (`agents-workflow.md` § Gears) every plan, the team pipeline's included, carries the `Lane` and `Build lane` lines the gear sets, and `Gear` is the line `gear.js fix` prints when the plan starts — the feature's fixed gear. **The `Skills per step` header line is the architect's too**, on any plan, the team pipeline's included: written `**Skills per step:** on` where the repo's switch is on (the rule is the architect's Plan Writing Rules, in `architect.md`), left out where it is off; with it, a step names every pattern skill that covers one of its actions (SKILL.md step 4). **The `Mirrors` header line** is written where the owner named an existing pattern to mirror, on any plan: the pattern is one more source, never a copy order, and the ticket wins where the two disagree (the rule is the architect's Plan Writing Rules). **The `Base` header line is on every plan:** the merge-base of the tree the plan was read in with the default branch, at the moment the plan is written — never the default branch's tip, which the tree may not hold; the coordinator reads it at the phase-boundary check (`team-lead.md` § Other sessions' commits at each phase boundary).
 
 ---
 
@@ -21,6 +21,7 @@ Use this template for every `docs/specs/{slug}/delivery/plan.md` file — the fu
 **Gear:** {gear} — {campaign | switch | repo} | omit this line — no gear in force when the plan started
 **Skills per step:** on | omit this line — the repo's skills-per-step switch is off
 **Mirrors:** {pattern} — {where the owner named it}; the ticket wins a conflict | omit this line — no pattern named
+**Base:** {sha} — the merge-base of the tree the plan was read in with the default branch
 
 ## Context
 What problem this solves. Which service(s) impacted and why.
@@ -76,7 +77,7 @@ For each step:
 - Skill reference (from the mapping table) — if Follow or Find or build, say "Follow {skill-name}" or "Find or build {what}, then follow {skill-name}"; under `**Skills per step:** on`, every skill the row names — "Follow {skill-a}, {skill-b}", or one disposition each where they differ
 - Feature-specific inputs only (entity names, property types, route paths)
 - Dependencies on previous steps
-- **Accept:** a test file or an exact grep or command (SKILL.md § Plan Grounding & Deviation Rules)
+- **Accept:** a test file or an exact grep or command (SKILL.md § Plan Grounding & Deviation Rules); a search command carries `(plan time: {n})` right after it, `none` for no output
 - **Long runs:** (only where the step waits on one) — what runs and roughly how long
 - **Effort points:** {n} — added at the sweep after the review (SKILL.md § Step Effort); not on close- or operator-owned steps
 - **`Satisfies:`** (optional, recommended) — the acceptance criterion the step delivers, e.g.
@@ -136,6 +137,10 @@ Not offered: {part} — past the cap; one per line, below the table.
 
 ## Open Questions
 Unresolved decisions needing input.
+
+## Plan check
+{the last plan-check.js output, pasted whole}
+{one line per finding left standing, saying why}
 ```
 
 ---
@@ -156,7 +161,7 @@ Out of scope: {one line}
 ## Implementation Steps
 
 ### Step N — {outcome}
-Accept: `{test file}` asserts {what} | `{exact grep or command}` gives {result} · Files: `{path}`, `{path}` · Follow {skill} | Follow {skill}, {skill} (under **Skills per step:** on) | None · TDD: yes (test-first steps only) · Risk: risky — {why} (risky steps only) · Long runs: {what runs, about how long} (only where the step waits on one) · Effort points: {n}
+Accept: `{test file}` asserts {what} | `{exact grep or command}` (plan time: {n}) gives {result} (the note on a search only; `(plan time: none)` for no output) · Files: `{path}`, `{path}` · Follow {skill} | Follow {skill}, {skill} (under **Skills per step:** on) | None · TDD: yes (test-first steps only) · Risk: risky — {why} (risky steps only) · Long runs: {what runs, about how long} (only where the step waits on one) · Effort points: {n}
 Satisfies: (where a rule list is joined)
 - {ruleName} — {one-line statement}
 
@@ -174,4 +179,8 @@ Satisfies: (where a rule list is joined)
 
 ## Open Questions
 {unresolved decisions} | None
+
+## Plan check
+{the last plan-check.js output, pasted whole}
+{one line per finding left standing, saying why}
 ```

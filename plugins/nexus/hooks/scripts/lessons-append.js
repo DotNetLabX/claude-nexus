@@ -20,6 +20,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { readRoundToken } = require('./lib/round-token');
 
 const WAIT_MS = 2000;
 const STALE_MS = 10000;
@@ -98,8 +99,7 @@ function writeAtomic(file, content, tmpDir) {
 }
 
 function auditRow(root, role, slug, session) {
-  let token = '';
-  try { token = fs.readFileSync(path.join(root, '.claude', '.pipeline-state'), 'utf8').trim(); } catch { /* no token */ }
+  const token = readRoundToken(root, session);
   const auditDir = path.join(root, '.claude', 'audit');
   fs.mkdirSync(auditDir, { recursive: true });
   fs.appendFileSync(

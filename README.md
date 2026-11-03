@@ -46,10 +46,11 @@ You → PO (spec) → Architect (plan) → Developer (build)
 | Plugin | For | Install id |
 |--------|-----|------------|
 | [**nexus**](plugins/nexus) | Every project — the core | `nexus@claude-nexus` |
-| [**nexus-dotnet**](plugins/nexus-dotnet) | .NET and Vue projects — your agents build services the way a senior team does | `nexus-dotnet@claude-nexus` |
+| [**nexus-dotnet**](plugins/nexus-dotnet) | .NET projects — your agents build services the way a senior team does | `nexus-dotnet@claude-nexus` |
 | [**nexus-flutter**](plugins/nexus-flutter) | Flutter projects — from a Figma design to a pixel-accurate widget | `nexus-flutter@claude-nexus` |
 | [**nexus-cpp**](plugins/nexus-cpp) | C and C++ projects — 95%+ test coverage, in Docker | `nexus-cpp@claude-nexus` |
 | [**nexus-php**](plugins/nexus-php) | PHP and Laravel projects — 95%+ test coverage, in Docker | `nexus-php@claude-nexus` |
+| [**nexus-vue**](plugins/nexus-vue) | Vue 3 front ends on any back end — Vue, Pinia and Tailwind on settled patterns | `nexus-vue@claude-nexus` |
 | [**nexus-channels**](plugins/nexus-channels) | Projects with more than one source of knowledge — every answer from the right one | `nexus-channels@claude-nexus` |
 
 Every extension depends on `nexus`, so installing one installs the core with it. Click a plugin to see what it does.
@@ -58,7 +59,7 @@ Every extension depends on `nexus`, so installing one installs the core with it.
 
 | Plugin | What you get | Repository |
 |--------|--------------|------------|
-| [**nexus-pro**](#nexus-pro) | Twelve extras that get more out of every feature | `DotNetLabX/claude-nexus-pro` |
+| [**nexus-pro**](#nexus-pro) | Thirteen extras that get more out of every feature | `DotNetLabX/claude-nexus-pro` |
 | [**nexus-miner**](#nexus-miner) | Tests, rules, maps and rewrites mined from the code you already have | `DotNetLabX/claude-nexus-miner` |
 | [**nexus-analytics**](#nexus-analytics) | Business questions in plain words, numbers you can defend | `DotNetLabX/claude-nexus-analytics` |
 | [**nexus-notes**](#nexus-notes) | Every meeting decision in front of whoever writes the spec | `DotNetLabX/claude-nexus-notes` |
@@ -73,7 +74,7 @@ Each paid plugin lives in its own private repository, which is its own marketpla
 
 ### nexus-pro
 
-**Twelve extras for the Nexus pipeline — for when you already like the core and want more from every feature.**
+**Thirteen extras for the Nexus pipeline — for when you already like the core and want more from every feature.**
 
 - **Brainstorm mode — ideas, then straight into the critique.** Short rounds of ideas you pick from, then every idea you chose is challenged before anything reaches the spec.
 - **Panel mode — a second mind on a design question.** A model from another family drafts its own position; you get one merged answer and every remaining disagreement written down.
@@ -85,6 +86,7 @@ Each paid plugin lives in its own private repository, which is its own marketpla
 - **Usage record — what every feature cost, on record.** Tokens, times, models and versions, committed at every close. No conversation text, no file contents.
 - **Custom gears — your own pipeline gear.** A new name, a base gear, and only the settings it changes.
 - **Flow atlas — which classes run for each entry point.** One page per endpoint, route, job or consumer, down to storage, marked stale the moment the code moves.
+- **Draw mockup — the screens your design left out, drawn before anyone builds them.** One clickable page in your app's own look, every piece marked as from the design, asked for by the spec, or new — and a check refuses the page while any piece points at nothing real.
 - **Live agent view — see what every agent is doing.** Each agent's row names its role, and a developer's shows its step, tokens and time — `dev-s1 · step 3/7 · 420k · 9 min`.
 - **Suite methods for app agents.** When your app's own agents run on a model's API, their prompts start from a tested method instead of a blank page.
 

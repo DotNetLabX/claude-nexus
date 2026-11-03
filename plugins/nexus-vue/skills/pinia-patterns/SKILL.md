@@ -6,12 +6,13 @@ user-invocable: true
 
 # Pinia Patterns
 
-Pinia 3 with Composition API (setup stores). The patterns use setup stores only.
+Pinia 3 or 4 with Composition API (setup stores). The patterns use setup stores only.
 
 ## Assumes
 
-- **Pinia 3** with **setup stores** (Composition API) and **Vue 3** — setup stores only; options
-  stores are not shown.
+- **Pinia 3 or 4** with **setup stores** (Composition API) and **Vue 3** — setup stores only; options
+  stores are not shown. Version 4 changes packaging only: it ships as ES modules alone and needs
+  `@vue/devtools-api` installed beside it (github.com/vuejs/pinia/releases/tag/v4.0.0).
 - **Framework-native — no extra packages presumed.** The patterns here use only Pinia and the Vue
   reactivity primitives. The localStorage-persistence pattern below uses the plain Web Storage API
   directly; adopt a persistence plugin (e.g. `pinia-plugin-persistedstate`) only if the project already
@@ -67,10 +68,16 @@ export const useSettingsStore = defineStore('settings', () => {
 })
 ```
 
+**Return every piece of state.** A setup store has no private state: a ref left out of the returned
+object, or returned wrapped in `readonly`, is not store state to Pinia, and server rendering, devtools
+and plugins break on it (pinia.vuejs.org/core-concepts/, Setup Stores). Keep a value that is not state —
+a request counter, a timer handle — in a plain `let`, not a ref.
+
 ## Using Stores in Components
 
 ```vue
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSettingsStore } from '@/stores/settingsStore'
 
@@ -110,6 +117,10 @@ When a view has a local form that mirrors store state:
 
 ```vue
 <script setup lang="ts">
+import { onMounted, reactive } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useSettingsStore } from '@/stores/settingsStore'
+
 const store = useSettingsStore()
 const { settings } = storeToRefs(store)
 
@@ -145,22 +156,37 @@ async function save() {
 
 ## Async Action Pattern
 
-Every async action follows the same shape:
+An async action that loads data follows this shape. The request counter matters wherever the action can be
+called again before its previous reply arrives — a filter change, a fast re-click; the shorter samples
+elsewhere in this skill leave it out. The counter is a plain `let` inside the setup-store function, so
+each store instance — each Pinia app, each test — counts on its own; at module level it would be shared
+by all of them (vuejs.org/guide/scaling-up/ssr#cross-request-state-pollution):
 
 ```typescript
+let latestRequest = 0
+
 async function doSomething(args: Args) {
+  const request = ++latestRequest
   loading.value = true
   error.value = null
   try {
     const result = await api.call(args)
-    state.value = result
+    if (request === latestRequest) state.value = result
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Unknown error'
+    if (request === latestRequest) error.value = e instanceof Error ? e.message : 'Unknown error'
   } finally {
-    loading.value = false
+    if (request === latestRequest) loading.value = false
   }
 }
 ```
+
+**Rules:**
+- A later call supersedes an earlier one: the action writes only while it is still the latest call, so
+  a slow first reply never overwrites the reply of the call made after it.
+- Where a component or composable fetches inside a watcher instead, cancel the stale request with
+  `onWatcherCleanup` (Vue 3.5+), called before any `await` in the callback
+  (vuejs.org/guide/essentials/watchers#side-effect-cleanup); the `vue-patterns` skill's reactivity
+  reference shows the form.
 
 ## Initialize Pattern
 
@@ -170,6 +196,7 @@ Stores that load reference data before fetching primary data use a two-phase `in
 export const useFeatureStore = defineStore('feature', () => {
   const referenceData = ref<RefType[]>([])
   const primaryData = ref<DataType | null>(null)
+  const selectedId = ref<number | null>(null)
   const loading = ref(false)
   const initializing = ref(false)
   const error = ref<string | null>(null)
@@ -192,7 +219,7 @@ export const useFeatureStore = defineStore('feature', () => {
     }
   }
 
-  return { referenceData, primaryData, loading, initializing, error, initialize }
+  return { referenceData, primaryData, selectedId, loading, initializing, error, initialize }
 })
 ```
 
@@ -241,6 +268,9 @@ Some store state should survive a reload — a selected filter, a collapsed-pane
 Persist it with the plain Web Storage API and a `watch`; no plugin required (see Assumes).
 
 ```typescript
+import { defineStore } from 'pinia'
+import { ref, watch } from 'vue'
+
 export const useUiStore = defineStore('ui', () => {
   const STORAGE_KEY = 'ui:preferences'
 
@@ -292,6 +322,20 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
 **Call stores inside the setup function, not at module level.**
 
+## Stores in Router Guards
+
+Call the store inside the guard, never at the top of the router file. A module-level call runs when the
+file is imported, which can be before the app has installed Pinia; a store works only once
+`app.use(pinia)` has run, and the guard runs later, at navigation
+(pinia.vuejs.org/core-concepts/outside-component-usage.html).
+
+```typescript
+router.beforeEach((to) => {
+  const auth = useAuthStore()
+  if (to.meta.requiresAuth && !auth.isLoggedIn) return { name: 'Login' }
+})
+```
+
 ## Extending an Existing Store
 
 Adding state, a getter, or an action to a store that **already exists** is an edit-in-place — not a new
@@ -327,4 +371,5 @@ genuinely belongs to a different domain.
 | Massive store (300+ lines) | Split by domain |
 | Store calls `showToast()` | Expose error state, view handles UI |
 | Options API store syntax | Setup store (Composition API) |
-| Call store at module level | Call inside setup function |
+| Call store at module level | Call inside setup function or the guard |
+| State kept out of the returned object | Return every ref the store holds |

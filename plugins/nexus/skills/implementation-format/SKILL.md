@@ -105,8 +105,14 @@ sends a red to, start from them.
 
 **A fix round has no step of its own.** When the reviewer returns findings, every step block is
 already closed and there is no current step to append to. Add one `## Fix Round N` block in the step
-region, after the last step block, with the same four fields, plus the round's `Test problem:` and `Unfinished:` lines as a step block writes them — `Files:` names what the fixes touched,
-`Deviations:` records any finding you did not act on and why. Never rewrite the original step blocks
+region, after the last step block, with the same four fields — `Files:` names what the fixes touched,
+`Deviations:` records any finding you did not act on and why — plus the round's `Test problem:` and
+`Unfinished:` lines as a step block writes them, and `**Class checked:**` lines. Each finding the round fixed gets one
+`**Class checked:** {fix-list row}: {the search, as run} — {siblings fixed | none found | listed: {where}}`
+line: the search for the same flaw in sibling code, not only the line the finding cited. A round
+that fixed only done-check items (a missing step, a skill slip, a test slip) writes one
+`**Class checked:** none — {why}` line. A `Fixes applied` hand-back whose round block lacks them is
+sent back once. Never rewrite the original step blocks
 to make them look as though they had been right the first time: the sequence of what was built and
 what was corrected is what a resume and a re-review both read. A bug met in a fix round that this
 developer did not cause goes on a `Bug found:` line in that round's block, never in a closed step

@@ -22,7 +22,7 @@
  *     implementation.md=developer, summary.md=team-lead (lessons.md is shared by design). A Codex
  *     done check's done-check.md block is a main-session write, which this detector skips, so a
  *     spawned coordinator hands that check back and never writes the block itself
- *   - ANY subagent writing .claude/.pipeline-state (the team lead owns it, main-session only)
+ *   - ANY subagent writing a phase token under .claude/pipeline-state/ (the team lead owns it, main-session only)
  *   - ANY subagent spawning a pipeline-role agent via Agent/Task (ADR-21: delegated
  *     self-advancement — the F16 incident vector: a developer commissioned done-checks, a
  *     Step-2 review, and a learner as correctly-typed agents, so the ownership rules above
@@ -66,8 +66,8 @@ const ARTIFACT_OWNERS = [
 ];
 
 function violation(role, fp, root) {
-  if (/(^|\/)\.claude\/\.pipeline-state$/.test(fp)) {
-    return 'subagent wrote .claude/.pipeline-state — the team lead (main session) is its sole writer (ADR-18)';
+  if (/(^|\/)\.claude\/pipeline-state\/./.test(fp)) {
+    return 'subagent wrote a phase token under .claude/pipeline-state/ — the team lead (main session) is its sole writer (ADR-18)';
   }
   for (const [re, owners] of ARTIFACT_OWNERS) {
     if (re.test(fp) && !owners.has(role)) {

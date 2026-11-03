@@ -1,6 +1,8 @@
 # CLAUDE.md
 
-> Starter `CLAUDE.md` for a .NET / Vue project using the **nexus-dotnet** plugin (which pulls in **nexus**).
+> Starter `CLAUDE.md` for a .NET project with a Vue front end, using the **nexus-dotnet** plugin (which pulls in
+> **nexus**) and, for the front end, the **nexus-vue** plugin. Copy `vue.md` from nexus-vue's `conventions/` folder too,
+> and add its `@vue.md` line to `docs/conventions/coding-conventions.md`.
 > Copy this to your repo root and fill in the TBD sections (app prefix, service indices, domain, providers).
 > Copy this plugin's `conventions/` folder to `docs/conventions/` — the nexus agents read its index — and copy it
 > again after a plugin update. Copy `templates/project-lists.md` to `docs/conventions/project-lists.md` once, and

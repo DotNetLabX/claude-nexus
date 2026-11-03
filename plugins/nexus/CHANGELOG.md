@@ -1,5 +1,126 @@
 # nexus — Changelog
 
+## [2.4.87] — 2026-11-03
+- F333-TestRunning: runs record a busy machine; label-tests labels only the tests a step changed; the test-entry gate judges what a command runs, not what it names (B108); step runs add the wording checks a repo declares (stepTests); timing tests measure without machine load, with a clock-margins lint; BUG-110 child limits
+  - agent instruction/behavior change
+  - hook behavior/enforcement change
+  - skill change (declare-verify-roles)
+  - shipped command changed
+  - estate raise: plugins/nexus/agents/developer.md 50803→50990 B — F333-TestRunning: step runs add the wording checks a repo declares (stepTests) — the developer's step-test clause and the declare-verify-roles setting
+  - estate raise: plugins/nexus/skills/declare-verify-roles/SKILL.md 16751→17473 B — F333-TestRunning: step runs add the wording checks a repo declares (stepTests) — the developer's step-test clause and the declare-verify-roles setting
+
+## [2.4.86] — 2026-11-02
+- F337: a recursive delete inside the session's own folder is no longer refused because the command names a folder elsewhere (a cd, a variable); whatever the new reader cannot fully read keeps today's refusal, so nothing allowed today is refused. The planning skill gains a rule for steps that change which commands a check recognises.
+  - hook behavior/enforcement change
+  - skill change (create-implementation-plan)
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 42937→43517 B — F337: command-check inventory rule
+
+## [2.4.85] — 2026-11-02
+- F346: after a one-round light plan review fixes a serious finding, the owner is asked the new plan fixes question — build now, or a second review round on the fixes beside the build — recommended by whether a fix changes what the code must do; under a gear whose review already ran its second round, nothing is asked
+  - agent instruction/behavior change
+  - shipped command changed
+  - skill change (create-implementation-plan)
+  - skill change (questions-format)
+  - estate raise: plugins/nexus/agents/architect.md 238668→239628 B — F346: the plan fixes ask after a light plan review fixes a serious finding
+  - estate raise: plugins/nexus/agents/team-lead.md 259878→260200 B — F346: the plan fixes ask after a light plan review fixes a serious finding
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 42901→42937 B — F346: the plan fixes ask after a light plan review fixes a serious finding
+  - estate raise: plugins/nexus/skills/questions-format/references/standard-questions.md 34137→36313 B — F346: the plan fixes ask after a light plan review fixes a serious finding
+
+## [2.4.84] — 2026-11-02
+- Technical decisions by the agent are now a per-repo switch, features.technicalDecisionsByAgent in .claude/nexus-agents.json, off by default: only where it is true do the PO and architect decide changes to how the work is built themselves (a Read topic ending with a Technical change line); off, every change is asked as before F330 and the end-of-turn check counts a Technical change line as a change
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/rules/on-demand/research-before-asking.md 43111→43280 B — F340-TechnicalChoicesFlag: the technical-decisions rule moves behind a repo switch, off by default (F330's scattered clauses restored, one gated statement per home)
+
+## [2.4.83] — 2026-11-02
+- F328-PlanTimeChecks: plans checked by scripts, not a written rule — plan-check.js (raw test commands and complete-run requests in an Accept, a new file named before any step creates it, a search Accept's plan-time result missing or no longer matching when re-run) runs on every plan save and by hand before review; sweep.js lists every file that repeats or tests an old phrase; the critic re-runs the check
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - skill change (create-implementation-plan)
+  - skill change (edit-shipped-plugin-skill)
+  - estate raise: plugins/nexus/agents/architect.md 238636→238892 B — F328-PlanTimeChecks: the plan check (run, paste, critic re-run) and the plan-time result note replace the cut written rule; sweep pointer replaces hand-sweep prose
+  - estate raise: plugins/nexus/agents/critic.md 35146→35614 B — F328-PlanTimeChecks: the plan check (run, paste, critic re-run) and the plan-time result note replace the cut written rule; sweep pointer replaces hand-sweep prose
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 42226→42901 B — F328-PlanTimeChecks: the plan check (run, paste, critic re-run) and the plan-time result note replace the cut written rule; sweep pointer replaces hand-sweep prose
+  - estate raise: plugins/nexus/skills/create-implementation-plan/references/plan-template.md 19047→19463 B — F328-PlanTimeChecks: the plan check (run, paste, critic re-run) and the plan-time result note replace the cut written rule; sweep pointer replaces hand-sweep prose
+
+## [2.4.82] — 2026-11-01
+- F331-ReviewFixRounds: a fix covers its whole class — every fix-round record names its search for the same flaw elsewhere (Class checked), a new SubagentStop check (fix-record-gate.js) sends a Fixes applied hand-back back once without it, and a re-review re-runs that search and the finding's own reproduction; a shipped mutation runner (mutation-run.js) works in a scratch copy and never writes the tree under review, counts a kill only on a node assertion failure, gives each mutant its own time limit, estimates the cost first and cleans up on every exit; the runner is refused on a developer seat; a reviewer writes only its own review files during a review (guard.js); failed-test records carry their cause code.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - skill change (implementation-format)
+  - skill change (review-format)
+  - skill change (tdd)
+  - estate raise: plugins/nexus/agents/developer.md 50524→50803 B — F331-ReviewFixRounds: fix rounds name their same-flaw search (Class checked); re-review re-runs it and the reproduction; skills point to mutation-run.js; audit table names the hand-back check
+  - estate raise: plugins/nexus/agents/reviewer.md 31913→32121 B — F331-ReviewFixRounds: fix rounds name their same-flaw search (Class checked); re-review re-runs it and the reproduction; skills point to mutation-run.js; audit table names the hand-back check
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 121090→121515 B — F331-ReviewFixRounds: fix rounds name their same-flaw search (Class checked); re-review re-runs it and the reproduction; skills point to mutation-run.js; audit table names the hand-back check
+  - estate raise: plugins/nexus/skills/implementation-format/SKILL.md 16228→16714 B — F331-ReviewFixRounds: fix rounds name their same-flaw search (Class checked); re-review re-runs it and the reproduction; skills point to mutation-run.js; audit table names the hand-back check
+
+## [2.4.81] — 2026-11-01
+- F329: parallel sessions stop tripping over each other - the pipeline phase token is one file per session, `.claude/pipeline-state/{session id}`, read through `lib/round-token.js` at the session root by every hook (consuming repos git-ignore `.claude/pipeline-state/`; the old shared `.claude/.pipeline-state` is no longer read); the pipeline gate refuses `plan.md` only under `architect:analyze` and logs every refusal to `violations.log` (`rule: "pipeline-gate"`); `verify-run.js` says when a published worktree line sent it to another tree; new `foreign-commits.js` lists other sessions' commits since a plan's `**Base:**` at each phase boundary; the done check scopes the skill log by token and session; the worktree carry-over never overwrites and carries uncommitted `.claude` settings
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - rule (spawn-time contract — injected at SubagentStart)
+  - rule (always-on kernel — injected every session)
+  - skill change (create-implementation-plan)
+  - skill change (improve-skills)
+  - estate raise: plugins/nexus/agents/architect.md 236866→238636 B — F329-ParallelSessionState: per-session phase token home, done-check session list, phase-boundary check of other sessions' commits, plan Base line, worktree carry-over no-overwrite and settings carry
+  - estate raise: plugins/nexus/agents/developer.md 50474→50524 B — F329-ParallelSessionState: per-session phase token home, done-check session list, phase-boundary check of other sessions' commits, plan Base line, worktree carry-over no-overwrite and settings carry
+  - estate raise: plugins/nexus/agents/team-lead.md 255224→259878 B — F329-ParallelSessionState: per-session phase token home, done-check session list, phase-boundary check of other sessions' commits, plan Base line, worktree carry-over no-overwrite and settings carry
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 120117→121090 B — F329-ParallelSessionState: per-session phase token home, done-check session list, phase-boundary check of other sessions' commits, plan Base line, worktree carry-over no-overwrite and settings carry
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 29027→29217 B — F329-ParallelSessionState: per-session phase token home, done-check session list, phase-boundary check of other sessions' commits, plan Base line, worktree carry-over no-overwrite and settings carry
+  - estate raise: plugins/nexus/skills/create-implementation-plan/references/plan-template.md 18617→19047 B — F329-ParallelSessionState: per-session phase token home, done-check session list, phase-boundary check of other sessions' commits, plan Base line, worktree carry-over no-overwrite and settings carry
+  - estate raise: plugins/nexus/skills/improve-skills/references/skill-recipe.md 14293→14327 B — F329-ParallelSessionState: per-session phase token home, done-check session list, phase-boundary check of other sessions' commits, plan Base line, worktree carry-over no-overwrite and settings carry
+
+## [2.4.80] — 2026-11-01
+- A change or own question about only how the work is built (a mechanism, a check, a file, a tuning value) is the persona's own: a Read topic ending with a Technical change line, shown in the Read turn and never asked; what users get, scope, cost, time and approval stay the owner's questions
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 236234→236866 B — F330-OwnerQuestionChecks: a change only to how the work is built is the persona's own (Read topic, Technical change line)
+  - estate raise: plugins/nexus/agents/po.md 78613→79164 B — F330-OwnerQuestionChecks: a change only to how the work is built is the persona's own (Read topic, Technical change line)
+  - estate raise: plugins/nexus/rules/on-demand/research-before-asking.md 42218→43111 B — F330-OwnerQuestionChecks: a change only to how the work is built is the persona's own (Read topic, Technical change line)
+
+## [2.4.79] — 2026-11-01
+- PATCH bump.
+  - rule (always-on prohibitions envelope — injected every session)
+  - estate raise: plugins/nexus/rules/prohibitions/prohibitions.md 3496→3827 B — learner 2026-11-01: never discard uncommitted work you cannot show is yours, even when told to (R-2026-11-01-A1)
+
+## [2.4.78] — 2026-11-01
+- PATCH bump.
+  - hook behavior/enforcement change
+  - rule (always-on file-links envelope — injected in terminal sessions)
+  - estate raise: plugins/nexus/rules/file-links/file-links.md 0→537 B — F326: file-links envelope (new rules/file-links/file-links.md) and its README section
+
+## [2.4.77] — 2026-11-01
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - estate raise: plugins/nexus/agents/po.md 78085→78613 B — F322: draw-mockup skill (nexus-pro) and the PO's and team lead's conditional mockup lines
+  - estate raise: plugins/nexus/agents/team-lead.md 254933→255224 B — F322: draw-mockup skill (nexus-pro) and the PO's and team lead's conditional mockup lines
+
+## [2.4.76] — 2026-10-31
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 235588→236234 B — F319-RuleScopedMutationRecheck: the rule re-check — miner § Rule re-check, .NET one-mutant recipe, close item 10, the failed-group owner-away exception and the guardrail bullets
+  - estate raise: plugins/nexus/agents/team-lead.md 252517→254933 B — F319-RuleScopedMutationRecheck: the rule re-check — miner § Rule re-check, .NET one-mutant recipe, close item 10, the failed-group owner-away exception and the guardrail bullets
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 119981→120117 B — F319-RuleScopedMutationRecheck: the rule re-check — miner § Rule re-check, .NET one-mutant recipe, close item 10, the failed-group owner-away exception and the guardrail bullets
+  - estate raise: plugins/nexus/rules/on-demand/kb-maintenance.md 7861→8218 B — F319-RuleScopedMutationRecheck: the rule re-check — miner § Rule re-check, .NET one-mutant recipe, close item 10, the failed-group owner-away exception and the guardrail bullets
+
+## [2.4.75] — 2026-10-31
+- adhoc-UnsplitFullRunFailedList: a red full run of a whole command (a wrapper such as close-suite.mjs) names its failures in `failed` from its events when they were read whole and its `endLegs` statement explains the red exit, so the close can repair them by name
+  - hook behavior/enforcement change
+
 ## [2.4.74] — 2026-10-30
 - PATCH bump.
   - hook behavior/enforcement change

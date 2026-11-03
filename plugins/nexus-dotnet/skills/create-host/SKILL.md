@@ -211,7 +211,7 @@ logic of its own:
   database has already changed, so the region opens by running them itself.
 - **Use** — the request-wide middleware once: the error middleware early, the request-context and request-diagnostics
   middlewares directly after it, where used (`service-registration` § Program.cs Structure (self-hosted service));
-  static files before routing; `UseCors` before sign-in, sign-in, each service's `Use{Service}`, authorization, then
+  the security headers, then static files, both before routing; `UseCors` before sign-in, sign-in, each service's `Use{Service}`, authorization, then
   the mapping: health, the endpoint framework, each service's `Map{Service}Endpoints`, the API reference pages in
   development only, the page fallbacks last.
 
@@ -233,10 +233,16 @@ global using Orders.API;
 ```
 
 The host's `GlobalUsings.cs` (`service-infra-conventions` § 8. Per-project GlobalUsings) also names the namespaces of
-the shared code it calls — the settings binder, the error and request-context middlewares, sign-in.
+the shared code it calls — the settings binder, the error, request-context and security-headers middlewares,
+sign-in.
 
 ```csharp file=Program.cs
 var builder = WebApplication.CreateBuilder(args);
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Configuration.Sources.Clear();
+    builder.Configuration.AddCommandLine(args);
+}
 var billing = builder.Configuration.GetRequiredOptions<BillingOptions>();
 
 #region Add
@@ -259,6 +265,7 @@ if (billing.Enabled)
 app.UseHttpsRedirection();
 app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseMiddleware<RequestContextMiddleware>();
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseStaticFiles();
 app.UseRouting();
 app.UseCors();
@@ -283,13 +290,148 @@ app.Run();
 public partial class Program;
 ```
 
-`public partial class Program;` gives the host's tests their `WebApplicationFactory<Program>`. `UseOpenApi` serves
+`public partial class Program;` gives the host's tests their `WebApplicationFactory<Program>`, and the `Testing`
+block keeps their settings the only ones the host reads (§ Tests That Start the App, below). `UseOpenApi` serves
 the framework's document at the path the API reference page reads by default.
+
+**Security headers before static files.** Static-file serving answers the request and ends the pipeline, so a
+middleware placed after it never touches a page or an asset: the headers go first. The middleware is a shared piece
+(Look First, above) — the one the repo's shared libraries offer, or this one, built once in the shared place. Its
+content security policy is a starting point, to tighten to what the pages load; the API reference page, which
+loads its own scripts and styles, is left without it in development.
+
+```csharp file=SecurityHeadersMiddleware.cs
+public class SecurityHeadersMiddleware(RequestDelegate next, IHostEnvironment environment)
+{
+    private const string ContentSecurityPolicy =
+        "default-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+
+    public Task InvokeAsync(HttpContext context)
+    {
+        var headers = context.Response.Headers;
+        headers.XContentTypeOptions = "nosniff";
+        headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        headers.XFrameOptions = "DENY";
+        if (!(environment.IsDevelopment() && context.Request.Path.StartsWithSegments("/scalar")))
+            headers.ContentSecurityPolicy = ContentSecurityPolicy;
+
+        return next(context);
+    }
+}
+```
+
+**Hardening, as the sibling hosts have it.** A new host takes every hardening registration its sibling hosts and
+self-hosted services have — security headers, refused paths, the origin check, rate limiting — read from their
+`Program.cs`. The host's plan lists each one it takes, or "none, because …".
 
 **Static files and the page fallback.** The front end's built files sit under the host's web root — `wwwroot/app/`
 holds `index.html` and its assets. `UseStaticFiles` serves the assets; the fallback answers only paths with no file
 extension, so without static-file serving every asset of the page answers 404. Where the files are in the host
 project's `wwwroot` at build time, `MapStaticAssets()` serves them instead.
+
+<!-- nexus-gen testing sections="test-host" BEGIN -->
+#### Tests That Start the App
+
+A test that boots the app through `WebApplicationFactory<Program>` reads no setting it did not set and reaches no live
+system unless it says so.
+
+- **Settings.** The factory runs the app in the `Testing` environment, never `Development`, so the developer's user
+  secrets are never loaded. It hands the app every value with `UseSetting`; the factory passes its host configuration
+  to `Program.cs` as command-line arguments, so the values are there before `Build()`, where a host reads its
+  switches. That configuration also holds every `ASPNETCORE_`-prefixed environment variable, so before the host is
+  built the factory keeps only its own values and the environment, content root and application name. In the
+  `Testing` environment the host's `Program.cs` keeps those arguments as its only settings source, so no environment
+  variable and no base `appsettings.json` value fills a setting the test left out: the test settings name every
+  section the host binds, under its class name, and a missing one fails start-up, as any missing section does.
+- **Outbound calls.** Every client the HTTP client factory makes — default, named and typed, one that sets its own
+  handler too — gets a primary handler that throws, so a call fails inside the process. A test that needs a client
+  registers a fake for the client's type in its own `WithWebHostBuilder`. Every other transport the host starts is
+  replaced by an in-process or local test double: the bus by its test harness (MassTransit's
+  `AddMassTransitTestHarness` puts an in-memory transport in place of the host's), a gRPC client by a fake of its
+  contract, a distributed cache by the in-memory one. The refusing handler cannot reach a client built with
+  `new HttpClient()` or owned by a vendor SDK: pointing that one at a local endpoint is the test author's job.
+- **Storage.** Databases are local test ones — a container or a file database, as the repo's test projects already
+  use. A file root sits under a temp folder of its own per run, set in the test settings.
+- **Live tests.** A test meant to reach a live system is opt-in: marked so a default run skips it (`Explicit = true`
+  on an xUnit v3 fact, or a category the default run filters out). It names the settings it uses itself, and it
+  checks afterwards that it left no rows behind.
+
+The host's `Program.cs`, before anything reads a setting:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Configuration.Sources.Clear();
+    builder.Configuration.AddCommandLine(args);
+}
+```
+
+The factory, its refusing handler and the test settings, in the app's wiring test project:
+
+```csharp file=TestHostFactory.cs
+public class TestHostFactory : WebApplicationFactory<Program>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseEnvironment("Testing");
+        foreach (var (key, value) in TestSettings.Values)
+            builder.UseSetting(key, value);
+
+        builder.ConfigureTestServices(services =>
+        {
+            services.PostConfigureAll<HttpClientFactoryOptions>(options =>
+                options.HttpMessageHandlerBuilderActions.Add(handler => handler.PrimaryHandler = new NoOutboundCallsHandler()));
+            services.AddMassTransitTestHarness();
+        });
+    }
+
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        builder.ConfigureHostConfiguration(config =>
+        {
+            var keep = new HashSet<string>(TestSettings.Values.Keys, StringComparer.OrdinalIgnoreCase)
+                { HostDefaults.EnvironmentKey, HostDefaults.ContentRootKey, HostDefaults.ApplicationKey };
+            var kept = config.Build().AsEnumerable().Where(setting => keep.Contains(setting.Key)).ToList();
+            config.Sources.Clear();
+            config.AddInMemoryCollection(kept);
+        });
+
+        return base.CreateHost(builder);
+    }
+}
+```
+
+```csharp file=NoOutboundCallsHandler.cs
+public class NoOutboundCallsHandler : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>
+        throw new InvalidOperationException($"A test called {request.RequestUri}; register a fake for that client.");
+}
+```
+
+```csharp file=TestSettings.cs
+public static class TestSettings
+{
+    public static readonly IReadOnlyDictionary<string, string?> Values = new Dictionary<string, string?>
+    {
+        ["BillingOptions:Enabled"] = "true",
+        ["JwtOptions:Issuer"] = "shop-tests",
+        ["JwtOptions:Secret"] = "a-local-test-signing-key-of-at-least-32-characters",
+        ["RabbitMqOptions:Host"] = "localhost",
+        ["RabbitMqOptions:VirtualHost"] = "/",
+        ["RabbitMqOptions:UserName"] = "guest",
+        ["RabbitMqOptions:Password"] = "guest",
+        ["AllowedOriginsOptions:Origins:0"] = "http://localhost:5173",
+        ["ConnectionStrings:Orders"] = "Host=localhost;Port=5433;Database=orders_tests;Username=test;Password=test",
+        ["ConnectionStrings:Billing"] = "Host=localhost;Port=5433;Database=billing_tests;Username=test;Password=test",
+    };
+}
+```
+
+`PostConfigureAll` runs after every client's own set-up, so the refusing handler replaces even a handler a client
+chose itself.
+<!-- nexus-gen testing END -->
 
 ## Switching a Service by a Setting
 
@@ -349,6 +491,7 @@ rg -l 'Sdk=.Microsoft\.NET\.Sdk\.Web' src/Hosts --glob '*.csproj'               
 rg -l 'Sdk=.Microsoft\.NET\.Sdk\.Web' src/Services/{Service} --glob '*.csproj'                     # each service the host runs: no web-SDK project — expect zero
 rg -n 'ProjectReference Include=.[^>]*Hosts.' src --glob '*.csproj' --glob '!**/*Tests*/**'       # no production project references a host — expect zero
 rg -n 'ProjectReference Include=.\.\..\.\..[^.]' src/Services --glob '*.csproj'                    # no service references another service — expect zero
+rg -n 'SecurityHeaders|UseStaticFiles|MapStaticAssets' src/Hosts --glob 'Program.cs'               # per host: the headers line comes first, above the static-files line
 ```
 
 ## What this skill does NOT do

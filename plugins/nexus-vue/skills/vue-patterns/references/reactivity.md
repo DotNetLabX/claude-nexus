@@ -54,7 +54,7 @@ watch(() => props.id, (newId) => { /* ... */ })
 Options:
 ```typescript
 watch(source, callback, {
-  immediate: true,  // run on mount
+  immediate: true,  // run once at setup, before mount
   deep: true,       // deep watch (or deep: 2 for depth limit in 3.5+)
   once: true,       // auto-stop after first trigger (3.4+)
   flush: 'post',    // run after DOM update

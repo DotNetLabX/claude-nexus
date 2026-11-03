@@ -2,8 +2,9 @@
 
 The index of this repo's conventions. The coding agents read it, then every file it lists, before every task.
 
-The files `csharp.md`, `ef-core.md`, `testing.md` and `vue.md` come from the nexus-dotnet plugin: copy its
-`conventions/` folder here, and copy it again after a plugin update — an update never refreshes this copy by itself.
+The files `csharp.md`, `ef-core.md` and `testing.md` come from the nexus-dotnet plugin: copy its `conventions/`
+folder here, and copy it again after a plugin update — an update never refreshes this copy by itself. A Vue front end
+takes `vue.md` from the nexus-vue plugin and adds the line `@vue.md` to the list at the end of this file.
 `project-lists.md` belongs to the repo: copy it once from the plugin's `templates/project-lists.md`, keep it here,
 and never copy it again; the repo fills it as it builds. Where the repo keeps its own guardrails in
 `project-rules.md` beside this file, read it too: it overrides these defaults, and no plugin update touches it.
@@ -90,5 +91,4 @@ Boundaries the boy-scout skill respects:
 @csharp.md
 @ef-core.md
 @testing.md
-@vue.md
 @project-lists.md

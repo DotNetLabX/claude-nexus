@@ -136,9 +136,7 @@ runs only its step runs (`developer.md` § The step test rule).
   behavior. Report the survivors and their class alongside the kills. The third survivor class is
   **NOT-APPLIED**: a mutant whose
   anchor never matched runs the unmodified code and reports as a survivor, indistinguishable from a
-  real one — so treat `SURVIVED` as a claim to investigate, and run mutations from a script that
-  fails when the anchor is absent, never as an inline one-liner whose "no match" is silent. The
-  fourth class is **DOUBLE-GUARDED** — another guard masks the mutant — and it splits in two, with
+  real one — so treat `SURVIVED` as a claim to investigate. The fourth class is **DOUBLE-GUARDED** — another guard masks the mutant — and it splits in two, with
   **opposite dispositions**. A *redundant chain* (the guards short-circuit to the same observable
   outcome): score the chain by its *terminal* guard, mutate the links **as a set** as well as
   individually (no link killed = the whole chain is untested), and record upstream links
@@ -146,15 +144,16 @@ runs only its step runs (`developer.md` § The step test rule).
   the diagnostic* (the safety effect holds, the message differs): that survivor is **not
   equivalent** — the assertion is too loose; tighten it to the failure **diagnostic verbatim**,
   never a keyword regex.
-- **A battery proves nothing over a red suite, and its anchors decay.** Assert a green baseline
-  before the first mutation — over a failing suite every mutant reports as killed. A mutant needs a
-  *scope*, not just an anchor — a duplicated
+- **Run a battery with `mutation-run.js`** (beside `verify-run.js`) — a solo or a main session; a
+  developer's mutation runs stay its step runs (`developer.md` § The step test rule). It refuses an
+  absent or repeated anchor, subtracts the baseline's failures, scores each mutant from its run
+  record (a kill only where a node test fails an assertion; other runners' mutants read
+  `unscored` — score them by hand by these rules) and works in a scratch copy, so a cut run leaves
+  nothing in the source. It prints its estimate first: over about two minutes, run it in the
+  background.
+- **A battery's anchors decay.** A mutant needs a *scope*, not just an anchor — a duplicated
   phrase silently relocates it; after any fix or fold to the code under the battery, re-anchor
   and re-run until NOT-APPLIED is zero — never close a battery report carrying one.
-- **Score a battery by the runner's exit status, never a regex over its summary line.** A verdict
-  predicate that matches nothing reports every mutant identically — a battery that cannot fail is
-  the vacuity it exists to detect, one level up. Independent of suite state, so the green-baseline
-  rule above does not cover it.
 - **Completeness, not sampling — the battery is done when every guard in the code under test carries
   a deletion mutant**, and a report is premature until then. This is the variant's primary case:
   already-shipped code, whose guards are by definition not ones you added. **Additionally, when a

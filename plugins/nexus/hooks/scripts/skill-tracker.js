@@ -26,7 +26,7 @@
  *              The '|| main' tail is required: on solo/fast runs the developer IS the main session and
  *              a Skill call there must attribute to 'main', not blank, or Step 3's scoping drops it.
  *   - skill  — data.tool_input.skill, verbatim (Step 3 matches on the final segment).
- *   - token  — .claude/.pipeline-state content ('' if absent) AND session = data.session_id: the
+ *   - token  — the session's phase token, lib/round-token.js ('' if absent) AND session = data.session_id: the
  *              round window Step 3 scopes by (read-tracker.js round-keying — survives resumes and
  *              two back-to-back features in one session).
  *
@@ -58,6 +58,7 @@ const path = require('path');
 // Shared with audit-logger.js and guard.js — the '|| persona || main' attribution chain's middle
 // tier. Was a hand-copied local definition until F45-RuntimeDriftHardening Step 3.
 const { readSessionPersona } = require('./lib/read-session-persona');
+const { readRoundToken } = require('./lib/round-token');
 
 let input = '';
 process.stdin.setEncoding('utf8');
@@ -80,8 +81,7 @@ process.stdin.on('end', () => {
     const agent = String(agentRaw).toLowerCase().split(/[:/]/).pop();
 
     // Round window for Step 3 scoping (read-tracker.js:52-53 round-keying).
-    let token = '';
-    try { token = fs.readFileSync(path.join(root, '.claude', '.pipeline-state'), 'utf8').trim(); } catch { /* no token */ }
+    const token = readRoundToken(root, session);
 
     const auditDir = path.join(root, '.claude', 'audit');
     fs.mkdirSync(auditDir, { recursive: true });

@@ -20,7 +20,8 @@
  * `isRangeEnd` answers the other half — is this the range's last hand-back? — for
  * handoff-tracker.js's per-developer state file, which sets the step to the range's last there.
  *
- * `handbackText` is what both hooks pass in: `last_assistant_message` plus, when the subagent
+ * `handbackText` is what both hooks pass in, and what fix-record-gate.js, a third SubagentStop hook,
+ * reads a `Fixes applied` hand-back from: `last_assistant_message` plus, when the subagent
  * handed back through the platform's hand-back tool, that tool call's `message`. A developer that
  * reports through the tool puts `Step {n} done for …` in the tool's input, not in its final text,
  * so matching `last_assistant_message` alone missed every checkpoint (F166 run, 2026-09-29, 2.1.5):

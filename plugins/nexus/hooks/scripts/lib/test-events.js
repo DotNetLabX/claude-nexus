@@ -16,8 +16,8 @@ const slashed = (p) => String(p).replace(/\\/g, '/');
 // count: a suite's own failure is judged from its tests. A test is timed out when its failure carries
 // the child-call stop (`child-stopped`), is the runner's timeout (`timeout`) or was cancelled under an
 // ancestor that itself timed out (`cancelled-by-parent`); any other failure is a real one, a cancellation
-// with no timed-out ancestor among them. Each entry carries its failure's `message`, `runner: "node"` and
-// `target`, its file — what a re-run by name takes. Events that are not complete return the failures seen
+// with no timed-out ancestor among them. Each entry carries its failure's `message`, `runner: "node"`,
+// `target`, its file — what a re-run by name takes — and `code`, the cause's error code or null. Events that are not complete return the failures seen
 // so far apart, as `failures_partial`, so a partial list never stands as the list.
 function readTestEvents(text, { legs = 0, shell = false, tree = '' } = {}) {
   const events = [];
@@ -62,7 +62,7 @@ function readTestEvents(text, { legs = 0, shell = false, tree = '' } = {}) {
     const { e } = node;
     if (e.skip || e.todo) continue;
     const file = fileOf(e.file);
-    const at = { file, line: e.line, test: e.test, message: typeof e.message === 'string' ? e.message : null, runner: 'node', target: file };
+    const at = { file, line: e.line, test: e.test, message: typeof e.message === 'string' ? e.message : null, runner: 'node', target: file, code: typeof e.causeCode === 'string' ? e.causeCode : null };
     if (e.kind === 'suite') {
       if (realFailure(e)) failed.push(at);
       continue;

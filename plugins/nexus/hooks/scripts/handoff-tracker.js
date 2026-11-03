@@ -126,6 +126,7 @@ function appendRecord(root, record) {
 const { resolveRole } = require('./lib/resolve-role');
 const { stepCheckpoint, isRangeEnd, handbackText } = require('./lib/step-checkpoint');
 const { isSafeId } = require('./lib/safe-id');
+const { readRoundToken } = require('./lib/round-token');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const STEP_ID = '(\\d+[a-z]?)';
@@ -426,8 +427,7 @@ process.stdin.on('end', () => {
     const session = String(data.session_id || '');
     const root = process.env.CLAUDE_PROJECT_DIR || data.cwd || process.cwd();
 
-    let token = '';
-    try { token = fs.readFileSync(path.join(root, '.claude', '.pipeline-state'), 'utf8').trim(); } catch { /* no token */ }
+    const token = readRoundToken(root, session);
 
     const ts = new Date().toISOString();
     const eventName = String(data.hook_event_name || '');

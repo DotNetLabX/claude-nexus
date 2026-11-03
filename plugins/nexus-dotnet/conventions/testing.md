@@ -75,31 +75,118 @@ uses plain `Assert`, so adding it brings no package.
 
 Instantiate pure calculators directly (`new()`) — no mocking for stateless logic. Reserve a mocking library
 (`NSubstitute`) for classes with outside dependencies (repositories, typed clients), and `WebApplicationFactory` for
-endpoint integration tests.
+endpoint integration tests, set up as § Tests That Start the App says.
 
 ### The Clock
 
 A class that needs the time takes `TimeProvider`; a test passes a fake one (`FakeTimeProvider`) and sets the time.
 
+### Tests That Start the App <!-- id: test-host -->
+
+A test that boots the app through `WebApplicationFactory<Program>` reads no setting it did not set and reaches no live
+system unless it says so.
+
+- **Settings.** The factory runs the app in the `Testing` environment, never `Development`, so the developer's user
+  secrets are never loaded. It hands the app every value with `UseSetting`; the factory passes its host configuration
+  to `Program.cs` as command-line arguments, so the values are there before `Build()`, where a host reads its
+  switches. That configuration also holds every `ASPNETCORE_`-prefixed environment variable, so before the host is
+  built the factory keeps only its own values and the environment, content root and application name. In the
+  `Testing` environment the host's `Program.cs` keeps those arguments as its only settings source, so no environment
+  variable and no base `appsettings.json` value fills a setting the test left out: the test settings name every
+  section the host binds, under its class name, and a missing one fails start-up, as any missing section does.
+- **Outbound calls.** Every client the HTTP client factory makes — default, named and typed, one that sets its own
+  handler too — gets a primary handler that throws, so a call fails inside the process. A test that needs a client
+  registers a fake for the client's type in its own `WithWebHostBuilder`. Every other transport the host starts is
+  replaced by an in-process or local test double: the bus by its test harness (MassTransit's
+  `AddMassTransitTestHarness` puts an in-memory transport in place of the host's), a gRPC client by a fake of its
+  contract, a distributed cache by the in-memory one. The refusing handler cannot reach a client built with
+  `new HttpClient()` or owned by a vendor SDK: pointing that one at a local endpoint is the test author's job.
+- **Storage.** Databases are local test ones — a container or a file database, as the repo's test projects already
+  use. A file root sits under a temp folder of its own per run, set in the test settings.
+- **Live tests.** A test meant to reach a live system is opt-in: marked so a default run skips it (`Explicit = true`
+  on an xUnit v3 fact, or a category the default run filters out). It names the settings it uses itself, and it
+  checks afterwards that it left no rows behind.
+
+The host's `Program.cs`, before anything reads a setting:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Configuration.Sources.Clear();
+    builder.Configuration.AddCommandLine(args);
+}
+```
+
+The factory, its refusing handler and the test settings, in the app's wiring test project:
+
+```csharp file=TestHostFactory.cs
+public class TestHostFactory : WebApplicationFactory<Program>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseEnvironment("Testing");
+        foreach (var (key, value) in TestSettings.Values)
+            builder.UseSetting(key, value);
+
+        builder.ConfigureTestServices(services =>
+        {
+            services.PostConfigureAll<HttpClientFactoryOptions>(options =>
+                options.HttpMessageHandlerBuilderActions.Add(handler => handler.PrimaryHandler = new NoOutboundCallsHandler()));
+            services.AddMassTransitTestHarness();
+        });
+    }
+
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        builder.ConfigureHostConfiguration(config =>
+        {
+            var keep = new HashSet<string>(TestSettings.Values.Keys, StringComparer.OrdinalIgnoreCase)
+                { HostDefaults.EnvironmentKey, HostDefaults.ContentRootKey, HostDefaults.ApplicationKey };
+            var kept = config.Build().AsEnumerable().Where(setting => keep.Contains(setting.Key)).ToList();
+            config.Sources.Clear();
+            config.AddInMemoryCollection(kept);
+        });
+
+        return base.CreateHost(builder);
+    }
+}
+```
+
+```csharp file=NoOutboundCallsHandler.cs
+public class NoOutboundCallsHandler : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>
+        throw new InvalidOperationException($"A test called {request.RequestUri}; register a fake for that client.");
+}
+```
+
+```csharp file=TestSettings.cs
+public static class TestSettings
+{
+    public static readonly IReadOnlyDictionary<string, string?> Values = new Dictionary<string, string?>
+    {
+        ["BillingOptions:Enabled"] = "true",
+        ["JwtOptions:Issuer"] = "shop-tests",
+        ["JwtOptions:Secret"] = "a-local-test-signing-key-of-at-least-32-characters",
+        ["RabbitMqOptions:Host"] = "localhost",
+        ["RabbitMqOptions:VirtualHost"] = "/",
+        ["RabbitMqOptions:UserName"] = "guest",
+        ["RabbitMqOptions:Password"] = "guest",
+        ["AllowedOriginsOptions:Origins:0"] = "http://localhost:5173",
+        ["ConnectionStrings:Orders"] = "Host=localhost;Port=5433;Database=orders_tests;Username=test;Password=test",
+        ["ConnectionStrings:Billing"] = "Host=localhost;Port=5433;Database=billing_tests;Username=test;Password=test",
+    };
+}
+```
+
+`PostConfigureAll` runs after every client's own set-up, so the refusing handler replaces even a handler a client
+chose itself.
+<!-- id-end -->
+
 ## Frontend (Vue/TypeScript)
 
-### File Location
-
-Co-located with source: `client/src/**/*.spec.ts`
-
-### Framework
-
-Vitest + `@vue/test-utils`. MSW for API mocking when needed.
-
-### Naming
-
-Same `should ... when ...` pattern as backend, adapted to `describe`/`it`:
-
-```typescript
-describe('OrderListStore', () => {
-  it('should return no orders when no filter matches', () => { ... })
-})
-```
+A Vue front end's testing conventions are in `vue.md` § Testing, from the nexus-vue plugin.
 
 ## Coverage Expectations
 

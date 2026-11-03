@@ -76,7 +76,8 @@ picked by reading that base's members; a skill's sample is the form for a repo w
    references this service's own projects only (its API project included, where the features live), never another
    service's or module's: a test run follows project references, so a change then ties to the few tests that cover
    it. It takes the test framework, assertion library and packages of the repo's existing test projects, else the
-   stack's testing convention; tests needing the whole running app go to the app's one wiring test project, not here.
+   stack's testing convention; tests needing the whole running app go to the app's one wiring test project, not here,
+   set up as `create-host` § Tests That Start the App says.
 10. **Verify** — § Verify below.
 11. **Report:** "Service `{Name}` scaffolded with its test project `{Name}.Tests`. Run `create-aggregate` next for
     the first aggregate, then `create-feature` for the first feature." For a service a host runs, the report first

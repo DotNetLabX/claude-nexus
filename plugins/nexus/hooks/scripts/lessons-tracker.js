@@ -22,6 +22,7 @@
 const fs = require('fs');
 const path = require('path');
 const { readSessionPersona } = require('./lib/read-session-persona');
+const { readRoundToken } = require('./lib/round-token');
 
 // The capture is greedy on purpose — `docs/specs/{epic}/{issue}/delivery/lessons.md` yields
 // `{epic}/{issue}`, which is the round key a nested issue closes under.
@@ -46,8 +47,7 @@ process.stdin.on('end', () => {
     const agentRaw = data.agent_type || readSessionPersona(session, root) || 'main';
     const agent = String(agentRaw).toLowerCase().split(/[:/]/).pop();
 
-    let token = '';
-    try { token = fs.readFileSync(path.join(root, '.claude', '.pipeline-state'), 'utf8').trim(); } catch { /* no token */ }
+    const token = readRoundToken(root, session);
 
     const auditDir = path.join(root, '.claude', 'audit');
     fs.mkdirSync(auditDir, { recursive: true });

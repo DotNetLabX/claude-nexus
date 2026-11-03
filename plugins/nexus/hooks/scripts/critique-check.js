@@ -10,6 +10,14 @@
  * the questions its question boxes asked. A topic ends at the next title or at the progress line. It counts questions;
  * it never reads what a question says, and it cannot see a change a critique leaves undeclared.
  *
+ * THE TECHNICAL-DECISIONS SWITCH: `features.technicalDecisionsByAgent` in `.claude/nexus-agents.json` under the root,
+ * read once per stop that reaches the check, on only when it is the JSON `true`. Off, a line opening `Technical change:` (the
+ * `Change:` line's bullet and bold forms) is read as a `Change:` line, so a technical change on a Read topic is refused
+ * and asks a question like any other change. On, that line is not read: a change only to how the work is built is the
+ * persona's own Read topic, shown in the Read turn. A missing, unreadable or unparseable file reads off — the stricter
+ * side, where the owner keeps the question; every other failure stays fail-open. The refusal text names the mode, and on, the
+ * two cases still asked: the source says to ask, or the change needs the owner's permission.
+ *
  * REACH: a session whose persona is the architect or the PO, with the owner present. Every other session, an
  * owner-away one and bad JSON exit before the transcript is opened.
  *
@@ -50,6 +58,8 @@ const PROGRESS_RE = /^\s*(?:\*\*)?Step\s+\d+\s+of\s+\d+\.?(?:\*\*)?\s*$/i;
 const INTERVIEW_TYPES = new Set(['decide', 'read', 'your decision', 'read only']);
 const READ_TYPES = new Set(['read', 'read only']);
 const CHANGE_RE = /^\s*(?:[-*+•]\s+)?(?:\*\*)?change(?:\*\*)?\s*:(?:\*\*)?\s*(.*?)\s*$/i;
+// Read only while the technical-decisions switch is off.
+const TECHNICAL_CHANGE_RE = /^\s*(?:[-*+•]\s+)?(?:\*\*)?technical change(?:\*\*)?\s*:(?:\*\*)?\s*(.*?)\s*$/i;
 const FENCE_RE = /^\s*(`{3,}|~{3,})/;
 // "No change" is a sentinel alone — `none`, `no change(s)`, `nothing`, `n/a` or a lone dash, in optional parentheses,
 // with an optional full stop — or a sentinel, an em dash and a reason. Any other remainder is a change.
@@ -63,8 +73,9 @@ function isChange(value) {
 }
 
 // `{ topics, interview }`: every titled topic with its declared changes, and whether the text holds an interview title
-// or a progress line.
-function parseTopics(text) {
+// or a progress line. `technicalOff` reads a `Technical change:` line as a declared change too.
+function parseTopics(text, technicalOff = true) {
+  const changeRes = technicalOff ? [CHANGE_RE, TECHNICAL_CHANGE_RE] : [CHANGE_RE];
   const topics = [];
   let interview = false;
   let current = null;
@@ -87,8 +98,10 @@ function parseTopics(text) {
       continue;
     }
     if (PROGRESS_RE.test(line)) { interview = true; current = null; continue; }
-    if (!current || !CHANGE_RE.test(line)) continue;
-    const m = CHANGE_RE.exec(raw) || CHANGE_RE.exec(line);
+    if (!current) continue;
+    const re = changeRes.find((r) => r.test(line));
+    if (!re) continue;
+    const m = re.exec(raw) || re.exec(line);
     if (isChange(m[1]) === true) current.changes++;
   }
   return { topics, interview };
@@ -96,9 +109,18 @@ function parseTopics(text) {
 
 // The titled topics of an interview turn, whatever their type word; none for any other turn. `scope` decides whether
 // the turn is an interview turn, `texts` which topics are counted.
-function checked(texts, scope = texts) {
-  if (!scope.some((t) => parseTopics(t).interview)) return [];
-  return texts.flatMap((t) => parseTopics(t).topics);
+function checked(texts, scope = texts, technicalOff = true) {
+  if (!scope.some((t) => parseTopics(t, technicalOff).interview)) return [];
+  return texts.flatMap((t) => parseTopics(t, technicalOff).topics);
+}
+
+// The repo's technical-decisions switch: on only for the JSON `true`; no file, section or key, any other value, or a
+// read or parse failure is off.
+function technicalDecisionsOn(root) {
+  try {
+    const cfg = JSON.parse(fs.readFileSync(path.join(root, '.claude', 'nexus-agents.json'), 'utf8'));
+    return !!cfg && typeof cfg.features === 'object' && cfg.features !== null && cfg.features.technicalDecisionsByAgent === true;
+  } catch { return false; }
 }
 
 const flat = (s) => String(s).replace(/\s+/g, ' ').trim();
@@ -230,6 +252,7 @@ function main(input) {
   const role = resolveRole(readSessionPersona(data.session_id, root) || '');
   if (!REACH.has(role)) return;
   if (readOwnerAway(data.session_id, root)) return;
+  const technicalOff = !technicalDecisionsOn(root);
   const turn = readTurn(data.transcript_path);
   const last = typeof data.last_assistant_message === 'string' ? data.last_assistant_message : '';
   if (turn.failed) {
@@ -255,7 +278,7 @@ function main(input) {
   const judged = refused ? refused.texts.map(flat).filter(Boolean) : [];
   const fresh = refused ? texts.filter((t) => !judged.some((j) => j.includes(flat(t)))) : texts;
   const asked = refused ? Math.max(0, turn.questions - refused.questions) : turn.questions;
-  const topics = checked(fresh, texts);
+  const topics = checked(fresh, texts, technicalOff);
   const problems = [];
   for (const t of topics) {
     if (READ_TYPES.has(t.type) && t.changes > 0) problems.push(`topic ${t.number} "${t.title}" is a Read topic but declares a change`);
@@ -267,7 +290,13 @@ function main(input) {
   }
   if (!problems.length) return;
   const reason = `Nexus critique check: ${problems.join('; ')}. A critique that changes the source's fix is a Decide topic: `
-    + 're-title it `Decide` and ask each change in the question box this turn.';
+    + 're-title it `Decide` and ask each change in the question box this turn. '
+    + (technicalOff
+      ? 'A `Technical change:` line is a declared change too while this repo has technical decisions off '
+        + '(`features.technicalDecisionsByAgent`).'
+      : 'A change only to how the work is built is yours here: end that critique with a `Technical change:` line in '
+        + 'place of `Change:`, and the topic stays Read — unless the source tells you to ask or the change needs the '
+        + 'owner\'s permission, which stay Decide.');
   if (data.stop_hook_active === true) {
     logViolation(root, { agent: role, tool: 'Stop', rule: RULE, outcome: 'logged — retry stop', reason });
     return;

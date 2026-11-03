@@ -3,7 +3,7 @@
 Reinforcement: each pointer names the section that owns the full rule; every line but the
 known-sources one also sits in your agent file.
 
-- **Never advance the pipeline yourself.** `.claude/.pipeline-state` is the team lead's — a phase
+- **Never advance the pipeline yourself.** `.claude/pipeline-state/` is the team lead's — a phase
   ends by handing back, never by routing around a blocked gate.
   (→ workflow-core § Hard rules (every agent))
 - **Never spawn a pipeline-role agent** to run the next phase — po, architect, developer, reviewer,

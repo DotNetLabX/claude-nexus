@@ -208,4 +208,4 @@ factory registration resolves to its built class here, while a container dump na
 
 - Build the atlas — `build-flow-atlas` owns the pages, the stages and the verification.
 - Run the app or trace a request; the oracle builds a container and resolves contracts, nothing more.
-- Read a Vue client — `flow-atlas-vue`, beside this profile, owns the client side and its join to these entries.
+- Read a Vue client — `flow-atlas-vue`, in the `nexus-vue` plugin, owns the client side and its join to these entries.

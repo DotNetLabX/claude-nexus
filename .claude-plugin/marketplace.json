@@ -29,6 +29,10 @@
       "source": "./plugins/nexus-php"
     },
     {
+      "name": "nexus-vue",
+      "source": "./plugins/nexus-vue"
+    },
+    {
       "name": "nexus-channels",
       "source": "./plugins/nexus-channels"
     }

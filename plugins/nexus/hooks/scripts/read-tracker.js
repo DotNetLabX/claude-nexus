@@ -15,7 +15,7 @@
  *   - 3rd+ same-round read           -> one line in .claude/audit/violations.log, which the
  *     team lead triages at every checkpoint (guaranteed detection layer), helpers' included
  *
- * Round boundary: the content of .claude/.pipeline-state OR the session id changing — the
+ * Round boundary: the session's phase token (lib/round-token.js) OR the session id changing — the
  * team lead rewrites the token at every spawn/resume, so a token change IS a new round.
  * Within a round, a per-file decay is the fallback boundary: a repeat read counts only within
  * DECAY_MS (30 min) of the previous read of the same file, otherwise the count resets — this
@@ -53,6 +53,7 @@
 const fs = require('fs');
 const path = require('path');
 const { isSpawned } = require('./lib/is-spawned');
+const { readRoundToken } = require('./lib/round-token');
 
 // A repeat read counts only within this window of the previous read of the same file; outside it,
 // the count resets. Bounds a token-less, hours-long session that never rolls its round (ADR-61
@@ -169,8 +170,7 @@ process.stdin.on('end', () => {
     const auditDir = path.join(root, '.claude', 'audit');
     const stateFile = path.join(auditDir, 'read-tracker.json');
 
-    let token = '';
-    try { token = fs.readFileSync(path.join(root, '.claude', '.pipeline-state'), 'utf8').trim(); } catch { /* no token */ }
+    const token = readRoundToken(root, session);
 
     let state = null;
     try { state = JSON.parse(fs.readFileSync(stateFile, 'utf8')); } catch { /* fresh */ }

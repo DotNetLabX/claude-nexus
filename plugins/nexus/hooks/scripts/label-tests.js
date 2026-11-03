@@ -33,7 +33,17 @@
  * unstaged or untracked, read by one `git status` per file; where git cannot answer, the file counts as
  * changed. Any other timed file whose labels would change is named as a slow candidate and left as it is, and
  * so is a file whose label needs a project file outside that set (a label and the project file it needs).
+ * Inside such a file only a test the step changed gets or loses a label, every other one keeps its own: a line
+ * that differs from HEAD (`git diff -U0`; a deleted run counts at its new-side position) belongs to the nearest
+ * timed test below it when it sits in the block of attribute, comment and blank lines directly above that test's
+ * line — an attribute or decorator running to the line that closes its brackets, a block comment to its end —
+ * else to the nearest timed test at or above it; every test of an untracked file is changed, and where git
+ * cannot answer every test counts as changed. A `--reason` for a test the step did not change is not written.
  * A run with no such set — a complete run, a whole-unit run — labels every file it timed.
+ *
+ * A RUN ON A BUSY MACHINE LABELS NOTHING. A record reading `busy_machine: true` (verify-run.js — another heavy
+ * run shared the machine) timed its tests under someone else's load: the call writes no label, no reason
+ * comment and no record, says why, and exits 0.
  *
  * A LABELLED TEST MUST STAND ALONE. The complete run runs a node file's labelled tests and its other tests in
  * separate processes (lib/compose-test-command.js nodeLegs), while a step close runs the file whole. So each
@@ -113,6 +123,72 @@ function changedFromHead(tree, file) {
   }
 }
 
+// Where `file` differs from HEAD in `tree`, by its lines now (`git diff -U0`): each added or changed line as
+// `{ at: n, from: n }`, and each deleted run at its new-side position `n` — between line n and the next — as
+// `{ at: n, from: n + 1 }`. `all` for an untracked file, null when git cannot say.
+function changedLines(tree, file) {
+  const git = (args) => childProcess.execFileSync('git', args, { cwd: tree, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true });
+  try {
+    if (git(['status', '--porcelain', '-z', '--untracked-files=all', '--', file]).startsWith('??')) return 'all';
+    const changes = [];
+    for (const m of git(['diff', '-U0', '--no-color', '--no-ext-diff', 'HEAD', '--', file]).matchAll(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/gm)) {
+      const start = Number(m[1]);
+      const count = m[2] === undefined ? 1 : Number(m[2]);
+      if (count === 0) changes.push({ at: start, from: start + 1 });
+      for (let i = 0; i < count; i++) changes.push({ at: start + i, from: start + i });
+    }
+    return changes;
+  } catch {
+    return null;
+  }
+}
+
+// A line that opens or is an attribute, comment or blank line of the block above a test.
+const ABOVE_TEST = /^\s*(?:$|\/\/|\/\*|\*|#|\[|@)/;
+const bracketDepth = (line) => {
+  const bare = line.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '');
+  return (bare.match(/[[(]/g) || []).length - (bare.match(/[\])]/g) || []).length;
+};
+
+// Which lines belong to an attribute, comment or blank-line block: an attribute or decorator runs to the line that
+// closes its brackets, a block comment to its `*/`.
+function blockLines(text) {
+  const out = [];
+  let depth = 0;
+  let comment = false;
+  for (const line of text) {
+    if (comment) { out.push(true); comment = !line.includes('*/'); continue; }
+    if (depth > 0) { out.push(true); depth = Math.max(0, depth + bracketDepth(line)); continue; }
+    const block = ABOVE_TEST.test(line);
+    out.push(block);
+    if (block && /^\s*\/\*/.test(line) && !line.includes('*/')) comment = true;
+    else if (block && /^\s*[[@]/.test(line)) depth = Math.max(0, bracketDepth(line));
+  }
+  return out;
+}
+
+// The tests a change touched: a change belongs to the nearest test below it when every line from it to that
+// test's line is an attribute, comment or blank line, else to the nearest test at or above it.
+function touchedTests(tests, changes, source, shifts) {
+  const text = String(source).split('\n');
+  const block = blockLines(text.map((l) => l.replace(/\r$/, '')));
+  const at = (t) => mapLine(shifts, t.line);
+  const positions = [...new Set(tests.filter((t) => Number.isInteger(t.line)).map(at))].sort((a, b) => a - b);
+  const owners = new Set();
+  for (const change of changes) {
+    const below = positions.find((p) => p > change.at);
+    let owner = null;
+    if (below !== undefined) {
+      let inBlock = true;
+      for (let l = change.from; l < below && inBlock; l++) inBlock = block[l - 1] ?? true;
+      if (inBlock) owner = below;
+    }
+    if (owner === null) owner = positions.findLast((p) => p <= change.at) ?? null;
+    if (owner !== null) owners.add(owner);
+  }
+  return tests.filter((t) => Number.isInteger(t.line) && owners.has(at(t)));
+}
+
 // A timed-out test is recorded by its line alone; its call starts at the line's first non-blank column.
 function firstColumn(source, line) {
   const text = String(source).split('\n')[line - 1];
@@ -153,6 +229,10 @@ function main(argv = process.argv.slice(2), { env = process.env, out = (s) => pr
     out(`label-tests: no record of run ${args.run} in .claude/audit/verify-verdict.json\n`);
     return 2;
   }
+  if (run.busy_machine === true) {
+    out(`label-tests: run ${args.run} ran on a busy machine — another heavy run shared it, so its times are not the tests' own — nothing is labelled\n`);
+    return 0;
+  }
   const tree = typeof run.tree === 'string' && run.tree ? run.tree : root;
   // A timed-out test is over the slow line by definition: it ran at least its stop.
   const timedOut = (Array.isArray(run.timed_out) ? run.timed_out : [])
@@ -183,6 +263,7 @@ function main(argv = process.argv.slice(2), { env = process.env, out = (s) => pr
   const inStep = (file) => !step || (step.has(file) && changedFromHead(tree, file) !== false);
   const pending = [];
   const unproven = [];
+  const untouched = new Set();
   const timedFiles = [...new Set([...Object.keys(run.timed_hashes || {}), ...timedOut.map((t) => t.file)])];
   for (const file of timedFiles.sort()) {
     const kind = runnerOfFile(file);
@@ -206,12 +287,19 @@ function main(argv = process.argv.slice(2), { env = process.env, out = (s) => pr
     }
     const original = fs.readFileSync(path.join(tree, file), 'utf8');
     // A test located by its line alone gets its line's first column; the runner picks the tests it labels by.
-    const tests = timed.filter((t) => t.file === file)
+    let tests = timed.filter((t) => t.file === file)
       .map((t) => (!Number.isInteger(t.line) || Number.isInteger(t.column) ? t : { ...t, column: firstColumn(original, mapLine(shifts, t.line)) }));
     if (!inStep(file)) {
       const probe = labeller.runner.labelSource({ file, source: original, tests, threshold, wanted: wanted.map((w) => ({ ...w })), shifts, out: () => {} });
       if (probe.text !== original) out(`label-tests: ${file} — a slow candidate, left unlabelled: the step did not change it\n`);
       continue;
+    }
+    // Inside the step's own file, only the tests the step changed; every runner edits only the tests it is handed.
+    const changes = step ? changedLines(tree, file) : null;
+    if (Array.isArray(changes)) {
+      const kept = touchedTests(tests, changes, original, shifts);
+      for (const t of tests) if (!kept.includes(t)) untouched.add(`${file}:${t.line}`);
+      tests = kept;
     }
     const { text, slow } = labeller.runner.labelSource({ file, source: original, tests, threshold, wanted, shifts, out });
     pending.push({ file, text, original, before, current, shifts, slow, labeller });
@@ -282,7 +370,11 @@ function main(argv = process.argv.slice(2), { env = process.env, out = (s) => pr
     files[yaml] = { before, after: fileHash(tree, yaml), shifts: [] };
     out(`label-tests: ${yaml} — the slow tag declared\n`);
   }
-  for (const w of wanted.filter((x) => !x.done)) out(`label-tests: ${w.file}:${w.line} is no test run ${args.run} timed — no reason written\n`);
+  for (const w of wanted.filter((x) => !x.done)) {
+    out(untouched.has(`${w.file}:${w.line}`)
+      ? `label-tests: ${w.file}:${w.line} is a test the step did not change — its label stands, no reason written\n`
+      : `label-tests: ${w.file}:${w.line} is no test run ${args.run} timed — no reason written\n`);
+  }
   if (Object.keys(files).length || Object.keys(checks).length) {
     try {
       fs.mkdirSync(path.join(root, '.claude', 'audit'), { recursive: true });

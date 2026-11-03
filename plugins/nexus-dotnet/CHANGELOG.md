@@ -1,6 +1,48 @@
 # nexus-dotnet — Changelog
 
 
+## [2.1.7] — 2026-11-03
+- F352: the Vue skills (vue-patterns, pinia-patterns, vue-component-architecture, create-vue-feature, tailwind-theme, frontend-review, flow-atlas-vue) and conventions/vue.md moved to the new free nexus-vue plugin. Vue projects: run /plugin install nexus-vue@claude-nexus, and re-add @vue.md to your conventions index after re-copying this plugin's conventions.
+  - plugin.json metadata change
+  - plugin payload (conventions/coding-conventions.md)
+  - plugin payload (conventions/testing.md)
+  - plugin payload (conventions/vue.md)
+  - skill change (create-vue-feature)
+  - skill change (flow-atlas-dotnet)
+  - skill change (flow-atlas-vue)
+  - skill change (frontend-review)
+  - skill change (pinia-patterns)
+  - skill change (tailwind-theme)
+  - skill change (vue-component-architecture)
+  - skill change (vue-patterns)
+  - plugin payload (templates/CLAUDE.md)
+  - estate raise: plugins/nexus-dotnet/skills/flow-atlas-dotnet/SKILL.md 14389→14395 B — F352 step 2: the seven Vue skills move from nexus-dotnet to nexus-vue unchanged; flow-atlas-dotnet's link names nexus-vue
+
+## [2.1.6] — 2026-11-02
+- F336: a test that starts the app keeps only its own settings and reaches no live system (testing.md, generated into create-host); a new host keeps its siblings' hardening, security headers before static files; add-conventions-check is the skill a C# clean-up step maps.
+  - plugin payload (conventions/testing.md)
+  - skill change (add-conventions-check)
+  - skill change (create-host)
+  - skill change (create-service)
+  - estate raise: plugins/nexus-dotnet/skills/add-conventions-check/SKILL.md 8496→8769 B — F336: hermetic test hosts (test-host section generated into create-host), host hardening sample, C# rules pointer
+  - estate raise: plugins/nexus-dotnet/skills/create-host/SKILL.md 18203→25708 B — F336: hermetic test hosts (test-host section generated into create-host), host hardening sample, C# rules pointer
+  - estate raise: plugins/nexus-dotnet/skills/create-service/SKILL.md 9521→9582 B — F336: hermetic test hosts (test-host section generated into create-host), host hardening sample, C# rules pointer
+
+## [2.1.5] — 2026-11-02
+- New skill `rename-and-move-code` (F344): solution-wide renames and cross-project moves, with
+  `tools/move-check.mjs` — one run per feature compares the base commit with the working tree (moved files and split
+  or merge fragments in order, literals and settings without the name map) and sweeps every file and path for old
+  names, exiting 1 until each difference is fixed or kept. Skill counts now 44 (.NET) and 109 (all extensions).
+- PATCH bump.
+  - plugin.json metadata change
+  - skill change (rename-and-move-code)
+  - estate raise: plugins/nexus-dotnet/skills/rename-and-move-code/SKILL.md 0→8706 B — F344: new rename-and-move-code skill
+
+## [2.1.4] — 2026-10-31
+- PATCH bump.
+  - skill change (mine-verify-cover-dotnet)
+  - estate raise: plugins/nexus-dotnet/skills/mine-verify-cover-dotnet/SKILL.md 15408→18967 B — F319-RuleScopedMutationRecheck: the rule re-check — miner § Rule re-check, .NET one-mutant recipe, close item 10, the failed-group owner-away exception and the guardrail bullets
+
 ## [2.1.3] — 2026-10-30
 - PATCH bump.
   - plugin payload (conventions/ef-core.md)

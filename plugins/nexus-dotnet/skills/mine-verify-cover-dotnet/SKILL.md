@@ -186,6 +186,50 @@ Add a trivial smoke test so the baseline `dotnet test` is green and the project 
 - **`coverage-analysis: off`** is REQUIRED with MTP — coverage-based filtering skips ALL mutants under MTP. Keep it off for domain test projects.
 - The `json` reporter emits `StrykerOutput/{timestamp}/reports/mutation-report.json` — the gate reads this. The `files` object is keyed by ABSOLUTE path.
 
+### One-mutant re-check
+
+This is how the method's rule re-check (`mine-verify-cover` → § Rule re-check, in `nexus-miner`) runs on .NET.
+It runs at the close, never in a developer step. Once `rule-recheck.mjs due` has written
+`docs/specs/{slug}/delivery/mutation-recheck.json`, run `tools/recheck-args.mjs` beside this skill. Both tools
+sit under the `tools/` folder of their skill, and `{that-base-dir}` is the base directory the loaded
+`mine-verify-cover` skill announced, as for doctor (§Test-project scaffold above):
+
+```
+node {this-skill-dir}/tools/recheck-args.mjs --repo {tree} --slug {slug} --recheck {that-base-dir}/tools/rule-recheck.mjs [--out {scratch folder}]
+```
+
+For every group with no result, or a failed one, it writes a Stryker config to a folder outside the repo. For
+each config it prints the folder to run from, the `dotnet stryker --config-file … -O …` call, and one
+`rule-recheck.mjs record` line per group. A group with no result that no run can check gets a
+`rule-recheck.mjs stale` line naming why, the reason single-quoted for a POSIX shell; a failed one gets a `#`
+line saying it stays failed and holds the close, since `stale` refuses a failed group. Each killing test's
+name in the filter has the filter grammar's special characters escaped. Groups that share a mutated project and a test project share one config, so Stryker's start-up is paid
+once for them. A config keeps the test project's own `stryker-config.json` settings (its `test-runner`,
+`coverage-analysis` and `mutation-level` among them) and sets `project`, `mutate`, `test-case-filter` and
+`reporters`. It drops `thresholds`, because a run of a few mutants would trip a break threshold, and `since`,
+`with-baseline` and `test-projects`, which would change what is tested. Where the killing tests sit in more
+than one test project, the config lists them in `test-projects` and runs from the mutated project's folder.
+
+What a narrow run relies on (measured on Stryker.NET 4.16.0):
+
+- **A span is zero-based character indices over the file's text**, each `\r` counted, and only a mutant fully
+  inside it is tested; an enclosing block reads `Ignored — Removed by mutate filter`. The report's locations are
+  one-based with an exclusive end, so the tool ends each span at the mutant's last character + 1.
+- **`test-case-filter` is a config key only** — 4.16 refuses `--test-case-filter` on the command line. Each
+  killing test is one `FullyQualifiedName~{name}` term, its parameter list cut off, and the narrow report's
+  `killedBy` names only the filtered tests.
+- **The filter is verified under Stryker's default (VSTest) runner and unverified under `test-runner: mtp`.**
+  If MTP ignores it, every test runs: the run is slower, and a kill by a test the group did not record reads
+  `stale`, never `passed`.
+- **A `CompileError` on a spanned line still appears in the report**, so a kill lost to a compile error reads
+  `stale`, never passed.
+
+Run the configs one after another, all of them under the one total cap the close sets for the re-check; a
+config not reached or cut has each of its groups with no result recorded with `stale --why cap`, in place of
+its `record` lines. Then run the printed `record` line of every config that ran, and every printed `stale`
+line. A run that wrote no report takes `stale --why "no report"` for each of its groups with no result
+instead. A failed group whose run was not reached, was cut or wrote no report stays failed and holds the close.
+
 ## Same-basename partial handling (DDD house style)
 
 Many DDD codebases split each aggregate into `{Class}.cs` (data) + `Behaviors/{Class}.cs` (behavior) — so TWO report files share the basename `{Class}.cs`. The business rules live in the behaviors partial. Two non-negotiables, or the gate fake-greens:
@@ -214,7 +258,7 @@ test framework's traits or categories and `dotnet test --filter` expressions —
   `[Property]`.
 - **Tiers → `--filter` expressions** — `smoke` = `dotnet test --filter "criticality=golden&runtime-cost=fast"`;
   `full` = `dotnet test` (no filter); `gate` = `dotnet test --filter "mutation-gated=true"`, run on target-class
-  change.
+  change; a change to the killing tests alone takes §One-mutant re-check above.
 - **The parked-red idiom** — a generated red that documents a genuine spec-code divergence (Cover-from-spec's
   output convention, `mine-verify-cover` → SDD lifecycle) is KEPT, never deleted, and marked:
   ```csharp

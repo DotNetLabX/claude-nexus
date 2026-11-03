@@ -69,7 +69,7 @@ folder for the executable that checks it.
   diagram; heavy nexus skills already do this (`mine-verify-cover`'s `## The pipeline` block, in `nexus-miner`).
 - **State persistence for batch + resume-after-compaction** — nexus's own equivalent is the
   pipeline resume artifacts: `communication-log.md` (agent IDs, branch, current step, cycle count)
-  and `.claude/.pipeline-state` — not a skill-private state file.
+  and the per-session phase token under `.claude/pipeline-state/` — not a skill-private state file.
 - **Append-only changelog + Lessons** — `lessons.md`'s per-role headings (this skill's own
   `lessons-format`) feed the learner loop.
 - **Self-check / mechanical re-derivation** — never trust a subagent's self-scored value; re-derive

@@ -31,6 +31,8 @@ Review checklist for Vue 3 + TypeScript + Tailwind CSS v4 code. Supplements the 
 - [ ] `defineModel<T>()` used instead of manual `modelValue` + emit
 - [ ] Props typed with `defineProps<T>()` generics (not runtime validation)
 - [ ] Emits typed with `defineEmits<T>()` (not array syntax)
+- [ ] Setup stores return every ref they hold — no unreturned or `readonly` state (`pinia-patterns`)
+- [ ] No `v-html` on content a user could have written (`vue-patterns`)
 
 ## Stage 3: Accessibility
 
@@ -46,6 +48,11 @@ Review checklist for Vue 3 + TypeScript + Tailwind CSS v4 code. Supplements the 
 - [ ] Per-instance composables use function-scoped refs
 - [ ] No composables calling UI side effects (toasts, alerts) — expose error state
 - [ ] `watch`/`watchEffect` cleanup for subscriptions and timers
+- [ ] A destructured prop reaches `watch` or a composable as a getter (`() => id`), never bare
+- [ ] `computed` getters are pure — no state writes, requests or DOM changes inside them
+- [ ] A template ref is null-checked wherever its element can be absent (before mount, under `v-if`)
+- [ ] Data keyed on a route param or query is loaded by a `watch` on it (`immediate: true`), not in
+  `onMounted` alone — a URL change on the same route reuses the component (`vue-patterns`)
 - [ ] Loading guards prevent flickering (check `loading && !result && !data`)
 - [ ] Error state surfaced in views (not silently swallowed in store)
 - [ ] Empty state rendered when data/filter produces zero results
@@ -53,7 +60,9 @@ Review checklist for Vue 3 + TypeScript + Tailwind CSS v4 code. Supplements the 
 ## Stage 5: Tailwind & Styling
 
 - [ ] Design tokens used (not hardcoded hex colors)
-- [ ] No `dark:` prefix — use CSS custom property tokens
+- [ ] Colours the tokens cover use the token classes, not `dark:` pairs — the tokens are the one theme
+  source; `dark:` is a valid v4 variant, kept for a one-off no token covers (`tailwind-theme`)
+- [ ] No class name built by string interpolation (`` `bg-${color}-600` ``) — Tailwind never generates it
 - [ ] `<select>` elements have `appearance-none bg-transparent`
 - [ ] Responsive: mobile-first, breakpoints layered (`sm:`, `md:`, `lg:`)
 - [ ] Consistent spacing and typography across feature
@@ -87,6 +96,8 @@ Review checklist for Vue 3 + TypeScript + Tailwind CSS v4 code. Supplements the 
 | Missing `aria-label` on interactive element | MEDIUM |
 | Store mutating view/form state | HIGH |
 | Hardcoded colors instead of tokens | MEDIUM |
+| `v-html` on user-written content | HIGH |
+| Class name built by interpolation | MEDIUM |
 | Missing error state in view | MEDIUM |
 | `any` type in API contract | HIGH |
 | Build fails | CRITICAL |

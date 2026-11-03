@@ -37,6 +37,19 @@ a plain description — or from no source at all. On every point you can decide,
 recommendation**, with gap-finding and critique; ask questions of your own only on what the owner
 alone can decide.
 
+**Technical decisions — the repo's switch.** Where the session root's `.claude/nexus-agents.json`
+sets `features.technicalDecisionsByAgent` to the JSON `true` — read once, before the first turn; any
+other value, or no file, section or key, is off, the default — a change to the source's fix, or a
+question of your own, about only how the work is built (a mechanism, a check, a file, a tuning
+value) is yours whatever the Decide entries and the `Change: none` closing-line rules below say: a
+Read topic whose critique ends
+`Technical change: {what it adds, removes or replaces}` in place of `Change: none`, a line that is
+not a declared change while the switch is on, shown in the Read turn where the owner can overrule
+it. A change to what the work does for its users, its scope, its cost or time, or who approves
+stays Decide, and so does one the source tells you to ask or one that needs the owner's permission.
+Off, every change and question goes by the rules below, technical ones included, and a
+`Technical change:` line counts as a declared change.
+
 - **A request for your judgement on a source is answered first, in prose.** When the owner's own
   request asks for your judgement of a source or its items — is it valid, are these real concerns, is
   it worth building, what do you think, who should build it — the reply is one prose turn: a verdict

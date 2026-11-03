@@ -39,9 +39,10 @@ language; follow it there rather than re-deriving it here.
 
 ### 2. Pre-edit sweeps (executed, pasted — never retyped)
 
-Before editing a count or an enumeration, run the **enumeration/consumer sweep**. Grep the whole
-estate and paste the real output into your working notes — never retype a grep result from memory. A
-count has **four echo shapes**, each of which can go stale independently:
+Before editing a count or an enumeration, run the **enumeration/consumer sweep** with `sweep.js`
+(beside `verify-run.js` in the core plugin's scripts folder) on the phrase and paste its output —
+never retype a grep result from memory. A count has **four echo shapes**, each of which can go stale
+independently:
 
 1. the **count word** itself ("four sibling skills", "all six items");
 2. the **enumerated member list** near it;
@@ -60,23 +61,22 @@ was never part of the count.
 
 **Markup and line-wrap tolerance:** bold/italic markers break a contiguous-substring grep — a line
 written `` `**Not** a member` `` in source will not match a grep for `` `not a member` ``, so a naive
-sweep under-reports. Widen the pattern (drop the marker, or match the rendered text) when a surface
-may carry inline markup. (This illustration uses a **synthetic** phrase on purpose — never demonstrate
+sweep under-reports. (This illustration uses a **synthetic** phrase on purpose — never demonstrate
 a sweep with a literal that a plan or gate counts estate-wide; reproducing a counted literal in prose
-is exactly the estate-invariant trap phase 3 guards against.) Hard-wrapped prose breaks a grep the
-same way: this estate wraps at ~100 columns, so a counted literal routinely spans two source lines
-and a naive grep under-reports it as **zero**. Sweep with the shortest distinctive fragment that
-cannot wrap (or a multiline-capable grep), and re-verify any keep-hit that returns zero by **opening
-the cited lines** before believing it — a zero on a keep-hit reads exactly like "the surface is
-already clean", the most dangerous false negative a sweep can produce. The inverse fails too: a hit is
+is exactly the estate-invariant trap phase 3 guards against.) `sweep.js` matches across wraps, markup
+and case, over every file type, `tests/` and `docs/` included. Its one blind spot: a phrase split
+across concatenated string literals in code (`'old ' +` then `'phrase'`) is not matched, so search
+code fragments by hand there. Re-verify any keep-hit that returns zero by **opening the cited
+lines** before believing it — a zero on a keep-hit reads exactly like "the surface is already
+clean", the most dangerous false negative a sweep can produce. The inverse fails too: a hit is
 a **token, not a carrier** — one token (a state-file name, a script name) routinely serves two
 unrelated rules in a file — so before a row asserts "file X carries rule Y", open each hit; count
 invocations, never names.
 
 **Rule edits sweep like count edits.** A *contract* has consumers the way a count does: when the
 edit changes a rule that other files restate — a classification list, a marker vocabulary, a status
-grammar — grep the estate for the rule's **distinctive literals** (its marker names, its status
-values), not just for count words. The restatement most often lives in a stack adapter and goes
+grammar — run `sweep.js` on the rule's **distinctive literals** (its marker names, its status
+values), not just on count words. The restatement most often lives in a stack adapter and goes
 stale silently because no number moves. Prefer converting the restatement into a pointer at the
 canonical owner over maintaining two copies.
 

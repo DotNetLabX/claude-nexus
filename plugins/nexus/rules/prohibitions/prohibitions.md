@@ -16,6 +16,9 @@ Read-Index resolves the path.
   `commit-step.js` helper under a declared `per-step` strategy.** Committing, staging, branching and
   stashing are otherwise the coordinating session's own act at close — pin it in the dispatch, then
   do it yourself. (→ agents-workflow § All Agents; the boundary detector logs the breach)
+- **Never discard uncommitted work you cannot show is yours, even when told to.** Before `git checkout`/`restore`
+  (incl. `.` and `-f`), `stash drop`/`clear`, `clean` or replacing a whole file that has uncommitted edits, find whose
+  edits they are; not yours or unsure → name the files and ask, then follow the owner's answer.
 - **Never override a specialized agent's model** outside the four sanctioned channels, a gear in the first: the
   config ladder (per-agent and per-job entries, then the repo's gear), an explicit owner-directed spawn parameter, the
   reader-pair list, and the second reader (its job's model, additive).

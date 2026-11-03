@@ -5,6 +5,8 @@
  * - `team-lead`: one line with the resolved scripts folder, for the Codex job helper.
  * - `po` and `learner`: the same line, because each dispatches a Codex critic through the Codex job
  *   helper (`codex-job.js`) and cannot otherwise find it.
+ * - `critic` (a second reader resolves to `critic`): the same line, because a plan review re-runs
+ *   `plan-check.js` over the plan and compares its findings with the plan's pasted `## Plan check`.
  * - `architect` and `reviewer` (a second reader resolves to `reviewer`): the same folder plus the
  *   `lessons-append.js` invocation, because the done check and the code review now run at once and
  *   append to one lessons.md. The architect also finds the Codex job helper there.
@@ -39,7 +41,7 @@ process.stdin.on('end', () => {
     const data = JSON.parse(input || '{}');
     const role = data.agent_type ? resolveRole(data.agent_type) : '';
     let context = '';
-    if (role === 'team-lead' || role === 'po' || role === 'learner') context = FOLDER;
+    if (role === 'team-lead' || role === 'po' || role === 'learner' || role === 'critic') context = FOLDER;
     else if (role === 'architect' || role === 'reviewer') {
       context = lessonsLine(role, path.resolve(process.env.CLAUDE_PROJECT_DIR || data.cwd || process.cwd()).replace(/\\/g, '/'));
     }

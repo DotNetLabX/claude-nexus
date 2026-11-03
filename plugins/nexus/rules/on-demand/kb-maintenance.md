@@ -89,6 +89,10 @@ each flag stays in that agent's own file.
 - **Tests in the same pass, or an `M3 re-mine` flag.** Update the affected tests with the edit, or
   flag an **M3 re-mine** (M3 is the Evolve mode — a full re-mine of a unit that already has an
   attested golden set).
+- **A changed killing test is re-checked at the close, never by the editing agent.** When the edit
+  changes a mutation-gated rule's killing tests, or a file they name (a test double, a fixture), the
+  feature's close, where one runs, re-tests exactly those mutants (`team-lead.md` § Close Gate,
+  item 10); the editing agent runs no mutation tool for it.
 - **A changed registry row makes the module's concept digest stale.** Raise the stale-digest flag on
   a surface that has a reader — your own agent file names which one, and a flag nothing reads is not
   a flag. Write it in the **pinned grammar** its owner defines —

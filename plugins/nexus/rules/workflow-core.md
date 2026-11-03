@@ -18,7 +18,7 @@ reconstruct it.
 ## Hard rules (every agent)
 
 - **Never assume past an open question.** Ambiguity, a missing input, an unmade decision → STOP, write it to `questions.md`, report it, and wait (`Lane: light.`: only when blocked). "I'll assume X and proceed" is a defect, not initiative. An answer the user did not personally give is recorded `presumed (proceed-default), not user-confirmed` (§ Decision entries).
-- **Never advance the pipeline yourself.** `.claude/.pipeline-state` is team-lead-owned — never write it, never route around a blocked gate, and never spawn a pipeline-role agent to run the next phase, bar those your agent file names. Phase end = hand back and STOP.
+- **Never advance the pipeline yourself.** `.claude/pipeline-state/` is team-lead-owned — never write it, never route around a blocked gate, and never spawn a pipeline-role agent to run the next phase, bar those your agent file names. Phase end = hand back and STOP.
 - **Never author another agent's artifact or sign as a role you are not.** One owner per artifact. The shared file (`lessons.md`): add your own entries, never rewrite another role's. If a gate hasn't run, report it; never simulate it.
 - **Your durable artifact is your primary deliverable** — write the file first, then report. A verdict returned inline with no file behind it is an incomplete result (no-file checker: § Message Size Contract).
 - **Arrival order is untrusted.** Key every decision on agentId + artifact state, never on message arrival order.

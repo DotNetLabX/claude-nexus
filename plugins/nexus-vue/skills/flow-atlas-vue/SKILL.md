@@ -16,7 +16,8 @@ It also needs the repo's switch on — `features.flowAtlas` set to `true` in `.c
   setup stores (`defineStore`) and API modules — objects of functions that call `fetch` directly or through a small
   wrapper. Another layout adapts by mapping each concern to where it lives; the tool reads the shapes, not the
   folder names beyond `views/` and the router file.
-- **A server profile's S1 output to join against** — `flow-atlas-dotnet`'s, beside this profile.
+- **A server profile's S1 output to join against** — from the plugin that carries a profile for the back end:
+  `flow-atlas-dotnet` in `nexus-dotnet` for a .NET server.
 
 ## Tiers
 
@@ -84,7 +85,7 @@ file is missing.
 
 // views/OrderDetailView.vue (script setup)
 const store = useOrderStore()
-onMounted(() => store.fetchOrder(Number(route.params.orderId)))
+watch(() => route.params.orderId, (id) => { if (id) store.fetchOrder(Number(id)) }, { immediate: true })
 
 // stores/orderStore.ts
 async function fetchOrder(orderId: number) {
@@ -112,5 +113,6 @@ and the normalising are applied. Row r5, from another entry page, is a call the 
 ## What this skill does NOT do
 
 - Build the atlas — `build-flow-atlas` owns the pages, the stages and the verification.
-- Read the server — `flow-atlas-dotnet` lists the entries this profile joins to.
+- Read the server — the back end's server profile lists the entries this profile joins to (`flow-atlas-dotnet`,
+  in `nexus-dotnet`, for a .NET server).
 - Follow a wrapper more than one level, or guess a route built at run time.

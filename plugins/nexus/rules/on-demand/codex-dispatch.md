@@ -308,13 +308,16 @@ Read-only run: do not modify any file; this is a check, not a fix.
 Rules: {installed agents/architect.md} § Step 1: Done Check, and the done-check layout in {installed skills/review-format/SKILL.md}.
 Plan: {plan.md}. Implementation record: {implementation.md}. Spec: {the resolved spec, and the development spec where one is named}. Rule list: {the resolved rule list | none}. Questions: {questions.md | none}.
 Audit logs, in both homes ({session root}/.claude/audit/ and, in a worktree round, {tree}/.claude/audit/): skill-invocations.log, violations.log, verify-verdict.json, handoff.jsonl.
-Pipeline token at the developer's dispatch: {token}. Session: {session id}. Window from: {ISO time}. Lane: {team | architect-led | light}. Tree: {worktree path | session root}. Check: {k}.
+Pipeline token at the developer's dispatch: {token}. Session: {session ids}. Window from: {ISO time}. Lane: {team | architect-led | light}. Tree: {worktree path | session root}. Check: {k}.
 {re-check: Prior check: {the prior check block}. Fix dispatched: {ISO time}.}
 Return the check block's body only — the disposition table, process slips, rule counts, notes and exactly
 one verdict line, **Verdict: PASS** or **Verdict: FAIL — {why}** — with no heading, no Model line and no
 footer. Never quote another check's verdict line, a prior block's included. A file you cannot read is
 listed as `unreadable: {path}`, an evidence gap, never as absent.
 ```
+
+`Session:` lists every session the round ran in, comma-separated — on the team lane, the communication
+log's `Sessions:` line; on the architect's lanes, the plan's `**Sessions:**` line.
 
 **What is persisted.** The dispatcher takes the body from `collect`'s output, cuts the companion's two
 trailing lines (opening `Codex session ID:` and `Resume in Codex:`), and appends to `done-check.md`:

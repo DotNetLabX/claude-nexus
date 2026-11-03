@@ -179,6 +179,19 @@ owner is away.
    repo never loses a slow test to the fast stop. `vstest` and `flutter` take `slowSeconds` alone.
    `speedUpSeconds` is the line over which the solo gets one try to speed a test up before it is
    kept slow with a reason.
+
+   **Optional - the step tests.** Where a repo has checks that read its text (wording lints over
+   its docs or prompts, say), propose a top-level `"stepTests"`: a glob of changed files, each to
+   test entries. A developer's step run on the node runner adds them when a changed file matches -
+   a test file as named, and from a folder entry only the test files that name the changed file
+   (by its base name; for a name every folder shares, such as `SKILL.md`, by its folder deep in the
+   tree and by its whole path near the top):
+
+   ```json
+   "stepTests": { "prompts/**/*.md": ["tests/wording.test.mjs", "tests/lint/"] }
+   ```
+
+   Leave it out when no such check exists; a repo without it runs exactly as before.
 6. **Do not commit** unless the user asks — the files are theirs; name them in your reply.
    Where the `tag-slow-tests` skill (`nexus-pro`) is in your skill list and `slow` was declared, end
    the reply by inviting "tag slow tests": that pass times the suite, tags its slow tests and writes

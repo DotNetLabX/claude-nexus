@@ -5,10 +5,11 @@
  * Backstops the pipeline invariants that prose instructions alone failed to enforce
  * (a faithful agent can still violate them and believe it complied):
  *
- *   1) Two-phase spawn. While .claude/.pipeline-state ends in ":analyze", the active
- *      agent is in its analyze-and-stop phase. Writing plan.md (architect) or application
- *      source (developer) then means the analyze checkpoint was skipped — the single-spawn
- *      collapse. Blocked.
+ *   1) Two-phase spawn. While the session's phase token (lib/round-token.js) ends in ":analyze", the active
+ *      agent is in its analyze-and-stop phase. Writing application source then means the analyze
+ *      checkpoint was skipped — the single-spawn collapse. Blocked under any ":analyze" token.
+ *      plan.md is Blocked only under "architect:analyze": under "developer:analyze" the architect
+ *      answering the developer's Phase-1 questions may amend the plan.
  *   2) Verdict integrity. A review.md written with an APPROVED verdict while it still lists
  *      an unresolved CRITICAL or HIGH finding is an invalid verdict. Blocked.
  *   4) Full-suite evidence (F81, ADR-96). A summary.md's existence means "the pipeline completed".
@@ -103,8 +104,8 @@
  *      `Write` of a docs/specs/{slug}/delivery/summary.md (a nested issue's included) whose content
  *      holds no line beginning `Mode: ` is Blocked; the deny names the summary-format grammar. Only a
  *      `Write` is judged: an `Edit` or `MultiEdit` carries part of the file, and every close writes the
- *      summary whole. It runs last among the summary invariants — (9) after (4)–(7) — so a write
- *      another one refuses keeps that refusal. Foreground writers only, as (4)–(7).
+ *      summary whole. It runs last among the summary invariants — (9) after (4)–(7) and (11) — so a
+ *      write another one refuses keeps that refusal. Foreground writers only, as (4)–(7).
  *  10) Spec sources (ADR-161). Every business rule of a spec names its source, and a rule a writer or a
  *      reviewer added keeps the spec from Ready until the owner keeps it. A `Write`, `Edit` or
  *      `MultiEdit` of a docs/specs/{slug}/definition/spec.md (a nested issue's included) is Blocked
@@ -120,9 +121,21 @@
  *      REACH: foreground writers only, as (4)–(9) — a spawned PO or architect is covered by the
  *      same check, spec-sources.js, which the team lead runs before it spawns the architect for
  *      the plan. Only spec.md: an epic, a bug or a tech-spec is not judged here.
+ *  11) Mutation re-check. At the close, the mining plugin's rule re-check lists, per group, the mutants a
+ *      change to their killing tests made due, and records each group's result in
+ *      `mutation-recheck.json` in the feature's delivery folder (the close gate's item 10). A foreground
+ *      `Write`, `Edit` or `MultiEdit` of a `docs/specs/{slug}/delivery/summary.md` (a nested issue's
+ *      included) is Blocked while that record, read beside the summary.md being written, holds a group
+ *      whose `result` is `null` (not yet re-checked) or `failed` (a mutant its tests killed before now
+ *      survives). `passed` and `stale` pass. The file is read from the folder of the write's own path, so
+ *      this check picks no tree: a worktree's summary.md is judged on that worktree's record. No record
+ *      allows — a repo without the mining plugin writes none. A record that cannot be read or parsed allows,
+ *      with one stderr line; the close's own item still lists its groups. The deny names each open group
+ *      and its file, the commands that fill it, and the hand disposition a record left without the plugin
+ *      takes (`"result": "stale"` with a `why`). It runs after (7) and before (9).
  *
  * REMOVED — invariant (3), state-file integrity (blocking a pipeline subagent's write to
- * .claude/.pipeline-state): the only callers it could ATTRIBUTE (data.agent_id is present
+ * the phase token): the only callers it could ATTRIBUTE (data.agent_id is present
  * solely on spawned agents' tool calls) are background subagents, whose PreToolUse deny the platform
  * drops (ADR-13). There was no caller both attributable AND blockable — unreachable code.
  * State-file ownership ("team lead is the sole writer") is enforced by ADR-18 agent hard rules
@@ -157,6 +170,13 @@
  *     writers. Do not extend this reasoning to invariants (1) or (2).
  *   - Deny reasons are self-correcting, so an unattended agent fixes itself with no human.
  *   - It only ever DENIES or stays silent; it never auto-approves.
+ *
+ * Every refusal is logged. Each one appends one JSON line to `{root}/.claude/audit/violations.log`:
+ * `{ts, agent, tool, path, rule: "pipeline-gate", check, session, spawned, blocked: true, reason}` —
+ * `check` the invariant's number, `agent` the last segment of `agent_type` (else `main`), `spawned`
+ * from lib/is-spawned.js, `reason` the deny text cut to 300 characters — so the gate's blocks can be
+ * counted beside the other hooks' rows. The append is wrapped and its failure swallowed: a refusal
+ * stays a refusal when the log cannot be written.
  */
 'use strict';
 const fs = require('fs');
@@ -170,6 +190,7 @@ const { countsAsPassing } = require('./lib/run-verdict');
 const { isNonRegistry } = require('./lib/registry-stamp');
 const { checkSpec, readCommitted, isReady } = require('./lib/spec-sources');
 const { isSpawned } = require('./lib/is-spawned');
+const { readRoundToken } = require('./lib/round-token');
 
 // The calibration script, addressed from this file. `hooks/` and `skills/` are siblings under the
 // plugin root in the source repo AND under the version root of a consuming repo's version-keyed
@@ -202,17 +223,19 @@ process.stdin.on('end', () => {
   if (!fp) return allow();
 
   const root = process.env.CLAUDE_PROJECT_DIR || data.cwd || process.cwd();
+  refusal = { root, data, tool, fp };
 
-  // (1) Analyze-phase collapse: plan or source written during an analyze phase.
-  if (phaseIsAnalyze(root)) {
-    if (/\/plan\.md$/.test(fp)) {
-      return deny(
-        'plan.md written during an analyze phase. Phase 1 is analyze-and-stop: surface questions and let ' +
+  // (1) Analyze-phase collapse: source written during any analyze phase, plan.md during the architect's.
+  const phase = readRoundToken(root, data.session_id).toLowerCase();
+  if (/analyze\s*$/.test(phase)) {
+    if (/\/plan\.md$/.test(fp) && phase === 'architect:analyze') {
+      return deny('1',
+        'plan.md written during the architect\'s analyze phase. Phase 1 is analyze-and-stop: surface questions and let ' +
         'the team lead resume you for Phase 2 ("Write the plan") before writing the plan.'
       );
     }
     if (isCodeFile(fp, root)) {
-      return deny(
+      return deny('1',
         `source file written during an analyze phase (${fp}). Phase 1 is analyze-and-stop: report your ` +
         'findings and let the team lead resume you for Phase 2 ("Implement") before writing code.'
       );
@@ -221,7 +244,7 @@ process.stdin.on('end', () => {
 
   // (2) review.md verdict integrity: APPROVED while a CRITICAL/HIGH is still open.
   if (/\/review\.md$/.test(fp) && approvedWithOpenHighSev(writtenContent(tool, ti))) {
-    return deny(
+    return deny('2',
       'review.md marks APPROVED while an unresolved CRITICAL or HIGH finding is present. A CRITICAL/HIGH ' +
       'forces REQUEST CHANGES and a developer fix cycle — change the verdict, or only mark the finding ' +
       'resolved after the fix is verified.'
@@ -230,7 +253,7 @@ process.stdin.on('end', () => {
 
   // (8) Fix-list follow-up: a `due` follow-up line over a list that holds nothing that makes it due.
   if (/\/review\.md$/.test(fp) && dueFollowUpWithoutCause(root, fp, tool, ti)) {
-    return deny(
+    return deny('8',
       'the fix list\'s follow-up is due only for a CRITICAL/HIGH, a missing or failed step, or a skill slip — ' +
       'write `Follow-up review: none due`. Where the list does hold one of those in a form this check did not ' +
       'read, write it as a numbered `{n}. [HIGH] …` row.'
@@ -241,14 +264,15 @@ process.stdin.on('end', () => {
   const specMatch = fp.match(/(?:^|\/)docs\/specs\/([^/]+(?:\/[^/]+)?)\/definition\/spec\.md$/);
   if (specMatch && !isSpawned(data)) {
     const reason = unsourcedSpecRules(root, fp, tool, ti, specMatch[1]);
-    if (reason) return deny(reason);
+    if (reason) return deny('10', reason);
   }
 
   // (4) Full-suite evidence: summary.md needs a passing role:"full" record for THIS round.
-  // The declaration and the round token are read from the tree verify-run.js would MEASURE (F51's
-  // session-matching redirect), not blindly from the session root. Reading them from different trees
-  // makes the deny undischargeable: if the root declares roles.full and the worktree does not,
-  // verify-run records `undeclared` forever while this gate keeps demanding a pass.
+  // The declaration is read from the tree verify-run.js would MEASURE (F51's session-matching
+  // redirect), not blindly from the session root. Reading it from another tree makes the deny
+  // undischargeable: if the root declares roles.full and the worktree does not, verify-run records
+  // `undeclared` forever while this gate keeps demanding a pass. The round token is the session's, at
+  // the root, where verify-run reads it too.
   const summaryMatch = fp.match(/(?:^|\/)docs\/specs\/([^/]+)\/delivery\/summary\.md$/);
   if (summaryMatch && !isSpawned(data)) {
     // The ROUND KEY is taken from the path being written, never from configuration: that path is the
@@ -263,7 +287,7 @@ process.stdin.on('end', () => {
         : EVIDENCE_CAUSES[cause]
           ? `${gear ? `under the ${gear} gear, ` : ''}${EVIDENCE_CAUSES[cause]}${files.length ? `: ${files.join(', ')}` : ''}`
           : DENY_CAUSES[cause];
-      return deny(
+      return deny('4',
         `summary.md needs a passing full-suite record for ${slug} (cause: ${cause} — ${gloss}). ` +
         'This repo declares .claude/verify.json → roles.full. Run:\n' +
         `  node "${path.join(__dirname, 'verify-run.js')}" --profile complete --slug ${slug}` +
@@ -277,11 +301,9 @@ process.stdin.on('end', () => {
   // (5) Lessons evidence: summary.md needs a lessons write on record for THIS round.
   // DELIBERATELY UNCONDITIONAL — there is NO opt-in key, unlike (4). The owner ruled the duty
   // gate-observed at every close, so (5) fires in every consuming repo, and the remedy is one write.
-  // TOKEN HOME IS `root`, the one place (5) diverges from (4): (4) reads its token from the tree
-  // verify-run would MEASURE, because its evidence is produced there; the lessons log is written by
-  // an always-root-resolved PostToolUse hook, so its round key must be read from the same root.
+  // The lessons log is written by an always-root-resolved PostToolUse hook, so it is read at the root.
   if (summaryMatch && !isSpawned(data) && !hasLessonsThisRound(root, data, summaryMatch[1])) {
-    return deny(
+    return deny('5',
       `summary.md needs a lessons write this round for ${summaryMatch[1]} — append your ` +
       `\`## {Role} Lessons\` to docs/specs/${summaryMatch[1]}/delivery/lessons.md (the lessons-format ` +
       'skill), then write summary.md. A `MultiEdit` append leaves no record — re-append with `Edit`. ' +
@@ -296,19 +318,25 @@ process.stdin.on('end', () => {
   const criticMatch = fp.match(/(?:^|\/)docs\/specs\/([^/]+(?:\/[^/]+)?)\/delivery\/summary\.md$/);
   if (criticMatch && !isSpawned(data)) {
     const reason = unmeasurableCriticRecord(root, criticMatch[1]);
-    if (reason) return deny(reason);
+    if (reason) return deny('6', reason);
   }
 
   // (7) Unruled registry rows, read in (4)'s tree. `lib/worktree-target.js` is the only which-tree
   // rule a hook may use, so the tree is never derived from the summary.md path.
   if (summaryMatch && !isSpawned(data)) {
     const reason = unruledRegistryRows(resolveDeclaredTree(root, data.session_id), summaryMatch[1]);
-    if (reason) return deny(reason);
+    if (reason) return deny('7', reason);
+  }
+
+  // (11) Mutation re-check: the record beside this summary.md holds no open or failed group.
+  if (criticMatch && !isSpawned(data)) {
+    const reason = openRecheckGroups(path.resolve(root, fp), criticMatch[1]);
+    if (reason) return deny('11', reason);
   }
 
   // (9) Summary mode line: a whole-file Write of summary.md carries a line beginning `Mode: `.
   if (criticMatch && !isSpawned(data) && tool === 'Write' && !/^Mode: /m.test(String(ti.content || ''))) {
-    return deny(
+    return deny('9',
       `summary.md for ${criticMatch[1]} has no mode line. Put one right under its title, in the ` +
       'summary-format grammar (its Producers paragraph): `Mode: team pipeline ({definition})` from the ' +
       'team lead, or `Mode: architect-led fast lane ({level}, {definition})` from the architect — ' +
@@ -345,6 +373,44 @@ function unsourcedSpecRules(root, fp, tool, ti, slug) {
       'the catalogue\'s `spec additions` entry, marking each kept one `added — kept by owner {YYYY-MM-DD}` and ' +
       'moving each dropped one to Out of Scope — then mark the spec Ready.';
   } catch { return null; }
+}
+
+/**
+ * The deny reason while the mutation re-check record beside `summaryFile` holds a group whose result is
+ * `null` or `failed`, or null to allow. No record, an unreadable one, or one with no group list allows.
+ */
+function openRecheckGroups(summaryFile, slug) {
+  const record = path.join(path.dirname(summaryFile), 'mutation-recheck.json');
+  let rec;
+  try {
+    rec = JSON.parse(fs.readFileSync(record, 'utf8'));
+  } catch (e) {
+    if (e && e.code === 'ENOENT') return null;
+    const why = String(e && e.message).replace(/\s+/g, ' ');
+    process.stderr.write(`pipeline-gate: ${record} could not be read (${why}) — the mutation re-check is not checked\n`);
+    return null;
+  }
+  const groups = rec && Array.isArray(rec.groups) ? rec.groups.filter((g) => g && typeof g === 'object') : [];
+  const open = groups.filter((g) => g.result === null);
+  const failed = groups.filter((g) => g.result === 'failed');
+  if (!open.length && !failed.length) return null;
+  const name = (g) => `${g.id} (${g.file})`;
+  const tree = path.resolve(path.dirname(summaryFile), ...Array(slug.split('/').length + 3).fill('..'));
+  const args = `--repo "${tree}" --slug ${slug}`;
+  const lines = [`summary.md for ${slug} — the mutation re-check is not finished (${record}):`];
+  if (open.length) {
+    lines.push(`  ${open.map(name).join(', ')} ${open.length === 1 ? 'has' : 'have'} no result. Fill each: run the stack ` +
+      `adapter's recipe (\`recheck-args.mjs ${args}\` on .NET) and then \`rule-recheck.mjs record ${args} --group {id} ` +
+      `--report {its json}\`, or \`rule-recheck.mjs stale ${args} --group {id} --why "{reason}"\` when no run can check it ` +
+      '(the close gate\'s item 10). Where the mining plugin (`nexus-miner`) is not installed, set the group\'s `result` to ' +
+      '`"stale"` by hand, with a `why`.');
+  }
+  if (failed.length) {
+    lines.push(`  ${failed.map(name).join(', ')} failed: a mutant its tests killed before now survives — fix it before the ` +
+      `close, as a red test is fixed, then re-run that group and record it again with \`rule-recheck.mjs record ${args}\`.`);
+  }
+  lines.push('Then write summary.md.');
+  return lines.join('\n');
 }
 
 /**
@@ -559,8 +625,7 @@ function inThisRound(rec, token, session) {
  * retry and says so.
  */
 function hasLessonsThisRound(root, data, slug) {
-  let token = '';
-  try { token = fs.readFileSync(path.join(root, '.claude', '.pipeline-state'), 'utf8').trim(); } catch { /* no token */ }
+  const token = readRoundToken(root, data.session_id);
   const session = String(data.session_id || '');
 
   let lines = [];
@@ -621,7 +686,7 @@ const EVIDENCE_CAUSES = {
  *     no slug — a pre-amendment record, or a hand-written one — can never name its round, so it
  *     discharges nothing. Unsigned is not evidence.
  *
- * (2) The ROUND INSTANCE — token or session. The round token (.claude/.pipeline-state) is the primary
+ * (2) The ROUND INSTANCE — token or session. The session's round token, read at the root, is the primary
  *     key, but a repo that never writes one has an empty token, and a token that moved on after the
  *     suite ran would otherwise permanently wedge the only writer of summary.md. So the record's
  *     `session` is a second way to prove it belongs here. Both are exact comparisons against a
@@ -654,8 +719,7 @@ const EVIDENCE_CAUSES = {
  * invariant (4)'s sanctioned exception, not an oversight (see the header).
  */
 function fullSuiteDenial(tree, root, data, slug) {
-  let token = '';
-  try { token = fs.readFileSync(path.join(tree, '.claude', '.pipeline-state'), 'utf8').trim(); } catch { /* no token */ }
+  const token = readRoundToken(root, data.session_id);
   const session = String(data.session_id || '');
 
   let lines = [];
@@ -721,13 +785,6 @@ function writtenContent(tool, ti) {
     return ti.edits.map(e => (e && e.new_string) || '').join('\n');
   }
   return '';
-}
-
-function phaseIsAnalyze(root) {
-  try {
-    const s = fs.readFileSync(path.join(root, '.claude', '.pipeline-state'), 'utf8').trim().toLowerCase();
-    return /analyze\s*$/.test(s);
-  } catch { return false; } // no state -> fail open
 }
 
 // Conservative heuristic: fires only when an APPROVED verdict sits beside a finding HEADING
@@ -885,7 +942,26 @@ function rowLevels(t) {
   return out;
 }
 
-function deny(reason) {
+// The write being judged, set once it is known; every refusal's audit row is built from it.
+let refusal = null;
+
+function logRefusal(check, reason) {
+  try {
+    if (!refusal) return;
+    const { root, data, tool, fp } = refusal;
+    const agent = data.agent_type ? String(data.agent_type).toLowerCase().split(/[:/]/).pop() : 'main';
+    const dir = path.join(root, '.claude', 'audit');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(path.join(dir, 'violations.log'), JSON.stringify({
+      ts: new Date().toISOString(), agent, tool, path: fp, rule: 'pipeline-gate', check,
+      session: String(data.session_id || ''), spawned: isSpawned(data), blocked: true,
+      reason: String(reason).slice(0, 300),
+    }) + '\n');
+  } catch { /* a failed append never changes the decision */ }
+}
+
+function deny(check, reason) {
+  logRefusal(check, reason);
   process.stdout.write(JSON.stringify({
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
