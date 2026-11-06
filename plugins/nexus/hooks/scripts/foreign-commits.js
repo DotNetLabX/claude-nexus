@@ -24,18 +24,18 @@
  * IT ONLY READS. No git command here changes a ref, the index or the working tree.
  *
  * DEFAULTS. `--repo` is the tree the session's published `.worktree-target` line names, else the
- * session root (as verify-run.js resolves it). `--ref` is the repo's default branch, by the same
- * three rungs, in the same order, as commit-step.js and agents-workflow.md § Branch Pre-Flight.
+ * session root (as verify-run.js resolves it). `--ref` is the tree's default branch, as lib/default-branch.js
+ * resolves it (agents-workflow.md § Branch Pre-Flight & Default-Branch Resolution).
  *
  * REFUSALS. A missing `--base`, an unknown or empty option, a tree git cannot read, an unknown
  * `--base` or `--ref`, no merge-base between HEAD and `ref`, or a git read that fails exits 2 with
  * one stderr line naming the fix — never an empty list that would read as no foreign commits.
  */
 'use strict';
-const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { resolveDeclaredTree } = require('./lib/worktree-target');
+const { resolveDefaultBranch } = require('./lib/default-branch');
 
 function git(dir, args) {
   const r = spawnSync('git', ['-C', dir, '-c', 'core.quotepath=off', ...args], {
@@ -91,16 +91,7 @@ function main() {
   if (baseRun.status !== 0) refuse(`unknown commit ${args.base} for --base — pass the plan's **Base:** sha`);
   const base = baseRun.stdout.trim();
 
-  let ref = args.ref;
-  if (typeof ref !== 'string' || !ref) {
-    let cfg = {};
-    try { cfg = JSON.parse(fs.readFileSync(path.join(top, '.claude', 'nexus-agents.json'), 'utf8')); }
-    catch { cfg = {}; }
-    const symref = git(top, ['symbolic-ref', '--quiet', 'refs/remotes/origin/HEAD']);
-    ref = (symref.status === 0 && symref.stdout.trim())
-      ? symref.stdout.trim().replace(/^refs\/remotes\/origin\//, '')
-      : (typeof cfg.defaultBranch === 'string' && cfg.defaultBranch ? cfg.defaultBranch : 'main');
-  }
+  const ref = typeof args.ref === 'string' && args.ref ? args.ref : resolveDefaultBranch(top).name;
   const tipRun = git(top, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]);
   if (tipRun.status !== 0) refuse(`unknown branch ${ref} — pass --ref with the default branch`);
   const tip = tipRun.stdout.trim();

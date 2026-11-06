@@ -1,6 +1,6 @@
 {
   "name": "nexus-vue",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Nexus Vue (thin) — a stack extension for the `nexus` core pipeline. Ships the Vue 3 front-end skills: Vue 3 Composition API patterns, Pinia stores, Tailwind CSS v4 theming, component layout, feature slices, a front-end review checklist, front-end testing, the flow-map profile for a Vue client, and the Vue conventions file (Read-Index model). Works with any back end. Reuses nexus's agents, rules, commands, and security guard — install ALONGSIDE nexus, not instead of it.",
   "author": {
     "name": "ldumit"

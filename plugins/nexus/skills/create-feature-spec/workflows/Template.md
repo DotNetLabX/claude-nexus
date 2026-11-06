@@ -13,7 +13,7 @@ Use this template for every `docs/specs/{slug}/definition/spec.md` file (or `epi
 **Status:** Draft | Ready | Done
 **Model:** {your own model's exact id, self-reported from your system context — write "unknown" if unstated, never the model you were dispatched as; see agents-workflow.md § Artifact Formats}
 **Plan:** `docs/specs/{slug}/delivery/plan.md` | None
-Rule list: `docs/specs/{slug}/definition/spec-rules.md` (stamped) — or, where there is none, the line that says why: `Rule list: not applicable — {reason}` (the spec commits to no rule-shaped behavior), `Rule list: not landed` (the review ended before the list did; the close mines the final spec), `Rule list: not available — mining skills not installed`. *Written without bold, so the header line is the exact text agents search for; omit while drafting.*
+Rule list: `docs/specs/{slug}/definition/spec-rules.md` (stamped) — or, where there is none, the line that says why: `Rule list: not applicable — {reason}` (the spec commits to no rule-shaped behavior), `Rule list: not landed` (the review ended before the list did; the list is mined during the build, and this line is then set to its path), `Rule list: not available — mining skills not installed`. *Written without bold, so the header line is the exact text agents search for; omit while drafting.*
 
 ---
 
@@ -77,7 +77,7 @@ Each rule ends with its source, in italics in parentheses — `*(Source: {kind} 
 - `pattern` — the existing pattern the owner said to mirror, by name;
 - `added` — no source: the spec's author or a reviewer added it.
 
-A rule built from two sources lists both, separated by `;`. A rule its source covers only in part is split in two: the covered part keeps its source, the rest is `added`. Where the ticket and the mirrored pattern disagree, the ticket wins: the rule cites the ticket, never the pattern. An `added` rule keeps the spec from Ready until the owner keeps or drops it: a kept rule reads `Source: added — kept by owner {YYYY-MM-DD}`, and a dropped one leaves this list for `## Out of Scope`, its reason `dropped at the owner's keep-or-drop`. The check `spec-sources.js`, beside the plugin's `verify-run.js`, lists every rule with no source and every `added` rule not yet kept; a main-session write that marks the spec Ready with one of them is refused.
+A rule built from two sources lists both, separated by `;`. A rule its source covers only in part is split in two: the covered part keeps its source, the rest is `added`. Where the ticket and the mirrored pattern disagree, the ticket wins: the rule cites the ticket, never the pattern. An `added` rule keeps the spec from Ready until the owner keeps or drops it: a kept rule reads `Source: added — kept by owner {YYYY-MM-DD}` — settled by its author with the owner away, `Source: added — kept, owner away {YYYY-MM-DD}` — and a dropped one leaves this list for `## Out of Scope`, its reason `dropped at the owner's keep-or-drop`. The check `spec-sources.js`, beside the plugin's `verify-run.js`, lists every rule with no source and every `added` rule not yet kept; a main-session write that marks the spec Ready with one of them is refused.
 
 1. Team names are unique, compared without regard to case. *(Source: owner, Q4)*
 2. A deleted team's name can be reused at once. *(Source: added)*
@@ -101,6 +101,7 @@ Entries are numbered `D1`, `D2`, … (`P1`, `P2`, … in a plan), and every refe
 ### D1 — {decision}
 - **By:** `owner`, or the role that decided (`PO`, `architect`)
 - **Decided:** the outcome, in one line
+- **Kind:** business | product | technical — business is what the customers or the company get or pay, product what the user sees or can do, technical how it is built; an entry written before this part has none, and a reader takes it as untagged
 - **Why:** an owner ruling quotes the owner verbatim; where the owner gave no reason, the writer's explanation, marked `PO's reading` or `architect's reading`; a writer's decision gives the writer's reasoning — never an invented owner reason
 - **Turned down:** each option not taken, with its reason in a few words where one was given — or `none offered` where there were no alternatives
 - **Rests on:** the fact that, if it changes, reopens the decision — or `none — a preference` where nothing outside the owner's preference supports it

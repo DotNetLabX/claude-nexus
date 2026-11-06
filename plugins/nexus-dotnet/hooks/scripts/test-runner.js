@@ -223,7 +223,10 @@ const INACTIVITY = /The specified inactivity time of [^\n]*? has elapsed\./g;
 const ABORT_LINE = /The active test run was aborted\. Reason:/g;
 const NO_MATCH = /No test matches the given testcase filter .*? in (.+?\.dll)/g;
 const FAILURE_LINE = /\[FAIL\]|^\s*Failed[\s!]|^\s*Error Message:|Test Run Aborted|test run was aborted|inactivity time of/i;
-const VITEST_FAILURE_LINE = /^\s*FAIL\s|^\s*×\s|Test timed out/;
+// A warning can quote an error's code, and a log line can hold a bare `ERROR:`: neither is a failure.
+const BUILD_ERROR_LINE = /\berror (?:CS|MSB|NU)\d+\b/;
+const BUILD_WARNING_LINE = /\bwarning (?:CS|MSB|NU)\d+\b/;
+const VITEST_FAILURE_LINE = /^\s*FAIL\s|^\s*×\s|Test timed out|Transform failed|\.\w+:\d+:\d+: ERROR: /;
 
 // ── labels ───────────────────────────────────────────────────────────────────────────────────────────
 
@@ -1222,7 +1225,8 @@ function create(h) {
     withRunReport,
     readRunResults,
     rerunWithout,
-    failureLines: (text) => String(text || '').split(/\r?\n/).filter((l) => FAILURE_LINE.test(l) || VITEST_FAILURE_LINE.test(l)),
+    failureLines: (text) => String(text || '').split(/\r?\n/).filter((l) => FAILURE_LINE.test(l) || VITEST_FAILURE_LINE.test(l)
+      || (BUILD_ERROR_LINE.test(l) && !BUILD_WARNING_LINE.test(l))),
     timingEntries: ({ dir }) => h.sourceFiles(dir, '.trx').flatMap((f) => parseTrx(fs.readFileSync(f, 'utf8'))),
     reportCount: (dir) => h.sourceFiles(dir, '.trx').length,
     buildKey,

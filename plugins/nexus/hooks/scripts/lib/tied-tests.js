@@ -25,7 +25,7 @@
 const fs = require('fs');
 const path = require('path');
 const {
-  inferRunner, listFiles, loadRunner, RUNNERS, optionEnd, stagesOf, isAssignment, directRunner, setupStage,
+  runnerOf, repoRunners, listFiles, loadRunner, RUNNERS, optionEnd, stagesOf, isAssignment, directRunner, setupStage,
 } = require('./test-runners');
 const { isExcluded } = require('./tree-hash');
 
@@ -35,13 +35,6 @@ const sessionRoot = (root) => root || process.env.CLAUDE_PROJECT_DIR || process.
 
 function readConfig(repo) {
   try { return JSON.parse(fs.readFileSync(path.join(repo, '.claude', 'verify.json'), 'utf8')); } catch { return null; }
-}
-
-// The runner verify-run.js composes `--files` for: `slow.runner`, else the one the declared unit invokes.
-function runnerOf(cfg) {
-  if (cfg && cfg.slow && typeof cfg.slow.runner === 'string' && cfg.slow.runner) return cfg.slow.runner;
-  const unit = cfg && cfg.roles && cfg.roles.unit;
-  return typeof unit === 'string' ? inferRunner(unit) : '';
 }
 
 // What tiedSet reads of a repo's verify.json: the runner, the declared unit and the slow declaration.
@@ -66,6 +59,22 @@ function tiedSet({ repo, changed, runner, unit = '', slow = null, listing = null
   if (tie.untied.length) return result({ targets: tie.targets, untied: tie.untied, fallback: `no tied test for ${tie.untied.join(', ')}` });
   if (tie.fallback) return result({ targets: tie.targets, fallback: tie.fallback });
   return result({ targets: tie.targets, commands: tie.commands });
+}
+
+// What each other runner the repo declares runs for the change, whatever its main runner does with it: its tied
+// commands, one entry a command, with the changed files it placed. What a runner does with a file it cannot place is
+// its own tiedSet's: Vitest runs what it can place, while .NET and node answer no commands at all.
+function otherTied({ repo, changed, cfg, stopSeconds = 0, root = null }) {
+  const considered = [...new Set((changed || []).map((f) => relTo(repo, f)))].filter((f) => !isExcluded(f));
+  const main = runnerOf(cfg);
+  const { unit, slow } = declaredFor(cfg);
+  const others = considered.length ? repoRunners(cfg).filter((name) => name !== main && RUNNERS.has(name) && name !== 'mtp') : [];
+  return others.flatMap((name) => {
+    const { runner } = loadRunner(name, { root: sessionRoot(root) });
+    if (!runner || typeof runner.tiedSet !== 'function') return [];
+    const tie = runner.tiedSet({ repo, changed: considered, listing: listFiles(repo), unit, slow, stopSeconds });
+    return tie.commands.map((text, i) => ({ text, name, ops: runner, files: tie.ranFor ? tie.ranFor[i] : tie.targets }));
+  });
 }
 
 // The command shapes a red run's list is read from, and nothing else: the strict stage grammar of
@@ -137,7 +146,7 @@ function failedTargets({ output, repo, command = null, listing = null, root = nu
   return found.size ? [...found].sort() : null;
 }
 
-module.exports = { tiedSet, failedTargets, nodeInvocation, runnerOf, declaredFor, readConfig, listFiles };
+module.exports = { tiedSet, otherTied, failedTargets, nodeInvocation, runnerOf, declaredFor, readConfig, listFiles };
 
 function cli(argv) {
   const at = (flag) => argv.indexOf(flag);

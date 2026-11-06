@@ -86,7 +86,7 @@ Pass the feature name: `create-feature-spec Sprint`
 | Critic (Mode 1) | All sections (validates spec vs `docs/product/index.md`) | Critic can't find gaps in an incomplete spec; architectural misalignments reach the plan stage |
 | Developer | The plan, plus this file's `## Decisions and why` only | Spec gaps become plan gaps; a missing entry leaves a build-time question answered from the outcome alone |
 | Reviewer | `## Decisions and why` (with the plan's) | Reviews a build choice without the owner's reason behind it |
-| Team Lead | `## Decisions and why`, when settling an owner-away run's open points | An open point the owner already ruled on is presumed or left waiting |
+| Team Lead | `## Decisions and why`, when settling an owner-away run's open points | An open point the owner already ruled on is presumed |
 
 ## What this skill does NOT do
 

@@ -2,6 +2,10 @@
 
 All notable changes to the `nexus-vue` plugin.
 
+## [0.1.1] — 2026-11-04
+- F368: run records and test runs say what really happened
+  - hook behavior/enforcement change
+
 ## [0.1.0] — 2026-11-02
 - F352-VuePlugin: first release. The Vue front-end skills move here from `nexus-dotnet` 2.1.x, so a Vue team on any
   back end can install them without the .NET plugin, and a .NET team without Vue no longer gets them:

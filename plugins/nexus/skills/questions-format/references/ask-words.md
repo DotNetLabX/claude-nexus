@@ -7,7 +7,7 @@ The owner ask says the plain thing. Two lists say what that rules out, and the a
 translate. None of them appears in an ask's header, its question text, an option label or an option
 description; the writer says the plain thing instead ("a second reader" for a checker seat, "the rule
 for a matching model family" for the pairing rule). The one exception is the catalogue name on a
-routine ask's first line: the names in `standard-questions.md` are the owner's handles for the
+routine line: the names in `standard-questions.md` are the owner's handles for the
 plugin's fixed questions, and are meant to be recognised rather than read. A word coined during the
 run is on neither list and is banned all the same
 (→ research-before-asking.md § The owner-question contract, "Asked from the owner's side").

@@ -13,8 +13,8 @@
  * WHY A HELPER RATHER THAN A LICENCE TO RUN GIT. Every guard below is something a prose rule can
  * only ask for. Handing a subagent `git commit` grants it `git push`, `git reset` and `--amend` in
  * the same breath; handing it this script grants it one commit, on a branch this script checked,
- * over paths it was explicitly given. The prohibition stays absolute for raw git (the boundary
- * detector still flags every `git <verb>` a subagent runs through Bash) — this is a narrow, named,
+ * over paths it was explicitly given. The prohibition stays absolute for raw git (the prohibition
+ * gate refuses a subagent's git write through either shell) — this is a narrow, named,
  * inspectable hole in it, not a general relaxation.
  *
  * NOT DETECTOR-AWARE BY DESIGN. boundary-detector.js flags a subagent shell command in which `git`
@@ -53,6 +53,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { staleRegistries, advisoryMessage } = require('./lib/registry-stamp');
+const { resolveDefaultBranch } = require('./lib/default-branch');
 
 // One-line JSON on stdout, both ways. The caller is a model reading a tool result, so the refusal
 // has to say which of the guards fired — a bare exit code would leave it guessing among six.
@@ -151,14 +152,7 @@ function main() {
 
   const branch = git(root, ['rev-parse', '--abbrev-ref', 'HEAD']).stdout.trim();
 
-  // Same three rungs, same order, as the Branch Pre-Flight rule the team lead runs at launch
-  // (agents-workflow.md § Branch Pre-Flight): the repo's real default, then the config override,
-  // then the literal fallback. Duplicated here rather than pointed at because this script runs with
-  // no agent context at all — but the ORDER is the rule's, and it must stay the rule's.
-  const symref = git(root, ['symbolic-ref', '--quiet', 'refs/remotes/origin/HEAD']);
-  const defaultBranch = (symref.status === 0 && symref.stdout.trim())
-    ? symref.stdout.trim().replace(/^refs\/remotes\/origin\//, '')
-    : (typeof cfg.defaultBranch === 'string' && cfg.defaultBranch ? cfg.defaultBranch : 'main');
+  const defaultBranch = resolveDefaultBranch(root).name;
 
   if (branch === defaultBranch) {
     return refuse(

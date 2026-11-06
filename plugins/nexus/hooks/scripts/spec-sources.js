@@ -6,8 +6,8 @@
  *
  * Prints one JSON object, `{ ok, missing, pending }` — `ok` true or false, the other two lists of rule
  * ids — and exits 0 when clean, 1 when a rule is `missing` (no source marker, or a kind outside the six)
- * or `pending` (an `added` rule the owner has not kept), 2 when the spec cannot be read or no `--spec`
- * is given.
+ * or `pending` (an `added` rule not kept, by the owner or, with the owner away, by its author), 2 when
+ * the spec cannot be read or no `--spec` is given.
  *
  * The marker grammar's home is the spec template, skills/create-feature-spec/workflows/Template.md
  * § Business Rules. Two callers run the same check: pipeline-gate.js invariant (10) refuses a

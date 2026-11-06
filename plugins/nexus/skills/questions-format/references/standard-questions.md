@@ -1,14 +1,13 @@
 # The routine questions — the catalogue
 
 The plugin's fixed owner questions, one entry each. A question this file holds is asked as a
-**routine ask**, in the short form's standard-question variant: one line naming the entry and this
-run's own facts, at most one more fact line where one sentence cannot hold them, then the question
-sentence, then the entry's options.
+**routine ask**, in the standard-question variant: the question sentence, then one line naming the
+entry and this run's own facts, with at most one more sentence where one cannot hold them, then the
+entry's options.
 
 ```
-{catalogue name}, routine: {this run's own facts, one sentence}
-{the rest of this run's facts, one sentence — only where the routine line cannot hold them}
 {the question sentence}
+{catalogue name}, routine: {this run's own facts, one sentence} {the rest of this run's facts, one sentence — only where the routine line cannot hold them}
 ```
 
 The word `routine` tells the owner this question is asked by rule in every run of its kind, and it
@@ -19,17 +18,17 @@ entry owns the wording, the option set, the recommendation rule, the away line a
 and a routine line is valid only with a name this list holds.
 
 When the owner answers `explain` or `?` alone, or asks in a sentence what the question is or means,
-the entry's **long form** is re-asked in its place, in the relaxed form: a why line saying why the
-plugin asks, up to two more fact lines, then the same question sentence and the same options word for
-word, with the same recommended option. A long form names no entry and carries no routine line, and
-it says something the short form did not. That re-ask counts as no new round, cycle or escalation.
+the entry's **long form** is re-asked in its place, in the relaxed form: the same question sentence,
+a paragraph of a why sentence saying why the plugin asks and up to two more sentences, then the same
+options word for word, with the same recommended option. A long form names no entry and carries no
+routine line, and it says something the routine ask did not. That re-ask counts as no new round, cycle or escalation.
 How all of this is composed is stated once in `research-before-asking.md` § Routine questions; this
 file holds the entries that section points at, and a reader new to the plugin reads it once.
 
-Each entry's **This run** block is the routine ask's context as it is asked, with `{placeholders}` for
-the run's facts: the routine line and, where one sentence holding those facts at their usual length
-would run past about 100 characters, one fact line. A run whose facts fit the routine line asks it
-alone. The long form may carry the same facts. Each option's consequence is one sentence, and the
+Each entry's **This run** block is the routine ask's paragraph as it is asked, on one line, with
+`{placeholders}` for the run's facts: the routine line and, where one sentence would crowd those
+facts, one more sentence. A run whose facts fit the routine line asks it alone. Each entry's **Long
+form** block is the question sentence, then its paragraph. The long form may carry the same facts. Each option's consequence is one sentence, and the
 long form carries it word for word.
 
 Each entry's **With the owner away** line says what an owner-away run does in place of asking — one
@@ -70,20 +69,18 @@ models eligible to check is closed.
 | a name you give instead | you name it; folder and branch follow | always |
 
 **Recommended:** the proposed name, unless the user has already named one in the conversation.
-**With the owner away:** a PO's or team lead's proposed name is taken, since they assign slugs; a standalone architect or solo that needs a new slug waits on it, since it may only ask for one.
+**With the owner away:** the proposed name is taken and goes on the run's list.
 **Long form:**
 
 ```
-A rename later moves both the spec folder and the working branch, so the name is cheapest to settle now.
-The proposed name is {the proposed name}, built from {the words it came from}.
 Is {the proposed name} the right name for this feature?
+A rename later moves both the spec folder and the working branch, so the name is cheapest to settle now. The proposed name is {the proposed name}, built from {the words it came from}.
 ```
 
 **This run:**
 
 ```
-Slug confirmation, routine: the proposed name is {the proposed name}.
-It is built from {the words it came from}.
+Slug confirmation, routine: the proposed name is {the proposed name}. It is built from {the words it came from}.
 ```
 
 ### review mode
@@ -103,16 +100,14 @@ It is built from {the words it came from}.
 **Long form:**
 
 ```
-A gap found before the work starts costs a paragraph, and the same gap found mid-build costs a rewrite.
-This {artifact} comes from {its author}, and it is {its size or intent class}.
 How should this {artifact} be reviewed?
+A gap found before the work starts costs a paragraph, and the same gap found mid-build costs a rewrite. This {artifact} comes from {its author}, and it is {its size or intent class}.
 ```
 
 **This run:**
 
 ```
-Review mode, routine: this {artifact} comes from {its author}.
-It is {its size or intent class}.
+Review mode, routine: this {artifact} comes from {its author}. It is {its size or intent class}.
 ```
 
 ### options panel
@@ -131,17 +126,14 @@ It is {its size or intent class}.
 **Long form:**
 
 ```
-Two positions drafted apart and then merged surface the disagreements one position never notices.
-Here the design was flagged for {what it flagged}.
-Reversing this design would cost {what reversing it costs}.
 Run an options panel on this design?
+Two positions drafted apart and then merged surface the disagreements one position never notices. Here the design was flagged for {what it flagged}. Reversing this design would cost {what reversing it costs}.
 ```
 
 **This run:**
 
 ```
-Options panel, routine: the design was flagged for {what it flagged}.
-Reversing this design would cost {what reversing it costs}.
+Options panel, routine: the design was flagged for {what it flagged}. Reversing this design would cost {what reversing it costs}.
 ```
 
 ### plan overwrite or resume
@@ -160,16 +152,14 @@ Reversing this design would cost {what reversing it costs}.
 **Long form:**
 
 ```
-An existing plan carries decisions taken and questions answered, and a fresh plan pays for them again.
-The plan for this feature was written on {when it was written} and got as far as {how far}.
 Resume the existing plan, or overwrite it?
+An existing plan carries decisions taken and questions answered, and a fresh plan pays for them again. The plan for this feature was written on {when it was written} and got as far as {how far}.
 ```
 
 **This run:**
 
 ```
-Plan overwrite or resume, routine: a plan for this feature was written on {when it was written}.
-It got as far as {how far}.
+Plan overwrite or resume, routine: a plan for this feature was written on {when it was written}. It got as far as {how far}.
 ```
 
 ### reviewer pairing check
@@ -182,9 +172,8 @@ It got as far as {how far}.
 **Long form:**
 
 ```
-A model that checks its own family's work tends to agree with it, so a blind spot in the code survives.
-This time {the author model} wrote the code, and the reviewer is set to {the reviewer model} too.
 Which model reviews this step?
+A model that checks its own family's work tends to agree with it, so a blind spot in the code survives. This time {the author model} wrote the code, and the reviewer is set to {the reviewer model} too.
 ```
 
 **This run:**
@@ -203,17 +192,14 @@ Reviewer pairing check, routine: {the author model} wrote the code, and the revi
 **Long form:**
 
 ```
-A checker from the family that wrote a document agrees with it too easily, so its gaps go unreported.
-This time {the author model} wrote the {artifact}, and {the checker model} is set to check it.
-This review allows {what it allows}.
 Which model reviews the {artifact}?
+A checker from the family that wrote a document agrees with it too easily, so its gaps go unreported. This time {the author model} wrote the {artifact}, and {the checker model} is set to check it. This review allows {what it allows}.
 ```
 
 **This run:**
 
 ```
-Critic pairing check, routine: {the author model} wrote the {artifact}, and {the checker model} is set to check it.
-This review allows {what it allows}.
+Critic pairing check, routine: {the author model} wrote the {artifact}, and {the checker model} is set to check it. This review allows {what it allows}.
 ```
 
 ### reader pair
@@ -236,9 +222,8 @@ This review allows {what it allows}.
 **Long form:**
 
 ```
-Two readers from two model families miss less than one, and the lead is never the author's family.
-This time {the author model} wrote the {artifact}, and {the checker model} is set to check it.
 Who should read this feature's work at its first review?
+Two readers from two model families miss less than one, and the lead is never the author's family. This time {the author model} wrote the {artifact}, and {the checker model} is set to check it.
 ```
 
 **This run:**
@@ -273,17 +258,14 @@ Reader pair, routine: {the author model} wrote the {artifact}, and {the checker 
 **Long form:**
 
 ```
-A folder shared with another session's unsaved changes cannot take a commit without sweeping them up.
-You are on {the branch}.
-The folder holds {its changed files and whose they are}.
 Where should this feature's work happen?
+A folder shared with another session's unsaved changes cannot take a commit without sweeping them up. You are on {the branch}. The folder holds {its changed files and whose they are}.
 ```
 
 **This run:**
 
 ```
-Branch or worktree election, routine: you are on {the branch}.
-The folder holds {its changed files and whose they are}.
+Branch or worktree election, routine: you are on {the branch}. The folder holds {its changed files and whose they are}.
 ```
 
 ### verify-roles declaration
@@ -303,17 +285,14 @@ The folder holds {its changed files and whose they are}.
 **Long form:**
 
 ```
-Each run needs to know how to test this repo, and the answer is stored here so it is asked only once.
-This repo has not declared {which commands}.
-Without them, each run {what it does instead}.
 Declare this repo's verify commands now?
+Each run needs to know how to test this repo, and the answer is stored here so it is asked only once. This repo has not declared {which commands}. Without them, each run {what it does instead}.
 ```
 
 **This run:**
 
 ```
-Verify-roles declaration, routine: this repo has not declared {which commands}.
-Without them, each run {what it does instead}.
+Verify-roles declaration, routine: this repo has not declared {which commands}. Without them, each run {what it does instead}.
 ```
 
 ### checkpoint decision
@@ -331,21 +310,18 @@ The report's own `Stop` line is a template element, never one of this entry's op
 neither listed here nor counted toward the four a question may carry.
 
 **Recommended:** the default action, unless the checkpoint's own findings argue against it.
-**With the owner away:** the recommended option, unless the action is one-way or the point is reserved for the owner — the first two rows of the open-point table (→ agents-workflow.md § Owner-away runs).
+**With the owner away:** the recommended option, unless the point waits — the first three rows of the open-point table (→ agents-workflow.md § Owner-away runs).
 **Long form:**
 
 ```
-Moving on builds the next phase on what this one found, and stopping gives up the time spent so far.
-The {phase that just finished} is done.
-Its findings were {what they were}.
 What happens next?
+Moving on builds the next phase on what this one found, and stopping gives up the time spent so far. The {phase that just finished} is done. Its findings were {what they were}.
 ```
 
 **This run:**
 
 ```
-Checkpoint decision, routine: the {phase that just finished} is done.
-Its findings were {what they were}.
+Checkpoint decision, routine: the {phase that just finished} is done. Its findings were {what they were}.
 ```
 
 ### research companion
@@ -364,17 +340,14 @@ Its findings were {what they were}.
 **Long form:**
 
 ```
-An answer given now stands on a guess, and if a later measurement contradicts it, the work is redone.
-The question beside this one rests on {the unknown}.
-Measuring {the target} would cost about {the rough cost}.
 Measure {the target} before answering the question beside this one?
+An answer given now stands on a guess, and if a later measurement contradicts it, the work is redone. The question beside this one rests on {the unknown}. Measuring {the target} would cost about {the rough cost}.
 ```
 
 **This run:**
 
 ```
-Research companion, routine: the other question rests on {the unknown}.
-Measuring {the target} would cost about {the rough cost}.
+Research companion, routine: the other question rests on {the unknown}. Measuring {the target} would cost about {the rough cost}.
 ```
 
 ### merge at close
@@ -393,17 +366,14 @@ Measuring {the target} would cost about {the rough cost}.
 **Long form:**
 
 ```
-Until the branch lands, this work exists only here, so anything built on it starts unmerged.
-This feature's work is committed on {the branch}.
-It is not yet on {the default branch}, and a separate working copy is {in play or not}.
 Squash-merge {the branch} into {the default branch} now?
+Until the branch lands, this work exists only here, so anything built on it starts unmerged. This feature's work is committed on {the branch}. It is not yet on {the default branch}, and a separate working copy is {in play or not}.
 ```
 
 **This run:**
 
 ```
-Merge at close, routine: this feature's work is committed on {the branch}.
-It is not yet on {the default branch}, and a separate working copy is {in play or not}.
+Merge at close, routine: this feature's work is committed on {the branch}. It is not yet on {the default branch}, and a separate working copy is {in play or not}.
 ```
 
 ### push
@@ -422,9 +392,8 @@ It is not yet on {the default branch}, and a separate working copy is {in play o
 **Long form:**
 
 ```
-A push is hard to take back, because once the commits are out, anyone with access has them.
-There are {how many} local commits on {the branch}, and {the remote} has not seen them.
 Push {the branch} to {the remote}?
+A push is hard to take back, because once the commits are out, anyone with access has them. There are {how many} local commits on {the branch}, and {the remote} has not seen them.
 ```
 
 **This run:**
@@ -450,17 +419,14 @@ Push, routine: {how many} commits are local on {the branch}, and {the remote} ha
 **Long form:**
 
 ```
-Each line added to a shared file is read by every later run, so its cost is paid again and again.
-There are {the count} lessons ready for {which files}.
-They would add {the measured growth}.
 Apply these promotions?
+Each line added to a shared file is read by every later run, so its cost is paid again and again. There are {the count} lessons ready for {which files}. They would add {the measured growth}.
 ```
 
 **This run:**
 
 ```
-Learner approval gate, routine: {the count} lessons are ready for {which files}.
-They would add {the measured growth}.
+Learner approval gate, routine: {the count} lessons are ready for {which files}. They would add {the measured growth}.
 ```
 
 ### plan only
@@ -480,9 +446,8 @@ They would add {the measured growth}.
 **Long form:**
 
 ```
-A plan alone starts sooner, and a written spec settles what to build before anything is planned.
-The request is {its intent class}, has no spec, and would change {what it changes}.
 How should this change be defined?
+A plan alone starts sooner, and a written spec settles what to build before anything is planned. The request is {its intent class}, has no spec, and would change {what it changes}.
 ```
 
 **This run:**
@@ -508,17 +473,14 @@ Plan only, routine: the request is {its intent class}, has no spec, and would ch
 **Long form:**
 
 ```
-A short plan is written and reviewed sooner, and a full plan holds every section any way of building it needs.
-The change is {its intent class}, and I expect a full plan.
-It would have {its step count and the mix of step kinds}.
 How detailed should the plan be?
+A short plan is written and reviewed sooner, and a full plan holds every section any way of building it needs. The change is {its intent class}, and I expect a full plan. It would have {its step count and the mix of step kinds}.
 ```
 
 **This run:**
 
 ```
-Plan type, routine: the change is {its intent class}, and I expect a full plan.
-It would have {its step count and the mix of step kinds}.
+Plan type, routine: the change is {its intent class}, and I expect a full plan. It would have {its step count and the mix of step kinds}.
 ```
 
 ### build lane
@@ -540,17 +502,14 @@ It would have {its step count and the mix of step kinds}.
 **Long form:**
 
 ```
-A session building its own plan also reviews it, and separate roles read it fresh but add rounds.
-The plan is {its intent class} with {its step count and the mix of step kinds}.
-The available lanes are {which ones}.
 Who builds this plan?
+A session building its own plan also reviews it, and separate roles read it fresh but add rounds. The plan is {its intent class} with {its step count and the mix of step kinds}. The available lanes are {which ones}.
 ```
 
 **This run:**
 
 ```
-Build lane, routine: the plan is {its intent class} with {its step count and the mix of step kinds}.
-The available lanes are {which ones}.
+Build lane, routine: the plan is {its intent class} with {its step count and the mix of step kinds}. The available lanes are {which ones}.
 ```
 
 ### cut candidates
@@ -568,21 +527,18 @@ The available lanes are {which ones}.
 A part's label runs to at most 40 characters and what deferring it loses to at most 35, so every line fits; the proposed backlog row is written as its id inside backticks, never bare.
 
 **Recommended:** `Defer it` only when two readers from two model families both say `safe to defer` at medium or better — and where the first round had more readers, every one of them; otherwise `Keep it`, which any `keep`, any low, a disagreement, a part changed after its verdicts or fewer than two verdicts gives.
-**With the owner away:** not asked; the away answerer takes the recommended option for each offered part — a deferred part writes no backlog row, since an id is the owner's to confirm, and goes on the run's list with its verdicts.
+**With the owner away:** not asked; the away answerer takes the recommended option for each offered part — a deferred part writes no backlog row and goes on the run's list with its verdicts.
 **Long form:**
 
 ```
-A part built only for a rare case, a seldom-run flow or a second copy can often wait without anyone missing it.
-Deferring {the part} loses {what deferring it loses}.
-{each reader's verdict and confidence}.
 Keep {the part} in this plan, or defer it?
+A part built only for a rare case, a seldom-run flow or a second copy can often wait without anyone missing it. Deferring {the part} loses {what deferring it loses}. {each reader's verdict and confidence}.
 ```
 
 **This run:**
 
 ```
-Cut candidates, routine: deferring {the part} loses {what deferring it loses}.
-{each reader's verdict and confidence}.
+Cut candidates, routine: deferring {the part} loses {what deferring it loses}. {each reader's verdict and confidence}.
 ```
 
 ### spec additions
@@ -599,14 +555,13 @@ Cut candidates, routine: deferring {the part} loses {what deferring it loses}.
 An added rule is restated in plain words — no marker, no bracket, no emphasis — its label at most 40 characters and what keeping it adds at most 35, each recommended rule's description closing with its own confidence clause. A ticked rule is kept, and marked kept by the owner with the date; an unticked one is dropped to the spec's Out of Scope. `None of these` ticked beside rules counts the rules. Where the asker recommends dropping every rule of a question, `None of these` is listed first and recommended.
 
 **Recommended:** the rules the asker would keep, listed first together — a rare case, since none has a source; otherwise `None of these`.
-**With the owner away:** not asked; every added rule is dropped to the spec's Out of Scope and listed on the run's list, since nothing that adds behaviour is built on a presumed answer.
+**With the owner away:** not asked; its author settles each rule by its own recommendation: one it would keep is marked `added — kept, owner away {YYYY-MM-DD}`, the others drop to the spec's Out of Scope, and each goes on the run's list.
 **Under a gear:** asked as written under any gear, since it asks what is built, not how.
 **Long form:**
 
 ```
-Behaviour nobody asked for is cheaper to drop now than to build and take out later.
-No source asked for these rules: {the additions}.
 Which of these rules should be built?
+Behaviour nobody asked for is cheaper to drop now than to build and take out later. No source asked for these rules: {the additions}.
 ```
 
 **This run:**
@@ -631,14 +586,13 @@ A row is restated in plain words, with the same caps and clauses as `spec additi
 Each question's header is `Deviations {n}`, numbered within its box; `{the pattern}` is the pattern the owner named to mirror, or what was asked where no pattern was named.
 
 **Recommended:** the rows the asker would keep, listed first together — always a departure a source requires, since the ticket wins over the pattern; otherwise a rare case — and `None of these` where it would keep none.
-**With the owner away:** not asked; a departure a source requires is kept, since the ticket wins over the pattern, and every other tagged row is dropped — an addition removed, a departure rebuilt to follow the pattern, one the pattern cannot carry left waiting — each listed on the run's list.
+**With the owner away:** not asked; each row stands as the plan wrote it, since writing it is the asker's recommendation, with no replan and no extra read, and each goes on the run's list.
 **Under a gear:** asked as written under any gear, since it asks what is built, not how.
 **Long form:**
 
 ```
-A plan that deviates from what was asked, or from the pattern you named, is shown to you before it is built.
-The plan for {the feature} deviates here: {the departures}.
 Which of these deviations from {the pattern} should be built as planned?
+A plan that deviates from what was asked, or from the pattern you named, is shown to you before it is built. The plan for {the feature} deviates here: {the departures}.
 ```
 
 **This run:**
@@ -659,22 +613,19 @@ Plan departures, routine: the plan for {the feature} deviates in {how many} plac
 | build now | the build starts on the fixes as written, and a gap they left shows only when the code is reviewed | always |
 
 **Recommended:** `a second round on the fixes` where any fix changes what the built code must do — a rule it applies, an input it accepts or refuses, a contract other code relies on; `build now` where every fix changes only wording, a name or where something is written. The recommended option is listed first.
-**With the owner away:** not asked; the second round runs, and the build waits on it only for the work touched by a fix it does not mark closed (→ agents-workflow.md § Gears).
+**With the owner away:** not asked; the second round runs beside the build, and a fix it does not mark closed goes on the run's list (→ agents-workflow.md § Gears).
 **Under a gear:** not asked where the gear's plan review already ran its round 2, which re-read the fixes; where it ran round 1 only, asked as above; under `off`, or where the gear says ask me, it is asked as above.
 **Long form:**
 
 ```
-Nobody reads a plan's fixes before the build, and a gap they leave costs less to fix in the plan than in code.
-The first review round found {how many} serious problems: {each fix, in a few words}.
-Of these fixes, {how many} change what the code must do, not only how the plan says it.
 Re-check the plan's fixes while it builds, or build on them as they are?
+Nobody reads a plan's fixes before the build, and a gap they leave costs less to fix in the plan than in code. The first review round found {how many} serious problems: {each fix, in a few words}. Of these fixes, {how many} change what the code must do, not only how the plan says it.
 ```
 
 **This run:**
 
 ```
-Plan fixes, routine: the plan's one review round found {how many} serious problems, all fixed in the plan.
-The fixes are {each fix, in a few words}, and {how many} of them change what the code must do.
+Plan fixes, routine: the plan's one review round found {how many} serious problems, all fixed in the plan. The fixes are {each fix, in a few words}, and {how many} of them change what the code must do.
 ```
 
 `{each fix, in a few words}` names every fix, about four words each and at most about 55 characters in all; a longer list shortens each fix, never drops one.

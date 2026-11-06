@@ -135,29 +135,30 @@ The done check writes `docs/specs/{slug}/delivery/done-check.md`; the code revie
 *Status: COMPLETE — architect, {date}*
 ```
 
-**Fix list (coordinator writes, in `review.md`):** the coordinator opens one section per round when the round opens (→ agents-workflow.md § Fix rounds), after the primary's Step-2 section. Every item is a numbered list row — never a `### [SEVERITY]` heading, which the verdict-integrity gate reads as an open finding — naming its source or sources (`done check`, `reviewer`, `second reader`, `Codex`); an item several readers reported is listed once. Failed steps first, then process slips, then review findings. The `Bar:` line under the heading names the round's bar (→ agents-workflow.md § Fix rounds): only the items that reach it are numbered above the follow-up line. Where readers disagree on a finding's level, its row carries the settlement in the level brackets with a one-line reason — `[MEDIUM — contested LOW/MEDIUM: {reason}]`. The in-bar rows close with the **follow-up line**, the one place both pipelines decide whether a follow-up review is owed:
+**Fix list (coordinator writes, in `review.md`):** the coordinator opens one section per round when the round opens (→ agents-workflow.md § Fix rounds), after the primary's Step-2 section. Every item is a numbered list row — never a `### [SEVERITY]` heading, which the verdict-integrity gate reads as an open finding — naming its source or sources (`done check`, `rule check`, `reviewer`, `second reader`, `Codex`); an item several readers reported is listed once. Failed steps first, then process slips, then the rule check's `code wrong` rulings (`team-lead.md` § Close Gate, item 1), then review findings. A `code wrong` row is always in and carries no level; it makes no follow-up review due by itself, since the rule check's delta before the summary re-verifies the rows whose cited files the round changed. The `Bar:` line under the heading names the round's bar and its always-fix line, both read off the round table (→ agents-workflow.md § Fix rounds): only the items that reach the bar are numbered above the follow-up line, and a finding between the two lines is the developer's to weigh. Where readers disagree on a finding's level, its row carries the settlement in the level brackets with a one-line reason — `[MEDIUM — contested LOW/MEDIUM: {reason}]`. The in-bar rows close with the **follow-up line**, the one place both pipelines decide whether a follow-up review is owed:
 
 ```
 ## Step 2 — Fix list, cycle {N}
-Bar: {all | MEDIUM | HIGH}
+Bar: {the round's bar} · always fixed: {the round's always-fix line}
 
 1. step {n} — missing (done check)
 2. skill slip — step {n}: {skill} (done check)
 3. test slip — {the raw command as logged} (done check)
-4. [HIGH] {finding title} — `path/to/file:line` (reviewer, second reader)
-5. [MEDIUM — contested LOW/MEDIUM: {reason}] {finding title} — `path/to/file:line` (Codex, reviewer)
+4. code wrong — `{area}/{unit}` {row id}: {the rule, in a few words} (rule check)
+5. [HIGH] {finding title} — `path/to/file:line` (reviewer, second reader)
+6. [MEDIUM — contested LOW/MEDIUM: {reason}] {finding title} — `path/to/file:line` (Codex, reviewer)
 ...
 
 Follow-up review: due — covers steps {list | none}    (or: Follow-up review: none due; under a gear of one round: Follow-up review: none due — {gear} gear)
 
 **Under the bar — recorded, not fixed:**
-6. [LOW] {finding title} — `path/to/file:line` (second reader)
+7. [LOW] {finding title} — `path/to/file:line` (second reader)
 ...
 ```
 
 Items below the bar follow the follow-up line, under the bold line `**Under the bar — recorded, not fixed:**` — a bold line, never a heading, so it stays out of the section map — as numbered rows `{n}. [LEVEL] title — file:line (source)` that continue the list's numbering. The developer reads the block and never fixes it; open questions keep their own place and never go in it. Omit the block when nothing sits under the bar.
 
-**The list is written in instalments.** Rows a check that lands after the round opened adds go under the bold line `**Added when {check} came in:**` — a bold line, never a heading, so it stays out of the section map and every reader that counts the file's headings — continuing the list's numbering; a raised level is edited in its own row, in the contested form; an item the working-tree check found already fixed goes to the under-bar block as `fixed in round` — a CRITICAL or HIGH excepted, which stays a row marked `fixed in round` and keeps the follow-up due — and is listed in the summary's Notes as fixed, never in the carry-over row. The follow-up line and the under-bar block are written last, when the round ends; until then the list has neither, and the developer works every row.
+**The list is written in instalments.** Rows a check that lands after the round opened adds go under the bold line `**Added when {check} came in:**` — a bold line, never a heading, so it stays out of the section map and every reader that counts the file's headings — continuing the list's numbering; a raised level is edited in its own row, in the contested form; an item the working-tree check found already fixed goes to the under-bar block as `fixed in round` — a CRITICAL or HIGH excepted, which stays a row marked `fixed in round` and keeps the follow-up due — and is listed in the summary's Notes as fixed, never in the carry-over row. The follow-up line and the under-bar block are written last, when the round ends; until then the list has neither, and the developer works every row, weighing those between the `Bar:` line's two lines.
 
 The follow-up is **due** when the list holds a failed step or a skill slip (a step built or redone in the round), or the review asked for changes; the line then names the built or redone steps, or `none`. A row whose contested range reaches HIGH counts as HIGH, and `pipeline-gate.js` refuses `due` where none of these conditions holds. It reads `Follow-up review: none due` when the round's done-check items are test slips only and the review approved. Under a gear whose cap is one round it reads `Follow-up review: none due — {gear} gear`, whatever the list holds (→ agents-workflow.md § Fix rounds). "The review asked for changes" means a `REQUEST CHANGES` — a CRITICAL or HIGH open: a round whose items are all leveled findings below that, with no step built or redone, reads `none due` whichever check raised them, a COMMENT or a Codex NO-GO over MEDIUMs included. Any merge that leaves nothing in the round's bar is a `## Step 2 — Merge, no fix round` section instead, carrying the merged verdicts; it may carry the under-bar block.
 
@@ -252,7 +253,7 @@ completion message, so a stranded message costs nothing (ADR-17).
 
 | Agent | What they read | Action taken |
 |-------|---------------|-------------|
-| Developer | The `## Step 2 — Fix list, cycle {N}` section (failed steps, slips, findings) | Fixes each numbered row above the follow-up line, every row while there is none yet, notes in implementation.md |
+| Developer | The `## Step 2 — Fix list, cycle {N}` section (failed steps, slips, findings) | Fixes each numbered row it does not leave out, above the follow-up line, every row while there is none yet, notes in implementation.md |
 | Architect (done check) | Writes `done-check.md` | Adds a `### Check {k}` block: dispositions, slips, PASS/FAIL |
 | Dispatcher of a Codex done check (team lead, or the fast-lane architect) | The Codex job's collected output | Persists it as a `### Check {k}` block in the Codex form (→ codex-dispatch.md § Done check) |
 | Architect (escalation) | Step 2 findings and the fix lists | Decides plan wrong vs code wrong |

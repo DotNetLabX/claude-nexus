@@ -154,9 +154,9 @@ The schedule, the floor, the `Read:` verdict and the second reader are owned els
 
 Your side of it:
 
-- **Read your brief.** It names `Round: {n}` and, from round 2, `Floor: {MEDIUM|CRITICAL}`, `Read: {delta|full}` plus the prior record. Depth and baseline surfaces come with it; the ledger's `Round: · Depth: · Bar: · Ruler: · Read:` line repeats them back. `Read:` is the spawner's verdict and not yours — a `delta` brief is never widened because the artifact looks interesting.
+- **Read your brief.** It names `Round: {n}` and, from round 2, `Floor: {MEDIUM|CRITICAL}`, `Read: {delta|full}`, `Always fixed: {round n-1's always-fix line}` plus the prior record. Depth and baseline surfaces come with it; the ledger's `Round: · Depth: · Bar: · Ruler: · Read:` line repeats them back. `Read:` is the spawner's verdict and not yours — a `delta` brief is never widened because the artifact looks interesting.
 - **On `Read: delta`, read the fold, not the artifact** (→ agents-workflow.md § Critic rounds). You open exactly two things: the previous round's findings with the fold's disposition of each, and the sections the fold's `where` column names as touched. You answer three questions — is each prior finding actually closed, does the new text contradict the artifact elsewhere, does it break a guarantee made earlier — and you do not re-read the artifact in full, the spec, the source, or the baseline surfaces (they stay in your brief unread, for an escalation or a later full round). **State the price in your ledger rather than letting it pass silently:** a delta round is not looking for misses on untouched text, so the nought to two per feature that live there go uncaught, mostly MEDIUM and LOW. On `Read: full` the wider contract applies — same surfaces, same anchors, and a surface the previous ledger lacks opened only where a fold introduced it.
-- **Verify every prior finding's fold** — closed, partial or not closed, each with the line that shows it. Read the fold table's own verdict as it is written: `fixed-real` claims a real change, `waived` a deliberate non-change, `churn` a finding that did not hold, `plan-must-resolve` an item handed onward, `open` one nothing dispositioned. Where the fold's `where` cell names a contract clause or section, carry a `collateral` column for it: the fold's own new text is the one surface nothing reviewed before you.
+- **Verify every prior finding's fold** — closed, partial or not closed, each with the line that shows it. Read the fold table's own verdict as it is written: `fixed-real` claims a real change, `waived` a deliberate non-change (or a finding below the bar), `churn` a finding that did not hold, `plan-must-resolve` an item handed onward, `open` one nothing dispositioned. A finding folded `waived` or `churn` with its reason is the author's call and is closed — never re-raised as not closed — except one at or above your brief's `Always fixed:` line folded `waived`, or folded `churn` without the evidence that it does not hold, which is not closed. Where the fold's `where` cell names a contract clause or section, carry a `collateral` column for it: the fold's own new text is the one surface nothing reviewed before you.
 - **A new finding the earlier round should have caught is allowed** and is tagged `round-1 miss: {surface}` (or the round it belongs to). On a `delta` round that means the fold-touched sections you just read; on a `full` round it still means any untouched text. It is a finding about the earlier round, not an accusation — record it plainly.
 - **Report every finding at its honest level.** Levels are never demoted because a round is later; a finding under the floor is reported and marked `below floor — recorded`, so the record stays true while the round acts only at or above its floor.
 
@@ -201,6 +201,7 @@ Round: {n} · Depth: {product|mechanism|execution} · Bar: {product completeness
 **Shape:** {short tag}
 **Consequence:** {at most 160 characters, stack-neutral, consequence-worded}
 **Evidence:** quoted | scenario | path | none
+**Confidence:** high | medium | low — {one-line why}
 **Surfaces:** {file § section}; {file § section}
 **Untouchable:** data-loss | security | silent-wrong-output
 **Tag:** round-1 miss: {surface}
@@ -232,7 +233,7 @@ row. At round 1 the rows carry the most weight, because whoever writes the merge
 ledger with the second reader's into that round's single `Coverage:` line, and the next round's
 `Read:` is computed off it — so a surface you leave unrecorded is one nobody downstream ever opens.
 
-`Anchor`, `Shape`, `Consequence`, `Evidence` and `Surfaces` are mandatory on every finding; `Band`,
+`Anchor`, `Shape`, `Consequence`, `Evidence`, `Confidence` and `Surfaces` are mandatory on every finding — the confidence is how sure you are the finding holds, so the author can weigh it; it stays in your finding, and the merge table carries no column for it — the fold reads it through the row's `source ids`; `Band`,
 `Untouchable`, `Tag` and `Route` appear only when they apply. **`Evidence: none` is not available on a
 CRITICAL or a HIGH** — at those levels a finding without quoted text, a named line or a concrete
 scenario is an opinion, to be downgraded or removed (→ § Evidence Requirements). The

@@ -20,16 +20,15 @@ Written by any agent when blocked or needing clarification. The recipient answer
 **Status:** Open | Answered | Resolved
 **Step:** [Plan step number and name, or "Phase 1 analysis" if pre-plan]
 **File:** [File being worked on, if relevant]
+**Kind:** business | product | technical — [business: what the customers or the company get or pay; product: what the user sees or can do; technical: how it is built; an entry without it reads untagged]
 
-**Context:** [at most three fact lines, one per line, the first saying why the question is asked —
-or, for a routine question, its routine line `{catalogue name}, routine: {this run's facts}` and at
-most one more fact line — or empty, which is the default]
+**Context:** [what the answering agent needs, in the form that serves it best]
 
-**Question:** [the question sentence, in the owner's words, ending in a question mark]
+**Question:** [the question; in a `To: user` entry bound for a live owner, the question sentence, then its
+paragraph]
 
 **Recommendation:** [the options, the recommended one first with `(Recommended)`, one option per line,
-each with its consequence in at most two short sentences — one in a routine question — and
-**without** the confidence clause]
+each with its consequence and **without** the confidence clause]
 **Confidence:** high | medium | low — [one-line why: the basis for the recommendation; this field is
 the clause's sole home on this surface]
 **Research offer:** [optional, and only where the `research` skill (`nexus-pro`) is in your skill list —
@@ -51,10 +50,8 @@ interview can flip must be findable as presumed; a false "user answered" record 
 step to be rebuilt when the real interview reversed it. Where a current entry of the feature's
 `## Decisions and why` sections decides the question, the Answer block reads
 `answered from {document} {id}, not owner-confirmed — {answer}` instead — neither the owner's answer
-nor a presumed one (→ agents-workflow.md § Decision entries). **That record carries the same parts the ask
-would have carried** — the fact lines, or the routine line and at most one fact line, the question
-sentence, the options with the recommended one first, and the confidence clause in its field — so the
-human who audits it later reads the shape a live owner would have read:
+nor a presumed one (→ agents-workflow.md § Decision entries). A question a run answered by itself, as
+its record stands:
 
 ```
 ## Q7: Action rows
@@ -77,19 +74,18 @@ presumed (proceed-default), not user-confirmed — due date or someone waiting
 
 **Rules:**
 - One question per section. Multiple blockers = multiple sections.
-- Include enough context that the recipient can answer without reading the sender's work. That is an **agent-to-agent** rule; a `To: user` question's Context holds at most three fact lines, the first saying why the question is asked, and defaults to none, per the owner-question contract.
+- Include enough context that the recipient can answer without reading the sender's work.
 - If the answer changes the plan, architect updates the plan. Plan stays source of truth.
 - Questions are numbered sequentially across the entire file (Q1, Q2, Q3...) regardless of sender.
 - **To field routing:** Set `To: PO` for spec/product questions (the team lead routes through the PO escalation chain: PO answers from spec → user only if PO can't cite a section). Set `To: architect` for technical/plan questions from the developer. Set `To: user` only for pure preference questions with no spec or technical basis.
 - **Every `To: user` question carries a Recommendation + Confidence.** **high** = clear basis (spec/ADR/existing pattern/evidence), safe to proceed if unanswered; **medium** = reasonable lean with a real trade-off; **low** = weak basis or toss-up — wants the human's call. The label tells the user which defaults to rubber-stamp and which need real thought. Agent-to-agent questions (`To: PO`/`architect`) still carry the Recommendation; the Confidence label matters most on user-facing ones.
-- **A `To: user` question is shaped per the owner-question contract** (`research-before-asking.md` § The owner-question contract). Its Question field is the question sentence, and its Recommendation field states the options as consequences rather than as artifact references, with every internal ID glossed at first mention — the contract owns the obligations in full, plus the per-surface placement rules; this bullet is the pointer, not a copy of them. The Context field holds the fact lines, or a routine question's routine line and at most one fact line, or nothing at all (§ The owner-question contract, the surfaces paragraph).
+- **A `To: user` entry bound for a live owner keeps its `Question` and `Recommendation` ready for the screen**, by the contract's surfaces paragraph (`research-before-asking.md` § The owner-question contract); everything else in the file is written for agents.
 - **Research offer (relayed path)** — where the `research` skill (`nexus-pro`) is in your skill list: the field is written **only by the asking agent** — boostability is the asker's own judgment (spec BR10), never the team lead's. The team lead renders it verbatim as the clickable research option and **never re-judges, re-prices, or researches on the asker's behalf**. A user click travels back as a normal message-handoff to the asking agent ("research requested on Q{n}"); the asking agent runs the round, updates the Recommendation and Confidence fields in the same Q section, rewrites `Research offer` to `consumed (...)`, and the team lead re-surfaces the boosted question.
 
 ## Anti-patterns
 
-- **Asking without context (agent-to-agent).** The recipient should be able to answer without reading your work. If the question omits what you tried, what you found, and why it's ambiguous — the recipient will spend time re-investigating what you already know. The inverse binds a `To: user` question: there the default is no context at all, and a fact line the owner could have done without is cut.
+- **Asking without context (agent-to-agent).** The recipient should be able to answer without reading your work. If the question omits what you tried, what you found, and why it's ambiguous — the recipient will spend time re-investigating what you already know.
 - **Bundling unrelated questions.** Each Q section covers one blocker. If you have three unrelated questions, write Q1, Q2, Q3 as separate sections. Bundling forces the recipient to untangle them and makes it hard to mark individual questions Answered.
-- **Agent-grade compression in an owner-facing question.** Writing a `To: user` question in the register you'd use for a teammate — internal numbering unglossed, options stated as artifact references ("rows-only extract per the amended intake row") — assumes the owner carries your artifact numbering. They don't, and the measured cost is a full round-trip on a blocking decision the owner could otherwise have ruled on immediately. Shape it per the owner-question contract (`research-before-asking.md` § The owner-question contract).
 - **Wrong To: field.** Sending a spec/product question to the architect wastes a round-trip — the architect will route it to PO anyway. Sending a technical plan question to the user wastes their time on something the architect should decide. Use the routing rules above.
 
 ## References

@@ -10,8 +10,10 @@
  * The runners whose timeouts reach it: node, vstest (.NET), flutter and vitest, each entry naming its own.
  *
  * markTouched is what verify-run.js runs before it writes. Each entry is marked by its own `runner`, else the
- * record's. The change is every file that differs from the merge-base with the repo's default branch —
- * `origin/HEAD`, else `.claude/nexus-agents.json` `defaultBranch` — plus untracked files. Files the tree
+ * record's. The change is every file that differs from the merge-base with the tree's default branch, as
+ * lib/default-branch.js resolves it with no `main` fallback — the tree's `.claude/.base-branch`, else
+ * `origin/HEAD` (compared as `origin/{branch}`), else `.claude/nexus-agents.json` `defaultBranch` — plus
+ * untracked files. Files the tree
  * hash leaves out and prose (`.md`, `.txt`) never make a change untied: prose cannot make a test hang, so a
  * change with no code touches nothing, whatever the runner. Otherwise a node timeout is touched when its file
  * is in the change or tied to a changed file, a vstest one when its test project is tied to a changed file
@@ -21,11 +23,10 @@
  * when the base cannot be read, and an entry with no runner, or none of the file or project its runner
  * places it by, always is — the safe direction: nothing the change may have caused is passed on.
  */
-const fs = require('fs');
-const path = require('path');
 const { execFileSync } = require('child_process');
 const { tiedSet } = require('./tied-tests');
 const { isExcluded } = require('./tree-hash');
+const { resolveDefaultBranch } = require('./default-branch');
 
 const GIT_TIMEOUT_MS = 10000;
 const PROSE = /\.(md|txt)$/i;
@@ -50,15 +51,8 @@ function git(repo, args) {
 }
 
 function baseRef(repo) {
-  try {
-    const ref = git(repo, ['symbolic-ref', '-q', 'refs/remotes/origin/HEAD']).trim();
-    if (ref) return ref.replace(/^refs\/remotes\//, '');
-  } catch { /* no origin/HEAD: the configured branch */ }
-  try {
-    const cfg = JSON.parse(fs.readFileSync(path.join(repo, '.claude', 'nexus-agents.json'), 'utf8'));
-    if (cfg && typeof cfg.defaultBranch === 'string' && cfg.defaultBranch) return cfg.defaultBranch;
-  } catch { /* none */ }
-  return null;
+  const resolved = resolveDefaultBranch(repo, { fallback: false });
+  return resolved ? resolved.ref : null;
 }
 
 // The changed paths, tree-relative with forward slashes, or null when the change cannot be read. `git diff`

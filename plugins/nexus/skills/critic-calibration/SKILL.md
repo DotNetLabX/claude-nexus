@@ -64,6 +64,7 @@ extraction reads that table rather than re-parsing prose.
 **Shape:** {short tag}
 **Consequence:** {at most 160 characters, stack-neutral, consequence-worded}
 **Evidence:** quoted | scenario | path | none
+**Confidence:** high | medium | low — {one-line why}
 **Surfaces:** {file § section}; {file § section}
 **Untouchable:** data-loss | security | silent-wrong-output
 **Tag:** round-1 miss: {surface}
@@ -81,10 +82,12 @@ no source asks for, which the author writes into the spec as an `added` rule for
 drop (`owner keep or drop`) — both LOW, and neither a reason for another round.
 
 **Where each field lands in the record.** The fold's merge table carries one row per finding, with a
-column per field above; the band rides **inside the anchor cell**, appended as `; band {a}–{b}`, and
+column per field above but `Confidence`, which stays in the finding and is read through the row's
+`source ids`; the band rides **inside the anchor cell**, appended as `; band {a}–{b}`, and
 its driver stays in the prose block for the human reader. `Consequence`, `Evidence`, `Untouchable`
-and `Tag` are read from their own columns; the fold table supplies the disposition and the level
-after. That is the whole interface: extraction reads those two tables and nothing else.
+and `Tag` are read from their own columns; the fold table supplies the disposition, the level
+after and the reason — a waive whose reason is `below the bar` was never weighed, so it is never a
+positive anchor. That is the whole interface: extraction reads those two tables and nothing else.
 
 **`Anchor` has exactly three forms, and no fourth:**
 

@@ -2,7 +2,8 @@
 // re-check record (`nexus-miner`'s `rule-recheck.mjs due` writes it) and, for every group with no result or a
 // failed one, builds a Stryker.NET config that tests only the group's due mutants with only their killing
 // tests. Groups sharing a mutated project and a test project share one config, so Stryker's start-up is paid
-// once per project pair. Configs and Stryker's output go to a folder outside the repo.
+// once per project pair. Configs and Stryker's output go to a folder outside the repo — with no `--out`, a
+// fresh `recheck-args-*` folder under `{CLAUDE_CODE_TMPDIR or the system temp}/claude/`.
 //
 // Stryker.NET reads a `mutate` span `{a..b}` in zero-based character indices over the file's text and tests
 // only mutants fully inside it; `test-case-filter` is a config key only (4.16 refuses it on the command line).
@@ -181,6 +182,11 @@ export function planRecheck({ repo, slug }) {
   return { configs, stale, stuck };
 }
 
+/** Where a run with no `--out` writes: Claude's own temp folder, the one a campaign unit's fence lets it write. */
+export function defaultOutRoot(env = process.env) {
+  return join(env.CLAUDE_CODE_TMPDIR || tmpdir(), 'claude');
+}
+
 function inside(parent, child) {
   const rel = relative(resolve(parent), resolve(child));
   return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
@@ -200,7 +206,12 @@ export function main(argv) {
   try {
     if (opts.out && inside(repo, opts.out)) throw new Refusal(`--out ${opts.out} must be outside the repo`);
     const plan = planRecheck({ repo, slug: opts.slug });
-    const out = opts.out ? resolve(opts.out) : mkdtempSync(join(tmpdir(), 'recheck-args-'));
+    let out = opts.out ? resolve(opts.out) : null;
+    if (!out) {
+      const root = defaultOutRoot();
+      mkdirSync(root, { recursive: true });
+      out = mkdtempSync(join(root, 'recheck-args-'));
+    }
     if (inside(repo, out)) throw new Refusal(`the scratch folder ${out} must be outside the repo`);
     const tool = opts.recheck || 'rule-recheck.mjs';
     const lines = [];

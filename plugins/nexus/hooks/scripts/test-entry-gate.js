@@ -13,7 +13,9 @@
  * `--tied` without `--step`, `--role`, `--profile complete`, `--timeout-ms`, a bare `--profile fast`), a second
  * runner call in the same command, a separate build (`dotnet build`, `dotnet msbuild`, `npm run build`,
  * `flutter build`) and a file a declared role in .claude/verify.json names (run as a script) are refused. These
- * checks hold whether or not the repo declares `roles.unit`; the raw-command refusal keeps that arming.
+ * checks hold whether or not the repo declares `roles.unit`; the raw-command refusal keeps that arming. One step
+ * run can hold several commands, one per runner of the repo: the pre-check routes `--files` as the runner does
+ * (lib/compose-test-command.js `routeFiles`), and what routing does not place stays the main runner's to answer.
  *   - The identity is the payload's `agent_id`, or `session-{session_id}` for a main-session developer persona,
  *     compared case-sensitively. `--slug` is a safe id, and where the spawned developer's state file names the
  *     feature its dispatch named (`slug`), it is that one.
@@ -114,7 +116,8 @@ const { resolveRole } = require('./lib/resolve-role');
 const { readSessionPersona } = require('./lib/read-session-persona');
 const { resolveDeclaredTree } = require('./lib/worktree-target');
 const { readRoundToken } = require('./lib/round-token');
-const { splitChain, inferRunner, filesCommand } = require('./lib/compose-test-command');
+const { splitChain, filesCommand, routeFiles } = require('./lib/compose-test-command');
+const { RUNNERS, loadRunner, repoRunners, runnerOf } = require('./lib/test-runners');
 const { isSafeId } = require('./lib/safe-id');
 const { exeName, commandsOf } = require('./lib/shell-words');
 const { readHeredocs, HERE_STRING_WORD } = require('./lib/heredocs');
@@ -826,18 +829,18 @@ function withLock(file, fn) {
   return { held: false };
 }
 
-// The runner a step run of this repo runs through, or '' where no installed plugin serves one.
-function stepRunner(cfg, root) {
-  const runner = cfg && cfg.slow && typeof cfg.slow.runner === 'string' && cfg.slow.runner
-    ? cfg.slow.runner : inferRunner(cfg && cfg.roles && typeof cfg.roles.unit === 'string' ? cfg.roles.unit : '');
-  if (!runner || runner === 'mtp') return '';
+// Whether an installed plugin gives this runner a step run.
+function served(runner, root) {
+  if (!runner || runner === 'mtp') return false;
   try {
-    const { RUNNERS, loadRunner } = require('./lib/test-runners');
-    return RUNNERS.has(runner) && loadRunner(runner, { root }).runner ? runner : '';
+    return RUNNERS.has(runner) && Boolean(loadRunner(runner, { root }).runner);
   } catch {
-    return '';
+    return false;
   }
 }
+
+// The first of the repo's runners a step run can go through, or '' where no installed plugin serves one.
+const stepRunner = (cfg, root) => repoRunners(cfg).find((runner) => served(runner, root)) || '';
 
 function main(input) {
   let data;
@@ -1005,13 +1008,17 @@ function main(input) {
     if (extra.length) return refuse('runner', `attempt 2 runs only the tests that failed and the test files the fix changed since attempt 1; ${extra.join(', ')} is neither. ${developerWay(unit, 2, slug)}`);
   }
 
-  // The runner's own refusal, checked before an attempt is reserved: a call it refuses writes no record.
-  const runner = Array.isArray(args.files) ? stepRunner(cfg, root) : '';
-  if (runner) {
-    try {
-      filesCommand({ runner, files: args.files.map(rel), exclude: false, cwd: tree, root, step: true });
-    } catch (e) {
-      return refuse('runner', `the runner would refuse this step run (${e && e.message}). ${developerWay(unit, used + 1, slug)}`);
+  // The runner's own refusal, checked before an attempt is reserved: a call it refuses writes no record. Files no
+  // routing places stay the main runner's to answer, as they are in the run.
+  if (Array.isArray(args.files)) {
+    const named = args.files.map(rel);
+    const mainRunner = runnerOf(cfg);
+    if (!routeFiles({ cfg, files: named, cwd: tree, root, step: true }) && served(mainRunner, root)) {
+      try {
+        filesCommand({ runner: mainRunner, files: named, exclude: false, cwd: tree, root, step: true });
+      } catch (e) {
+        return refuse('runner', `the runner would refuse this step run (${e && e.message}). ${developerWay(unit, used + 1, slug)}`);
+      }
     }
   }
 

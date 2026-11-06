@@ -5,25 +5,25 @@
  * The decidable half of the owner-question contract (`rules/on-demand/research-before-asking.md`
  * § The owner-question contract), enforced where the ask is composed instead of discovered a
  * round-trip later (ADR-100 Decision Rule 5: a decidable format contract never ships prose-only;
- * ADR-108 applies it to this contract, revised by ADR-109, by ADR-114 and again by ADR-120). The
- * text above the question takes one of two forms, by kind of question. An ordinary decision takes
- * the RELAXED FORM: up to three fact lines of one or two sentences each, the first saying why the
- * question is asked, then the question sentence alone on the last line. A catalogued question takes
- * the short form's STANDARD-QUESTION VARIANT: the routine line `{catalogue name}, routine: {this
- * run's facts}`, at most one more fact line, then the question sentence, one sentence per line.
- * Every line ends with a sentence end and runs at most 120 characters. Below the text sit two to
- * four options that answer it — the recommended one first, its label ending `(Recommended)`, its
- * description ending in the confidence clause; a multi-select may recommend several, leading together,
- * each with its own clause — each description at most two sentences, one in a routine ask.
+ * ADR-108 applies it to this contract, revised by ADR-109, by ADR-114, by ADR-120 and again by
+ * ADR-177). The question sentence is the whole first line and the only question mark, and at most
+ * one more line follows it: the paragraph, which ends with a sentence end. The paragraph takes one
+ * of two forms, by kind of question. An ordinary decision takes the RELAXED FORM: up to three
+ * sentences, the first saying why the question is asked. A catalogued question takes the
+ * STANDARD-QUESTION VARIANT: the routine line `{catalogue name}, routine: {this run's facts}` is
+ * the paragraph, with at most one more sentence. Below the text sit two to four options that
+ * answer it — the recommended one first, its label ending `(Recommended)`, its description ending
+ * in the confidence clause; a multi-select may recommend several, leading together, each with its
+ * own clause — each description one sentence.
  *
- * THE CHECK SET IS NOT THIS FILE'S TO EXTEND. F170 rule 13 names fourteen checks and declares the
+ * THE CHECK SET IS NOT THIS FILE'S TO EXTEND. The contract names thirteen checks and declares the
  * set exhaustive; CHECK_NAMES and CHECK_ORDER are that list, in the letter order its refusals use.
  * The owner-away refusal and the gear refusal below are not further checks: each refuses on the
  * session's state, names no check, and sits in neither list.
  *
- * POSTURE, mirroring prohibition-gate.js: deny in the FOREGROUND with a self-correcting reason that
- * names every failed check at once, so one rewrite fixes all; for a background subagent — where the
- * platform drops a deny (ADR-13) — log one `.claude/audit/violations.log` line and exit 0.
+ * POSTURE, mirroring prohibition-gate.js's scope check: deny in the FOREGROUND with a self-correcting
+ * reason that names every failed check at once, so one rewrite fixes all; for a background subagent,
+ * by retained policy, log one `.claude/audit/violations.log` line and exit 0 (ADR-13).
  *
  * OWNER AWAY: while the session carries an owner-away mark (read through lib/read-owner-away.js;
  * register-owner-away.js sets it when a persona writes `on` to a file named `.owner-away`, and
@@ -38,7 +38,7 @@
  * `ask me` lets the ask through; so does a learner or solo session, whatever context survives from a
  * paused feature. Any failure reading the state allows the call.
  *
- * THE QUESTION-STYLE SWITCH: the fourteen checks run only in a repo that sets
+ * THE QUESTION-STYLE SWITCH: the thirteen checks run only in a repo that sets
  * `features.nexusQuestionStyle` to the JSON `true` in its `.claude/nexus-agents.json`. Any other
  * value, or no file, key or readable JSON, means Claude Code's own question style: the checks are
  * skipped, foreground and background alike, and nothing is logged. The owner-away and gear refusals
@@ -57,10 +57,10 @@
  *
  * WHAT IT CANNOT SEE: only the payload, and only a request — never an answer. So the explain re-ask
  * (a free-text answer asking what a routine question means) is prose-only by construction, as are
- * the composing rules rule 13 names as not-checked: the why line and a routine ask's lack of one,
- * admission, the relaxed wording including semicolons, the reply test and an option label's
- * concreteness, the confidence clause's own line and a description's length in characters, one
- * decision per question, and which form a catalogued question is asked in.
+ * the composing rules the contract names as not-checked: the why sentence and a routine ask's lack
+ * of one, admission, the paragraph's wording, the reply test and an option label's concreteness, the
+ * confidence clause's own line, one decision per question, and which form a catalogued question is
+ * asked in.
  *
  * LATENCY: the first disk touch is one `stat` of the session's owner-away mark, made ahead of
  * `needsInspection` because the refusal must cover a call that filter would wave through.
@@ -134,9 +134,6 @@ const ROUTINE_WORD_RE = /(?<![A-Za-z0-9])routines?(?![A-Za-z0-9])/i;
 // The tool's own schema caps the array at 4, so 3 is the binding bound.
 const MAX_QUESTIONS = 3;
 
-// Fixed, never measured per terminal: lines are written to about 100 characters, and 120 is the ceiling.
-const MAX_LINE_LENGTH = 120;
-
 // ── retained from F106, unchanged ────────────────────────────────────────────
 // The id set is PRECISION-FIRST: a shipped gate's false alarm is the costly side, so only three
 // families are flagged. Two independent bounds keep each narrow, and they are NOT the same bound:
@@ -169,7 +166,7 @@ const WELL_KNOWN_PREFIXES = new Set([
 // remains, and is not decidable: a stray tick can still shift the pairing WITHIN its own line.
 const BACKTICK_SPAN_RE = /(`+)[^`\n]*\1/g;
 
-// ── the check set: rule 13 (a)–(n), exhaustive ───────────────────────────────
+// ── the check set: the contract's (a)–(m), exhaustive ────────────────────────
 // Each key is one named check. CHECK_NAMES is the SHORT tag (the audit log's `rule` field, which
 // the team lead greps); a check may carry per-call DETAIL, which rides the deny reason only.
 const CHECK_NAMES = {
@@ -185,26 +182,24 @@ const CHECK_NAMES = {
   cap: 'three questions per call',
   header: 'header',
   routine: 'routine line',
-  length: 'line length',
   description: 'option description',
 };
 const CHECK_ORDER = [
   'lineCount', 'lines', 'recommended', 'confidence', 'id', 'word', 'pointer', 'emphasis',
-  'bracket', 'cap', 'header', 'routine', 'length', 'description',
+  'bracket', 'cap', 'header', 'routine', 'description',
 ];
 
 const REWORD_TAIL =
-  'reword per the owner-question contract: an ordinary decision takes the relaxed form — up to three ' +
-  'fact lines, the first saying why the question is asked, one or two sentences each, then the ' +
-  'question sentence alone on the last line; a catalogued question takes the short form\'s ' +
-  'standard-question variant — the routine line, at most one more fact line, then the question ' +
-  'sentence, one sentence per line; every line ends with a sentence end and runs at most 120 ' +
-  'characters, with no blank line, no bullet and no label; the options are the answers, the ' +
+  'reword per the owner-question contract: the question sentence comes first, the whole first line ' +
+  'and the only question mark, and at most one more line follows it; an ordinary decision takes the ' +
+  'relaxed form — that line is a paragraph of up to three sentences, the first saying why the ' +
+  'question is asked; a catalogued question takes the standard-question variant — that line is ' +
+  'the routine line and at most one more sentence; the paragraph ends with a sentence end, with no ' +
+  'blank line, no bullet and no label; the options are the answers, the ' +
   'recommended one first with (Recommended) on its label and Confidence: high|medium|low — why at ' +
   'the end of its description — a multi-select may recommend several, listed first and together, each ' +
-  'closing with its own clause — and an option\'s description is at most two sentences, one in a ' +
-  'routine ask, the confidence clause not counted; plain words only — no word from the vocabulary ' +
-  'list except a catalogue name on a ' +
+  'closing with its own clause — and an option\'s description is one sentence, the confidence clause ' +
+  'not counted; plain words only — no word from the vocabulary list except a catalogue name on a ' +
   'routine line, and no pointer phrase; no bare internal id anywhere, and no markdown emphasis or ' +
   'bracket in the question text; at most three questions per call ' +
   '(research-before-asking § The owner-question contract; the word lists are ' +
@@ -240,8 +235,8 @@ function gearRefusal(data, root, role) {
     const tree = resolveDeclaredTree(root, session);
     const hits = [];
     for (const q of data.tool_input.questions) {
-      const first = typeof (q && q.question) === 'string' ? q.question.split(/\r?\n/)[0] : '';
-      const routine = ROUTINE_LINE_RE.exec(first);
+      const second = typeof (q && q.question) === 'string' ? q.question.split(/\r?\n/)[1] : undefined;
+      const routine = ROUTINE_LINE_RE.exec(second === undefined ? '' : second);
       const row = routine ? GEAR_ROWS.get(normalizeName(routine[1])) : undefined;
       if (row === undefined) continue;
       const v = gears.valueOf({ setting: row, root, tree, session, env: process.env });
@@ -287,20 +282,6 @@ const isBlank = (line) => String(line).trim() === '';
 function terminators(text) {
   TERMINATOR_RE.lastIndex = 0;
   return (String(text).match(TERMINATOR_RE) || []).length;
-}
-
-// The length the reader sees: grapheme clusters, so a combining accent is not a second character.
-// Code points where the runtime has no segmenter. Trailing whitespace — a carriage return included —
-// is never counted.
-let graphemes;
-function visibleLength(line) {
-  const shown = String(line).replace(/\s+$/, '');
-  if (graphemes === undefined) {
-    graphemes = typeof Intl === 'object' && typeof Intl.Segmenter === 'function'
-      ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
-      : null;
-  }
-  return graphemes ? Array.from(graphemes.segment(shown)).length : [...shown].length;
 }
 
 /** The shipped lists with a consuming project's own allowance removed, or null when unreadable. */
@@ -352,31 +333,31 @@ function checkQuestion(q, catalogue, lists) {
   if (text !== null) {
     lines = text.split(/\r?\n/);
     while (lines.length > 0 && isBlank(lines[lines.length - 1])) lines.pop(); // a trailing newline is not a stray line
-    const routine = ROUTINE_LINE_RE.exec(lines[0] === undefined ? '' : lines[0]);
+    const routine = ROUTINE_LINE_RE.exec(lines[1] === undefined ? '' : lines[1]);
     routineName = routine ? routine[1] : null;
-    // The form is the one the writer declared: a routine line sets the routine limits whatever (l)
+    // The form is the one the writer declared: a routine line sets the routine limit whatever (l)
     // concludes about its name, so an unknown name is refused once, by (l), and never also measured
-    // against the other form's limits.
-    const lineCap = routineName !== null ? 3 : 4;
-    const sentenceCap = routineName !== null ? 1 : 2;
+    // against the other form's limit.
+    const sentenceCap = routineName !== null ? 2 : 3;
 
-    // (a) the line count: the form's cap on lines, one question mark, and it is the whole last line
+    // (a) the line count: two lines at most, one question mark, and it is the whole first line. The
+    // first-line fault is named beside a line-count fault, so an old-order ask learns both at once.
     const marks = (text.match(/\?/g) || []).length;
-    const last = lines.length > 0 ? lines[lines.length - 1].replace(/\s+$/, '') : '';
-    if (lines.length > lineCap) add('lineCount', `— ${lines.length} lines where the limit is ${lineCap}`);
-    else if (marks !== 1) add('lineCount', `— ${marks} question marks`);
-    else if (!last.endsWith('?') || terminators(last) !== 1) {
-      add('lineCount', '— the question sentence is not the whole last line');
+    const first = lines.length > 0 ? lines[0].replace(/\s+$/, '') : '';
+    if (lines.length > 2) add('lineCount', `— ${lines.length} lines where the limit is 2`);
+    if (marks !== 1) add('lineCount', `— ${marks} question marks`);
+    else if (!first.endsWith('?') || terminators(first) !== 1) {
+      add('lineCount', '— the question sentence is not the whole first line');
     }
 
-    // (b) the line set: fact lines and the question, each ending with a sentence end
+    // (b) the line set: the question and the paragraph, each ending with a sentence end
     for (const [n, l] of lines.entries()) {
       if (isBlank(l)) { add('lines', `— line ${n + 1} is blank`); continue; }
       const trimmed = l.replace(/\s+$/, '');
-      // The two faults are told apart because the rewrite differs: too many terminators means split
-      // the line, none at the end means finish the sentence. One reason has to say which.
+      // The two faults are told apart because the rewrite differs: too many terminators means cut a
+      // sentence, none at the end means finish the sentence. One reason has to say which.
       const count = terminators(trimmed);
-      if (n < lines.length - 1 && count > sentenceCap) {
+      if (n > 0 && count > sentenceCap) {
         add('lines', `— line ${n + 1} carries ${count} sentences where the limit is ${sentenceCap}`);
       }
       if (!ENDS_SENTENCE_RE.test(trimmed)) add('lines', `— line ${n + 1} does not end with a sentence end`);
@@ -388,23 +369,10 @@ function checkQuestion(q, catalogue, lists) {
     if (lines.some((l) => EMPHASIS_RE.test(l))) add('emphasis');
     if (lines.some((l) => BRACKET_RE.test(l))) add('bracket', 'in the question text');
 
-    // (l) a routine line names a catalogued entry, and at most one fact line follows it
-    if (routineName !== null) {
-      if (catalogue && typeof catalogue.has === 'function' && !catalogue.has(normalizeName(routineName))) {
-        add('routine', `"${normalizeName(routineName)}"`);
-      }
-      if (lines.length > 3) add('routine', '— a routine line is followed by at most one fact line');
-      if (lines.length < 2) add('routine', '— a routine line is followed by the question sentence');
-    }
-
-    // (m) line length. The detail joins its parts without a comma, which the refusal's own list of
-    // failed checks is split on.
-    const overlong = lines
-      .map((l, n) => ({ n: n + 1, length: visibleLength(l) }))
-      .filter((l) => l.length > MAX_LINE_LENGTH);
-    if (overlong.length > 0) {
-      const runs = overlong.map((l, i) => `line ${l.n} runs ${l.length}${i === 0 ? ' characters' : ''}`);
-      add('length', `— ${runs.join(' and ')} where the limit is ${MAX_LINE_LENGTH} — split the line into two or cut a fact`);
+    // (l) a routine line names a catalogued entry
+    if (routineName !== null && catalogue && typeof catalogue.has === 'function'
+      && !catalogue.has(normalizeName(routineName))) {
+      add('routine', `"${normalizeName(routineName)}"`);
     }
   }
 
@@ -442,10 +410,9 @@ function checkQuestion(q, catalogue, lists) {
         if (!CONFIDENCE_RE.test(clause.replace(/\s+$/, ''))) add('confidence');
       }
 
-      // (n) the description's sentences. Only a recommended description is cut, and at the
+      // (m) the description's one sentence. Only a recommended description is cut, and at the
       // clause's LABEL rather than at a well-formed clause, so a malformed clause stays (d)'s refusal
       // alone. An unterminated remainder is a sentence: the catalogue's consequences carry no stop.
-      const cap = routineName !== null ? 1 : 2;
       for (const [n, o] of readable.entries()) {
         if (typeof o.description !== 'string') continue;
         let body = o.description;
@@ -455,7 +422,7 @@ function checkQuestion(q, catalogue, lists) {
         }
         body = body.trim();
         const count = terminators(body) + (body !== '' && !ENDS_SENTENCE_RE.test(body) ? 1 : 0);
-        if (count > cap) add('description', `— option ${n + 1} carries ${count} sentences where the limit is ${cap}`);
+        if (count > 1) add('description', `— option ${n + 1} carries ${count} sentences where the limit is 1`);
       }
     }
     for (const o of readable) {
@@ -480,10 +447,10 @@ function checkQuestion(q, catalogue, lists) {
   if (surfaces.some((s) => bareIds(s).length > 0)) add('id');
 
   // (f) and (g) the words. The catalogue name on a routine line is the one admitted listed word, so
-  // that prefix is stripped from line 1 before the vocabulary scan — and only from it.
+  // that prefix is stripped from line 2 before the vocabulary scan — and only from it.
   if (words) {
     const scanned = lines.slice();
-    if (routineName !== null) scanned[0] = scanned[0].slice(`${routineName}, routine: `.length);
+    if (routineName !== null) scanned[1] = scanned[1].slice(`${routineName}, routine: `.length);
     const wordSurfaces = [...scanned, q.header];
     for (const o of readable) wordSurfaces.push(o.label, o.description);
     const hit = firstHit(wordSurfaces, words.words);
@@ -507,7 +474,7 @@ function checkQuestion(q, catalogue, lists) {
   // line, so only the `{name}, routine: ` prefix is exempt, never the run facts after it.
   const routineSurfaces = lines.slice();
   if (routineName !== null) {
-    routineSurfaces[0] = routineSurfaces[0].slice(`${routineName}, routine: `.length);
+    routineSurfaces[1] = routineSurfaces[1].slice(`${routineName}, routine: `.length);
   }
   for (const o of readable) routineSurfaces.push(o.label, o.description);
   if (routineSurfaces.some((s) => typeof s === 'string' && ROUTINE_WORD_RE.test(s))) {

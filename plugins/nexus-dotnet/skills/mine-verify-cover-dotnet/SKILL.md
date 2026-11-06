@@ -198,6 +198,10 @@ sit under the `tools/` folder of their skill, and `{that-base-dir}` is the base 
 node {this-skill-dir}/tools/recheck-args.mjs --repo {tree} --slug {slug} --recheck {that-base-dir}/tools/rule-recheck.mjs [--out {scratch folder}]
 ```
 
+Leave `--out` out: the default is a fresh `recheck-args-*` folder under Claude's own temp folder
+(`{CLAUDE_CODE_TMPDIR, else the system temp}/claude/`), which a campaign unit may write to. An `--out` inside
+the repo is refused.
+
 For every group with no result, or a failed one, it writes a Stryker config to a folder outside the repo. For
 each config it prints the folder to run from, the `dotnet stryker --config-file … -O …` call, and one
 `rule-recheck.mjs record` line per group. A group with no result that no run can check gets a

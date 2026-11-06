@@ -1,6 +1,16 @@
 # nexus-dotnet — Changelog
 
 
+## [2.1.9] — 2026-11-04
+- F368: run records and test runs say what really happened
+  - hook behavior/enforcement change
+
+## [2.1.8] — 2026-11-03
+- F357-CampaignSmallFixes: the mutation re-check tool's default output folder is a fresh folder under Claude's own temp folder (`CLAUDE_CODE_TMPDIR`, else the system temp, then `claude/`) — the folder a campaign unit may write to — and the skill says to leave `--out` out for it.
+- PATCH bump.
+  - skill change (mine-verify-cover-dotnet)
+  - estate raise: plugins/nexus-dotnet/skills/mine-verify-cover-dotnet/SKILL.md 18967→19196 B — F357: check names a blind 5-hour guard; the re-check's default output folder is the one a campaign unit may use
+
 ## [2.1.7] — 2026-11-03
 - F352: the Vue skills (vue-patterns, pinia-patterns, vue-component-architecture, create-vue-feature, tailwind-theme, frontend-review, flow-atlas-vue) and conventions/vue.md moved to the new free nexus-vue plugin. Vue projects: run /plugin install nexus-vue@claude-nexus, and re-add @vue.md to your conventions index after re-copying this plugin's conventions.
   - plugin.json metadata change

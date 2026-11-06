@@ -24,6 +24,7 @@
  *   approval-scope/**     the approval stamp, one file per session (team lead, architect, solo)
  *   .worktree-target      the cross-tree verify target (team lead, architect, solo)
  *   .campaign-unit        the campaign runner's unit marker
+ *   .base-branch          the branch a tree is built on, written by whatever made it (lib/default-branch.js)
  *   .owner-away           the owner-away mark, when a session has no scratchpad
  *   test-times.json       the slow-test timing record
  *
@@ -47,7 +48,7 @@ const { execFileSync } = require('child_process');
 const PIPELINE_DIRS = ['audit/', 'review-queue/', 'tmp/', 'approval-scope/', 'pipeline-state/'];
 const PIPELINE_FILES = new Set([
   '.current-agent', '.personas.json', '.pipeline-state', '.approval-scope', '.worktree-target',
-  '.campaign-unit', '.owner-away', 'test-times.json',
+  '.campaign-unit', '.base-branch', '.owner-away', 'test-times.json',
 ]);
 const PERSONAS_TMP = /^\.personas\.json\.\d+\.tmp$/;
 

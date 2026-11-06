@@ -12,6 +12,10 @@
  *   resume  -> nothing (the transcript, persona included, is reloaded verbatim)
  * Entries whose session has ended are pruned on every run (lib/persona-record.js).
  *
+ * Every run also keeps the plugin's session-state folders (`.claude/pipeline-state/`,
+ * `.claude/approval-scope/`) out of git through the repository's shared exclude file
+ * (lib/exclude-local-state.js): no extra process, nothing printed.
+ *
  * The role file is found wherever its plugin is installed (lib/plugin-root.js): a record naming its
  * plugin is looked up in that plugin; one without (set by the "be {agent}" phrase) in the core's own
  * agents first, then each installed plugin's. A plugin-less role no plugin ships is never injected.
@@ -40,6 +44,7 @@ const fs = require('fs');
 const { readRegistry, prune, writeRegistry } = require('./lib/persona-record');
 const { findAgent } = require('./lib/plugin-root');
 const { readOwnerAway } = require('./lib/read-owner-away');
+const { excludeLocalState } = require('./lib/exclude-local-state');
 
 // Two numbers, one concept — same shape as inject-rules.js. The platform caps a hook's output,
 // additionalContext included, at PLATFORM_CAP chars. The DETERMINISTIC per-role gate lives in
@@ -82,6 +87,7 @@ process.stdin.on('end', () => {
   // /clear is the exit: drop this session's persona so a later compact won't resurrect it.
   if (source === 'clear' && sid && reg[sid]) { delete reg[sid]; changed = true; }
   if (changed) writeRegistry(root, reg);
+  excludeLocalState(root);
 
   // Restore ONLY on compact.
   if (source !== 'compact' || !sid) process.exit(0);

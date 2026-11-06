@@ -8,7 +8,7 @@
  * runner and a filtered complete run still reads as filtered with no runner installed. How one language's
  * tests are composed, tied, read and labelled is its runner's. node is built in (`runners/node.js` beside this
  * file); every other runner ships in its language plugin. The core names runners, never the plugins that run
- * them.
+ * them. A repo can have several (`repoRunners`), so a step run can hold several commands, one runner each.
  *
  * A RUNNER FILE is `hooks/scripts/test-runner.js` in its plugin's folder (or a file in `runners/` beside this
  * one, for a built-in), exporting:
@@ -45,8 +45,8 @@
  *   retagEdits({ tree, keys, tagged, meta, blocks, log }) → [{ file, edit, optional }]  the timing pass's labels
  *   untagSource(text) → text  a source with every slow label removed, to compare two versions of a file
  * Optional — absent means the core's answer in brackets:
- *   tiedSet({ repo, changed, listing, unit, slow, stopSeconds }) → { targets, untied, commands, fallback }
- *     [the declared unit runs whole]
+ *   tiedSet({ repo, changed, listing, unit, slow, stopSeconds }) → { targets, untied, commands, fallback }, and
+ *     optionally `ranFor`, the changed files of each command, by position [the declared unit runs whole]
  *   withReport(command, dir) → command, reportTimes({ tree, reportDir, stdout }) → [time]  the report a step
  *     close is timed from [the core's events only]
  *   reportCount(dir) → number  the reports a timing leg wrote [the entries it parsed]
@@ -55,6 +55,7 @@
  *   buildKey(command) → key, noBuild(command) → command  build reuse [always build]
  *   buildCommand({ files, cwd }) → [command]  the build of the projects that own the changed files, a
  *     developer's step run that names no test file [nothing runs]
+ *   takesNoLabels  true where this runner's tests take no slow label: the labeller leaves its files alone [they take it]
  *   exclusionOf(command) → { known, clause } | { none } | { unknown, why }  the tests a declared command leaves
  *     out, in this runner's own syntax, its slow label never among them; unknown unless every invocation is
  *     read whole (invocationsOf) and none selects tests [the timing pass refuses]
@@ -97,19 +98,21 @@ const RUN_RESULT_FUNCTIONS = Object.freeze(['withRunReport', 'readRunResults', '
 
 // ── the runner table ─────────────────────────────────────────────────────────────────────────────────
 
-const RUNNERS = new Set(['vstest', 'mtp', 'node', 'flutter']);
+const RUNNERS = new Set(['vstest', 'mtp', 'node', 'flutter', 'vitest']);
 
 const INVOCATION = {
   vstest: /(^|\s)dotnet\s+test(\s|$)/,
   node: /(^|\s)node(\.exe)?\s(.*\s)?--test(\s|$)/,
   flutter: /(^|\s)(flutter|dart)\s+test(\s|$)/,
+  vitest: /(^|\s)vitest\s+(run|related)(\s|$)/,
 };
 
 // The runner an executable is, by its own name.
 const EXECUTABLES = new Map([['node', 'node'], ['dotnet', 'vstest'], ['flutter', 'flutter'], ['dart', 'flutter']]);
 
 // The runner a test file is labelled by, first match wins.
-const TEST_FILES = [['node', /\.test\.(mjs|js|cjs)$/], ['vstest', /\.cs$/], ['flutter', /_test\.dart$/]];
+const TEST_FILES = [['node', /\.test\.(mjs|js|cjs)$/], ['vstest', /\.cs$/], ['flutter', /_test\.dart$/],
+  ['vitest', /\.(spec|test)\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/]];
 
 const FILTER_CLAUSE_FLAGS = new Set(['--filter', '--filter-not-trait', '-x', '--exclude-tags', '--test-skip-pattern', '--exclude']);
 
@@ -149,13 +152,29 @@ function splitChain(text) {
   return commandSegments(s).map(([start, end]) => s.slice(start, end));
 }
 
+// Vitest answers only where no other runner appears: a repo with a server suite and a client one stays the server's.
 function inferRunner(command) {
-  for (const segment of splitChain(command)) {
-    const folded = fold(segment);
+  const stages = splitChain(command).map(fold);
+  for (const folded of stages) {
     const runner = ['vstest', 'node', 'flutter'].find((r) => INVOCATION[r].test(folded));
     if (runner) return runner;
   }
-  return '';
+  return stages.some((folded) => INVOCATION.vitest.test(folded)) ? 'vitest' : '';
+}
+
+// A repo's main runner: `slow.runner`, else the one its declared unit invokes.
+function runnerOf(cfg) {
+  if (cfg && cfg.slow && typeof cfg.slow.runner === 'string' && cfg.slow.runner) return cfg.slow.runner;
+  const unit = cfg && cfg.roles && cfg.roles.unit;
+  return typeof unit === 'string' ? inferRunner(unit) : '';
+}
+
+// A repo's runners: the main one, then each other its declared unit or full invokes.
+function repoRunners(cfg) {
+  const roles = cfg && cfg.roles && typeof cfg.roles === 'object' ? cfg.roles : {};
+  const stages = [roles.unit, roles.full].filter((c) => typeof c === 'string').flatMap(splitChain).map(fold);
+  const invoked = stages.flatMap((folded) => Object.keys(INVOCATION).filter((r) => INVOCATION[r].test(folded)));
+  return [...new Set([runnerOf(cfg), ...invoked].filter(Boolean))];
 }
 
 function isFilteredFull(command) {
@@ -516,7 +535,7 @@ function loadRunner(name, { root = null, env = process.env } = {}) {
 module.exports = {
   CONTRACT, RUNNER_FILE, HELPERS, HELPER_NAMES, RUN_RESULT_FUNCTIONS, loadRunner,
   RUNNERS, INVOCATION, EXECUTABLES, TEST_FILES, FILTER_CLAUSE_FLAGS, runnerOfFile,
-  quote, fold, commandSegments, splitChain, inferRunner, isFilteredFull, insertAfter, hasTopLevelOr,
+  quote, fold, commandSegments, splitChain, inferRunner, runnerOf, repoRunners, isFilteredFull, insertAfter, hasTopLevelOr,
   optionEnd, argsListed, parseClasses, listFiles, isExcluded, insideTree, sourceFiles, projectDir, relativeFile,
   offsetAt, mapLine, setReason, clearReason, reasonLines,
   stagesOf, isAssignment, runnerNamed, directRunner, setupStage, invocationsOf,

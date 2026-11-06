@@ -58,12 +58,14 @@ The critic seats — spec, plan and promotion — run a **bounded schedule with 
 
 **The schedule decides the advance, not the verdict.** A round's verdict (REJECT / REVISE / ACCEPT) says what the artifact needs; the table below says whether another round runs. An ACCEPT whose merge table holds a MEDIUM still earns round 2's verification read — that read is the check on round 1's fold, and on round 1's own reading wherever a full-read trigger fires, not a second opinion on the verdict.
 
-| Round | Acts on | Runs only if |
-|---|---|---|
-| 1 | every finding (LOW recorded, not necessarily fixed) | always |
-| 2 | MEDIUM and up | round 1's merge table holds a finding whose **level as reported** is MEDIUM or above |
-| 3 | CRITICAL only | round 2's merge table holds a finding whose **level as reported** is CRITICAL |
-| 4 | — | never |
+| Round | Acts on | Always fixed | Runs only if |
+|---|---|---|---|
+| 1 | every finding (LOW recorded, not necessarily fixed) | HIGH and up | always |
+| 2 | MEDIUM and up | HIGH and up | round 1's merge table holds a finding whose **level as reported** is MEDIUM or above |
+| 3 | CRITICAL only | CRITICAL | round 2's merge table holds a finding whose **level as reported** is CRITICAL |
+| 4 | — | — | never |
+
+**The bar has two lines, and the author weighs what sits between them.** The `Acts on` column is the round's bar and the `Always fixed` column its always-fix line; the levels live in that table. At the fold, a finding below the round's bar — the one a reader marks `below floor — recorded` — is folded `waived`, reason `below the bar`, and never fixed. A finding at or above the always-fix line is fixed, handed onward as the fold record below allows (`plan-must-resolve`), or folded `churn` with the evidence that it does not hold — never `waived`. A finding between the two lines is the folding persona's call — `fixed-real`, or `waived` or `churn` with a one-line reason — in an attended and an unattended run alike, and it is never put to the owner. The call answers one question, and never how cheap the edit is: if nobody touches this, what goes wrong in the finished work? A LOW starts from leaving it out, unless the answer names something; a MEDIUM starts from fixing it, unless the answer is nothing. A missing `Adds:` or `Departs from` row, or a finding routed `owner keep or drop`, is something: the owner would never see that choice.
 
 **The predicate reads the level as reported** — the merge table's `level` column, a contested pair settled at merge — **before any fold re-grade**. The level *after* the fold feeds the calibration corpus and the bias table, never the schedule: a fold that fixed everything still earns the verification read. Levels are never demoted because a round is later; the floor rises, the labels stay honest. **No owner ask between rounds:** attended, the persona reports the round's merge and fold after every round and the owner may say stop; unattended, the schedule runs to its stop.
 
@@ -75,7 +77,7 @@ The critic seats — spec, plan and promotion — run a **bounded schedule with 
 
 **(b) The sample, so the cost of the narrowing stays measurable.** The slug's number is divisible by 5. Every slug form that can reach a critic seat carries a number — `F{N}`, `B{N}`, `GAP-{N}`, and a tracker slug's key number (the form is `{KEY}-{2-3-words}`, so `ABC-1234-invoice-export` samples on 1234) — so the rule is stated over the slug's **number**, not over any one form. `adhoc-{Name}` is the only numberless form and it is solo-only, so it reaches no critic seat; if one ever does it takes the delta read, and the record says the sample did not apply.
 
-**Dispatch fields** (the persona's brief, all mandatory): `Mode: {1|2|3}. Round: {n}. Artifact: {path}. Baseline surfaces: {list}. Depth: {product|mechanism|execution}. Ruler: critic-calibration seed + docs/critic-calibration/ruler.md if present.` Round ≥ 2 adds `Prior ledger, merge and fold: docs/specs/{slug}/delivery/review-critic.md § Round {n-1}. Floor: {MEDIUM|CRITICAL}. Read: {delta|full}.` — the spawner computes `Read:` from the two triggers above — off **round 1's** `Coverage:` line whatever the round, since trigger (a) is a statement about round 1's coverage — so the brief carries the verdict and a reader that receives `delta` never widens it on its own judgment. `Baseline surfaces:` stays in the brief on every round: a `full` round reads it, and a `delta` round carries it unread, so an escalation or a later full round has it without re-deriving it. Where a dispatch site already opens with `Mode {n}: {Name}.`, that satisfies the mode field and the block carries the other five.
+**Dispatch fields** (the persona's brief, all mandatory): `Mode: {1|2|3}. Round: {n}. Artifact: {path}. Baseline surfaces: {list}. Depth: {product|mechanism|execution}. Ruler: critic-calibration seed + docs/critic-calibration/ruler.md if present.` Round ≥ 2 adds `Prior ledger, merge and fold: docs/specs/{slug}/delivery/review-critic.md § Round {n-1}. Floor: {MEDIUM|CRITICAL}. Always fixed: {round n-1's always-fix line}. Read: {delta|full}.` — the spawner reads `Floor:` off round n's row of the schedule table and `Always fixed:` off round n-1's, the line the fold this round verifies was weighed against, and computes `Read:` from the two triggers above — off **round 1's** `Coverage:` line whatever the round, since trigger (a) is a statement about round 1's coverage — so the brief carries the verdict and a reader that receives `delta` never widens it on its own judgment. `Baseline surfaces:` stays in the brief on every round: a `full` round reads it, and a `delta` round carries it unread, so an escalation or a later full round has it without re-deriving it. Where a dispatch site already opens with `Mode {n}: {Name}.`, that satisfies the mode field and the block carries the other five.
 
 **Second reader — round 1 at the critic seats; the first review and a covering follow-up at the reviewer seat.** These reviews have **two readers from two model families**, running **in parallel** — a main reader, the **primary**, and a second reader — with the same brief, the same ruler and the second's label (`critic-second`, `reviewer-second`) as the first word of its Agent description — never a spawn `name`, which would keep it out of Claude Code's agents list. A reviewer spawned as the second reader is told so in its brief, since it cannot see its own label: the brief carries the line `You are the second reader: write to review-second.md, appending a new ## Verdict: section; never write review.md.` Every checker spawn at a review — spec, plan, code and promotion — reads its pair off one ordered list, the **reader-pair list**, authored here alone:
 
@@ -103,7 +105,7 @@ Which pair a feature runs — the owner's pick, asked once per feature, against 
 
 **The merge `tag` column — two reserved values plus free text, additive rather than a closed set.** The tag answers the one question a count of rounds turns on: did the previous fold cause this finding, or did the earlier round miss it? So at merge, write the literal `fold` where the finding is about text a previous fold wrote or changed; write the miss tag for the miss the rule above defines, naming the round it belongs to — `round-1 miss: {surface}`, and `round-2 miss: {surface}` in a later round; and write free text, a topic label, for anything else. Where `fold` or a miss tag applies it must be written, which is what makes "the fix broke it" and "the reader missed it" countable apart instead of both reading as a topic. Everything else is additive: a topic label is legal anywhere, a blank cell counts with the topic labels, and no record already written becomes invalid.
 
-**Fold record** — written by the persona under the round: `### Fold — round {n} ({role}, {model}, {date})`, then a table `| id | disposition | level after | re-grade (level · anchor · why) | where |`. The disposition vocabulary is `fixed-real` | `waived` | `churn` | `plan-must-resolve` | `open`. A Mode-1 fold lists mechanism-level items under `#### Handed to the plan` — never by inventing a mechanism in the spec, which is what makes the next round review the invention. A Mode-1 finding routed `owner keep or drop` — behaviour no source asks for — is folded by writing it into the spec as an `added` rule (one already `added` is not written twice) and closes `fixed-real`; the owner keeps or drops it at the spec's `spec additions` ask, never in the fold, so the five dispositions stay as they are. **The fold reconciles before it hands over:** each `where` cell names every contract clause or section it touched, and before the next round is dispatched (or the artifact approved) the persona re-reads, per touched clause, the clauses it names, the clauses that name it and any schema whose fields it sources, closing the fold with a `Reconciled:` line listing them. A round ≥ 2 reader's fold-verification table carries a `collateral` column (`none` or a finding id) on every touched clause — the fold's own new text is the one surface nothing reviews before the next round.
+**Fold record** — written by the persona under the round: `### Fold — round {n} ({role}, {model}, {date})`, then a table `| id | disposition | level after | re-grade (level · anchor · why) | where | reason |`. The `reason` cell carries the one-line reason the weighing rule above asks for — `below the bar` for a finding under the bar — and `—` where none is owed. The disposition vocabulary is `fixed-real` | `waived` | `churn` | `plan-must-resolve` | `open`. A Mode-1 fold lists mechanism-level items under `#### Handed to the plan` — never by inventing a mechanism in the spec, which is what makes the next round review the invention. A Mode-1 finding routed `owner keep or drop` — behaviour no source asks for — is folded by writing it into the spec as an `added` rule (one already `added` is not written twice) and closes `fixed-real`; the owner keeps or drops it at the spec's `spec additions` ask, never in the fold, so the five dispositions stay as they are. **The fold reconciles before it hands over:** each `where` cell names every contract clause or section it touched, and before the next round is dispatched (or the artifact approved) the persona re-reads, per touched clause, the clauses it names, the clauses that name it and any schema whose fields it sources, closing the fold with a `Reconciled:` line listing them. A round ≥ 2 reader's fold-verification table carries a `collateral` column (`none` or a finding id) on every touched clause — the fold's own new text is the one surface nothing reviews before the next round.
 
 **Persistence layout of `review-critic.md`.** Per round, in order: the round heading `## Round {n} — {date} — {spec|plan|promotion} — primary ({model})`; under it each reader's message verbatim, whose own headings are not demoted **except** a line of its own beginning `## Round `, which the persona demotes to `###` and notes in the round's header note; then, where a second reader ran, `## Second reader — round {n} ({model})`, naming its model — an H2 that deliberately cannot match the round-heading form, so it stays inside the primary's round scope; then, where a third reader ran, `## Third reader — round {n} (fable)`, an H2 of the same kind; then `### Merge — round {n}`, carrying first a `Coverage:` line — the surfaces **no** reader of that round opened, or the literal `complete`, which is what the next round's `Read:` is read off — and below it the round's canonical finding list, written **even for a single-reader round**, a table with the twelve columns `id`, `readers`, `level`, `anchor`, `title`, `shape`, `consequence`, `evidence`, `untouchable`, `tag`, `surfaces`, `source ids` — read by header name, so a missing mandatory header is an error — with ids `R{n}-{NN}`; then `### Fold — round {n}`. A round runs from its round heading to the next line beginning `## Round ` or the end of the file, and every such line must satisfy the round-heading form. The calibration extraction reads the merge and fold tables only; the verbatim reader sections are provenance for a human, and the coverage ledgers inside them are what the measurement pass reads.
 <!-- nexus-gen agents-workflow END -->
@@ -175,13 +177,15 @@ and persists the record itself via the Relay Contract.
 **Critic-seat dispatch template:**
 ```
 Review {artifact-path} for {slug}. Round: {n}. {One line naming what to cross-reference it against.}
+{Round 2 and later: Always fixed: {round n-1's always-fix line}. A prior finding folded waived or churn with its reason is closed — except one at or above that line folded waived, or folded churn without the evidence that it does not hold.}
 Read-only run: do not modify any file; this is a review, not a fix.
-Return in your completion message one line `## Verdict: GO` or `## Verdict: NO-GO`, then all findings (severity, file, issue).
+Return in your completion message one line `## Verdict: GO` or `## Verdict: NO-GO`, then all findings (severity, a confidence — high, medium or low — file, issue).
 The dispatching session persists them to {record path} — you are not expected to write any file,
 and must not attempt to.
 ```
 
-`{n}` is the critic round being read; a retry keeps its round.
+`{n}` is the critic round being read; a retry keeps its round. The always-fix line is round n-1's,
+read off the schedule table (→ agents-workflow.md § Critic rounds), as the nexus critic's brief reads it.
 
 #### Time limit and fallback
 
@@ -212,7 +216,7 @@ wrote again, so go back to `wait`. The stall reason rides the round's `Codex dro
 cut is countable in the review records.
 
 **The loop.** `start --prompt-file {brief}` returns the job's `jobId`, `startedAt` and `deadline`,
-or `unavailable` with a reason. `wait --job {jobId} --deadline {deadline} --started {startedAt}`
+`unavailable` with a reason, or `refused` with a reason. `wait --job {jobId} --deadline {deadline} --started {startedAt}`
 returns the job's `state` — `queued`, `running`, `completed`, `failed` or `cancelled`, or `unknown`
 with `readError: true` when the helper could not read the job's state (a read error is no job
 failure: keep waiting to the deadline) — within about two minutes, so call it again until the state
@@ -229,7 +233,12 @@ JSON object.
 
 **A job a later session can find.** Every Codex job of a review round or a done check starts with its
 `--kind` and the label `{slug} {spec-review|plan-review|promotion-review|code-review} round {n}`, or
-`{slug} done-check {k}`, as `--label`; the helper records it in the session root. Before a session
+`{slug} done-check {k}`, as `--label`; the helper records it in the session root. A spec or plan
+review round's `start` also passes `--record {the absolute path of the feature's review-critic.md}`, the record the
+helper reads to check the round against the critic-round schedule (→ agents-workflow.md § Critic rounds).
+A `start` that returns `refused` is the schedule's stop: the round does not run, no fallback, no retry,
+and it is no job failure — the reason says why, and how an owner-ordered extra round is let through.
+Before a session
 starts the readers of a round whose record is missing, it runs `jobs --label {that label}`:
 - `none` — the round never started: start it as usual;
 - a job with its id — take up the loop above from where the job stands: `wait`, then `collect`,

@@ -25,7 +25,7 @@ owner is away.
    |---|---|---|
    | `build` | an **incremental** build of what changed, used only in a solo's compile-fix loop | never a clean or forced full rebuild — that guarantee belongs to CI and to the close |
    | `unit` | the **narrowest** command covering the step's change; where the repo's convention chains build and test, chain them here (`… && …`) rather than dropping the build | **the `stepLimitSeconds` you declare** (step 5); never the whole suite, and never the full command minus a filter clause — the slow-test exclusion below is added to a `unit` already scoped this way and never scopes it |
-   | `full` | everything, the suite the close gate runs once (it may take minutes) | **once, at close, from the main session** — never in a subagent; within the `fullLimitSeconds` you declare (step 5), 10 minutes when unset |
+   | `full` | everything, the suite the close gate runs once (it may take minutes) | **once, at close, from the main session** — never in a subagent; within the `fullLimitSeconds` you declare (step 5); unset, 10 minutes, or twice the suite's usual time once 5 passing runs exist, where that is longer |
 
    - `mutation` — only if the repo has a mutation runner; otherwise omit the key.
 
@@ -99,7 +99,7 @@ owner is away.
    `verify-run.js --role unit --timeout-ms 110000`, since no step limit is set yet and the bare form
    would cut at the 90 s default; and for `full`
    `verify-run.js --role full --slug declare-verify-roles --timeout-ms 1800000`, since no full-run
-   limit is set yet and the bare form would cut at the 10-minute default (the session's plugin-paths block carries
+   limit is set yet and the bare form would cut at the default limit (the session's plugin-paths block carries
    the runner's resolved path). The runner reads the roles from `.claude/verify.json`, so write the
    proposed `roles` block there first (Write tool) and correct it in place as you go; step 5
    completes the file. **Before timing `full`**, ask the composer whether it carries a filter clause:
@@ -152,12 +152,16 @@ owner is away.
    the caller reads that as *not finished* rather than red — the complete run at close covers the
    tests that were cut — and without `roles.full` it stays red. Say so when you propose the value.
 
-   **The full-run limit.** A full run — `--profile complete`, or `verify-run.js --role full` — is cut
-   at 10 minutes unless the repo declares a top-level `"fullLimitSeconds"` beside `stepLimitSeconds`,
-   in whole seconds; it is never clamped (the full run is a main-session run), and anything but a
-   whole number above 0 is ignored, with one stderr line. Propose it only when `measured.full.ms`
-   is over 5 minutes: **twice the measured time, rounded up to the next minute**. A full run cut at
-   its limit records `reason: "timeout"` and names this setting:
+   **The full-run limit.** A full run — `--profile complete`, or `verify-run.js --role full` — runs
+   under a top-level `"fullLimitSeconds"` beside `stepLimitSeconds` where the repo declares one, in
+   whole seconds, used as declared; it is never clamped (the full run is a main-session run), and
+   anything but a whole number above 0 is ignored, with one stderr line. Undeclared, the limit is 10
+   minutes, or twice the suite's usual time where that is longer — the median of its last 10
+   passing runs, once 5 exist, read from the checkout's own record, or from the main checkout's
+   where a new worktree has too few. Propose the setting only when `measured.full.ms` is over 5
+   minutes: **twice the measured time, rounded up to the next minute** — it holds from the first run,
+   before any usual time exists. A full run cut at its limit records `reason: "timeout"` and names
+   this setting, and a limit raised from the usual time names that time too:
 
    ```json
    "fullLimitSeconds": 1200

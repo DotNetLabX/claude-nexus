@@ -2,11 +2,18 @@
 /**
  * Nexus codex-job: the one dispatch path for every Codex job, whichever seat starts it.
  *
- *   node codex-job.js start   --prompt-file <path> [--limit-minutes <n>] [--effort <level>] [--label <text>] [--kind <kind>]
+ *   node codex-job.js start   --prompt-file <path> [--limit-minutes <n>] [--effort <level>] [--label <text>] [--kind <kind>] [--record <path>]
  *   node codex-job.js wait    --job <id> --deadline <iso> [--started <iso>] [--max-seconds <n>]
  *   node codex-job.js collect --job <id> --deadline <iso> [--started <iso>] [--kind review|done-check|research|panel|mining]
  *   node codex-job.js jobs    --label <text>
  *   node codex-job.js sweep
+ *
+ * THE CRITIC-ROUND SCHEDULE. A `start` labelled `{slug} {spec-review|plan-review} round {n}` is
+ * checked by lib/round-gate.js after its arguments are validated and before anything is written: a
+ * round the schedule does not allow prints `{"refused": true, "reason": …}` and exits 0, starting no
+ * job and writing no intent line. Round 3 reads the record named by --record; a round 3 without it is
+ * refused, naming the flag. The owner-ordered line in the brief lets any round through. Any other
+ * label passes untouched, and an error inside the check passes too.
  *
  * Every call prints one JSON object on stdout and exits 0 on every handled outcome — an unavailable
  * Codex, a failed or cancelled job, a job cut off at its limit. Exit 2 is reserved for a call the
@@ -302,6 +309,26 @@ function companion(script, args, timeoutMs, extraEnv = {}) {
 
 const windowMs = (limitMs) => Math.min(QUIET_LIMIT_MS, limitMs);
 
+/** The critic-round schedule's refusal for a labelled spec or plan review round, or null (lib/round-gate.js). */
+function roundRefusal(opts, promptFile) {
+  try {
+    const gate = require('./lib/round-gate');
+    const parsed = gate.parseLabel(opts.label);
+    if (!parsed || !parsed.kind) return null;
+    const text = fs.readFileSync(promptFile, 'utf8');
+    const record = typeof opts.record === 'string' && opts.record.trim() ? path.resolve(opts.record) : null;
+    if (parsed.round === gate.LAST_ROUND && !record && !gate.ownerOrdered(text)) {
+      return `critic round ${parsed.round} needs --record {the absolute path of the feature's review-critic.md}, the record the critic-round schedule is checked against — no job started`;
+    }
+    const verdict = gate.decide({
+      round: parsed.round, kind: parsed.kind, text, readRecord: () => gate.readIfFile(record), recordName: record || 'the review record',
+    });
+    return verdict.refused ? `${verdict.reason} No job started.` : null;
+  } catch {
+    return null;
+  }
+}
+
 function cmdStart(opts) {
   const callStart = Date.now();
   if (!opts['prompt-file'] || opts['prompt-file'] === true) return usage('start needs --prompt-file <path>');
@@ -312,6 +339,8 @@ function cmdStart(opts) {
   }
   if ('kind' in opts && !KINDS.includes(opts.kind)) return usage(`--kind is ${JSON.stringify(opts.kind)}, not one of ${KINDS.join(', ')} — no job started`);
   if ('label' in opts && (typeof opts.label !== 'string' || !opts.label.trim())) return usage('--label needs the text of the label — no job started');
+  const refusal = roundRefusal(opts, promptFile);
+  if (refusal) return print({ refused: true, reason: refusal });
   const codex = readCodexConfig(process.cwd());
   const limit = resolveLimit(codex, opts['limit-minutes']);
   const effort = resolveEffort(codex, opts, process.cwd());

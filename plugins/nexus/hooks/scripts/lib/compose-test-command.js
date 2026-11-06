@@ -33,7 +33,7 @@ const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const {
-  RUNNERS, INVOCATION, loadRunner, fold, commandSegments, splitChain, inferRunner, isFilteredFull, parseClasses,
+  RUNNERS, INVOCATION, loadRunner, fold, commandSegments, splitChain, inferRunner, repoRunners, isFilteredFull, parseClasses,
 } = require('./test-runners');
 
 function checkRunner(runner, form) {
@@ -62,6 +62,23 @@ function stopFlags(runner, seconds, { root } = {}) {
 function filesCommand({ runner, files, exclude, cwd = process.cwd(), note, stopSeconds, root, step = false }) {
   const r = runnerFor(runner, 'filesCommand', root);
   return r.filesCommand({ files: Array.isArray(files) ? files : [], exclude, cwd, note, stopSeconds: runner === 'node' ? 0 : stopSeconds, step });
+}
+
+// Which of the repo's runners runs each named file: the first that takes it, the main one first, the groups in the
+// repo's order. null where the repo has one runner, or a file none takes: the call then stays the main runner's.
+function routeFiles({ cfg, files, cwd = process.cwd(), root, step = false }) {
+  const runners = repoRunners(cfg);
+  if (runners.length < 2) return null;
+  const takes = (runner, file) => {
+    try { filesCommand({ runner, files: [file], exclude: false, cwd, root, step }); return true; } catch { return false; }
+  };
+  const groups = new Map();
+  for (const file of files) {
+    const owner = runners.find((runner) => takes(runner, file));
+    if (!owner) return null;
+    groups.set(owner, [...(groups.get(owner) || []), file]);
+  }
+  return runners.filter((runner) => groups.has(runner)).map((runner) => ({ runner, files: groups.get(runner) }));
 }
 
 // A step run that names no test file: the runner's build of the projects owning `files`, or [] where the
@@ -264,7 +281,7 @@ function endLegs(statuses, env = process.env, proc = process) {
 }
 
 module.exports = {
-  filesCommand, buildCommand, timingCommand, deltaTargets, parseClasses, isFilteredFull, joinExclusion, nodeSupportsSkipPattern,
+  filesCommand, routeFiles, buildCommand, timingCommand, deltaTargets, parseClasses, isFilteredFull, joinExclusion, nodeSupportsSkipPattern,
   splitChain, inferRunner, stopFlags, joinStop, labelledFiles, nodeLegs, shareConcurrency, announceLegs, endLegs,
   REPORTER_URL, PRELOAD_URL,
 };

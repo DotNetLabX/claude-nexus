@@ -69,7 +69,7 @@ const PAIRS = [
 const FAMILIES = ['fable', 'opus', 'sonnet', 'haiku'];
 
 const JOBS = [
-  'discovery', 'audit', 'research', 'panelPeer', 'secondReader', 'doneCheck', 'conformanceReview',
+  'discovery', 'audit', 'research', 'secondReader', 'doneCheck', 'conformanceReview',
   'minerGenerator', 'minerJudge', 'minerMechanical',
 ];
 // The names the unknown-key line prints: the jobs this plugin itself reads. A name another plugin
@@ -77,7 +77,6 @@ const JOBS = [
 const OWN_JOBS = ['discovery', 'audit', 'secondReader', 'doneCheck'];
 const RESEARCH_TIERS = ['routine', 'highStakes'];
 const CHECKER_JOBS = ['secondReader', 'doneCheck'];
-const PANEL_PEERS = ['fable', 'opus'];
 const MINER_JOBS = ['minerGenerator', 'minerJudge', 'minerMechanical'];
 const CODEX = 'codex';
 const CODEX_EFFORTS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'];
@@ -144,8 +143,6 @@ function checkJobs(jobs, cfg) {
     if (!f) { out.push(valueLine(key, v)); continue; }
     if (f === NOT_A_CHECKER && CHECKER_JOBS.includes(key)) {
       out.push(`${PREFIX} jobs.${key} is ${f}, which is not a checker — the spawn reads it as unset.`);
-    } else if (key === 'panelPeer' && !PANEL_PEERS.includes(f)) {
-      out.push(`${PREFIX} jobs.panelPeer is ${f}; the panel peer takes ${PANEL_PEERS.join(' or ')} only — the spawn reads it as unset.`);
     } else if (key === 'doneCheck' && family(resolveModel('developer', cfg)) === f) {
       out.push(`${PREFIX} jobs.doneCheck is ${f}, the developer's family — the done check would grade work from its own family; your setting stands.`);
     }

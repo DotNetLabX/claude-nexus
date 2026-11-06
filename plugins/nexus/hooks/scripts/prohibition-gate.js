@@ -2,19 +2,18 @@
 /**
  * Nexus PreToolUse prohibition gate (SYNCHRONOUS — can block).
  *
- * Two always-on prohibitions that prose alone did not carry (ADR-100 Decision 5: a decidable K1
- * never ships prose-only). One script, two gates, one posture: deny in the FOREGROUND with a
- * self-correcting reason; for a background subagent — where the platform drops a deny (ADR-13) —
- * log to .claude/audit/violations.log and exit 0.
+ * Always-on prohibitions that prose alone did not carry (ADR-100 Decision 5: a decidable K1
+ * never ships prose-only). One script, three checks, each denying with a self-correcting reason. A
+ * deny holds on every seat it reaches, a background subagent's included (honoured at Claude Code
+ * 2.1.293, 2.1.301 and 2.1.318 — ADR-13); gate (b) alone still logs a background writer to
+ * .claude/audit/violations.log and exits 0, by an owner's ruling.
  *
  *   (a) UNSCOPED STAGING (CL-150). `git add -A|--all|-u|--update`, a bare `.`/`*` pathspec, and
  *       `git commit -a|--all` stage whatever happens to be in the tree — another feature's in-flight
  *       work included. Only the step-commit helper refused these before; a coordinating session's own
- *       close commit was prose-only. Reach: any session whose active role is one of the eight known
- *       roles. A persona-less session is untouched, so the plugin never polices a user's ordinary git
- *       work in a consuming repo. A SUBAGENT's git write is deliberately NOT logged here — the
- *       boundary detector's git leg already appends a line for every one, and a second would
- *       double-count in the team lead's triage.
+ *       close commit was prose-only. Reach: any MAIN session whose active role is one of the eight
+ *       known roles. A persona-less session is untouched, so the plugin never polices a user's
+ *       ordinary git work in a consuming repo. A spawned agent's call is check (c)'s, not this one's.
  *
  *   (b) APPROVAL SCOPE. "An approval is scoped to the facts you presented" reduced to the one thing
  *       a hook can see: the set of paths the ask named. The asking persona stamps them to its own
@@ -32,11 +31,21 @@
  *       command's target paths are not reliably parseable, so `printf x > src/b.js` passes this gate.
  *       The measured failure was a file edit; the shell half stays written guidance.
  *
+ *   (c) A SPAWNED AGENT'S GIT WRITE. A Bash or PowerShell call from a spawned agent whose command runs
+ *       a git write — judged by the boundary detector's own parser (`gitWrite`), so one parser
+ *       decides both — is refused before it runs, with a reason naming the way that needs no write.
+ *       Each refusal logs one line carrying `blocked: true`: a refused call fires no PostToolUse, so
+ *       the detector never sees it, and a detector line for a git write means one really ran. Reach:
+ *       a spawned team lead is never refused; otherwise a spawned agent whose own role is a known
+ *       role, or any spawned agent in a session whose persona is one.
+ *
  * FAIL OPEN on every uncertainty — bad JSON, a missing session, an unresolvable role, an unparseable
  * or absent stamp, a missing file_path — so the gate can never wedge a run, including -p.
  *
  * LATENCY: this is a third synchronous PreToolUse hook on every edit and shell call, so the first act
- * is `needsInspection`, a pure decision made before any registry or stamp read.
+ * is `needsInspection`, a pure decision made before any registry or stamp read. A spawned shell call
+ * always goes on to the parser, which reads no file; check (c) reads the persona registry only after
+ * it says write.
  */
 'use strict';
 const fs = require('fs');
@@ -63,7 +72,7 @@ const GIT_VERB_RE = /\bgit\s+(?:-{1,2}[\w-]+(?:=\S+)?\s+)*(add|commit)\b([^&|;]*
 function needsInspection(data, stampExists) {
   const tool = String((data && data.tool_name) || '');
   const ti = (data && data.tool_input) || {};
-  if (SHELL_TOOLS.test(tool)) return GIT_VERB_RE.test(String(ti.command || '').toLowerCase());
+  if (SHELL_TOOLS.test(tool)) return isSpawned(data) || GIT_VERB_RE.test(String(ti.command || '').toLowerCase());
   if (FILE_TOOLS.test(tool)) return Boolean(stampExists);
   return false;
 }
@@ -142,6 +151,29 @@ function inScope(rel, declared) {
   return declared.some((d) => (d.endsWith('/') ? rel.startsWith(d) : rel === d));
 }
 
+const GIT_WRITE_RULE = 'subagent git write refused';
+const GIT_WRITE_REASON =
+  'a git write from a spawned agent — the coordinating session owns commits and the repository state. ' +
+  'The way with no git write: delete or rename with `rm`/`mv` and name the paths to the step-commit helper ' +
+  '(`commit-step.js`) where your dispatch declares per-step commits; see new files with ' +
+  '`git status --porcelain --untracked-files=all` or `git ls-files --others --exclude-standard`, search them ' +
+  'with `git grep --untracked`, diff one with `git diff --no-index`; undo an edit by editing again. ' +
+  'A git write you still need goes in your hand-back.';
+
+/** Check (c): this spawned shell call runs a git write and is in reach. Any exception allows. */
+function refusesGitWrite(data, root) {
+  try {
+    // Required here only, so a call off this path loads nothing new.
+    const { gitWrite } = require('./boundary-detector');
+    if (!gitWrite(data.tool_input && data.tool_input.command, data.tool_name)) return false;
+    const own = resolveRole(data.agent_type);
+    if (own === 'team-lead') return false;
+    return KNOWN_ROLES.has(own) || KNOWN_ROLES.has(resolveRole(readSessionPersona(data.session_id, root)));
+  } catch {
+    return false;
+  }
+}
+
 function main(input) {
   let data;
   try { data = JSON.parse(input || '{}'); } catch { return allow(); }
@@ -155,14 +187,20 @@ function main(input) {
   if (!needsInspection(data, stampExists)) return allow();
 
   const background = isSpawned(data);
-  const role = resolveRole(data.agent_type || readSessionPersona(data.session_id, root) || 'main');
   const tool = String(data.tool_name || '');
   const ti = data.tool_input || {};
 
+  // ── check (c) ─────────────────────────────────────────────────────────────
+  if (background && SHELL_TOOLS.test(tool) && refusesGitWrite(data, root)) {
+    logViolation(root, { agent: resolveRole(data.agent_type), tool, path: String(ti.command || ''), rule: GIT_WRITE_RULE, blocked: true });
+    return deny(GIT_WRITE_REASON);
+  }
+
+  const role = resolveRole(data.agent_type || readSessionPersona(data.session_id, root) || 'main');
+
   // ── gate (a) ──────────────────────────────────────────────────────────────
   if (SHELL_TOOLS.test(tool)) {
-    // Foreground only, and only for an active Nexus persona. A subagent's git write is the boundary
-    // detector's line to write, not this gate's.
+    // Foreground only, and only for an active Nexus persona.
     if (background || !KNOWN_ROLES.has(role)) return allow();
     const matched = unscopedStaging(ti.command);
     if (!matched) return allow();
@@ -203,8 +241,8 @@ function main(input) {
   );
 }
 
-// Same record shape as the log's two existing writers (boundary-detector.js, read-tracker.js): the
-// team lead greps this file, so a third writer inventing its own key names would fragment the triage.
+// Same record shape as the log's other writers (boundary-detector.js and read-tracker.js among them):
+// the team lead greps this file, so a writer inventing its own key names would fragment the triage.
 function logViolation(root, row) {
   try {
     const dir = path.join(root, '.claude', 'audit');

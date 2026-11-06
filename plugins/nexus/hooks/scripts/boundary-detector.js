@@ -3,9 +3,9 @@
  * Nexus PostToolUse(Write|Edit|MultiEdit) boundary detector. Async, observe-only — never blocks
  * (PostToolUse cannot block, and this must never wedge a run).
  *
- * Why this exists (evaluation roadmap B.2, unlocked by Probe P1 on 2026-06-10): the platform
- * drops a PreToolUse deny for background subagents (ADR-13), so the pipeline gate cannot
- * PREVENT a backgrounded agent's boundary violation — but PostToolUse hooks DO fire there.
+ * Why this exists (evaluation roadmap B.2, unlocked by Probe P1 on 2026-06-10): a PreToolUse deny
+ * was then dropped for background subagents (ADR-13; honoured since Claude Code 2.1.301), so a gate
+ * could not PREVENT a backgrounded agent's boundary violation — but PostToolUse hooks DO fire there.
  * Prevention stays with the agents' hard rules (ADR-14/18); this makes every breach
  * DETERMINISTICALLY VISIBLE: a violation appends one JSON line to .claude/audit/violations.log
  * (+ a systemMessage), and the team lead checks the log at every checkpoint instead of hoping
@@ -37,9 +37,9 @@
  *     skipped, then the verb judged on its own arguments. A verb in WRITE_VERBS flags unless its
  *     arguments ask for a dry run or for help, or are one of the read-only forms readsOnly() lists;
  *     `fetch`, `config`, `clone`, `init`, the reads (`show`/`log`/`diff`/`status`…) and
- *     `git commit-graph` never flag. Best-effort
- *     early-warning only — the team lead's `git log` author check is the guaranteed retroactive catch
- *     (team-lead.md Enforcing the Rules).
+ *     `git commit-graph` never flag. The prohibition gate
+ *     refuses such a write first, so a line here means one ran; the team lead's `git log` check
+ *     (team-lead.md Enforcing the Rules) lists every commit it did not make and resets none.
  *
  * Zero footprint when clean: nothing is created unless a violation occurs. Fail silent on any
  * error (mirrors audit-logger).
@@ -81,7 +81,7 @@ function violation(role, fp, root) {
 }
 
 // Every git verb that moves a branch, the staging area, a working file, a ref or a worktree. A flagged
-// line makes the team lead unwind the developer's commits, so a verb that changes none of them —
+// line is refused to a spawned agent by the prohibition gate, so a verb that changes none of them —
 // `fetch`, `config`, and `clone`/`init`, which make another repository — stays out.
 const WRITE_VERBS = new Set([
   'commit', 'add', 'reset', 'push', 'stash', 'restore', 'switch', 'rm', 'mv', 'checkout', 'merge', 'rebase',
@@ -406,14 +406,14 @@ if (require.main === module) {
         rule = `subagent re-owned a task to another agent (${ti.owner}) — cross-agent task assignment belongs to the team lead alone (ADR-21 peer-orchestration)`;
       } else if (/^(Bash|PowerShell)$/.test(data.tool_name)) {
         // ADR-18/20: pipeline agents never commit — the team lead owns commits. A subagent running a
-        // git command that changes the repository is the #1 fabrication vector's commit leg. Best-effort
-        // EARLY-WARNING layer only; the team lead's `git log` author check at every verify point is the
-        // GUARANTEED retroactive catch (it unwinds any commit not authored by the team lead, however it was made).
+        // git command that changes the repository is the #1 fabrication vector's commit leg. The
+        // prohibition gate refuses it first, so a line here means a write ran; the team lead's `git log`
+        // check at every verify point lists any commit it did not make, however made, and keeps it.
         //
         // Every command of the LOWERCASED line is read, not only its first: `git status && git commit -m x`
         // and `bash -c "git commit …"` both run a commit, and a missed write is a silently undetected
-        // breach. A `git` only mentioned is no command, because a flagged line forces the team lead to
-        // unwind the step commits. The verb is a whole word, so `git commit-graph` is not `git commit`.
+        // breach. A `git` only mentioned is no command, because a flagged line is refused to a helper.
+        // The verb is a whole word, so `git commit-graph` is not `git commit`.
         //
         // A read-only form is judged on its own arguments only, up to the end of its command, so a
         // developer proving a pre-existing failure runs `git stash list` unflagged (plugin-feedback

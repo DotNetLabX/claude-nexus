@@ -273,6 +273,7 @@ function main(argv = process.argv.slice(2), { env = process.env, out = (s) => pr
       out(`label-tests: skipped ${file} — ${labeller.reason}\n`);
       continue;
     }
+    if (labeller.runner.takesNoLabels) continue;
     const before = hashes[file];
     const current = fileHash(tree, file);
     const prior = ownLabels.filter((r) => r.files[file]).map((r) => r.files[file]).at(-1);
@@ -371,6 +372,12 @@ function main(argv = process.argv.slice(2), { env = process.env, out = (s) => pr
     out(`label-tests: ${yaml} — the slow tag declared\n`);
   }
   for (const w of wanted.filter((x) => !x.done)) {
+    const kind = runnerOfFile(w.file);
+    if (kind && runnerFor(kind).runner && runnerFor(kind).runner.takesNoLabels) {
+      w.done = true;
+      out(`label-tests: ${w.file} — this runner's tests take no slow label, so no reason is written\n`);
+      continue;
+    }
     out(untouched.has(`${w.file}:${w.line}`)
       ? `label-tests: ${w.file}:${w.line} is a test the step did not change — its label stands, no reason written\n`
       : `label-tests: ${w.file}:${w.line} is no test run ${args.run} timed — no reason written\n`);

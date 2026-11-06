@@ -35,7 +35,7 @@ verify it exists on a Fast run, so it is required there and absent everywhere el
 **Files:** `full/path/to/File` — what changed and why; one line per file
 **Skills:** {skill-name}, tdd — or `None` with the plan's sanction
 **Rules:** one entry per rule the step lists under `Satisfies:` — `{ruleName}: tested — {test file} › {test name}` | `{ruleName}: not testable here — {reason}` | `{ruleName}: disputed — Q{n}`; omit the line where the step lists none
-**Decisions:** implementation choices this step made that the plan did not specify — or `None`
+**Decisions:** {kind}: implementation choices this step made that the plan did not specify — or `None`; `{kind}` is one word, business (what the customers or the company get or pay), product (what the user sees or can do) or technical (how it is built), and a line without it reads untagged
 **Deviations:** what was done differently, and why — or `None`
 **Test problem:** {test or build} — {the error | over the speed-up line} — {fixed, green on attempt 2 | fixed, not re-run | not fixed — tried: {what}}; one line per problem a step run showed, written even when attempt 2 is green, else omit the line
 **Unfinished:** {files | build} — attempt {1|2} cut at {limit} s, or {test} timed out; only for a cut step run or a timed-out test — never a `Test problem:` line for it as well — else omit the line; one line per cut run
@@ -89,9 +89,10 @@ its own block, any carry-over rows and, where the tail lacks one, their table, d
 here verbatim, not paraphrased: an **`M3 re-mine`** flag (a registry rule the change falsified whose
 tests could not be updated in the same pass) and a **`Distill owed: {module} — {date}`** flag (a
 module whose concept digest the change made stale). Write each on the `Deviations:` line of the step
-that caused it, or in a tail section when it surfaces later. Both block the run's close until
-discharged — the rules are the Registry guardrail's and the close gate's; this format only fixes
-where they live.
+that caused it, or in a tail section when it surfaces later. An `M3 re-mine` flag blocks the run's
+close until discharged; a `Distill owed` flag goes on the close's after-close list and is discharged
+by the distill after the closing commit — the rules are the Registry guardrail's and the close gate's;
+this format only fixes where they live.
 
 **What a step run leaves for the end.** Every problem a developer's step run shows
 (`developer.md` § The step test rule) — a failing test, a failed build, a test over the speed-up
@@ -106,12 +107,16 @@ sends a red to, start from them.
 **A fix round has no step of its own.** When the reviewer returns findings, every step block is
 already closed and there is no current step to append to. Add one `## Fix Round N` block in the step
 region, after the last step block, with the same four fields — `Files:` names what the fixes touched,
-`Deviations:` records any finding you did not act on and why — plus the round's `Test problem:` and
-`Unfinished:` lines as a step block writes them, and `**Class checked:**` lines. Each finding the round fixed gets one
+`Deviations:` records any other finding you did not act on and why — plus the round's `Test problem:` and
+`Unfinished:` lines as a step block writes them, `**Left out:**` lines and `**Class checked:**` lines. Each
+finding you weighed and left out — between the round's bar and its always-fix line (→ agents-workflow.md § Fix rounds) —
+gets one `**Left out:** {fix-list row}: later | drop — {one-line reason}` line; a row at or above the
+always-fix line, or a done-check item, is never left out, and listed here it stays open. Each finding the round fixed gets one
 `**Class checked:** {fix-list row}: {the search, as run} — {siblings fixed | none found | listed: {where}}`
 line: the search for the same flaw in sibling code, not only the line the finding cited. A round
 that fixed only done-check items (a missing step, a skill slip, a test slip) writes one
-`**Class checked:** none — {why}` line. A `Fixes applied` hand-back whose round block lacks them is
+`**Class checked:** none — {why}` line, and a round that fixed no finding writes
+`**Class checked:** none — every finding left out`. A `Fixes applied` hand-back whose round block lacks them is
 sent back once. Never rewrite the original step blocks
 to make them look as though they had been right the first time: the sequence of what was built and
 what was corrected is what a resume and a re-review both read. A bug met in a fix round that this

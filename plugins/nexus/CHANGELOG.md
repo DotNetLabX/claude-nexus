@@ -1,5 +1,193 @@
 # nexus — Changelog
 
+## [2.4.104] — 2026-11-06
+- The merge at close keeps another session's unsaved edit to a shared record: merge-close.js commits exactly the feature branch's content and puts the other session's edit back unstaged, refusing when both changed the same row
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - estate raise: plugins/nexus/agents/team-lead.md 275737→276649 B — F386: the merge at close commits through merge-close.js, which keeps another session's edit to a shared record
+
+## [2.4.103] — 2026-11-06
+- F384-QuestionFirstAsks: an owner question opens with the question, then one short paragraph, then options of one sentence each; the style is for the question box, and the questions file is written for agents
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - skill change (questions-format)
+  - estate raise: plugins/nexus/agents/po.md 82700→82725 B — F384: the question-first form, the screen-only surfaces and the corrected-fact pointers
+  - estate raise: plugins/nexus/agents/solo.md 35984→36002 B — F384: the question-first form, the screen-only surfaces and the corrected-fact pointers
+  - estate raise: plugins/nexus/agents/team-lead.md 275725→275737 B — F384: the question-first form, the screen-only surfaces and the corrected-fact pointers
+  - estate raise: plugins/nexus/skills/questions-format/references/standard-questions.md 36051→36096 B — F384: the question-first form, the screen-only surfaces and the corrected-fact pointers
+
+## [2.4.102] — 2026-11-06
+- F380-OneCloseRoutine: one close routine in a normal run and a campaign — the rule check runs beside the done check and the code review, one § Red runs, § After the Close after the closing commit, a campaign unit takes in its campaign branch and the merge tests only what it added; the team lead's communication log gains a **Stage:** line (a log may gain information — ADR-136)
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - skill change (create-feature-spec)
+  - skill change (implementation-format)
+  - skill change (review-format)
+  - skill change (summary-format)
+  - estate raise: plugins/nexus/agents/architect.md 246794→250178 B — F380-OneCloseRoutine: one close routine — the rule check beside the checks, one § Red runs, § After the Close, the campaign points to the core
+  - estate raise: plugins/nexus/agents/developer.md 51539→51597 B — F380-OneCloseRoutine: one close routine — the rule check beside the checks, one § Red runs, § After the Close, the campaign points to the core
+  - estate raise: plugins/nexus/agents/po.md 82318→82700 B — F380-OneCloseRoutine: one close routine — the rule check beside the checks, one § Red runs, § After the Close, the campaign points to the core
+  - estate raise: plugins/nexus/agents/solo.md 35880→35984 B — F380-OneCloseRoutine: one close routine — the rule check beside the checks, one § Red runs, § After the Close, the campaign points to the core
+  - estate raise: plugins/nexus/agents/team-lead.md 266576→275725 B — F380-OneCloseRoutine: one close routine — the rule check beside the checks, one § Red runs, § After the Close, the campaign points to the core
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 125479→128139 B — F380-OneCloseRoutine: one close routine — the rule check beside the checks, one § Red runs, § After the Close, the campaign points to the core
+  - estate raise: plugins/nexus/skills/create-feature-spec/workflows/Template.md 8864→8907 B — F380-OneCloseRoutine: one close routine — the rule check beside the checks, one § Red runs, § After the Close, the campaign points to the core
+  - estate raise: plugins/nexus/skills/implementation-format/SKILL.md 17359→17494 B — F380-OneCloseRoutine: one close routine — the rule check beside the checks, one § Red runs, § After the Close, the campaign points to the core
+  - estate raise: plugins/nexus/skills/review-format/SKILL.md 31341→31726 B — F380-OneCloseRoutine: one close routine — the rule check beside the checks, one § Red runs, § After the Close, the campaign points to the core
+  - estate raise: plugins/nexus/skills/summary-format/SKILL.md 13595→13728 B — F380-OneCloseRoutine: one close routine — the rule check beside the checks, one § Red runs, § After the Close, the campaign points to the core
+
+## [2.4.101] — 2026-11-06
+- PATCH bump.
+  - rule (always-on prompt-form envelope — injected every session)
+  - estate raise: plugins/nexus/rules/prompt-form/prompt-form.md 0→844 B — F382: prompt-form envelope
+
+## [2.4.100] — 2026-11-06
+- PATCH bump. F377-SeveralPlansPerSpec: the architect and the team lead each gain one seam line before a plan review's first readers start.
+  - agent instruction/behavior change
+  - shipped command changed
+  - estate raise: plugins/nexus/agents/architect.md 246585→246794 B — F377-SeveralPlansPerSpec: one seam line
+  - estate raise: plugins/nexus/agents/team-lead.md 266373→266576 B — F377-SeveralPlansPerSpec: one seam line
+
+## [2.4.99] — 2026-11-06
+- PATCH bump. F364-DecisionReview: every unattended run a team lead or an architect closes ends with a decision review, a program writing it from the run's records; every decision record carries its kind (business, product or technical).
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - skill change (create-feature-spec)
+  - skill change (create-implementation-plan)
+  - skill change (implementation-format)
+  - skill change (questions-format)
+  - skill change (summary-format)
+  - estate raise: plugins/nexus/agents/architect.md 245981→246585 B — F364: the decision review
+  - estate raise: plugins/nexus/agents/po.md 82041→82318 B — F364: the decision review
+  - estate raise: plugins/nexus/agents/team-lead.md 265270→266373 B — F364: the decision review
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 125073→125479 B — F364 fix round 1: the owner-away close's decision review names the campaign-unit exception
+  - estate raise: plugins/nexus/skills/create-feature-spec/workflows/Template.md 8616→8864 B — F364: the decision review
+  - estate raise: plugins/nexus/skills/create-implementation-plan/references/plan-template.md 19463→19706 B — F364: the decision review
+  - estate raise: plugins/nexus/skills/implementation-format/SKILL.md 17163→17359 B — F364: the decision review
+  - estate raise: plugins/nexus/skills/questions-format/SKILL.md 10319→10524 B — F364: the decision review
+  - estate raise: plugins/nexus/skills/summary-format/SKILL.md 12778→13595 B — F364: the decision review
+
+## [2.4.98] — 2026-11-05
+- F376-CampaignFixesRound2: a complete test run in a repo that declares no `fullLimitSeconds` now gets twice the suite's usual time where that is longer than 10 minutes, so a suite that has grown past 10 minutes is no longer cut and run again at every close. The usual time comes from the run's own checkout, or from the main checkout where a new worktree has too few runs; a declared limit or `--timeout-ms` is used as given.
+- F376-CampaignFixesRound2: at session start the plugin adds `.claude/pipeline-state/` and `.claude/approval-scope/` to the repository's local git exclude list, shared by every worktree, so no repository has to list them in its own `.gitignore`. It starts no process and prints nothing.
+  - estate raise: plugins/nexus/skills/declare-verify-roles/SKILL.md 17473→17947 B — F376-CampaignFixesRound2: an undeclared full-run limit follows twice the suite's usual time
+
+## [2.4.97] — 2026-11-05
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - rule (always-on prohibitions envelope — injected every session)
+  - estate raise: plugins/nexus/agents/architect.md 245879→245981 B — F375: a helper's git write is refused before it runs; the team lead keeps every commit, and a refusal line needs no action
+  - estate raise: plugins/nexus/agents/developer.md 51532→51539 B — F375: a helper's git write is refused before it runs; the team lead keeps every commit, and a refusal line needs no action
+  - estate raise: plugins/nexus/agents/team-lead.md 264999→265270 B — F375: a helper's git write is refused before it runs; the team lead keeps every commit, and a refusal line needs no action
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 124750→125073 B — F375: a helper's git write is refused before it runs; the team lead keeps every commit, and a refusal line needs no action
+
+## [2.4.96] — 2026-11-05
+- F374: the PO's and the team lead's tracker line allows, on a person's yes, a direct write the tracker skill has no action for.
+  - agent instruction/behavior change
+  - shipped command changed
+  - estate raise: plugins/nexus/agents/po.md 81976→82041 B — F374-TrustPeopleCheckAgents: the trust rule across the product plugin's skills, its new actions, and one line each in po and team-lead
+  - estate raise: plugins/nexus/agents/team-lead.md 264934→264999 B — F374-TrustPeopleCheckAgents: the trust rule across the product plugin's skills, its new actions, and one line each in po and team-lead
+
+## [2.4.95] — 2026-11-05
+- A finding between a round's bar and its always-fix line now answers one question: if nobody touches this, what goes wrong in the finished work? A low starts from leaving it out, a medium from fixing it, and a finding that puts a choice to the owner counts as something going wrong. The author still decides.
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 245486→245879 B — F366-AuthorsWeighFindings: the author's call between the lines answers one question, with a starting point by level
+  - estate raise: plugins/nexus/agents/learner.md 64059→64452 B — F366-AuthorsWeighFindings: the author's call between the lines answers one question, with a starting point by level
+  - estate raise: plugins/nexus/agents/po.md 81583→81976 B — F366-AuthorsWeighFindings: the author's call between the lines answers one question, with a starting point by level
+  - estate raise: plugins/nexus/agents/team-lead.md 264541→264934 B — F366-AuthorsWeighFindings: the author's call between the lines answers one question, with a starting point by level
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 124357→124750 B — F366-AuthorsWeighFindings: the author's call between the lines answers one question, with a starting point by level
+
+## [2.4.94] — 2026-11-05
+- F371: the core no longer names the retired panel job, so a repository still setting `jobs.panelPeer` hears that nothing reads it; the owner-away rule no longer states a number of panel voices; the architect and the PO start the other voices as their own helpers.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+
+## [2.4.93] — 2026-11-04
+- F361: in a run the owner has left, every decision is taken and listed; only a one-way action, a stop rule the owner named or something physically missing waits; at the fix-round limit no further round runs and the feature closes with blocking rows
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - rule (always-on prohibitions envelope — injected every session)
+  - rule (always-on kernel — injected every session)
+  - skill change (create-feature-spec)
+  - skill change (create-implementation-plan)
+  - skill change (questions-format)
+  - skill change (summary-format)
+  - estate raise: plugins/nexus/agents/architect.md 244219→245494 B — F361-UnattendedDecideAndGoOn: first-round self-review folds on the away rule
+  - estate raise: plugins/nexus/agents/po.md 81479→81591 B — F361-UnattendedDecideAndGoOn: one rule for an owner-away run replaces the waiting clauses; net shrink across the rule set, small growth where a file names the away branch
+  - estate raise: plugins/nexus/agents/team-lead.md 264349→264541 B — F361-UnattendedDecideAndGoOn: first-round self-review folds on the away rule
+  - estate raise: plugins/nexus/rules/prohibitions/prohibitions.md 3827→3835 B — F361-UnattendedDecideAndGoOn: one rule for an owner-away run replaces the waiting clauses; net shrink across the rule set, small growth where a file names the away branch
+  - estate raise: plugins/nexus/rules/workflow-core.md 4867→4874 B — F361-UnattendedDecideAndGoOn: one rule for an owner-away run replaces the waiting clauses; net shrink across the rule set, small growth where a file names the away branch
+  - estate raise: plugins/nexus/skills/create-feature-spec/workflows/Template.md 8516→8616 B — F361-UnattendedDecideAndGoOn: one rule for an owner-away run replaces the waiting clauses; net shrink across the rule set, small growth where a file names the away branch
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 43517→43542 B — F361-UnattendedDecideAndGoOn: one rule for an owner-away run replaces the waiting clauses; net shrink across the rule set, small growth where a file names the away branch
+  - estate raise: plugins/nexus/skills/summary-format/SKILL.md 12607→12778 B — F361-UnattendedDecideAndGoOn: first-round self-review folds on the away rule
+
+## [2.4.92] — 2026-11-04
+- F368: run records and test runs say what really happened
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 244153→244219 B — F368-RecordsAndTestTruth: the re-run clause names a file no installed runner takes; header comments on several runners
+  - estate raise: plugins/nexus/agents/team-lead.md 264283→264349 B — F368-RecordsAndTestTruth: the re-run clause names a file no installed runner takes; header comments on several runners
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 124604→124648 B — F368-RecordsAndTestTruth: the re-run clause names a file no installed runner takes; header comments on several runners
+
+## [2.4.91] — 2026-11-04
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - estate raise: plugins/nexus/agents/architect.md 243403→244153 B — F360: the moments a panel starts, in the personas' own instructions
+  - estate raise: plugins/nexus/agents/po.md 81123→81479 B — F360: the moments a panel starts, in the personas' own instructions
+
+## [2.4.90] — 2026-11-03
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - skill change (critic-calibration)
+  - skill change (implementation-format)
+  - skill change (review-format)
+  - skill change (summary-format)
+  - estate raise: plugins/nexus/agents/architect.md 239628→243403 B — F359-AuthorDecidesFindings: the always-fix line, the author's call between the lines, the fold reason column, the critic confidence line, the round gate; fix round 1: a follow-up review reads a left-out finding as settled, the carry-over row drops a finding a later round fixed
+  - estate raise: plugins/nexus/agents/critic.md 35614→36252 B — F359-AuthorDecidesFindings: the always-fix line, the author's call between the lines, the fold reason column, the critic confidence line, the round gate
+  - estate raise: plugins/nexus/agents/developer.md 50990→51532 B — F359-AuthorDecidesFindings: the always-fix line, the author's call between the lines, the fold reason column, the critic confidence line, the round gate
+  - estate raise: plugins/nexus/agents/learner.md 61957→64059 B — F359-AuthorDecidesFindings: the always-fix line, the author's call between the lines, the fold reason column, the critic confidence line, the round gate
+  - estate raise: plugins/nexus/agents/po.md 79021→81123 B — F359-AuthorDecidesFindings: the always-fix line, the author's call between the lines, the fold reason column, the critic confidence line, the round gate
+  - estate raise: plugins/nexus/agents/reviewer.md 32121→32347 B — F359-AuthorDecidesFindings fix round 1: a follow-up reviewer reads a left-out finding as settled
+  - estate raise: plugins/nexus/agents/team-lead.md 260200→264283 B — F359-AuthorDecidesFindings: the always-fix line, the author's call between the lines, the fold reason column, the critic confidence line, the round gate; fix round 1: a follow-up review reads a left-out finding as settled, the carry-over row drops a finding a later round fixed
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 121893→124604 B — F359-AuthorDecidesFindings: the always-fix line, the author's call between the lines, the fold reason column, the critic confidence line, the round gate; fix round 1: the left-out list keeps a finding's newest line and drops one a later round fixed
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 29217→30330 B — F359-AuthorDecidesFindings: the always-fix line, the author's call between the lines, the fold reason column, the critic confidence line, the round gate; fix round 1: a follow-up review reads a left-out finding as settled, the carry-over row drops a finding a later round fixed
+  - estate raise: plugins/nexus/skills/critic-calibration/SKILL.md 12492→12743 B — F359-AuthorDecidesFindings: the always-fix line, the author's call between the lines, the fold reason column, the critic confidence line, the round gate
+  - estate raise: plugins/nexus/skills/implementation-format/SKILL.md 16714→17163 B — F359-AuthorDecidesFindings: the always-fix line, the author's call between the lines, the fold reason column, the critic confidence line, the round gate
+  - estate raise: plugins/nexus/skills/review-format/SKILL.md 31098→31341 B — F359-AuthorDecidesFindings: the always-fix line, the author's call between the lines, the fold reason column, the critic confidence line, the round gate
+  - estate raise: plugins/nexus/skills/summary-format/SKILL.md 11822→12607 B — F359-AuthorDecidesFindings: the always-fix line, the author's call between the lines, the fold reason column, the critic confidence line, the round gate; fix round 1: the left-out list keeps a finding's newest line and drops one a later round fixed
+
+## [2.4.89] — 2026-11-03
+- F355-UnverifiedTiedRuns: a tied test run that falls back to the whole unit command, on a repo whose unit has a stage the core does not read the tests of (a Vitest stage in a .NET repo), records the changed files nothing checked (`uncovered`) and those stages (`unread_stages`) and prints them, instead of a plain pass — the verdict is unchanged; the commands a runner composes (one per .NET test project) run on past a red, and every red report's failures are kept.
+- PATCH bump.
+  - hook behavior/enforcement change
+
+## [2.4.88] — 2026-11-03
+- F354-UnattendedTriggersAsRuled: the owner-away rule's panel route (nexus-pro) now takes every decision the PO or the architect would take alone at medium confidence or lower, or unrated, its own recorded decisions included, as the owner ruled for F252.
+- PATCH bump.
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 121515→121893 B — F354: unattended panel and brainstorm triggers as the owner ruled (F252 rule 6, F174 D11)
+
 ## [2.4.87] — 2026-11-03
 - F333-TestRunning: runs record a busy machine; label-tests labels only the tests a step changed; the test-entry gate judges what a command runs, not what it names (B108); step runs add the wording checks a repo declares (stepTests); timing tests measure without machine load, with a clock-margins lint; BUG-110 child limits
   - agent instruction/behavior change

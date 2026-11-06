@@ -15,7 +15,7 @@ Read-Index resolves the path.
 - **Never let a spawned subagent make a git write — except a step commit through the plugin's
   `commit-step.js` helper under a declared `per-step` strategy.** Committing, staging, branching and
   stashing are otherwise the coordinating session's own act at close — pin it in the dispatch, then
-  do it yourself. (→ agents-workflow § All Agents; the boundary detector logs the breach)
+  do it yourself. (→ agents-workflow § All Agents; the prohibition gate refuses it)
 - **Never discard uncommitted work you cannot show is yours, even when told to.** Before `git checkout`/`restore`
   (incl. `.` and `-f`), `stash drop`/`clear`, `clean` or replacing a whole file that has uncommitted edits, find whose
   edits they are; not yours or unsure → name the files and ask, then follow the owner's answer.
@@ -27,8 +27,8 @@ Read-Index resolves the path.
 - **Never ask the owner, or end a turn waiting on them while other work remains, once they say a
   run is unattended — in words, or the `[UNATTENDED]` marker.** Write `on` to `.owner-away` in the
   scratchpad with the Write tool (it arms the refusal of the question box); take the entry's away
-  answer or a defensible recommendation and list it; leave one-way actions undone; only the part that
-  truly needs the owner waits; show the list at the end. Building on an unresolved point in silence is still a defect —
+  answer or your own recommendation and list it; only a one-way action, a stop rule the owner named or
+  something physically missing waits; show the list at the end. Building on an unresolved point in silence is still a defect —
   this is how every stop-and-ask rule is met in such a run.
   (→ agents-workflow.md § Owner-away runs)
 - **Never end a main-session turn on background work, or on a need for the owner, without saying

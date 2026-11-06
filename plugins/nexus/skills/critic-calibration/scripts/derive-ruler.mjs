@@ -64,6 +64,8 @@ const MERGE_COLUMNS = [
   'untouchable', 'tag', 'surfaces', 'source ids',
 ];
 const FOLD_COLUMNS = ['id', 'disposition', 'level after'];
+// The fold's optional sixth column, `reason`, and the one value of it the anchors read.
+const BELOW_THE_BAR = 'below the bar';
 const SHEET_COLUMNS = [
   'id', 'kind', 'round', 'given', 'disposition', 'title', 'consequence (edit)',
   'proposed level', 'reason', 'owner level', 'owner note',
@@ -407,6 +409,7 @@ function recordsFromRound(round, rel, repo, ts, problems) {
         DISPOSITIONS.join(' | '));
     }
     const after = foldRow ? fCell(foldRow, 'level after') : '';
+    const foldReason = foldRow ? fCell(foldRow, 'reason') : '';
     const evidence = mCell(row, 'evidence').toLowerCase();
     const untouchable = mCell(row, 'untouchable');
     const tag = mCell(row, 'tag');
@@ -461,7 +464,12 @@ function recordsFromRound(round, rel, repo, ts, problems) {
       grade_note: null,
       reviewed: false,
       source: 'extracted',
-      origin: { feature: featureOf(rel), repo, file: rel, reader: mCell(row, 'readers') || 'primary' },
+      // The fold's reason rides in `origin`, not as a record key: a new key would fail every corpus
+      // written before it on the missing-key rule.
+      origin: {
+        feature: featureOf(rel), repo, file: rel, reader: mCell(row, 'readers') || 'primary',
+        ...(blank(foldReason) ? {} : { fold_reason: foldReason }),
+      },
       ts,
     };
   });
@@ -536,6 +544,8 @@ const EV_RANK = { quoted: 0, scenario: 1, path: 2, none: 3 };
 
 function isPositive(record, kind, level) {
   if (record.kind !== kind || record.level_after !== level) return false;
+  // A finding below the round's bar was never weighed, so its waive says nothing about its level.
+  if (record.origin && String(record.origin.fold_reason || '').replace(/`/g, '').trim().toLowerCase() === BELOW_THE_BAR) return false;
   if (record.disposition === 'fixed-real') return true;
   if (record.disposition === 'waived') return level === 'MEDIUM' || level === 'LOW';
   if (record.disposition === 'plan-must-resolve') return level === 'LOW';

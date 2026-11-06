@@ -3,7 +3,7 @@
  * Nexus SubagentStart hook: delivers the SPAWN CONTRACT into a spawned agent's context — the second
  * command on this event, alongside F81's verify-roles carrier (ADR-100 Decision Rule 4).
  *
- * THE PROBLEM. The always-on rules reach the MAIN session only: three SessionStart envelopes, and a
+ * THE PROBLEM. The always-on rules reach the MAIN session only: the SessionStart envelopes, and a
  * SessionStart injection never reaches a spawn (ADR-70's constraint). A spawned pipeline agent at
  * least carries its own agent-file body. A CHARTER-LESS helper — `general-purpose`, `Explore`, a
  * custom name — carries nothing but whatever the dispatcher happened to type into the prompt, and
@@ -38,8 +38,9 @@
  *
  * NOT A CONTAINMENT MECHANISM. This hook informs; it does not enforce. ADR-13 measured a synchronous
  * PreToolUse `deny` as DROPPED for a background subagent's tool call, so nothing in this plugin may
- * treat a hook as a gate (dropped through Claude Code 2.1.273, honoured at 2.1.301: the test-entry
- * gate now refuses every gated seat, the other gates are unchanged). The boundary detector still logs the breach it always logged.
+ * treat a hook as a gate (dropped through Claude Code 2.1.273, honoured at 2.1.301 and 2.1.318: the
+ * test-entry gate and the prohibition gate's git-write check refuse every seat they reach, the other
+ * gates keep their behaviour). The boundary detector still logs the breach it always logged.
  *
  * BUDGET. Deliberately smaller than the prohibitions envelope: this rides in EVERY spawn's context on
  * top of an agent body that can already be 90 KB. The deterministic gate is SPAWN_CONTRACT_BUDGET in

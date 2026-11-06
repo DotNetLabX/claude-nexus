@@ -8,7 +8,8 @@
  * with a bold rule id (`- **BR1 — …**`); its text runs to the next rule, the next heading or the
  * section's end, so an indented item or a continuation line belongs to it. A rule with no marker, or
  * with a kind outside the six, is `missing`; a rule with an `added` source the owner has not kept is
- * `pending` — a keep reads `added — kept by owner {YYYY-MM-DD}`, the date required.
+ * `pending` — a keep reads `added — kept by owner {YYYY-MM-DD}` or, settled by its author with the owner
+ * away, `added — kept, owner away {YYYY-MM-DD}`, the date required.
  *
  * Two callers, one rule: pipeline-gate.js invariant (10) refuses a foreground write that flips a spec
  * to Ready, and spec-sources.js is the command the PO, the architect and the team lead run before a
@@ -28,7 +29,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const KINDS = new Set(['ticket', 'contract', 'owner', 'document', 'pattern', 'added']);
-const KEPT_RE = /^added\s*[—–-]\s*kept by owner\s+\d{4}-\d{2}-\d{2}\b/i;
+const KEPT_RE = /^added\s*[—–-]\s*kept(?: by owner|, owner away)\s+\d{4}-\d{2}-\d{2}\b/i;
 const FENCE_RE = /^[ \t]*(`{3,}|~{3,})(.*)$/;
 const STATUS_RE = /^(?:\*\*Status:\*\*|Status:)[ \t]*(.*)$/;
 const NUMBERED_RE = /^(\d+)[.)][ \t]+\S/;

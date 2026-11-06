@@ -59,7 +59,7 @@ Every extension depends on `nexus`, so installing one installs the core with it.
 
 | Plugin | What you get | Repository |
 |--------|--------------|------------|
-| [**nexus-pro**](#nexus-pro) | Thirteen extras that get more out of every feature | `DotNetLabX/claude-nexus-pro` |
+| [**nexus-pro**](#nexus-pro) | Fourteen extras that get more out of every feature | `DotNetLabX/claude-nexus-pro` |
 | [**nexus-miner**](#nexus-miner) | Tests, rules, maps and rewrites mined from the code you already have | `DotNetLabX/claude-nexus-miner` |
 | [**nexus-analytics**](#nexus-analytics) | Business questions in plain words, numbers you can defend | `DotNetLabX/claude-nexus-analytics` |
 | [**nexus-notes**](#nexus-notes) | Every meeting decision in front of whoever writes the spec | `DotNetLabX/claude-nexus-notes` |
@@ -74,7 +74,7 @@ Each paid plugin lives in its own private repository, which is its own marketpla
 
 ### nexus-pro
 
-**Thirteen extras for the Nexus pipeline — for when you already like the core and want more from every feature.**
+**Fourteen extras for the Nexus pipeline — for when you already like the core and want more from every feature.**
 
 - **Brainstorm mode — ideas, then straight into the critique.** Short rounds of ideas you pick from, then every idea you chose is challenged before anything reaches the spec.
 - **Panel mode — a second mind on a design question.** A model from another family drafts its own position; you get one merged answer and every remaining disagreement written down.
@@ -89,6 +89,7 @@ Each paid plugin lives in its own private repository, which is its own marketpla
 - **Draw mockup — the screens your design left out, drawn before anyone builds them.** One clickable page in your app's own look, every piece marked as from the design, asked for by the spec, or new — and a check refuses the page while any piece points at nothing real.
 - **Live agent view — see what every agent is doing.** Each agent's row names its role, and a developer's shows its step, tokens and time — `dev-s1 · step 3/7 · 420k · 9 min`.
 - **Suite methods for app agents.** When your app's own agents run on a model's API, their prompts start from a tested method instead of a blank page.
+- **Slice review — a big plan read as closely as a small one.** Each build slice gets its own readers, then one merged list of findings. You choose it per repository.
 
 ### nexus-miner
 

@@ -104,7 +104,7 @@
  *      `Write` of a docs/specs/{slug}/delivery/summary.md (a nested issue's included) whose content
  *      holds no line beginning `Mode: ` is Blocked; the deny names the summary-format grammar. Only a
  *      `Write` is judged: an `Edit` or `MultiEdit` carries part of the file, and every close writes the
- *      summary whole. It runs last among the summary invariants — (9) after (4)–(7) and (11) — so a
+ *      summary whole. It runs last among the summary invariants — (9) after (4)–(7), (11) and (12) — so a
  *      write another one refuses keeps that refusal. Foreground writers only, as (4)–(7).
  *  10) Spec sources (ADR-161). Every business rule of a spec names its source, and a rule a writer or a
  *      reviewer added keeps the spec from Ready until the owner keeps it. A `Write`, `Edit` or
@@ -133,6 +133,16 @@
  *      with one stderr line; the close's own item still lists its groups. The deny names each open group
  *      and its file, the commands that fill it, and the hand disposition a record left without the plugin
  *      takes (`"result": "stale"` with a `why`). It runs after (7) and before (9).
+ *  12) Rule check. A feature with a rule list closes only once its rule check is in (the close gate's
+ *      item 1). A foreground `Write`, `Edit` or `MultiEdit` of a `docs/specs/{slug}/delivery/summary.md`
+ *      (a nested issue's included) is Blocked while the feature folder above it has a rule list — the
+ *      `specRules` that sdd-read.js `resolveFeature` returns, so an `sdd/` feature and a pinned one are
+ *      read as the close reads them — and `rule-check.md` beside the summary carries no line starting
+ *      `*Status: COMPLETE — `. A close without the mining skills writes that file with the footer
+ *      `*Status: COMPLETE — not run, mining skills not installed*`, so this check reads no install state.
+ *      The resolution runs only here, after the cheaper summary checks; a pinned feature's may fetch the
+ *      pinned commit (bounded by sdd-read.js). Every error, an unresolvable pin and a feature with no rule
+ *      list allow. It runs after (11) and before (9).
  *
  * REMOVED — invariant (3), state-file integrity (blocking a pipeline subagent's write to
  * the phase token): the only callers it could ATTRIBUTE (data.agent_id is present
@@ -189,6 +199,7 @@ const { closeGear, closeEvidence, labelsOnly } = require('./lib/gear-close');
 const { countsAsPassing } = require('./lib/run-verdict');
 const { isNonRegistry } = require('./lib/registry-stamp');
 const { checkSpec, readCommitted, isReady } = require('./lib/spec-sources');
+const { resolveFeature } = require('./sdd-read');
 const { isSpawned } = require('./lib/is-spawned');
 const { readRoundToken } = require('./lib/round-token');
 
@@ -203,6 +214,7 @@ const METRICS_TIMEOUT_MS = 20000;
 // Invariant (7)'s git read runs on every foreground summary.md write in every consuming repo, so it
 // is bounded like (6)'s spawn. Past the bound the check allows.
 const GIT_STATUS_TIMEOUT_MS = 5000;
+const RULE_CHECK_FOOTER = /^\*Status: COMPLETE — .+\*[ \t]*$/m;
 const REGISTRY_ROOT = 'docs/business-rules';
 
 let input = '';
@@ -334,6 +346,12 @@ process.stdin.on('end', () => {
     if (reason) return deny('11', reason);
   }
 
+  // (12) Rule check: a feature with a rule list needs its finished rule-check record beside this summary.md.
+  if (criticMatch && !isSpawned(data)) {
+    const reason = missingRuleCheck(path.resolve(root, fp), criticMatch[1]);
+    if (reason) return deny('12', reason);
+  }
+
   // (9) Summary mode line: a whole-file Write of summary.md carries a line beginning `Mode: `.
   if (criticMatch && !isSpawned(data) && tool === 'Write' && !/^Mode: /m.test(String(ti.content || ''))) {
     return deny('9',
@@ -369,9 +387,28 @@ function unsourcedSpecRules(root, fp, tool, ti, slug) {
     return `spec.md for ${slug} cannot go Ready while a business rule is unsourced (${found}). ` +
       'End each rule with its source marker, `*(Source: {kind} {reference})*`, the kind one of ticket, ' +
       'contract, owner, document, pattern or added (the spec template\'s Business Rules grammar); split a ' +
-      'rule its source covers only in part, the rest written `added`; put the added rules to the owner as ' +
-      'the catalogue\'s `spec additions` entry, marking each kept one `added — kept by owner {YYYY-MM-DD}` and ' +
-      'moving each dropped one to Out of Scope — then mark the spec Ready.';
+      'rule its source covers only in part, the rest written `added`; put the added rules to the owner as the catalogue\'s ' +
+      '`spec additions` entry, marking each kept one `added — kept by owner {YYYY-MM-DD}` (with the owner away, its author ' +
+      'marks it `added — kept, owner away {YYYY-MM-DD}`) and moving each dropped one to Out of Scope — then mark the spec Ready.';
+  } catch { return null; }
+}
+
+/**
+ * The deny reason while the feature above `summaryFile` has a rule list and the `rule-check.md` beside it
+ * carries no completion footer, or null to allow. Every uncertainty allows (header, invariant (12)).
+ */
+function missingRuleCheck(summaryFile, slug) {
+  try {
+    const delivery = path.dirname(summaryFile);
+    const resolved = resolveFeature(path.dirname(delivery));
+    if (!resolved || resolved.error || !resolved.specRules) return null;
+    const record = readLf(path.join(delivery, 'rule-check.md'));
+    if (record !== null && RULE_CHECK_FOOTER.test(record)) return null;
+    return `summary.md for ${slug} — the feature has a rule list and delivery/rule-check.md ` +
+      `${record === null ? 'does not exist' : 'carries no completion footer'}. Finish the rule check (the close ` +
+      'gate\'s item 1) and write its footer `*Status: COMPLETE — {date}*`; without the mining skills, write ' +
+      'that file with one line saying so and the footer `*Status: COMPLETE — not run, mining skills not ' +
+      'installed*` — then write summary.md.';
   } catch { return null; }
 }
 

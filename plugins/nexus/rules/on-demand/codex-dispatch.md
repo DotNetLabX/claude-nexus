@@ -49,6 +49,7 @@ Plan: docs/specs/{slug}/delivery/plan.md. Implementation record: docs/specs/{slu
 Registries and digests of the touched units: {list | none}.
 Run record: {record path and verdict | running — the gear's complete run, not landed yet | undeclared | the follow-up's producer record, or "not verified at this round"}.
 Read-only run: do not modify any file; this is a review, not a fix.
+On a re-review, a finding the round's `## Fix Round` block lists on a `**Left out:**` line with its reason, below the always-fix line of its fix list's `Bar:` line in review.md, is settled: never raise it again.
 Return in your completion message one line `## Verdict: GO` or `## Verdict: NO-GO`, then every
 finding: severity (CRITICAL, HIGH, MEDIUM or LOW), file:line, the issue, the suggested fix.
 The dispatching session persists them to docs/specs/{slug}/delivery/review-codex.md — you are not
@@ -125,13 +126,15 @@ and persists the record itself via the Relay Contract.
 **Critic-seat dispatch template:**
 ```
 Review {artifact-path} for {slug}. Round: {n}. {One line naming what to cross-reference it against.}
+{Round 2 and later: Always fixed: {round n-1's always-fix line}. A prior finding folded waived or churn with its reason is closed — except one at or above that line folded waived, or folded churn without the evidence that it does not hold.}
 Read-only run: do not modify any file; this is a review, not a fix.
-Return in your completion message one line `## Verdict: GO` or `## Verdict: NO-GO`, then all findings (severity, file, issue).
+Return in your completion message one line `## Verdict: GO` or `## Verdict: NO-GO`, then all findings (severity, a confidence — high, medium or low — file, issue).
 The dispatching session persists them to {record path} — you are not expected to write any file,
 and must not attempt to.
 ```
 
-`{n}` is the critic round being read; a retry keeps its round.
+`{n}` is the critic round being read; a retry keeps its round. The always-fix line is round n-1's,
+read off the schedule table (→ agents-workflow.md § Critic rounds), as the nexus critic's brief reads it.
 
 ## Time limit and fallback <!-- id: liveness -->
 
@@ -162,7 +165,7 @@ wrote again, so go back to `wait`. The stall reason rides the round's `Codex dro
 cut is countable in the review records.
 
 **The loop.** `start --prompt-file {brief}` returns the job's `jobId`, `startedAt` and `deadline`,
-or `unavailable` with a reason. `wait --job {jobId} --deadline {deadline} --started {startedAt}`
+`unavailable` with a reason, or `refused` with a reason. `wait --job {jobId} --deadline {deadline} --started {startedAt}`
 returns the job's `state` — `queued`, `running`, `completed`, `failed` or `cancelled`, or `unknown`
 with `readError: true` when the helper could not read the job's state (a read error is no job
 failure: keep waiting to the deadline) — within about two minutes, so call it again until the state
@@ -179,7 +182,12 @@ JSON object.
 
 **A job a later session can find.** Every Codex job of a review round or a done check starts with its
 `--kind` and the label `{slug} {spec-review|plan-review|promotion-review|code-review} round {n}`, or
-`{slug} done-check {k}`, as `--label`; the helper records it in the session root. Before a session
+`{slug} done-check {k}`, as `--label`; the helper records it in the session root. A spec or plan
+review round's `start` also passes `--record {the absolute path of the feature's review-critic.md}`, the record the
+helper reads to check the round against the critic-round schedule (→ agents-workflow.md § Critic rounds).
+A `start` that returns `refused` is the schedule's stop: the round does not run, no fallback, no retry,
+and it is no job failure — the reason says why, and how an owner-ordered extra round is let through.
+Before a session
 starts the readers of a round whose record is missing, it runs `jobs --label {that label}`:
 - `none` — the round never started: start it as usual;
 - a job with its id — take up the loop above from where the job stands: `wait`, then `collect`,
