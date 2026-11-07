@@ -345,7 +345,9 @@ miner's target-record refusal and halt, and no PO spawned.
 **The away answerer** takes the owner's seat, and is defined here once: a fixed question from the
 catalogue takes its entry's away line; any other decision takes the asker's own recommendation, after
 a panel where one applies (below). The owner's twin — a stand-in that
-answers from the owner's own recorded decisions — joins the away answerer here, in this one place.
+answers from the owner's own recorded decisions — takes part only with its user's switch on: where the
+`panel-mode` skill (`nexus-pro`) is in your skill list, its disagreement also takes a PO's or
+architect's point to a panel (→ `panel-mode/SKILL.md` § The twin's seat).
 
 **Two ways in.** A run is an **owner-away run** from the moment either holds:
 
@@ -410,7 +412,8 @@ sections or its plan's `## Decisions` table — goes to a panel while the featur
 has one, first come, first served; what the panel settles is then taken at whatever level it reads — at `low`, your own recommendation, the panel's answer beside it. A writer's decision is rated before it
 is written as current, so the entry that settles a point is one current before the point arose. Never to
 one: rows 1–4, a point a current entry settles, and anything at the done check, the review or the
-close. Past the budget, and for every other persona, the recommendation is taken and listed. The route holds
+close. With its switch on, the twin's disagreement also takes a point there, at any confidence;
+rows 1–4 and the other exclusions still hold. Past the budget, and for every other persona, the recommendation is taken and listed. The route holds
 from the moment the run turns owner-away until this subsection ends it, and for a spawned or resumed
 PO or architect whose dispatch carries the line `Run: unattended.` — a campaign feature's included;
 once the run ends, no panel or brainstorm starts by itself. A panel the owner asked for before the

@@ -1,5 +1,28 @@
 # nexus — Changelog
 
+## [2.4.106] — 2026-11-07
+- a plan for a safety or concurrency check states what it defends against and where it stops, and the plan and code readers, Codex included, hold their findings to that
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - skill change (create-implementation-plan)
+  - skill change (review-format)
+  - estate raise: plugins/nexus/agents/architect.md 250165→252100 B — F392-PlanStatedLimits: a plan states its limit, and the Nexus and Codex readers hold findings to it
+  - estate raise: plugins/nexus/agents/critic.md 36252→37614 B — F392-PlanStatedLimits: a plan states its limit, and the Nexus and Codex readers hold findings to it
+  - estate raise: plugins/nexus/agents/learner.md 64452→65470 B — F392-PlanStatedLimits: a plan states its limit, and the Nexus and Codex readers hold findings to it
+  - estate raise: plugins/nexus/agents/po.md 82725→83743 B — F392-PlanStatedLimits: a plan states its limit, and the Nexus and Codex readers hold findings to it
+  - estate raise: plugins/nexus/agents/reviewer.md 32347→33230 B — F392-PlanStatedLimits: a plan states its limit, and the Nexus and Codex readers hold findings to it
+  - estate raise: plugins/nexus/agents/team-lead.md 276649→278409 B — F392-PlanStatedLimits: a plan states its limit, and the Nexus and Codex readers hold findings to it
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 30330→32090 B — F392-PlanStatedLimits: a plan states its limit, and the Nexus and Codex readers hold findings to it
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 43542→44363 B — F392-PlanStatedLimits: a plan states its limit, and the Nexus and Codex readers hold findings to it
+  - estate raise: plugins/nexus/skills/create-implementation-plan/references/plan-template.md 19706→20061 B — F392-PlanStatedLimits: a plan states its limit, and the Nexus and Codex readers hold findings to it
+  - estate raise: plugins/nexus/skills/review-format/SKILL.md 31726→32326 B — F392-PlanStatedLimits: a plan states its limit, and the Nexus and Codex readers hold findings to it
+
+## [2.4.105] — 2026-11-07
+- The owner's twin takes part in away decisions under one user switch: off, it guesses silently and is scored from the decision review; on, its disagreement starts a panel, and it sits there as first voice beside two models.
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 127901→128213 B — F388-TwinInAwayDecisions: the twin takes part in away decisions under one user switch; its seat, batch view and away rules
+
 ## [2.4.104] — 2026-11-06
 - The merge at close keeps another session's unsaved edit to a shared record: merge-close.js commits exactly the feature branch's content and puts the other session's edit back unstaged, refusing when both changed the same row
   - agent instruction/behavior change

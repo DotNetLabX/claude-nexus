@@ -220,6 +220,9 @@ Covers: the round's changes; steps built or redone: {list | none}.
 ## Gaps
 - [Edge cases or paths not covered]
 
+**Beyond the limit:**
+- {the way round} — {the words of the plan's limit that rule it out}
+
 ## Open Questions
 - [Low-confidence findings moved here by self-audit]
 
@@ -231,6 +234,8 @@ Covers: the round's changes; steps built or redone: {list | none}.
 
 *Status: COMPLETE — reviewer, {date}*
 ```
+
+**The `Beyond the limit:` list** appears only where the plan's header carries `**Limit:**` and a reader has items for it, in the Step-2 section of any review file, each reader in its own. It is a bold line and its items, with no `###` heading and no severity, so no gate reads it as a finding, and it takes no fix-list row. Where one reader lists an item and another levels it, the level stands.
 
 **Completion footer.** Each writer ends its own block with `*Status: COMPLETE — {role}, {date}*`
 when it is done — the architect each `### Check {k}` block (a Codex check's dispatcher writes
@@ -257,4 +262,5 @@ completion message, so a stranded message costs nothing (ADR-17).
 | Architect (done check) | Writes `done-check.md` | Adds a `### Check {k}` block: dispositions, slips, PASS/FAIL |
 | Dispatcher of a Codex done check (team lead, or the fast-lane architect) | The Codex job's collected output | Persists it as a `### Check {k}` block in the Codex form (→ codex-dispatch.md § Done check) |
 | Architect (escalation) | Step 2 findings and the fix lists | Decides plan wrong vs code wrong |
+| No agent | The `Beyond the limit:` list | None: it is the record of what the check knowingly leaves open |
 | Team Lead | `done-check.md`'s newest footed check for its verdict and any `Missing` marker; the Code Review / newest Re-review section for its verdict line | Writes the fix list and routes one round to the developer when an item reaches the round's bar, or closes on the close predicate |

@@ -725,6 +725,7 @@ Registries and digests of the touched units: {list | none}.
 Run record: {record path and verdict | running — the gear's complete run, not landed yet | undeclared | the follow-up's producer record, or "not verified at this round"}.
 Read-only run: do not modify any file; this is a review, not a fix.
 On a re-review, a finding the round's `## Fix Round` block lists on a `**Left out:**` line with its reason, below the always-fix line of its fix list's `Bar:` line in review.md, is settled: never raise it again.
+Where the plan's header carries `**Limit:**`, a way round the check the plan builds goes under the bold line `Beyond the limit:` in your completion message, with no severity, only when all three hold: the line names that way round or that actor; the actor the check defends against would not hit it in ordinary use; and the line was read by plan review, or a `## Decisions` row by the architect or the owner rules on it. Anything else, an unsure case included, keeps its level as a normal finding, and so does a finding that shows the limit lets through the danger it names. No level is ever lowered.
 Return in your completion message one line `## Verdict: GO` or `## Verdict: NO-GO`, then every
 finding: severity (CRITICAL, HIGH, MEDIUM or LOW), file:line, the issue, the suggested fix.
 The dispatching session persists them to docs/specs/{slug}/delivery/review-codex.md — you are not
@@ -732,7 +733,7 @@ expected to write any file, and must not attempt to.
 ```
 
 **Two records, both written by the dispatching session.** First `review-codex.md`: the job's
-`## Verdict:` line and its findings, as returned; a follow-up appends a new `## Verdict:` section
+`## Verdict:` line, its findings and any `Beyond the limit:` list, as returned; a follow-up appends a new `## Verdict:` section
 below the earlier ones and never rewrites the file. A persisted copy keeps that heading. Then the
 round's primary section of `review.md` — `## Step 2 — Code Review`,
 or `## Step 2 — Re-review (cycle {N})` on a follow-up — `## Step 2 — Re-review (solo fix {n})` or
@@ -743,7 +744,8 @@ of that file keeps reading one primary section per round:
   CRITICAL or HIGH finding → `REQUEST CHANGES`; only MEDIUM or LOW → `COMMENT`; nothing → `APPROVED`;
 - the provenance line `Primary: Codex — {GO | NO-GO}, persisted by {session}`;
 - `**Model:** codex`, plus the model the job reports where it reports one;
-- each finding as a `### [SEVERITY]` heading in the `review-format` skill's finding grammar.
+- each finding as a `### [SEVERITY]` heading in the `review-format` skill's finding grammar;
+- a returned `Beyond the limit:` list, copied as returned, with no severity heading; it takes no fix-list row.
 
 Keeping the findings as severity headings is deliberate: the pipeline gate refuses an `APPROVED` that
 sits beside an open HIGH or CRITICAL heading, so a mistranslated verdict is caught mechanically.
@@ -795,13 +797,14 @@ file is the model dial — and the effort dial, where the repo sets no `codex.ef
 `codex:codex-rescue` forwarder is not a dispatch path: nothing can hold it to the time limit.
 
 **Persistence is the dispatching session's.** A read-only job cannot write the verdict file at all,
-so the session that dispatched it takes the GO/NO-GO and the findings from the job's collected output
-and persists the record itself via the Relay Contract.
+so the session that dispatched it takes the GO/NO-GO, the findings and any `Beyond the limit:` list from
+the job's collected output and persists the record itself via the Relay Contract.
 
 **Critic-seat dispatch template:**
 ```
 Review {artifact-path} for {slug}. Round: {n}. {One line naming what to cross-reference it against.}
 {Round 2 and later: Always fixed: {round n-1's always-fix line}. A prior finding folded waived or churn with its reason is closed — except one at or above that line folded waived, or folded churn without the evidence that it does not hold.}
+{Plan review: A plan with a step that builds something that refuses or blocks an action, or a script that writes where other sessions or processes also write, and no `**Limit:**` header line, is a finding. Where the plan has the line, a `stops at` that names an outcome, or leaves out the danger the check exists for, is a finding. A way round the check goes under the bold line `Beyond the limit:` in your completion message, with no severity, only when all three hold: the line names that way round or that actor; the actor the check defends against would not hit it in ordinary use; and the line was read by plan review, or a `## Decisions` row by the architect or the owner rules on it. This review's own read counts as plan review's. Anything else, an unsure case included, keeps its level as a normal finding, and so does a finding that shows the limit lets through the danger it names. No level is ever lowered.}
 Read-only run: do not modify any file; this is a review, not a fix.
 Return in your completion message one line `## Verdict: GO` or `## Verdict: NO-GO`, then all findings (severity, a confidence — high, medium or low — file, issue).
 The dispatching session persists them to {record path} — you are not expected to write any file,
@@ -810,6 +813,7 @@ and must not attempt to.
 
 `{n}` is the critic round being read; a retry keeps its round. The always-fix line is round n-1's,
 read off the schedule table (→ agents-workflow.md § Critic rounds), as the nexus critic's brief reads it.
+A spec or promotion brief leaves the `{Plan review: …}` line out.
 
 #### Time limit and fallback
 

@@ -38,6 +38,8 @@ Review code along these dimensions, in priority order:
 
 **Skills-per-step rider (where the plan's header carries `**Skills per step:** on`).** For each step you read that names skills, check its changed code against each skill it names, opening each distinct skill once — the Skill tool, or its `SKILL.md`. A departure from a skill's pattern is a finding under dimension 5 (Conventions), naming the skill and its section, at this file's severity scale (→ § Severity Ratings). It holds for you as primary or as second reader, within the steps your brief gives you. Without the line, nothing changes.
 
+**Limit rider (where the plan's header carries `**Limit:**`).** A way round the check the plan builds goes under the bold line `Beyond the limit:`, with no severity, only when all three hold: the line names that way round or that actor; the actor the check defends against would not hit it in ordinary use; and the line was read by plan review, or a `## Decisions` row by the architect or the owner rules on it. Anything else, an unsure case included, keeps its level as a normal finding, and so does a finding that shows the limit lets through the danger it names. No level is ever lowered: an item leaves the findings only by meeting those three tests, and this is the one way an item in data loss, security or silent wrong output leaves them. The list's layout is the `review-format` skill's; a second or third reader lists in its own section. Without the line, nothing changes.
+
 ### Review Axes (checklist by default; optional fan-out on large diffs)
 
 Run the review as three explicit **axes**, not one undifferentiated read:
