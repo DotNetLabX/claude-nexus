@@ -1,5 +1,55 @@
 # nexus — Changelog
 
+## [2.4.112] — 2026-11-08
+- a repo can run its helper jobs with no agent — `discovery`, `audit` and the new `general` — on Codex, with an effort per job; a helper job waits with `watch`, is never cut for going quiet while its worker lives, falls back to its Claude model when Codex fails, and records its Codex session (F408)
+  - **needs nexus-pro 0.1.57 or later** (ADR-136): older usage records count a `helper` Codex job that names a plan or spec as a review reader, and read no window from `watch`; publish nexus-pro first
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 254275→254486 B — F408-CodexFirstHelpers: the general helper job, a Codex fallback column, the Helper job section and the helper kind in the time-limit block
+  - estate raise: plugins/nexus/agents/learner.md 66964→67230 B — F408-CodexFirstHelpers: the general helper job, a Codex fallback column, the Helper job section and the helper kind in the time-limit block
+  - estate raise: plugins/nexus/agents/po.md 85237→85521 B — F408-CodexFirstHelpers: the general helper job, a Codex fallback column, the Helper job section and the helper kind in the time-limit block
+  - estate raise: plugins/nexus/agents/team-lead.md 284609→284875 B — F408-CodexFirstHelpers: the general helper job, a Codex fallback column, the Helper job section and the helper kind in the time-limit block
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 32765→35019 B — F408-CodexFirstHelpers: the general helper job, a Codex fallback column, the Helper job section and the helper kind in the time-limit block
+  - estate raise: plugins/nexus/rules/on-demand/pipeline-guardrails.md 14389→15984 B — F408-CodexFirstHelpers: the general helper job, a Codex fallback column, the Helper job section and the helper kind in the time-limit block
+
+## [2.4.111] — 2026-11-07
+- a red .NET complete run names all its failures (a helper project with IsTestProject false is no test project; each failure points at its test file), and a re-run by name of each failed test closes the feature (F404)
+  - hook behavior/enforcement change
+
+## [2.4.110] — 2026-11-07
+- A feature inside an epic now meets the close checks a top-level feature meets: the passing complete run, the lessons write and the unruled-rows check. The step-number check and a feature's own delivery folder are read inside an epic too.
+  - hook behavior/enforcement change
+
+## [2.4.109] — 2026-11-07
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - skill change (questions-format)
+  - estate raise: plugins/nexus/agents/architect.md 253821→254275 B — F400-MergeBeforeRegisters: merge at the closing commit, a fast after-close by script, and a rule check whose second pass is listed by script
+  - estate raise: plugins/nexus/agents/team-lead.md 280180→284609 B — F400-MergeBeforeRegisters: merge at the closing commit, a fast after-close by script, and a rule check whose second pass is listed by script
+  - estate raise: plugins/nexus/skills/questions-format/references/standard-questions.md 36307→36500 B — F400-MergeBeforeRegisters: merge at the closing commit, a fast after-close by script, and a rule check whose second pass is listed by script
+
+## [2.4.108] — 2026-11-07
+- A complete test run still finishing tests at its time limit keeps going: up to 3 more 2-minute windows, the first silent window cutting it as before, publish's suite included (F402-SlowRunKeepsGoing).
+  - hook behavior/enforcement change
+
+## [2.4.107] — 2026-11-07
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - skill change (questions-format)
+  - estate raise: plugins/nexus/agents/architect.md 252100→253821 B — F394-ReviewGapsFromCortex: a one-reader reader pick covers its own review; the plan critic and Codex read the conventions; a spec line left unbuilt is listed for the owner
+  - estate raise: plugins/nexus/agents/critic.md 37614→38093 B — F394-ReviewGapsFromCortex: a one-reader reader pick covers its own review; the plan critic and Codex read the conventions; a spec line left unbuilt is listed for the owner
+  - estate raise: plugins/nexus/agents/learner.md 65470→66964 B — F394-ReviewGapsFromCortex: a one-reader reader pick covers its own review; the plan critic and Codex read the conventions; a spec line left unbuilt is listed for the owner
+  - estate raise: plugins/nexus/agents/po.md 83743→85237 B — F394-ReviewGapsFromCortex: a one-reader reader pick covers its own review; the plan critic and Codex read the conventions; a spec line left unbuilt is listed for the owner
+  - estate raise: plugins/nexus/agents/team-lead.md 278409→280180 B — F394-ReviewGapsFromCortex: a one-reader reader pick covers its own review; the plan critic and Codex read the conventions; a spec line left unbuilt is listed for the owner
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 128213→129013 B — F394-ReviewGapsFromCortex: a one-reader reader pick covers its own review; the plan critic and Codex read the conventions; a spec line left unbuilt is listed for the owner
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 32090→32765 B — F394-ReviewGapsFromCortex: a one-reader reader pick covers its own review; the plan critic and Codex read the conventions; a spec line left unbuilt is listed for the owner
+  - estate raise: plugins/nexus/skills/questions-format/references/standard-questions.md 36096→36307 B — F394-ReviewGapsFromCortex: a one-reader reader pick covers its own review; the plan critic and Codex read the conventions; a spec line left unbuilt is listed for the owner
+
 ## [2.4.106] — 2026-11-07
 - a plan for a safety or concurrency check states what it defends against and where it stops, and the plan and code readers, Codex included, hold their findings to that
   - agent instruction/behavior change

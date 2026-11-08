@@ -11,16 +11,17 @@
   `.claude/nexus-agents.json`; the **unset value** in the table below, which is what the site ran on
   before the setting existed. The spawning agent reads the file when it spawns the job — at most once
   per round for a round-shaped agent, once per invocation otherwise (the team lead captures `jobs` in
-  its one pre-flight read). Every site that spawns a job names the job and its unset value and points
-  here. The `sonnet` defaults stand because these helpers research and summarize; they do not reason
-  deeply.
+  its one pre-flight read). Every site that spawns a job names the job and points here; a
+  `discovery`, `audit` or `general` site writes no unset value of its own. The `sonnet` defaults stand because these helpers research and
+  summarize; they do not reason deeply.
 
-| Job | Covers | When unset |
-|---|---|---|
-| `discovery` | helpers that locate or sketch — codebase discovery dives, options-panel sketches, the learner's scan | `sonnet` |
-| `audit` | `general-purpose` helpers that review or verify — substitute review passes, finder passes, the registry verifier, the reviewer's fan-out helpers | `sonnet` |
-| `secondReader` | the round-1 second reader at the critic and reviewer seats | Sonnet, or Opus beside a Sonnet primary (→ agents-workflow.md § Critic rounds) |
-| `doneCheck` | the Step-1 done check and its re-checks, each a fresh architect spawn, or a read-only Codex job where the value is `codex` | the architect's resolved model — its per-agent entry, else its frontmatter |
+| Job | Covers | Claude fallback of a Codex job | When unset |
+|---|---|---|---|
+| `discovery` | helpers that locate or sketch — codebase discovery dives, options-panel sketches, the learner's scan | Sonnet at medium | `sonnet` |
+| `audit` | `general-purpose` helpers that review or verify — substitute review passes, finder passes, the registry verifier, the reviewer's fan-out helpers | Sonnet at high | `sonnet` |
+| `general` | a helper no other row names — an investigation, an audit started by hand, a document written from sources, a summary | Sonnet at high | `sonnet` |
+| `secondReader` | the round-1 second reader at the critic and reviewer seats | — | Sonnet, or Opus beside a Sonnet primary (→ agents-workflow.md § Critic rounds) |
+| `doneCheck` | the Step-1 done check and its re-checks, each a fresh architect spawn, or a read-only Codex job where the value is `codex` | the architect spawn (→ codex-dispatch.md § Done check) | the architect's resolved model — its per-agent entry, else its frontmatter |
 
   The same block carries three miner keys — `minerGenerator`, `minerJudge` and `minerMechanical` —
   which are authored in the miner's own doctrine (`mine-family-core.md` § Kickoff checklist, in the
@@ -38,10 +39,12 @@
   ```
 
   **Values, and a value that cannot be used.** A value is a Claude model family — `fable`, `opus`,
-  `sonnet` or `haiku` — matched ignoring case and surrounding spaces. Every job in the table takes a
-  string. `codex` is a value at `doneCheck` alone, used where it is the effective value — an explicit
-  owner-directed spawn parameter still outranks it (→ codex-dispatch.md § Done check); at any other
-  job it is read as unset, with the disclosure line below. A value that cannot be used is read as unset, with one disclosure line in the spawning
+  `sonnet` or `haiku` — matched ignoring case and surrounding spaces. `codex` is a value at
+  `discovery`, `audit` and `general` (the helper jobs on Codex, below) and at `doneCheck`, used where
+  it is the effective value — an explicit owner-directed spawn parameter still outranks it
+  (→ codex-dispatch.md § Done check); at any other job it is read as unset, with the disclosure line
+  below. At the three helper jobs `codex` may carry an effort, `{ "model": "codex", "effort": "{level}" }`
+  with one of the Codex levels below; every other job takes a string. A value that cannot be used is read as unset, with one disclosure line in the spawning
   turn naming the job, the value and the value taken — never a halt: an unknown family, a job name
   no table declares, `haiku` at `secondReader` or `doneCheck` (`haiku` is never a checker). One job
   exists to add a family, so a setting that would lose it is read as unset too: a `secondReader`
@@ -58,7 +61,19 @@
   `codex.effort` is the effort a Codex
   dispatch may send, one of `none`, `minimal`, `low`, `medium`, `high`, `xhigh` (unset: none is sent,
   and the user's own Codex config decides). Every Codex job reads it, through the Codex job helper
-  (→ codex-dispatch.md § Time limit and fallback).
+  (→ codex-dispatch.md § Time limit and fallback); a helper job's own effort, where its entry names
+  one, comes before it.
+
+  **A helper job on Codex.** Where `discovery`, `audit` or `general` has the value `codex` and Codex
+  is available, a main session starting that helper decides by the job's size whether Codex is worth
+  it; a job of a minute or two stays on Claude for now. The job only reads and reports back, and the
+  session saves anything to be saved. A job that must edit files, or that a plugin agent does, stays on
+  Claude, and a job that scores or judges work never goes to the family that produced it. A helper
+  started inside another agent stays on Claude for now. A job that stays on Claude runs on the job's
+  Claude fallback in the table. The session starts the job with the `helper` kind, a label naming the
+  job, `--job-name` and the limit it judges right (→ codex-dispatch.md § Helper job). A job that cannot
+  start, fails, is cut at its limit or returns nothing falls back at once to the same Claude fallback,
+  with one disclosure line and no question.
 
 - **Read-only helpers that locate or sketch default to `Explore`** (the `discovery` job — discovery
   reads, options-panel sketches) — its charter excludes Edit/Write/NotebookEdit, so a stray write is

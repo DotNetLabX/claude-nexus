@@ -16,8 +16,9 @@
  *      When the repo DECLARED a full suite (.claude/verify.json → roles.full), writing that file
  *      with no passing `role:"full"` record in the audit trail means the close gate's suite never
  *      ran. Blocked. Passing is lib/run-verdict.js's rule: a pass, or a run whose only failures are
- *      timed-out tests the change did not touch. The record must name the ROUND KEY — the slug taken from the summary.md path
- *      being written — as well as matching the round's token or session; an unsigned record
+ *      timed-out tests the change did not touch. The record must name the ROUND KEY — the folder holding delivery/ in the
+ *      summary.md path being written, at any depth under docs/specs/, the form a run record carries — as well as matching
+ *      the round's token or session; an unsigned record
  *      discharges nothing. Numbered 4 because 3 is retired below and is never reused. Whatever the
  *      gear, a stale or red latest record can still discharge it on the close evidence
  *      (lib/gear-close.js): each failure re-run green by name, every later change covered by a green
@@ -30,7 +31,8 @@
  *      duty the always-on prohibitions envelope carried, and the W4 subagent probes measured it at
  *      0.000 — the prose was carrying nothing. The duty leaves the envelope and becomes observed:
  *      lessons-tracker.js records every lessons write, and a summary.md write with no record for
- *      this round is Blocked. BOUNDS, stated so the blast radius is not guessed at: only summary.md,
+ *      this round is Blocked. A record names the whole path under docs/specs/, that log's form.
+ *      BOUNDS, stated so the blast radius is not guessed at: only summary.md,
  *      only foreground, and — unlike (4) — **no opt-in**. (5) fires in every consuming repo because
  *      the owner ruled the duty gate-observed at every close, and the remedy is one write. Two
  *      further facts the deny reason carries: the round token changes at every phase transition, so
@@ -88,8 +90,8 @@
  *      a field bullet written at column 0 ends its row (every shipped example indents its fields), and
  *      a key glued to a `·` is not read — so a `status:` in either place is never seen and the row
  *      allows, while a `ruling:` there leaves the deny standing until it is re-written; the close
- *      procedure is the rule, this gate its backstop. Flat slugs only, as in (4) and (5). The deny
- *      names each file and row id and the tree it read.
+ *      procedure is the rule, this gate its backstop. The slug searched for is the folder holding delivery/, as in (4), the
+ *      form a changelog line carries. The deny names each file and row id and the tree it read.
  *   8) Fix-list follow-up (F221, ADR-144). A `## Step 2 — Fix list, cycle {N}` section whose follow-up
  *      line reads `due` while its rows hold no CRITICAL/HIGH (a contested range reaching HIGH counts),
  *      no missing or failed step and no skill slip is Blocked: such a round is never re-read
@@ -285,11 +287,13 @@ process.stdin.on('end', () => {
   // undischargeable: if the root declares roles.full and the worktree does not, verify-run records
   // `undeclared` forever while this gate keeps demanding a pass. The round token is the session's, at
   // the root, where verify-run reads it too.
-  const summaryMatch = fp.match(/(?:^|\/)docs\/specs\/([^/]+)\/delivery\/summary\.md$/);
+  // The feature is taken from the path being written, never from configuration: that path is the one
+  // place that unambiguously names which feature this close belongs to. `feature` is the whole path under
+  // docs/specs/, `slug` the folder holding delivery/; each check takes its own log's form. [pipeline-gate BR-1] [pipeline-gate BR-4]
+  const summaryMatch = fp.match(/(?:^|\/)docs\/specs\/(.+)\/delivery\/summary\.md$/);
+  const feature = summaryMatch ? summaryMatch[1] : '';
+  const slug = feature.split('/').pop();
   if (summaryMatch && !isSpawned(data)) {
-    // The ROUND KEY is taken from the path being written, never from configuration: that path is the
-    // one place that unambiguously names which feature this close belongs to.
-    const slug = summaryMatch[1];
     const tree = resolveDeclaredTree(root, data.session_id);
     const denial = fullSuiteDeclared(tree) ? fullSuiteDenial(tree, root, data, slug) : null;
     if (denial) {
@@ -314,48 +318,45 @@ process.stdin.on('end', () => {
   // DELIBERATELY UNCONDITIONAL — there is NO opt-in key, unlike (4). The owner ruled the duty
   // gate-observed at every close, so (5) fires in every consuming repo, and the remedy is one write.
   // The lessons log is written by an always-root-resolved PostToolUse hook, so it is read at the root.
-  if (summaryMatch && !isSpawned(data) && !hasLessonsThisRound(root, data, summaryMatch[1])) {
+  if (summaryMatch && !isSpawned(data) && !hasLessonsThisRound(root, data, feature)) {
     return deny('5',
-      `summary.md needs a lessons write this round for ${summaryMatch[1]} — append your ` +
-      `\`## {Role} Lessons\` to docs/specs/${summaryMatch[1]}/delivery/lessons.md (the lessons-format ` +
+      `summary.md needs a lessons write this round for ${feature} — append your ` +
+      `\`## {Role} Lessons\` to docs/specs/${feature}/delivery/lessons.md (the lessons-format ` +
       'skill), then write summary.md. A `MultiEdit` append leaves no record — re-append with `Edit`. ' +
       'If you wrote lessons.md this turn, retry — the record lands asynchronously.'
     );
   }
 
-  // (6) Critic-record measurability. Its own path match, because a NESTED issue closes at
-  // docs/specs/{epic}/{issue}/delivery/summary.md and `metrics` addresses that record as
-  // `{epic}/{issue}` — the addressing it already documents. For a flat slug the capture is
-  // byte-identical to summaryMatch[1].
-  const criticMatch = fp.match(/(?:^|\/)docs\/specs\/([^/]+(?:\/[^/]+)?)\/delivery\/summary\.md$/);
-  if (criticMatch && !isSpawned(data)) {
-    const reason = unmeasurableCriticRecord(root, criticMatch[1]);
+  // (6) Critic-record measurability. By the whole path: `metrics` addresses a nested issue's record as
+  // `{epic}/{issue}` — the addressing it already documents.
+  if (summaryMatch && !isSpawned(data)) {
+    const reason = unmeasurableCriticRecord(root, feature);
     if (reason) return deny('6', reason);
   }
 
   // (7) Unruled registry rows, read in (4)'s tree. `lib/worktree-target.js` is the only which-tree
   // rule a hook may use, so the tree is never derived from the summary.md path.
   if (summaryMatch && !isSpawned(data)) {
-    const reason = unruledRegistryRows(resolveDeclaredTree(root, data.session_id), summaryMatch[1]);
+    const reason = unruledRegistryRows(resolveDeclaredTree(root, data.session_id), slug);
     if (reason) return deny('7', reason);
   }
 
   // (11) Mutation re-check: the record beside this summary.md holds no open or failed group.
-  if (criticMatch && !isSpawned(data)) {
-    const reason = openRecheckGroups(path.resolve(root, fp), criticMatch[1]);
+  if (summaryMatch && !isSpawned(data)) {
+    const reason = openRecheckGroups(path.resolve(root, fp), feature);
     if (reason) return deny('11', reason);
   }
 
   // (12) Rule check: a feature with a rule list needs its finished rule-check record beside this summary.md.
-  if (criticMatch && !isSpawned(data)) {
-    const reason = missingRuleCheck(path.resolve(root, fp), criticMatch[1]);
+  if (summaryMatch && !isSpawned(data)) {
+    const reason = missingRuleCheck(path.resolve(root, fp), feature);
     if (reason) return deny('12', reason);
   }
 
   // (9) Summary mode line: a whole-file Write of summary.md carries a line beginning `Mode: `.
-  if (criticMatch && !isSpawned(data) && tool === 'Write' && !/^Mode: /m.test(String(ti.content || ''))) {
+  if (summaryMatch && !isSpawned(data) && tool === 'Write' && !/^Mode: /m.test(String(ti.content || ''))) {
     return deny('9',
-      `summary.md for ${criticMatch[1]} has no mode line. Put one right under its title, in the ` +
+      `summary.md for ${feature} has no mode line. Put one right under its title, in the ` +
       'summary-format grammar (its Producers paragraph): `Mode: team pipeline ({definition})` from the ' +
       'team lead, or `Mode: architect-led fast lane ({level}, {definition})` from the architect — ' +
       '{level} is light or full, {definition} is spec, bug, epic, ADR or plan only — then write summary.md again.'
@@ -653,7 +654,7 @@ function inThisRound(rec, token, session) {
 }
 
 /**
- * Is a lessons write on record for this slug and this round?
+ * Is a lessons write on record for this feature and this round? `feature` is the whole path under docs/specs/.
  *
  * A missing, empty or unparseable log yields no records and therefore denies — the same reasoning
  * (4) uses and for the same reason: "no record exists" IS the state the invariant is about, not
@@ -661,7 +662,7 @@ function inThisRound(rec, token, session) {
  * issued in the same turn as the lessons write can lose the race; the deny is self-correcting on
  * retry and says so.
  */
-function hasLessonsThisRound(root, data, slug) {
+function hasLessonsThisRound(root, data, feature) {
   const token = readRoundToken(root, data.session_id);
   const session = String(data.session_id || '');
 
@@ -675,7 +676,7 @@ function hasLessonsThisRound(root, data, slug) {
     if (!trimmed) continue;
     let rec;
     try { rec = JSON.parse(trimmed); } catch { continue; } // per-line tolerance, as every reader here has
-    if (!rec || String(rec.slug || '') !== slug) continue;
+    if (!rec || String(rec.slug || '') !== feature) continue;
     if (inThisRound(rec, token, session)) return true;
   }
   return false;
@@ -716,8 +717,8 @@ const EVIDENCE_CAUSES = {
  *
  * TWO FACTORS, both required.
  *
- * (1) The ROUND KEY — `slug`, stamped by `verify-run --slug` and compared against the slug in the
- *     summary.md path being written. This is what makes the match round-scoped. Without it the
+ * (1) The ROUND KEY — `slug`, stamped by `verify-run --slug` and compared against the folder holding
+ *     delivery/ in the summary.md path being written. This is what makes the match round-scoped. Without it the
  *     session path alone was too loose: a session outlives a feature, so two features closed in one
  *     session could discharge each other (found in review, fixed by plan amendment). A record with
  *     no slug — a pre-amendment record, or a hand-written one — can never name its round, so it

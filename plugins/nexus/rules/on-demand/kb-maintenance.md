@@ -83,7 +83,7 @@ each flag stays in that agent's own file.
   behaviors.
 - **Post-edit — scoped skeptic re-verify.** Run a **scoped** re-verify of the *touched* rules only:
   spawn a read-only `general-purpose` verifier over the edited source against those rows, on the
-  `audit` job's model, default `sonnet` (→ pipeline-guardrails.md § Helper agents — model and type). If a
+  `audit` job's model (→ pipeline-guardrails.md § Helper agents — model and type). If a
   subagent spawn is unavailable, do the re-check in-context and **disclose** that you did. Semantic
   drift is flagged and fixed or escalated — **never silently absorbed, never a full re-mine.**
 - **Tests in the same pass, or an `M3 re-mine` flag.** Update the affected tests with the edit, or

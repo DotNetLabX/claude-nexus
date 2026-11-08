@@ -190,7 +190,7 @@ Add a trivial smoke test so the baseline `dotnet test` is green and the project 
 
 This is how the method's rule re-check (`mine-verify-cover` → § Rule re-check, in `nexus-miner`) runs on .NET.
 It runs at the close, never in a developer step. Once `rule-recheck.mjs due` has written
-`docs/specs/{slug}/delivery/mutation-recheck.json`, run `tools/recheck-args.mjs` beside this skill. Both tools
+`mutation-recheck.json` in the feature's delivery folder, run `tools/recheck-args.mjs` beside this skill. Both tools
 sit under the `tools/` folder of their skill, and `{that-base-dir}` is the base directory the loaded
 `mine-verify-cover` skill announced, as for doctor (§Test-project scaffold above):
 

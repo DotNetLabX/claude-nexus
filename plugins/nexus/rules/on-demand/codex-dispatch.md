@@ -31,7 +31,8 @@ run, which takes no follow-up review. Dispatch the two readers off the same impl
 findings: the independent reading is the point.
 
 **What the brief carries:** the plan path, `implementation.md` with its carry-over findings table
-(Codex confirms or refutes each row), the registry and digest of every touched unit, and the round's
+(Codex confirms or refutes each row), the registry and digest of every touched unit, the repo's conventions
+pointer (Codex reads no agent file, so the brief names them), and the round's
 run record — the handover's tied-run record on a first review (the complete run comes once, at
 the close; under a gear that runs the complete suite once beside the reviewers the handover run is
 that complete run, which may still be `running` when the review starts), the producer's fast record on a follow-up
@@ -47,6 +48,7 @@ Tree: {worktree path | session root}. Diff: the working tree against {base ref}.
 Plan: docs/specs/{slug}/delivery/plan.md. Implementation record: docs/specs/{slug}/delivery/implementation.md
 — confirm or refute each row of its Carry-Over Findings table.
 Registries and digests of the touched units: {list | none}.
+Conventions: {docs/conventions/coding-conventions.md and every file it lists | none}. Read them: a change that goes against one is a finding.
 Run record: {record path and verdict | running — the gear's complete run, not landed yet | undeclared | the follow-up's producer record, or "not verified at this round"}.
 Read-only run: do not modify any file; this is a review, not a fix.
 On a re-review, a finding the round's `## Fix Round` block lists on a `**Left out:**` line with its reason, below the always-fix line of its fix list's `Bar:` line in review.md, is settled: never raise it again.
@@ -115,7 +117,7 @@ plus severity-rated findings, the code-review verdict file's grammar), kept dist
 
 **Write posture — one for every Codex job.**
 
-**Dispatch READ-ONLY: every Codex job runs through the Codex job helper, which never sends `--write` or `--model` and sends `--effort` only where the repo sets `codex.effort`, the dispatch passes `--effort` or the feature's gear names a Codex effort, and its brief says read-only in words too, so Codex can never touch the artifact under review.**
+**Dispatch READ-ONLY: every Codex job runs through the Codex job helper, which never sends `--write` or `--model` and sends `--effort` only where the repo sets `codex.effort` or a helper job's own effort, the dispatch passes `--effort` or the feature's gear names a Codex effort, and its brief says read-only in words too, so Codex can never touch the artifact under review.**
 
 Sending no model is deliberate: the Codex CLI resolves its own default, and the user's Codex config
 file is the model dial — and the effort dial, where the repo sets no `codex.effort`. The
@@ -130,6 +132,7 @@ the job's collected output and persists the record itself via the Relay Contract
 Review {artifact-path} for {slug}. Round: {n}. {One line naming what to cross-reference it against.}
 {Round 2 and later: Always fixed: {round n-1's always-fix line}. A prior finding folded waived or churn with its reason is closed — except one at or above that line folded waived, or folded churn without the evidence that it does not hold.}
 {Plan review: A plan with a step that builds something that refuses or blocks an action, or a script that writes where other sessions or processes also write, and no `**Limit:**` header line, is a finding. Where the plan has the line, a `stops at` that names an outcome, or leaves out the danger the check exists for, is a finding. A way round the check goes under the bold line `Beyond the limit:` in your completion message, with no severity, only when all three hold: the line names that way round or that actor; the actor the check defends against would not hit it in ordinary use; and the line was read by plan review, or a `## Decisions` row by the architect or the owner rules on it. This review's own read counts as plan review's. Anything else, an unsure case included, keeps its level as a normal finding, and so does a finding that shows the limit lets through the danger it names. No level is ever lowered.}
+{Plan review: Conventions: {docs/conventions/coding-conventions.md and every file it lists | none}. Read them: a step whose planned class shape, registration, naming or placement goes against one is a finding, naming the step and the convention.}
 Read-only run: do not modify any file; this is a review, not a fix.
 Return in your completion message one line `## Verdict: GO` or `## Verdict: NO-GO`, then all findings (severity, a confidence — high, medium or low — file, issue).
 The dispatching session persists them to {record path} — you are not expected to write any file,
@@ -138,7 +141,9 @@ and must not attempt to.
 
 `{n}` is the critic round being read; a retry keeps its round. The always-fix line is round n-1's,
 read off the schedule table (→ agents-workflow.md § Critic rounds), as the nexus critic's brief reads it.
-A spec or promotion brief leaves the `{Plan review: …}` line out.
+A spec or promotion brief leaves both `{Plan review: …}` lines out. A plan brief's conventions line names
+`docs/conventions/coding-conventions.md` and the files it lists, or `none` where the repo has none: Codex reads no
+agent file, so the brief carries the pointer.
 
 ## Time limit and fallback <!-- id: liveness -->
 
@@ -160,7 +165,7 @@ time — the round waits for that reader anyway — and loses the review. Codex 
 while the Sonnet reader runs to minute 31 is collected after minute 31, finished or cut.
 
 **The stall check.** Inside the limit and past it, the helper reads the job's own log: 6 minutes with
-no new line is a **stall**, at any point in the job — measured, a working Codex job writes a log line
+no new line is a **stall**, at any point in the job, for every kind but `helper` (→ codex-dispatch.md § Helper job) — measured, a working Codex job writes a log line
 at least every few minutes, and a stuck one goes silent. `wait` returns `stalled: true`, with the quiet
 minutes, as soon as a stall falls due; call `collect` at once. `collect` decides: a job still stalled is
 cancelled and its log returned as `partial` with the reason `stalled — no Codex output for 6 minutes`,
@@ -176,7 +181,7 @@ failure: keep waiting to the deadline) — within about two minutes, so call it 
 is terminal, it returns `stalled: true`, or it adds `deadlinePassed: true`, which it does once the
 limit is reached on an unfinished job: you need no clock of your own. Then
 `collect --job {jobId} --deadline {deadline} --started {startedAt} --kind {kind}` — `review` for a
-review, `done-check` for the done check, a skill's own kind for its job — returns the `state`, the
+review, `done-check` for the done check, `helper` for a helper job, a skill's own kind for its job — returns the `state`, the
 `output`, the `verdict` it found (`GO` or `NO-GO` for a review, `PASS` or `FAIL` for a done check,
 none for any other kind) and, where it had to, a `reason` and the `partial` output.
 A `queued` job whose worker process has gone never runs: `wait` and `collect` return it as `failed`
@@ -200,9 +205,10 @@ starts the readers of a round whose record is missing, it runs `jobs --label {th
 - `started, id not recorded` or `unreadable` — the job may still run and cannot be reached: that
   seat's fallback, the reason in the round's header note.
 
-A `collect` that returns a finished, failed or cancelled job started with a label adds one `end`
-line to the same record — when the job ended, its state and, for a failed or cancelled job, its reason
-— so the job's run time can be read back and its failures counted by cause.
+A `collect` or `watch` that returns a finished, failed or cancelled job started with a label adds one
+`end` line to the same record — when the job ended, its state, for a failed or cancelled job its reason,
+and the Codex session id where the result names one — so the job's run time can be read back, its
+failures counted by cause and its Codex run found.
 
 **Holding for the other readers.** On `deadlinePassed`, while any other reader of the round is not yet
 in — its verdict landed, or its stall handling ended with no verdict; a fallback reader counts as the
@@ -237,8 +243,8 @@ fallback on the flag (`earlyFailure: true` → early), never on your own reading
 **The fallback.** A job that is `unavailable`, ends `failed` or `cancelled`, is cut at its limit or by
 the stall check, is still running when `collect` gives up on it, or ends `completed` with no usable
 output — `no verdict returned` for a review or a done check, an empty result for any other job — falls
-back at once: a review by the matrix below, the done check by codex-dispatch.md § Done check, any
-other job by its own skill's fallback. A `readError` alone is not a reason to fall back before the
+back at once: a review by the matrix below, the done check by codex-dispatch.md § Done check, a
+helper job by its job's Claude fallback (→ codex-dispatch.md § Helper job), any other job by its own skill's fallback. A `readError` alone is not a reason to fall back before the
 deadline. No question to the owner and no retry first: a retry spends the same wait again. The
 round's header note names the skipped reader and why.
 
@@ -292,6 +298,30 @@ Worked examples:
 **The verdict file is the gate's channel.** Codex has no message channel of its own, so its persisted
 file is the only result: a missing file means the gate has not run — never a pass — and the job's
 collected output, never a chat acknowledgement, is what the file is written from.
+
+## Helper job <!-- id: helper-job -->
+
+A helper job is a read-only Codex job a main session starts for a helper whose job — `discovery`,
+`audit` or `general` — has the value `codex` (→ pipeline-guardrails.md § Helper agents — model and type). It runs through the Codex job helper, as
+every Codex job does, with these differences:
+
+- **Start:** `start --prompt-file {brief} --kind helper --label {a label naming the job} --job-name {discovery | audit | general} --limit-minutes {n}`.
+  With no `--effort`, the job's entry in `jobs` gives the effort, after a campaign's gear and before
+  `codex.effort`.
+- **Wait with `watch`, in the background:** `watch --job {jobId} --deadline {deadline} --started {startedAt} --kind helper --out {path}`,
+  started with the shell tool's background option, so the session spends no context on the wait. It
+  runs the `wait`-then-`collect` loop in one process — the same cut at the limit, the same
+  `earlyFailure` flag, the same `end` line — writes the job's output to `--out`, a path the session
+  chooses (a cut job's partial too), and prints one JSON line: the state, the path, the size, any
+  reason, any `earlyFailure`, and `partial` where the file holds a cut job's partial — never the output. Read only what you need from the file. Where the
+  file cannot be written, the line says why; `collect` still returns the job's result, or a cut job's
+  partial.
+- **Silence is not a stall:** a helper job that is silent while its worker lives runs to its limit;
+  one that reads `running` after its worker has gone fails at once, with the reason
+  `the Codex worker exited while the job was running`. Every other kind keeps the stall check above.
+- **A real report is the output:** where the companion prints only its status text, or its line that
+  Codex returned no final message, the job returned nothing and falls back to its job's Claude fallback
+  (→ pipeline-guardrails.md § Helper agents — model and type).
 
 ## Done check <!-- id: done-check -->
 

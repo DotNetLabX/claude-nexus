@@ -519,6 +519,6 @@ function setTopLevelKey(text, key, value) {
 
 module.exports = {
   SHIPPED, SHIPPED_NAMES, ROWS, AUTHOR_ROLES, EFFORT_LEVELS, CONTEXT_MAX_AGE_MS, GearError,
-  readConfig, findExtension, resolveGear, gearInForce, featureGear, planHeader, valueOf,
+  readConfig, findExtension, resolveGear, gearInForce, featureGear, planFile, planHeader, valueOf,
   readSwitch, readActive, begin, fix, close, next, setRepoGear, show, setTopLevelKey,
 };

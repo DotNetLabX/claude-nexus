@@ -13,15 +13,17 @@
  * Directory.Build.props/.targets, Directory.Packages.props, global.json or NuGet.config ties to every test
  * project. A file no project owns leaves the run to the declared unit whole. A step close is
  * timed from a trx report; a red run's failures are read from the VSTest summary line of each failing
- * assembly.
+ * assembly. A project that sets `<IsTestProject>false`, outside any Choose and with no Condition on the line or its
+ * property group, is never a test project, whatever it references.
  *
  * A full run reads each `dotnet test` stage from its own trx files and blame Sequence files, in the folder the
- * run gives it: every failed result with its message, per test project its time and counts. Each test project
- * the stage selects needs a trx — its project target; a solution's listed test projects (every test project
- * under its folder when the solution cannot be read); with no target, the one solution or project in its
- * folder. A test a Sequence file marks not completed was running when its project's run ended: a stuck test,
- * set aside as a timeout and re-run without (`rerunWithout`), only while the output's hang-timeout lines cover
- * every such project — a crash otherwise, which sets nothing aside. Stuck tests are told only where the
+ * run gives it: every failed result with its message, per test project its time and counts. A failure's
+ * `target`, what a re-run by name takes, is the test file it is placed in, else its test project; `project`
+ * stays on every entry. Each test project the stage selects needs a trx — its project target; a solution's listed
+ * test projects (every test project under its folder when the solution cannot be read); with no target, the one
+ * solution or project in its folder. A test a Sequence file marks not completed was running when its project's
+ * run ended: a stuck test, set aside as a timeout and re-run without (`rerunWithout`), only while the output's
+ * hang-timeout lines cover every such project — a crash otherwise, which sets nothing aside. Stuck tests are told only where the
  * declared stage carries `--blame-hang-timeout`; without it a hang runs to the full run's limit, and an abort
  * no Sequence file places leaves the stage unaccounted. A `stuck` entry adds `path`, its project's absolute
  * path.
@@ -36,8 +38,23 @@ const fs = require('fs');
 const path = require('path');
 
 const SLOW_CLAUSE = 'Speed!=Slow';
-// A .csproj is a test project when it references a test SDK or a test framework, or says so outright.
+// A .csproj is a test project when it references a test SDK or a test framework, or says so outright, unless
+// it says it is not: a test helper references the framework and holds no tests. A line under a Condition or in a
+// Choose holds only in some builds, so the references decide there: a missed helper costs a second run, a missed
+// project its tests.
 const TEST_PROJECT = /Microsoft\.NET\.Test\.Sdk|<IsTestProject>\s*true|xunit|nunit|mstest/i;
+const NOT_A_TEST_PROJECT = /<IsTestProject(\s[^>]*)?>\s*false\s*</gi;
+const PROPERTY_GROUP = /<PropertyGroup(\s[^>]*)?>/gi;
+const CONDITION = /\sCondition\s*=/i;
+function saysNotATestProject(text) {
+  const live = String(text).replace(/<!--[\s\S]*?-->/g, '');
+  return [...live.matchAll(NOT_A_TEST_PROJECT)].some((line) => {
+    const before = live.slice(0, line.index);
+    const group = [...before.matchAll(PROPERTY_GROUP)].at(-1);
+    return before.lastIndexOf('<Choose') <= before.lastIndexOf('</Choose') && !CONDITION.test(`${line[1] || ''}${(group && group[1]) || ''}`);
+  });
+}
+const isTestProject = (text) => TEST_PROJECT.test(text) && !saysNotATestProject(text);
 // Under cmd.exe's 8,191-character line limit with room for its own wrapper. Applied on every
 // platform so the Linux gate exercises the fallback the Windows run depends on.
 const COMMAND_BUDGET = 7000;
@@ -83,7 +100,7 @@ function parseTrx(xml) {
     if (a.outcome === 'NotExecuted') continue;
     const def = methods.get(a.testId) || {};
     const className = def.className || '';
-    entries.push({ key: `${className}::${a.testName}`, className, method: def.name || '', codeBase: def.codeBase || '', ms: trxDurationMs(a.duration) });
+    entries.push({ key: `${className}::${unescapeXml(a.testName || '')}`, className, method: def.name || '', codeBase: def.codeBase || '', ms: trxDurationMs(a.duration) });
   }
   return entries;
 }
@@ -542,7 +559,7 @@ function create(h) {
     if (!proj) return null;
     let text = '';
     try { text = fs.readFileSync(proj, 'utf8'); } catch { /* unreadable */ }
-    return TEST_PROJECT.test(text) ? proj : null;
+    return isTestProject(text) ? proj : null;
   }
 
   // Each class a source declares, as the start of the full name a test run reports for its tests: the namespace
@@ -736,7 +753,7 @@ function create(h) {
       const refs = [...text.matchAll(/<ProjectReference\s+Include\s*=\s*"([^"]+)"/gi)]
         .map((m) => path.posix.normalize(path.posix.join(dir, slashes(m[1]))));
       const assembly = (text.match(/<AssemblyName>\s*([^<\s]+)\s*<\/AssemblyName>/i) || [])[1];
-      return { file, dir, refs, test: TEST_PROJECT.test(text), assembly: assembly || path.posix.basename(file, '.csproj') };
+      return { file, dir, refs, test: isTestProject(text), assembly: assembly || path.posix.basename(file, '.csproj') };
     });
   }
 
@@ -1062,7 +1079,7 @@ function create(h) {
         if (e) e.failed++;
         else explained = false;
         const at = place(r.codeBase, r.className && r.method ? `${r.className}.${r.method}` : r.test);
-        failed.push({ file: at.file, line: at.line, test: r.test, class: at.class, method: at.method, project: p ? p.file : null, target: p ? p.file : null, runner: 'vstest', message: r.message });
+        failed.push({ file: at.file, line: at.line, test: r.test, class: at.class, method: at.method, project: p ? p.file : null, target: at.file || (p ? p.file : null), runner: 'vstest', message: r.message });
       }
     }
     for (const m of text.matchAll(NO_MATCH)) {
@@ -1093,7 +1110,7 @@ function create(h) {
       for (const name of tests) {
         if (name.includes('(')) explained = false;
         const at = place(source, name);
-        timedOut.push({ file: at.file, line: at.line, test: name, class: at.class, method: at.method, project: p.file, target: p.file, runner: 'vstest', message: messageLine(inactivity[0][0]), cause: 'timeout' });
+        timedOut.push({ file: at.file, line: at.line, test: name, class: at.class, method: at.method, project: p.file, target: at.file || p.file, runner: 'vstest', message: messageLine(inactivity[0][0]), cause: 'timeout' });
       }
       stuck.push({ project: p.file, path: path.join(tree, p.file), tests });
     }

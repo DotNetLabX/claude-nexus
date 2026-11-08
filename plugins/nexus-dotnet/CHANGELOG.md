@@ -1,6 +1,15 @@
 # nexus-dotnet — Changelog
 
 
+## [2.1.11] — 2026-11-07
+- a red .NET complete run names all its failures (a helper project with IsTestProject false is no test project; each failure points at its test file), and a re-run by name of each failed test closes the feature (F404)
+  - hook behavior/enforcement change
+
+## [2.1.10] — 2026-11-07
+- PATCH bump.
+  - skill change (mine-verify-cover-dotnet)
+  - estate raise: plugins/nexus-dotnet/skills/mine-verify-cover-dotnet/SKILL.md 19196→19202 B — adhoc-RuleRecheckEpicPath: the re-check record sits in a nested feature's delivery folder, found from the bare slug
+
 ## [2.1.9] — 2026-11-04
 - F368: run records and test runs say what really happened
   - hook behavior/enforcement change

@@ -58,6 +58,7 @@ Before reading the artifact in detail, predict 3–5 most likely problem areas b
 5. File paths: consistent with the repo structure?
 6. Step ordering: dependencies correct? Any missing handoffs?
 7. `## Decisions` section present and non-silent (a row set, or the explicit `None — no self-resolved calls met the disclosure bar` sentence)? A plan under review that lacks the section, or whose section is empty without that exact sentence, is a **MEDIUM** finding (silent-decision hygiene) — but plans that **predate** the section are exempt: flag only the plan under review in this run, never referenced historical plans. The plan also carries `## Decisions and why`, an empty one reading exactly `None — no ruling carried the owner's reason.`; a missing or silent one is a **MEDIUM** finding on the same terms and with the same exemption.
+8. **The repo's conventions**, where it has `docs/conventions/coding-conventions.md`: read it and every file it lists, once in a round that reads the plan in full. A step whose planned class shape, registration, naming or placement goes against one is a finding, graded on the ruler like any other (§ Severity — anchor-cited), naming the step and the convention — a step mapped to no skill included. With no conventions file there is no item; spec reviews do not read them.
 
 ### Phase 2.5: Implementation Feasibility (codebase-aware)
 

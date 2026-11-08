@@ -37,8 +37,24 @@
  * THE FULL-RUN LIMIT. A full run — `--profile complete`, or `--role full` — runs under `--timeout-ms`,
  * else the repo's top-level `fullLimitSeconds` (read as `stepLimitSeconds` is), else 10 minutes or twice
  * the run's usual time (below) where that is longer, never clamped or halved; its record carries
- * `limit_ms`, and a cut one names the limit, the usual time a raised one came from, and the setting.
+ * `limit_ms`, and a cut one names the limit, the usual time a raised one came from, and the setting; a run
+ * still reporting at its limit is given more time (THE FULL RUN KEEPS GOING, below).
  * Every other run defaults to 30 minutes.
+ * THE FULL RUN KEEPS GOING WHILE ITS TESTS FINISH. A full run that reaches its limit while its tests are still
+ * reporting gets one more window of 2 minutes (NEXUS_FULL_WINDOW_MS, for tests only), and another at the end of
+ * each window in which a result arrived, 3 at most, whatever set the limit. A check that finds nothing in its
+ * look-back — at the limit the last window length, or the whole run where it is shorter; after that the window
+ * just ended — cuts the run as at the limit. A result is any output of a running command, or growth of the events
+ * file that command was handed (lib/keep-going.js holds the rule). One clock serves the whole run: every group of
+ * a split chain, a .NET re-run, both legs of a split unit and the no-build retry read their time from it, the
+ * windows are the run's and not a command's, and any command's progress counts for all. The record carries
+ * `extended: { windows, ms }` — the time granted, not the time used — on a run that was given any, pass or cut,
+ * while `limit_ms` stays the limit before it; a cut line names the windows given and whether the last had no
+ * result or all 3 were used. The queue claim and the busy marker of every full run expire 3 windows after the
+ * limit, since both are written before anyone knows the run will need them. Its limits: a stuck run that keeps
+ * printing without finishing tests runs the 3 windows past its limit before it is cut, and a run whose tree could
+ * not be ended keeps its claim and marker up to 3 windows longer. A step run, the fast profile and every other
+ * role never get more time: they stay under the Bash tool's 120 s cap.
  * THE PER-TEST STOPS. `testStop.fastSeconds` (3) and `testStop.slowSeconds` (30), beside them
  * `speedUpSeconds` (5), are read as `stepLimitSeconds` is; `slow.labelled: true` says the repo's slow
  * tests carry their label, and only then does a fast test run under the fast stop
@@ -204,11 +220,11 @@
  * Each run publishes its own uniquely named claim in NEXUS_RUN_SLOTS_DIR (else ~/.nexus/run-slots),
  * refreshes it every 10 s, settles, and starts when the started claims plus its place among the waiting
  * ones (by claim time, then name) are under the limit. A claim is stale once its heartbeat is 60 s old,
- * past its expiry (wait cap + the run's limit + 1 min), or unparsable; a claim kept on purpose because
- * the command's tree could not be confirmed ended lives until that expiry. A stale claim is skipped,
- * never renamed, rewritten or deleted by another run; only its owner deletes it, on release. Any run
- * sweeps a file named like a claim once it is a day past its expiry, or unparsable and a day unwritten,
- * ignoring any error. A run started inside a live claim
+ * past its expiry (wait cap + the run's limit + its 3 windows, THE FULL RUN KEEPS GOING above, + 1 min), or
+ * unparsable; a claim kept on purpose because the command's tree could not be confirmed ended lives
+ * until that expiry. A stale claim is skipped, never renamed, rewritten or deleted by another run; only
+ * its owner deletes it, on release. Any run sweeps a file named like a claim once it is a day past its
+ * expiry, or unparsable and a day unwritten, ignoring any error. A run started inside a live claim
  * (NEXUS_COMPLETE_RUN_CLAIM) takes no turn. A broken folder never blocks: the run goes ahead as
  * `slot: "unavailable"` — also the record's slot when, after the turn, the claim can no longer be
  * refreshed or released; at the wait cap (NEXUS_SLOT_WAIT_MS, 30 min) as `"waited out"`. Accepted gaps:
@@ -241,6 +257,7 @@ const { markTouched } = require('./lib/run-verdict');
 const { readTestEvents } = require('./lib/test-events');
 const { HEAVY_RUN_ENV, holdMarker, othersLive, busyWatch } = require('./lib/heavy-runs');
 const { stepTestsFor } = require('./lib/prose-tests');
+const { keepGoing, extraWords, WINDOW_MS, WINDOWS } = require('./lib/keep-going');
 const { mainCheckout } = require('./usage-level');
 
 // The full run, from the main session where the Bash tool's cap does not apply, so the cut is never
@@ -339,8 +356,10 @@ function endRunningOnSignal(sig, code) {
 // Resolves with execSync's failure vocabulary: `code` ETIMEDOUT / ENOBUFS / a spawn errno, else the
 // exit `status` or the `signal`, plus `tree` — whether the tree was ended when the runner ended it.
 // `cmd` is a shell string, or `{shell}` / `{file, args}` with an `env` laid over this process's; a `{shell}`
-// with a `direct` form runs that form with no shell, its own `env` laid over that.
-function runCommand(cmd, cwd, timeoutMs, platform = process.platform) {
+// with a `direct` form runs that form with no shell, its own `env` laid over that. `limit` is a number of ms, or a
+// full run's clock (lib/keep-going.js), fed by the command's output and by growth of the events file it was handed.
+function runCommand(cmd, cwd, limit, platform = process.platform) {
+  const clock = limit && typeof limit === 'object' ? limit : null;
   return new Promise((resolve) => {
     const out = [];
     const err = [];
@@ -349,11 +368,16 @@ function runCommand(cmd, cwd, timeoutMs, platform = process.platform) {
     let tree = null;
     let settled = false;
     let grace = null;
+    let timer = null;
+    let sampler = null;
+    let sample = () => {};
     let child;
     const finish = (status, sig) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      sample();
+      clearInterval(sampler);
       clearTimeout(grace);
       running.delete(child);
       resolve({ code, status, signal: sig, tree, pid: child && child.pid,
@@ -369,7 +393,12 @@ function runCommand(cmd, cwd, timeoutMs, platform = process.platform) {
         finish(null, null);
       }, PIPE_GRACE_MS);
     };
-    const timer = setTimeout(() => stop('ETIMEDOUT'), timeoutMs);
+    const due = () => {
+      sample();
+      if (clock && clock.goOn()) timer = setTimeout(due, clock.left());
+      else stop('ETIMEDOUT');
+    };
+    timer = setTimeout(due, clock ? clock.left() : limit);
     const item = typeof cmd === 'string' ? { shell: cmd } : cmd;
     const env = item.env ? { ...process.env, ...item.env } : process.env;
     const { direct } = item;
@@ -385,7 +414,20 @@ function runCommand(cmd, cwd, timeoutMs, platform = process.platform) {
       return;
     }
     running.add(child);
+    const events = clock && { ...env, ...(direct && direct.env) }.NEXUS_TEST_EVENTS;
+    if (events) {
+      const sizeOf = () => { try { return fs.statSync(events).size; } catch { return 0; } };
+      let size = sizeOf();
+      sample = () => {
+        const now = sizeOf();
+        if (now > size) clock.progress();
+        size = now;
+      };
+      sampler = setInterval(sample, Math.max(25, Math.min(10000, Math.floor(clock.windowMs / 4))));
+      sampler.unref();
+    }
     const take = (sink) => (chunk) => {
+      if (clock) clock.progress();
       bytes += chunk.length;
       if (bytes > MAX_OUTPUT_BYTES) stop('ENOBUFS');
       else sink.push(chunk);
@@ -836,9 +878,9 @@ function fullLimit(rawTimeout, { fullLimitSeconds, usualMs = null, note = () => 
   return { ms, raisedFrom: !wholeSeconds(fullLimitSeconds) && fallback > FULL_TIMEOUT_MS ? usualMs : null };
 }
 
-function fullCutLine(timeoutMs, { given, raisedFrom }) {
+function fullCutLine(timeoutMs, { given, raisedFrom, clock = null }) {
   const from = given ? ' (from --timeout-ms)' : raisedFrom ? ` (twice the usual time of ${raisedFrom / 1000} s)` : '';
-  return `the full run was cut at its limit of ${timeoutMs / 1000} s${from} — to give it longer, raise fullLimitSeconds in .claude/verify.json`;
+  return `the full run was cut at its limit of ${timeoutMs / 1000} s${from}${extraWords(clock)} — to give it longer, raise fullLimitSeconds in .claude/verify.json`;
 }
 
 const wholeSeconds = (seconds) => Number.isInteger(seconds) && seconds > 0;
@@ -1243,6 +1285,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   let turn = { fields: {}, claimFile: null };
   let heavy = null;
   let watch = null;
+  let clock = null;
   // A queue folder that cannot be found (no home folder) never stops a run: the mark then reads no other run.
   const markerSlots = () => { try { return slotsDir(process.env); } catch { return null; } };
   const busyNow = () => (watch ? watch.finish() : othersLive({ slots: markerSlots(), env: process.env, own: heavy && heavy.id }) > 0);
@@ -1267,6 +1310,8 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
       record.fast_green = fastGreen(root, tree, record.tree_hash);
       record.file_hashes = hashed && hashed.files;
       if (usual) record.usual_ms = usual.usual_ms;
+      const extended = clock && clock.extended();
+      if (extended) record.extended = extended;
       const slow = slowField(record.duration_ms, usual);
       if (slow) {
         record.slow = slow;
@@ -1316,6 +1361,9 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
     note: limitNote,
   });
   if (stepForm || role === 'full') base.limit_ms = timeoutMs;
+  const windowMs = wholeMs(process.env.NEXUS_FULL_WINDOW_MS, WINDOW_MS) || WINDOW_MS;
+  // The claim and the marker are written before anyone knows the run will need its windows, so both cover them.
+  const heldMs = role === 'full' ? timeoutMs + WINDOWS * windowMs : timeoutMs;
   if (!signalsWired) {
     signalsWired = true;
     endRunningOnSignal('SIGINT', 130);
@@ -1333,13 +1381,13 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
         pollMs: wholeMs(process.env.NEXUS_SLOT_POLL_MS, DEFAULT_POLL_MS),
         waitCapMs: wholeMs(process.env.NEXUS_SLOT_WAIT_MS, DEFAULT_SLOT_WAIT_MS),
         heartbeatMs: wholeMs(process.env.NEXUS_SLOT_HEARTBEAT_MS, HEARTBEAT_MS),
-        runLimitMs: timeoutMs, info: { tree, ...(slug ? { slug } : {}) }, say,
+        runLimitMs: heldMs, info: { tree, ...(slug ? { slug } : {}) }, say,
         hold: (release) => { releaseTurn = release; },
       });
     }
     if (turn.claimFile) process.env.NEXUS_COMPLETE_RUN_CLAIM = turn.claimFile;
     else if (turn.fields.slot !== 'nested') delete process.env.NEXUS_COMPLETE_RUN_CLAIM;
-    heavy = holdMarker({ slots: markerSlots(), env: process.env, limitMs: timeoutMs });
+    heavy = holdMarker({ slots: markerSlots(), env: process.env, limitMs: heldMs });
     if (heavy) {
       const own = heavy;
       process.env[HEAVY_RUN_ENV] = own.id;
@@ -1442,11 +1490,14 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   if (!builds || !builds.items.filter((b) => b.ops).every((b) => b.reuse)) beginBuild();
   watch = busyWatch({ slots: markerSlots(), env: process.env, own: heavy && heavy.id, everyMs: wholeMs(process.env.NEXUS_BUSY_SAMPLE_MS, HEARTBEAT_MS) });
   const started = Date.now();
+  if (role === 'full') clock = keepGoing({ limitMs: timeoutMs, windowMs });
+  // A full run's commands share its clock; every other run's command gets the time left of its limit.
+  const limitLeft = () => clock || Math.max(1, timeoutMs - (Date.now() - started));
   const slowTimer = usual ? setTimeout(() => warnSlow(SLOW_RATIO), Math.ceil(SLOW_RATIO * usual.usual_ms)) : null;
   if (slowTimer) slowTimer.unref();
   if (full && full.groups) {
     const reportsRoot = path.join(tree, '.claude', 'audit', `test-reports-${runId}`);
-    const ran = await runFullGroups(full, { tree, run, env: runEnv, timeoutMs, started, reportsRoot });
+    const ran = await runFullGroups(full, { tree, run, env: runEnv, left: limitLeft, reportsRoot });
     removeQuietly(eventsFile);
     try { fs.rmSync(reportsRoot, { recursive: true, force: true }); } catch { /* left for the next run's sweep */ }
     const durationMs = Date.now() - started;
@@ -1487,7 +1538,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
     const endedLine = red.tree === null ? '' : red.tree ? '; process tree ended' : `; process tree NOT ended (pid ${red.pid})`;
     let raise = '';
     if (cause === 'ETIMEDOUT') {
-      raise = fullCutLine(timeoutMs, { given: explicitMs(args['timeout-ms']) !== null, raisedFrom: fullCut && fullCut.raisedFrom });
+      raise = fullCutLine(timeoutMs, { given: explicitMs(args['timeout-ms']) !== null, raisedFrom: fullCut && fullCut.raisedFrom, clock });
       process.stderr.write(`verify-run: ${raise}\n`);
     }
     const timedOutOnly = accounted && failedTests.length === 0 && timedOut.length > 0;
@@ -1511,7 +1562,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
     if (onlyAdded && !plan.items[k].added) { k++; continue; }
     let end = k + 1;
     if (plan.items[k].group !== undefined) while (end < plan.items.length && plan.items[end].group === plan.items[k].group) end++;
-    const remaining = Math.max(1, timeoutMs - (Date.now() - started));
+    const remaining = limitLeft();
     const batch = plan.items.slice(k, end);
     // A file leaves `uncovered` only when the command for its folder starts: a cut before that leaves it listed.
     const starting = batch.filter((item) => item.added).flatMap((item) => added[item.command - addedFrom].files);
@@ -1536,7 +1587,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
           b.reuse = false;
           b.retried = true;
           beginBuild();
-          res = await run({ ...item, shell: b.build, direct: undefined, env: { ...runEnv, ...item.env } }, tree, Math.max(1, timeoutMs - (Date.now() - started)));
+          res = await run({ ...item, shell: b.build, direct: undefined, env: { ...runEnv, ...item.env } }, tree, limitLeft());
           outputs.push(`${res.stdout}${res.stderr}`);
           outputOwner.push(index);
           ran = testsRan(index, res);
@@ -1564,7 +1615,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
     releaseTurn(res.tree !== false);
     let raise = '';
     if (cause === 'ETIMEDOUT' && role === 'full') {
-      raise = fullCutLine(timeoutMs, { given: explicitMs(args['timeout-ms']) !== null, raisedFrom: fullCut && fullCut.raisedFrom });
+      raise = fullCutLine(timeoutMs, { given: explicitMs(args['timeout-ms']) !== null, raisedFrom: fullCut && fullCut.raisedFrom, clock });
       process.stderr.write(`verify-run: ${raise}\n`);
     }
     const tests = testFields();
@@ -1782,13 +1833,12 @@ function mergeRerun(read, again, project) {
  * carried stages before it, reporting to `{group}/rerun-{n}`. Returns each group's outcome and reads, the
  * re-runs, the reds and the output.
  */
-async function runFullGroups(plan, { tree, run, env, timeoutMs, started, reportsRoot }) {
+async function runFullGroups(plan, { tree, run, env, left, reportsRoot }) {
   const outputs = [];
   const reds = [];
   const reruns = [];
   const groups = [];
   let halted = false;
-  const left = () => Math.max(1, timeoutMs - (Date.now() - started));
   const ended = (res) => Boolean(res.code) || typeof res.status !== 'number';
   for (const [g, group] of plan.groups.entries()) {
     const dirs = group.stages.map((s, k) => (s.owner ? path.join(reportsRoot, String(g), String(k)) : null));

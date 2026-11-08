@@ -2,9 +2,10 @@
 /**
  * Nexus codex-job: the one dispatch path for every Codex job, whichever seat starts it.
  *
- *   node codex-job.js start   --prompt-file <path> [--limit-minutes <n>] [--effort <level>] [--label <text>] [--kind <kind>] [--record <path>]
+ *   node codex-job.js start   --prompt-file <path> [--limit-minutes <n>] [--effort <level>] [--job-name discovery|audit|general] [--label <text>] [--kind <kind>] [--record <path>]
  *   node codex-job.js wait    --job <id> --deadline <iso> [--started <iso>] [--max-seconds <n>]
- *   node codex-job.js collect --job <id> --deadline <iso> [--started <iso>] [--kind review|done-check|research|panel|mining]
+ *   node codex-job.js collect --job <id> --deadline <iso> [--started <iso>] [--kind review|done-check|research|panel|mining|helper]
+ *   node codex-job.js watch   --job <id> --deadline <iso> [--started <iso>] [--kind <kind>] --out <path>
  *   node codex-job.js jobs    --label <text>
  *   node codex-job.js sweep
  *
@@ -30,9 +31,10 @@
  * `recordError`. `jobs --label` prints every job recorded under exactly that label, newest first:
  * `recorded` with its id, `started, id not recorded` for an intent with neither, or `none`, a missing
  * record file included; a record it cannot read whole is `unreadable`. --kind is validated as
- * `collect` validates it and recorded. A `collect` that returns `completed`, `failed` or `cancelled`
- * for a job the record holds appends one `end` line — its label, the job id, when it ended, the state
- * and, for a failed or cancelled job, its reason — once per job, so every job's run time can be read
+ * `collect` validates it and recorded. A `collect` or `watch` that returns `completed`, `failed` or
+ * `cancelled` for a job the record holds appends one `end` line — its label, the job id, when it ended,
+ * the state, for a failed or cancelled job its reason, and `codexSession` where the companion's result
+ * names a `Codex session ID:` — once per job, so every job's run time can be read
  * back and its failures counted by cause; a job the record does not hold, a
  * companion not found, or a job still running writes none, and `jobs --label` reads past the line.
  *
@@ -57,8 +59,9 @@
  * repo's `codex.effort` names a Codex level — or, under a gear, where the session's active gear
  * context names one for Codex's effort (lib/gears.js decides which wins: a campaign's gear above the
  * repo setting, the repo setting above the feature's gear); a dispatch `--effort` outside the levels
- * starts no job, so a run asked to go lower never runs at the configured level. `start` prints the
- * effort it sent.
+ * starts no job, so a run asked to go lower never runs at the configured level. `--job-name` adds the
+ * effort of that job's `{model: codex, effort}` entry, with no other key, in the repo's `jobs` as the repo setting's first
+ * choice, above `codex.effort`. `start` prints the effort it sent.
  *
  * ONE LIMIT, AND A STALL CHECK. `codex.timeLimitMinutes` (default 25) runs from the job's start. Inside
  * it the job's own log decides: 6 minutes with no new `[ISO time]` line is a stall — measured on 84 jobs,
@@ -76,7 +79,23 @@
  * `readError`, never a job failure: the caller keeps waiting to the deadline, and a fast error still
  * takes the whole wait. At the deadline `collect` re-reads the state, allowing that read 30 seconds of
  * its own. A job that just finished is taken; otherwise `collect` cancels it and returns the job's
- * whole log as `partial`; the caller runs its fallback as well.
+ * whole log as `partial`; the caller runs its fallback as well. A later `collect` of a job the record
+ * shows this helper cut returns that log as `partial` again, with the cut's reason.
+ *
+ * A HELPER JOB. For the `helper` kind silence with the worker alive is not a stall: the job waits to
+ * its limit. A worker gone while the job reads `running` fails the job at once, unless the status read
+ * again has the job ended; a re-read that fails is a read error, as above. `wait` has no --kind and reads the kind from the job record; a job the
+ * record does not hold keeps the stall rule.
+ *
+ * WATCH. `watch` runs what a session's `wait` then `collect` loop runs, in one process: the same cut at
+ * the limit, early flag and end line. Without --kind it reads the kind from the job record, else
+ * `review`. It writes the job's output, or a cut job's partial, to --out and prints one line: the
+ * state, the path, the size, any reason, any `earlyFailure`, and `partial` for a cut job — never the
+ * output. A file it cannot write adds the reason; `collect` still returns the job's result, or a cut
+ * job's partial.
+ *
+ * A REAL REPORT. For the kinds that take any output, the companion's page for a missing payload, its
+ * line for an empty final message and the session lines it appends are no output.
  *
  * THE EARLY FLAG. With --started, a job failure — `unavailable` at start, `failed`, `cancelled` read
  * as terminal, a completed job with no usable output for its --kind — returned before the start plus
@@ -135,14 +154,21 @@ const READ_SLACK_MS = LOOKUP_MS * LOOKUP_TRIES + 1000;
 const KILL_MS = 10000;
 const RECHECK_MS = 2000;
 const CODEX_EFFORTS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'];
-const KINDS = ['review', 'done-check', 'research', 'panel', 'mining'];
-const ANY_OUTPUT_KINDS = new Set(['research', 'panel', 'mining']);
+const KINDS = ['review', 'done-check', 'research', 'panel', 'mining', 'helper'];
+const ANY_OUTPUT_KINDS = new Set(['research', 'panel', 'mining', 'helper']);
+const HELPER_KIND = 'helper';
+const JOB_NAMES = ['discovery', 'audit', 'general'];
+const CODEX_VALUE = 'codex';
 const RECORD_REL = '.claude/audit/codex-jobs.jsonl';
 const TERMINAL = new Set(['completed', 'failed', 'cancelled']);
 const WORKER_WAIT = path.join(__dirname, 'codex-worker-wait.js');
 const PARTIAL_REASON = 'partial — Codex cancelled at the limit';
 const STALL_REASON = 'stalled — no Codex output for 6 minutes';
 const LOST_WORKER_REASON = 'the Codex worker exited before it took the job';
+const GONE_WORKER_REASON = 'the Codex worker exited while the job was running';
+const SESSION_LINE = /^Codex session ID:[ \t]*(\S+)[ \t]*\r?$/gm;
+const SESSION_TRAILER = /\r?\n?Codex session ID:[^\r\n]*\r?\nResume in Codex:[^\r\n]*\r?\n?$/;
+const NO_FINAL_MESSAGE = 'Codex did not return a final message.';
 const NO_VERDICT = 'no verdict returned';
 const NO_OUTPUT = 'no output returned';
 const TAIL_LINES = 5;
@@ -178,14 +204,16 @@ function parseArgs(argv) {
 
 const isPositive = (v) => typeof v === 'number' && Number.isFinite(v) && v > 0;
 
-function readCodexConfig(root) {
+function readConfigBlock(root, key) {
   try {
     const cfg = JSON.parse(fs.readFileSync(path.join(root, '.claude', 'nexus-agents.json'), 'utf8'));
-    return cfg && typeof cfg.codex === 'object' && cfg.codex ? cfg.codex : {};
+    return cfg && typeof cfg[key] === 'object' && cfg[key] ? cfg[key] : {};
   } catch {
     return {};
   }
 }
+
+const readCodexConfig = (root) => readConfigBlock(root, 'codex');
 
 function resolveLimit(codex, flag) {
   let limit = DEFAULT_LIMIT_MINUTES;
@@ -208,20 +236,35 @@ function repoEffort(codex) {
   return null;
 }
 
+// The effort of a `{model: codex, effort}` entry for this job in the repo's `jobs`, or null.
+function jobEffort(root, name) {
+  if (name === undefined) return null;
+  const entry = readConfigBlock(root, 'jobs')[name];
+  if (!entry || typeof entry !== 'object' || !('effort' in entry)) return null;
+  if (String(entry.model).trim().toLowerCase() !== CODEX_VALUE) return null;
+  if (Object.keys(entry).some((k) => k !== 'model' && k !== 'effort')) return null;
+  if (CODEX_EFFORTS.includes(entry.effort)) return entry.effort;
+  warn(`jobs.${name}.effort is ${JSON.stringify(entry.effort)}, outside the Codex levels (${CODEX_EFFORTS.join(', ')}) — not sent.`);
+  return null;
+}
+
 // Row 6 of the gear resolver for this session's active gear context, the dispatch's --effort as its
-// explicit rung. A value naming no level (`not lowered`, `as today`) sends the repo's codex.effort,
-// else none; a resolver that cannot run leaves today's rule.
+// explicit rung. A value naming no level (`not lowered`, `as today`) sends the repo's setting, else
+// none; a resolver that cannot run leaves today's rule. A job's entry is a repo setting: under a
+// campaign's gear and over the feature's.
 function resolveEffort(codex, opts, root) {
   const explicit = 'effort' in opts ? opts.effort : undefined;
+  const entry = explicit === undefined ? jobEffort(root, opts['job-name']) : null;
   try {
     const gears = require('./lib/gears');
     const { resolveDeclaredTree } = require('./lib/worktree-target');
     const session = String(process.env.CLAUDE_CODE_SESSION_ID || '');
     const v = gears.valueOf({ setting: 6, explicit, root, tree: resolveDeclaredTree(root, session), session, env: process.env });
-    const geared = v.source === 'campaign' || v.source === 'gear';
+    const geared = v.source === 'campaign' || (v.source === 'gear' && !entry);
     if (geared && Object.hasOwn(gears.EFFORT_LEVELS, v.value)) return gears.EFFORT_LEVELS[v.value];
   } catch { /* today's rule below */ }
-  return explicit !== undefined ? explicit : repoEffort(codex);
+  if (explicit !== undefined) return explicit;
+  return entry || repoEffort(codex);
 }
 
 function versionKey(v) {
@@ -338,6 +381,7 @@ function cmdStart(opts) {
     return usage(`--effort is ${JSON.stringify(opts.effort)}, not one of the Codex levels (${CODEX_EFFORTS.join(', ')}) — no job started`);
   }
   if ('kind' in opts && !KINDS.includes(opts.kind)) return usage(`--kind is ${JSON.stringify(opts.kind)}, not one of ${KINDS.join(', ')} — no job started`);
+  if ('job-name' in opts && !JOB_NAMES.includes(opts['job-name'])) return usage(`--job-name is ${JSON.stringify(opts['job-name'])}, not one of ${JOB_NAMES.join(', ')} — no job started`);
   if ('label' in opts && (typeof opts.label !== 'string' || !opts.label.trim())) return usage('--label needs the text of the label — no job started');
   const refusal = roundRefusal(opts, promptFile);
   if (refusal) return print({ refused: true, reason: refusal });
@@ -440,20 +484,48 @@ function appendRecord(line) {
   }
 }
 
+const readRecord = () => fs.readFileSync(path.join(process.cwd(), RECORD_REL), 'utf8').split(/\r?\n/).filter((l) => l.trim() !== '').map((l) => JSON.parse(l));
+
+function intentOf(lines, jobId) {
+  const job = lines.filter((l) => l && l.type === 'job' && l.jobId === jobId).pop();
+  return job ? lines.find((l) => l && l.type === 'intent' && l.intent === job.intent) : undefined;
+}
+
 // A record that cannot be read whole writes no end line: a collect never fails on its timing line.
-function recordEnd(jobId, state, reason) {
+function recordEnd(jobId, state, reason, codexSession) {
   let lines;
   try {
-    lines = fs.readFileSync(path.join(process.cwd(), RECORD_REL), 'utf8').split(/\r?\n/).filter((l) => l.trim() !== '').map((l) => JSON.parse(l));
+    lines = readRecord();
   } catch {
     return;
   }
   if (lines.some((l) => l && l.type === 'end' && l.jobId === jobId)) return;
-  const job = lines.filter((l) => l && l.type === 'job' && l.jobId === jobId).pop();
-  const intent = job && lines.find((l) => l && l.type === 'intent' && l.intent === job.intent);
+  const intent = intentOf(lines, jobId);
   if (!intent) return;
   const why = reason && state !== 'completed' ? { reason } : {};
-  appendRecord({ type: 'end', label: intent.label, jobId, endedAt: new Date().toISOString(), state, ...why });
+  const link = codexSession ? { codexSession } : {};
+  appendRecord({ type: 'end', label: intent.label, jobId, endedAt: new Date().toISOString(), state, ...why, ...link });
+}
+
+// The reason on the end line of a job this helper cut, at its limit or at a stall, else null. Its log
+// still holds the partial, so a later `collect` can return it.
+function cutReason(jobId) {
+  try {
+    const end = readRecord().find((l) => l && l.type === 'end' && l.jobId === jobId);
+    return end && (end.reason === PARTIAL_REASON || end.reason === STALL_REASON) ? end.reason : null;
+  } catch {
+    return null;
+  }
+}
+
+// The kind `start` recorded, for the call that takes no --kind. Null where the record cannot say.
+function recordedKind(jobId) {
+  try {
+    const intent = intentOf(readRecord(), jobId);
+    return (intent && intent.kind) || null;
+  } catch {
+    return null;
+  }
 }
 
 // Every job recorded under exactly this label, newest first. A record that cannot be read whole is
@@ -527,20 +599,17 @@ function quietFrom(record, started) {
   return newest;
 }
 
-function stallOf(record, started) {
+// A helper job has no stall: silence is judged by its worker alone.
+function stallOf(record, started, kind) {
+  if (kind === HELPER_KIND) return null;
   const from = quietFrom(record, started);
   if (from === null) return null;
   const now = Date.now();
   return { due: from + QUIET_LIMIT_MS, stalled: now >= from + QUIET_LIMIT_MS, quietMinutes: Math.round((now - from) / 6000) / 10 };
 }
 
-function cmdWait(opts) {
-  const a = jobArgs(opts, 'wait');
-  if (!a) return;
-  if (a.found.unavailable) return print(flagEarly({ state: 'failed', reason: a.found.unavailable }, a));
+function waitOnce(a, maxMs, kind) {
   const t0 = Date.now();
-  const max = Number(opts['max-seconds']);
-  const maxMs = (isPositive(max) ? max : DEFAULT_MAX_SECONDS) * 1000;
   const waitMs = t0 >= a.deadline ? maxMs : Math.min(maxMs, a.deadline - t0);
   const budgetEnd = t0 + waitMs + STATUS_GRACE_MS;
 
@@ -549,28 +618,36 @@ function cmdWait(opts) {
       sleepUntil(t0 + waitMs);
       const out = { state: s.state, readError: true, reason: s.reason };
       if (Date.now() >= a.deadline) out.deadlinePassed = true;
-      return print(out);
+      return out;
     }
     if (TERMINAL.has(s.state)) {
       const out = s.reason ? { state: s.state, reason: s.reason } : { state: s.state };
-      return print(isJobFailure(out) ? flagEarly(out, a) : out);
+      return isJobFailure(out) ? flagEarly(out, a) : out;
     }
     const out = { state: s.state };
-    const stall = stallOf(s.record, a.started);
+    const stall = stallOf(s.record, a.started, kind);
     if (stall && stall.stalled) Object.assign(out, { stalled: true, quietMinutes: stall.quietMinutes });
     if (Date.now() >= a.deadline) out.deadlinePassed = true;
-    return print(out);
+    return out;
   };
 
-  const first = lostWorker(readStatus(a.found.path, a.job, 0, waitMs + STATUS_GRACE_MS), a.job);
+  const first = lostWorker(a.found.path, readStatus(a.found.path, a.job, 0, waitMs + STATUS_GRACE_MS), a.job, kind, budgetEnd - Date.now());
   if (first.readError || TERMINAL.has(first.state)) return report(first);
-  const stall = stallOf(first.record, a.started);
+  const stall = stallOf(first.record, a.started, kind);
   if (stall && stall.stalled) return report(first);
   const timeLeft = budgetEnd - Date.now();
   const untilStall = stall ? Math.max(WAIT_FLOOR_MS, stall.due - Date.now()) : Infinity;
   const companionWait = Math.floor(Math.min(waitMs, untilStall, timeLeft - READ_SLACK_MS));
   if (companionWait < 1) return report(first);
-  return report(lostWorker(readStatus(a.found.path, a.job, companionWait, timeLeft), a.job));
+  return report(lostWorker(a.found.path, readStatus(a.found.path, a.job, companionWait, timeLeft), a.job, kind, budgetEnd - Date.now()));
+}
+
+function cmdWait(opts) {
+  const a = jobArgs(opts, 'wait');
+  if (!a) return;
+  if (a.found.unavailable) return print(flagEarly({ state: 'failed', reason: a.found.unavailable }, a));
+  const max = Number(opts['max-seconds']);
+  return print(waitOnce(a, (isPositive(max) ? max : DEFAULT_MAX_SECONDS) * 1000, recordedKind(a.job)));
 }
 
 // The last line naming the verdict wins: a reply that reconsiders ends on its final word. Only where no
@@ -610,19 +687,43 @@ function endedReason(s) {
   return tail ? `the job ended ${s.state} — its log ends: ${tail}` : `the job ended ${s.state}`;
 }
 
+// The companion's page for a completed job it holds no result for: a title, the `Job:` and `Status:`
+// lines, and no report.
+function isStatusPage(text, job) {
+  const lines = String(text).split(/\r?\n/);
+  return lines.length > 3 && lines[0].startsWith('# ') && lines[1] === '' && lines[2] === `Job: ${job}` && lines[3].startsWith('Status: ');
+}
+
+// The result's text where it holds a report, else ''. The session lines the companion appends, and its
+// line for an empty final message, are not one.
+function reportOf(text, job) {
+  if (isStatusPage(text, job)) return '';
+  const body = String(text).replace(SESSION_TRAILER, '').trim();
+  return body === '' || body === NO_FINAL_MESSAGE ? '' : text;
+}
+
+// The last one named: the companion prints its own after the report, which may quote another.
+function sessionOf(text) {
+  const all = [...String(text).matchAll(SESSION_LINE)];
+  return all.length ? all[all.length - 1][1] : null;
+}
+
 function finished(script, job, s, kind) {
   if (s.state === 'completed') {
     const res = companion(script, ['result', job], 60000);
     if (!res.ok) return { state: 'completed', output: '', verdict: null, reason: res.reason };
+    const session = sessionOf(res.stdout);
+    const link = session ? { codexSession: session } : {};
     if (ANY_OUTPUT_KINDS.has(kind)) {
-      return res.stdout.trim()
-        ? { state: 'completed', output: res.stdout, verdict: null }
-        : { state: 'completed', output: res.stdout, verdict: null, reason: NO_OUTPUT };
+      const report = reportOf(res.stdout, job);
+      return report
+        ? { state: 'completed', output: report, verdict: null, ...link }
+        : { state: 'completed', output: report, verdict: null, reason: NO_OUTPUT, ...link };
     }
     const verdict = kind === 'done-check' ? doneCheckVerdict(res.stdout) : findVerdict(res.stdout);
     return verdict
-      ? { state: 'completed', output: res.stdout, verdict }
-      : { state: 'completed', output: res.stdout, verdict: null, reason: NO_VERDICT };
+      ? { state: 'completed', output: res.stdout, verdict, ...link }
+      : { state: 'completed', output: res.stdout, verdict: null, reason: NO_VERDICT, ...link };
   }
   const reason = s.reason || dropWarnings(s.record && s.record.errorMessage) || endedReason(s);
   return { state: s.state, output: '', verdict: null, reason };
@@ -688,14 +789,22 @@ function workerState(pid, jobId) {
 
 const isStopped = (state) => state === 'gone' || state === 'other';
 
-// A queued job whose worker is gone never runs. Returns the status as a failed one, `pidFree` saying
-// that no process holds the pid, or the status unchanged.
-function lostWorker(s, jobId) {
-  if (s.state !== 'queued') return s;
+// A queued job whose worker is gone never runs, and a helper job's worker gone mid-run never ends.
+// Returns the status as a failed one, `pidFree` saying that no process holds the pid, or the status
+// unchanged. A helper job's worker exits once it has saved the job's end, so a running job is read
+// again before its worker counts as lost; a re-read that fails is a read error, never a failure.
+function lostWorker(script, s, jobId, kind, rereadMs = COLLECT_STATUS_MS) {
+  if (s.state !== 'queued' && !(s.state === 'running' && kind === HELPER_KIND)) return s;
   const pid = s.record && s.record.pid;
   if (!(Number.isInteger(pid) && pid > 0)) return s;
   const state = workerState(pid, jobId);
-  return isStopped(state) ? { state: 'failed', reason: LOST_WORKER_REASON, record: s.record, pidFree: state === 'gone' } : s;
+  if (!isStopped(state)) return s;
+  if (s.state === 'running') {
+    const again = readStatus(script, jobId, 0, Math.max(WAIT_FLOOR_MS, rereadMs));
+    if (TERMINAL.has(again.state)) return again;
+    if (again.readError) return { ...again, record: s.record };
+  }
+  return { state: 'failed', reason: s.state === 'queued' ? LOST_WORKER_REASON : GONE_WORKER_REASON, record: s.record, pidFree: state === 'gone' };
 }
 
 function killTree(pid, jobId) {
@@ -738,32 +847,82 @@ function cut(script, job, s, kind, stall) {
   return cancelFailed();
 }
 
-function cmdCollect(opts) {
-  const a = jobArgs(opts, 'collect');
-  if (!a) return;
-  const kind = opts.kind === undefined ? 'review' : opts.kind;
-  if (!KINDS.includes(kind)) return usage(`--kind is ${JSON.stringify(kind)}, not one of ${KINDS.join(', ')}`);
-  if (a.found.unavailable) return print(flagEarly({ state: 'failed', output: '', verdict: null, reason: a.found.unavailable }, a));
+function collectOnce(a, kind) {
+  if (a.found.unavailable) return flagEarly({ state: 'failed', output: '', verdict: null, reason: a.found.unavailable }, a);
   const script = a.found.path;
-  const s = lostWorker(readStatus(script, a.job, 0, COLLECT_STATUS_MS), a.job);
+  const s = lostWorker(script, readStatus(script, a.job, 0, COLLECT_STATUS_MS), a.job, kind);
   if (s.pidFree) companion(script, ['cancel', a.job, '--json'], CANCEL_MS);
-  const ended = (out) => {
-    if (!TERMINAL.has(out.state)) return print(out);
-    recordEnd(a.job, out.state, out.reason);
-    return print({ ...out, ...closeServers('collect', a.job) });
+  const ended = ({ codexSession, ...out }) => {
+    if (!TERMINAL.has(out.state)) return out;
+    recordEnd(a.job, out.state, out.reason, codexSession);
+    return { ...out, ...closeServers('collect', a.job) };
   };
   if (TERMINAL.has(s.state)) {
-    const out = finished(script, a.job, s, kind);
+    const finishedOut = finished(script, a.job, s, kind);
+    const cutBefore = s.state === 'cancelled' ? cutReason(a.job) : null;
+    const out = cutBefore ? { ...finishedOut, reason: cutBefore, partial: readLog(s.record || {}) } : finishedOut;
     return ended(isJobFailure(out) ? flagEarly(out, a) : out);
   }
   if (Date.now() >= a.deadline) return ended(cut(script, a.job, s, kind, null));
-  const stall = s.readError ? null : stallOf(s.record, a.started);
+  const stall = s.readError ? null : stallOf(s.record, a.started, kind);
   if (stall && stall.stalled) {
     const early = flagEarly({}, a, SETUP_ALLOWANCE_MS).earlyFailure === true;
     return ended(cut(script, a.job, s, kind, { early }));
   }
   const out = { state: s.state, output: '', verdict: null, reason: 'still running — wait until the deadline' };
-  return print(s.readError ? { ...out, readError: true } : out);
+  return s.readError ? { ...out, readError: true } : out;
+}
+
+function cmdCollect(opts) {
+  const a = jobArgs(opts, 'collect');
+  if (!a) return;
+  const kind = opts.kind === undefined ? 'review' : opts.kind;
+  if (!KINDS.includes(kind)) return usage(`--kind is ${JSON.stringify(kind)}, not one of ${KINDS.join(', ')}`);
+  return print(collectOnce(a, kind));
+}
+
+// Waits as a `wait` loop does, and collects when a `wait` would have told its caller to.
+function watched(a, kind) {
+  for (;;) {
+    const passStart = Date.now();
+    const seen = Date.now() >= a.deadline ? { deadlinePassed: true } : waitOnce(a, DEFAULT_MAX_SECONDS * 1000, kind);
+    if (TERMINAL.has(seen.state) || seen.stalled || seen.deadlinePassed) {
+      const out = collectOnce(a, kind);
+      if (TERMINAL.has(out.state) || 'partial' in out) return out;
+    }
+    sleepUntil(passStart + WAIT_FLOOR_MS);
+  }
+}
+
+// Null, or why the report could not be written.
+function writeReport(file, text) {
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, text);
+    return null;
+  } catch (err) {
+    return `the report could not be written to ${file}: ${err.message} — collect still returns the job's result, or a cut job's partial`;
+  }
+}
+
+function cmdWatch(opts) {
+  if (typeof opts.out !== 'string' || !opts.out.trim()) return usage('watch needs --out <path>');
+  const a = jobArgs(opts, 'watch');
+  if (!a) return;
+  const kind = opts.kind === undefined ? recordedKind(a.job) || 'review' : opts.kind;
+  if (!KINDS.includes(kind)) return usage(`--kind is ${JSON.stringify(kind)}, not one of ${KINDS.join(', ')}`);
+  const file = path.resolve(opts.out);
+  const out = a.found.unavailable ? collectOnce(a, kind) : watched(a, kind);
+  const cutOff = 'partial' in out;
+  const text = out.output || (cutOff ? out.partial : '') || '';
+  const writeError = writeReport(file, text);
+  const reason = [out.reason, writeError].filter(Boolean).join('; ');
+  print({
+    state: out.state, path: file, size: writeError ? 0 : Buffer.byteLength(text),
+    ...(reason ? { reason } : {}),
+    ...(out.earlyFailure ? { earlyFailure: true } : {}),
+    ...(cutOff ? { partial: true } : {}),
+  });
 }
 
 function main() {
@@ -772,9 +931,10 @@ function main() {
   if (sub === 'start') return cmdStart(opts);
   if (sub === 'wait') return cmdWait(opts);
   if (sub === 'collect') return cmdCollect(opts);
+  if (sub === 'watch') return cmdWatch(opts);
   if (sub === 'jobs') return cmdJobs(opts);
   if (sub === 'sweep') return cmdSweep();
-  return usage(`unknown subcommand ${JSON.stringify(sub || '')} — use start, wait, collect, jobs or sweep`);
+  return usage(`unknown subcommand ${JSON.stringify(sub || '')} — use start, wait, collect, watch, jobs or sweep`);
 }
 
 main();

@@ -115,7 +115,8 @@ function relPath(fp, root) {
 
 /**
  * Surfaces a stamp never covers. A coordinator's close edits are not "scope": the delivery folder of
- * the stamped slug, any lessons file, this plugin's own local state, and the closure surfaces.
+ * the stamped slug at any depth under docs/specs/, any lessons file, this plugin's own local state,
+ * and the closure surfaces.
  *
  * CASE IS FOLDED ON BOTH SIDES HERE, on every platform — deliberately, and unlike `inScope`.
  * `relPath` folds only on win32 because a case-sensitive filesystem genuinely distinguishes
@@ -130,10 +131,16 @@ function alwaysAllowed(rel, slug) {
   const p = String(rel).toLowerCase();
   const base = p.split('/').pop();
   if (p.startsWith('.claude/')) return true;
-  if (slug && p.startsWith(`docs/specs/${String(slug).toLowerCase()}/delivery/`)) return true;
+  if (slug && inOwnDelivery(p, String(slug).toLowerCase())) return true;
   if (/^docs\/specs\/.+\/lessons\.md$/.test(p)) return true;
   if (p === 'docs/backlog.md' || p.startsWith('docs/programs/')) return true;
   return base === 'changelog.md' || base === 'plugin.json';
+}
+
+/** Is `p` under this feature's delivery folder, never one nested in another feature's? [prohibition-gate BR-50] */
+function inOwnDelivery(p, slug) {
+  const at = p.indexOf(`/${slug}/delivery/`);
+  return p.startsWith('docs/specs/') && at >= 'docs/specs'.length && !p.slice(0, at + 1).includes('/delivery/');
 }
 
 /**

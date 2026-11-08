@@ -67,8 +67,8 @@
  *   readRunResults({ tree, dir, cwd, output, stage }) → { failed_tests, timed_out, projects, complete, explained,
  *     stuck, copies }  read from `dir` only; `cwd` is the absolute folder the stage ran in, `stage` as declared.
  *     Each failed or timed-out entry carries `message` (its first line, capped), `runner` and `target` — what a
- *     re-run by name takes: the test project for .NET, the test file otherwise. `complete` when every test
- *     project or file the stage selects has its results; `explained` when a red, if any, is accounted for by
+ *     re-run by name takes: the test file, or the test project of a .NET failure placed in none. `complete` when
+ *     every test project or file the stage selects has its results; `explained` when a red, if any, is accounted for by
  *     the failures and timeouts named; `stuck` the `{ project, tests }` a .NET hang stopped; `copies` the
  *     `{ from, to }` the run copies after reading — `from` a file under `dir`, `to` the exact file it is written
  *     to, resolved against `cwd`: the output file the declared stage named, or a file inside the folder it

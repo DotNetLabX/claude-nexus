@@ -146,8 +146,26 @@ function placeGroup(repo, group, reports) {
  * What to run: `configs` (one per mutated project and test project set, each with its groups) and `stale`
  * (groups no run can check, with the reason to record).
  */
+const isFeatureFolder = (abs) => isDir(join(abs, 'definition')) || isFile(join(abs, 'delivery', 'plan.md'));
+
+/**
+ * The feature folder under docs/specs/ a slug names, as `rule-recheck.mjs` finds it: a path with a `/` as
+ * given; a bare name as given when that folder is a feature, else the one feature of that name under an epic
+ * folder, else as given.
+ */
+export function featurePath(repo, slug) {
+  const given = slash(slug).replace(/\/+$/, '');
+  const specs = join(repo, 'docs', 'specs');
+  if (given.includes('/') || isFeatureFolder(join(specs, given))) return given;
+  let names = [];
+  try { names = readdirSync(specs); } catch { /* no specs folder */ }
+  const hits = names.filter((n) => isFeatureFolder(join(specs, n, given))).map((n) => `${n}/${given}`);
+  if (hits.length > 1) throw new Refusal(`--slug ${given} matches several features under docs/specs/: ${hits.join(', ')} — pass the epic/feature path`);
+  return hits[0] || given;
+}
+
 export function planRecheck({ repo, slug }) {
-  const record = readJson(join(repo, 'docs', 'specs', ...slug.split('/'), 'delivery', 'mutation-recheck.json'), 'the re-check record');
+  const record = readJson(join(repo, 'docs', 'specs', ...featurePath(repo, slug).split('/'), 'delivery', 'mutation-recheck.json'), 'the re-check record');
   const reports = new Map();
   const byKey = new Map();
   const stale = [];

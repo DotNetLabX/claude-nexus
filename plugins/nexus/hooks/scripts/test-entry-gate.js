@@ -119,6 +119,7 @@ const { readRoundToken } = require('./lib/round-token');
 const { splitChain, filesCommand, routeFiles } = require('./lib/compose-test-command');
 const { RUNNERS, loadRunner, repoRunners, runnerOf } = require('./lib/test-runners');
 const { isSafeId } = require('./lib/safe-id');
+const { planFile } = require('./lib/gears');
 const { exeName, commandsOf } = require('./lib/shell-words');
 const { readHeredocs, HERE_STRING_WORD } = require('./lib/heredocs');
 
@@ -767,7 +768,7 @@ function fileFires(text, developer, code, { writes = [], depth = 0 } = {}) {
 
 function planSteps(tree, slug) {
   try {
-    const text = fs.readFileSync(path.join(tree, 'docs', 'specs', slug, 'delivery', 'plan.md'), 'utf8');
+    const text = fs.readFileSync(planFile(tree, slug), 'utf8');
     return [...text.matchAll(/^#{2,4}\s+Step\s+(\d+[a-z]?)\b/gm)].map((m) => m[1]);
   } catch {
     return null;

@@ -7,12 +7,20 @@
  *     or the events were read whole, `failed_tests` is empty and every failure is a timed-out test placed in a
  *     file, whose touched entries' targets are then its failures), or it counts as passing (lib/run-verdict.js:
  *     its only failures are untouched timed-out tests — the one red whose `failed` is `[]`);
- *   each failure is repaired — a failed target (a test file, or a .NET test project; an older record's entry
- *     with no `target` is weighed by its file) whose only failures are untouched timeouts owes none, while a
- *     real failure or a touched timeout in the same target still does; otherwise the newest later record of the same slug and tree that ran the failed
- *     test file or project by name is green, ran it with no filter, and holds the content it ran at
- *     (`delta_hashes` against this complete record): every file whose content now differs from that is
- *     held at its current hash by a green record after it, or the newest whole-unit fast record of the
+ *   each failure is repaired — a failed target (a test file, or the test project of a .NET failure placed in
+ *     none; an older record's entry with no `target` is weighed by its file) whose only failures are untouched
+ *     timeouts owes none, while a real failure or a touched timeout in the same target still does; otherwise the
+ *     newest later record of the same slug and tree that ran the failed item by name — a record naming the item,
+ *     or the project the complete record's entry for it carries — is green, ran it with no filter, and holds the
+ *     content it ran at. A green project run with a filter may not have run the failure, so it is passed over:
+ *     it neither repairs a file item nor hides an earlier repair of it. The one filter allowed is the class
+ *     selection a run naming the failed .cs file was built with, `FullyQualifiedName~` clauses joined by `|` in
+ *     every `--filter` of its command. A failed .cs file is repaired only by a record whose `test_times` hold each
+ *     failed test of that file by its name, `test` (a theory's data is in it), class and method, however it ran: a
+ *     selection that matches nothing, or only the file's other tests or cases, exits green. A test whose name
+ *     cannot be matched (renamed, its data changed, a timeout the blame file names otherwise) takes a complete run.
+ *     That content is held in `delta_hashes` against this complete record: every file whose content now differs from
+ *     that is held at its current hash by a green record after it, or the newest whole-unit fast record of the
  *     same slug and tree at the current tree hash stands after it and is green — a whole-unit record
  *     never repairs the failure itself;
  *   every later change is covered — for each file whose hash differs from the record's `file_hashes`
@@ -46,6 +54,7 @@ const { countsAsPassing, untouchedTimeouts } = require('./run-verdict');
 const ONCE = 'once beside the reviewers';
 const COMPLETE_RUN_SETTING = 12;
 const NAME_FILTER = /--test-name-pattern|--test-only/;
+const CLASS_SELECTION = /--filter\s+"FullyQualifiedName~[^"\s|&!=~()]+(?:\|FullyQualifiedName~[^"\s|&!=~()]+)*"/g;
 
 /** The feature's gear when its complete run runs once beside the reviewers, else null. */
 function closeGear(slug, { tree, root, env } = {}) {
@@ -62,10 +71,15 @@ const has = (m, p) => Boolean(m) && typeof m === 'object' && Object.prototype.ha
 const hashIn = (m, p) => (has(m, p) ? m[p] : null);
 const green = (r) => Boolean(r) && r.verdict === 'pass';
 const unfiltered = (r) => !isFilteredFull(r.command || '') && !NAME_FILTER.test(String(r.command || ''));
+const selectsClassesOnly = (r) => unfiltered({ command: String(r.command || '').replace(CLASS_SELECTION, '') });
+const names = (r, item) => Array.isArray(r.files) && r.files.includes(item);
+const ranTestOf = (r, file, failure) => Array.isArray(r.test_times) && r.test_times.some((t) => t && t.file === file
+  && (!failure || (typeof failure.test === 'string' && failure.test !== '' && t.test === failure.test
+    && t.class === failure.class && t.method === failure.method)));
 const differing = (a, b) => [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((p) => hashIn(a, p) !== hashIn(b, p));
 // A developer's step run that ran no test file.
 const noEvidence = (r) => r.step_run === true && !(Array.isArray(r.files) && r.files.length > 0);
-// The item a failure is re-run by: its `target` (a .NET test project, a test file), else its file in an older record.
+// The item a failure is re-run by: its `target` (a test file, a .NET test project), else its file in an older record.
 const targetOf = (t) => (typeof t.target === 'string' && t.target !== '' ? t.target : t.file);
 
 /**
@@ -97,11 +111,14 @@ function closeEvidence({ records, index, tree, slug }) {
   if (!completed) return { ok: false, cause: 'not-completed', files: [] };
   // A file whose only failures are untouched timeouts owes no repair; a real failure or a touched timeout in it still does.
   const untouched = new Set(untouchedTimeouts(complete).map(targetOf));
-  const realFailure = new Set([
-    ...(Array.isArray(complete.failed_tests) ? complete.failed_tests : []),
-    ...(Array.isArray(complete.timed_out) ? complete.timed_out.filter((t) => !t || t.touched !== false) : []),
-  ].map((t) => t && targetOf(t)));
+  const failedTests = Array.isArray(complete.failed_tests) ? complete.failed_tests : [];
+  const timedOut = Array.isArray(complete.timed_out) ? complete.timed_out : [];
+  const owed = [...failedTests, ...timedOut.filter((t) => !t || t.touched !== false)];
+  const realFailure = new Set(owed.map((t) => t && targetOf(t)));
   const owesRepair = (item) => !(untouched.has(item) && Array.isArray(complete.failed_tests) && !realFailure.has(item));
+  const projectsOf = (item) => [...failedTests, ...timedOut].filter((t) => t && targetOf(t) === item && t.project).map((t) => t.project);
+  const namesProject = (r, item) => projectsOf(item).some((p) => names(r, p));
+  const ranFailuresOf = (r, item) => ranTestOf(r, item) && owed.filter((t) => t && targetOf(t) === item).every((t) => ranTestOf(r, item, t));
 
   // `laterAt` holds each later record's place in the log, the append order a failed check is weighed by.
   const laterAt = [];
@@ -136,9 +153,11 @@ function closeEvidence({ records, index, tree, slug }) {
   };
 
   const unrepaired = (failures || []).filter(owesRepair).filter((item) => {
-    const i = later.findLastIndex((r) => Array.isArray(r.files) && r.files.includes(item));
+    const i = later.findLastIndex((r) => names(r, item) || (namesProject(r, item) && (!green(r) || unfiltered(r))));
     const r = later[i];
-    if (!green(r) || !unfiltered(r)) return true;
+    if (!green(r)) return true;
+    if (!(names(r, item) && item.endsWith('.cs') ? selectsClassesOnly(r) : unfiltered(r))) return true;
+    if (item.endsWith('.cs') && !ranFailuresOf(r, item)) return true;
     if (r.delta_base !== complete.ts || !r.delta_hashes || typeof r.delta_hashes !== 'object') return true;
     if (now === null) return false;
     if (failed.at(item, hashIn(now, item)) > laterAt[i]) return true;

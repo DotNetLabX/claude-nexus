@@ -17,10 +17,12 @@
  * forever with a green test sitting over it. The one closed list is `FAMILIES`, the four Claude model
  * families: a seat's value is compared by the family it names (`claude-opus-5-5` reads as `opus`),
  * and a name outside the four is its own family — kept, compared and suggested like any other. The
- * job checks below use the same list, since a job value must be one of the four — save one value:
- * `codex` at `doneCheck`, where a repo may name Codex as its done check; at a miner key `codex` draws
- * a line naming nexus-miner's mining job table, where Codex already leads the jobs that only read; at
- * every other job `codex` draws the same outside-the-families line, and it is never listed as a family.
+ * job checks below use the same list, since a job value must be one of the four — save `codex`:
+ * usable at `doneCheck`, where a repo may name Codex as its done check, and at the helper jobs
+ * (`discovery`, `audit`, `general`), where it may also be `{ "model": "codex", "effort": "{level}" }`;
+ * at a miner key `codex` draws a line naming nexus-miner's mining job table, where Codex already leads
+ * the jobs that only read; at every other job `codex` draws the same outside-the-families line, and it
+ * is never listed as a family.
  * The miner pair is reported only where `minerJudge` equals `minerGenerator`: under the job table the
  * judge key sets a fallback, a different model by design.
  *
@@ -69,12 +71,14 @@ const PAIRS = [
 const FAMILIES = ['fable', 'opus', 'sonnet', 'haiku'];
 
 const JOBS = [
-  'discovery', 'audit', 'research', 'secondReader', 'doneCheck', 'conformanceReview',
+  'discovery', 'audit', 'general', 'research', 'secondReader', 'doneCheck', 'conformanceReview',
   'minerGenerator', 'minerJudge', 'minerMechanical',
 ];
 // The names the unknown-key line prints: the jobs this plugin itself reads. A name another plugin
 // reads stays recognised above and is never listed to a user who did not ask for it.
-const OWN_JOBS = ['discovery', 'audit', 'secondReader', 'doneCheck'];
+const OWN_JOBS = ['discovery', 'audit', 'general', 'secondReader', 'doneCheck'];
+const HELPER_JOBS = ['discovery', 'audit', 'general'];
+const CODEX_JOB_KEYS = ['model', 'effort'];
 const RESEARCH_TIERS = ['routine', 'highStakes'];
 const CHECKER_JOBS = ['secondReader', 'doneCheck'];
 const MINER_JOBS = ['minerGenerator', 'minerJudge', 'minerMechanical'];
@@ -113,13 +117,26 @@ function exactFamily(v) {
   return FAMILIES.includes(s) ? s : '';
 }
 
+const isCodex = (v) => typeof v === 'string' && v.trim().toLowerCase() === CODEX;
+
+// The effort is matched exactly, as codex-job.js matches it before sending it.
+function checkCodexJob(key, v) {
+  if (!isCodex(v.model) || Object.keys(v).some((k) => !CODEX_JOB_KEYS.includes(k))) {
+    return [`${PREFIX} jobs.${key} takes a family name, codex, or {"model": "codex", "effort": "{level}"} — the spawn reads it as unset.`];
+  }
+  if ('effort' in v && !CODEX_EFFORTS.includes(v.effort)) {
+    return [`${PREFIX} jobs.${key}.effort is ${show(v.effort)}, outside the Codex levels (${CODEX_EFFORTS.join(', ')}) — the entry's effort is not sent.`];
+  }
+  return [];
+}
+
 function checkJobs(jobs, cfg) {
   const out = [];
   const valueLine = (key, v) =>
     `${PREFIX} jobs.${key} is ${show(v)}, outside the four families (${FAMILIES.join(', ')}) — the spawn reads it as unset.`;
   for (const [key, v] of Object.entries(jobs)) {
     if (!JOBS.includes(key)) {
-      out.push(`${PREFIX} jobs.${key} is not a job name, so nothing reads it (the job names: ${OWN_JOBS.join(', ')}).`); // [config-advisor BR-60]
+      out.push(`${PREFIX} jobs.${key} is not a job name, so nothing reads it (the job names: ${OWN_JOBS.join(', ')}).`); // [config-advisor BR-73]
       continue;
     }
     if (key === 'research') {
@@ -132,8 +149,12 @@ function checkJobs(jobs, cfg) {
       }
       continue;
     }
-    if (key === 'doneCheck' && typeof v === 'string' && v.trim().toLowerCase() === CODEX) continue;
-    if (MINER_JOBS.includes(key) && typeof v === 'string' && v.trim().toLowerCase() === CODEX) {
+    if (HELPER_JOBS.includes(key) && (isCodex(v) || isObject(v))) {
+      if (isObject(v)) out.push(...checkCodexJob(key, v));
+      continue;
+    }
+    if (key === 'doneCheck' && isCodex(v)) continue;
+    if (MINER_JOBS.includes(key) && isCodex(v)) {
       out.push(`${PREFIX} jobs.${key} is ${show(v)} — Codex already leads the mining jobs that only read, by nexus-miner's ` +
         `mining job table (tools/stage-models.json); a miner key names a Claude family (${FAMILIES.join(', ')}) ` +
         `for the Claude jobs and fallbacks, so the spawn reads it as unset.`);

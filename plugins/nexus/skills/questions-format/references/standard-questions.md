@@ -204,7 +204,7 @@ Critic pairing check, routine: {the author model} wrote the {artifact}, and {the
 
 ### reader pair
 
-**When asked:** asked once per feature, at its first first-round review (once per consolidation at the learner's seat), and again where the pick would lead with the author's own model family or was only presumed; never where the owner has already named the checking model for that spawn.
+**When asked:** asked once per feature, at its first first-round review (once per consolidation at the learner's seat), and again where the pick would lead with the author's own model family or was only presumed; a one-reader pick is asked again at the next kind of review; never where the owner has already named the checking model for that spawn.
 **Surfaces:** question box; checkpoint report.
 **Options:**
 
@@ -213,7 +213,7 @@ Critic pairing check, routine: {the author model} wrote the {artifact}, and {the
 | Codex, with Sonnet reading second | Codex leads every review — spec, plan, code and promotion — and Sonnet reads beside it | Codex is installed |
 | Sonnet, with Opus reading second | two readers from two families, the second one costlier | the author is not Sonnet |
 | Opus, with Sonnet reading second | two readers from two families, the second one cheaper | the author is not Opus |
-| {the checker model} alone | one reader, cheaper and faster than a pair, and the record says the second was skipped | the configured model is not the author's family |
+| {the checker model} alone | one reader, cheaper and faster than a pair, for this review only — the next kind of review asks again — and the record says the second was skipped | the configured model is not the author's family |
 | Fable, with Sonnet reading second | the strongest reader leads, at the highest cost | the author is not Fable |
 
 **Recommended:** the reader-pair list's first applicable pair (`agents-workflow.md` § Critic rounds) — the Codex option where it is offered; otherwise the first two-reader option, in the table's order, whose leading model is neither the author's family nor Fable. Either way, its second reader is replaced by the repo's `jobs.secondReader` model where that is set and usable, rendered under the option's concrete names — on the Codex option that is the reader beside Codex, at every review. Fable is never recommended, and where it is the configured checker its option is labelled as the configured model; the one exception is a repo-set Fable second reader, which the recommended option names.
@@ -222,8 +222,8 @@ Critic pairing check, routine: {the author model} wrote the {artifact}, and {the
 **Long form:**
 
 ```
-Who should read this feature's work at its first review?
-Two readers from two model families miss less than one, and the lead is never the author's family. This time {the author model} wrote the {artifact}, and {the checker model} is set to check it.
+Who should read this feature's work at this review?
+Two readers from two model families miss less than one, and the lead is never the author's family. A two-reader pick covers every review of this feature; one reader covers this review only. This time {the author model} wrote the {artifact}, and {the checker model} is set to check it.
 ```
 
 **This run:**
@@ -352,13 +352,13 @@ Research companion, routine: the other question rests on {the unknown}. Measurin
 
 ### merge at close
 
-**When asked:** asked at close, attended, when the run ends on a branch with no pull request.
+**When asked:** asked at the closing commit, attended, when the run ends on a branch with no pull request.
 **Surfaces:** question box.
 **Options:**
 
 | label | consequence | offered when |
 |---|---|---|
-| squash-merge now | the branch lands on the default line and the working copy is removed | always |
+| squash-merge now | the branch lands on the default line; records still to be written after the close land in a second merge under the same yes, and the working copy is removed once the last merge is in | always |
 | stop at the commit | the branch is handed to you by name and nothing merges | always |
 
 **Recommended:** squash-merge when the run closed clean and nothing else is building on the branch.
@@ -378,7 +378,7 @@ Merge at close, routine: this feature's work is committed on {the branch}. It is
 
 ### push
 
-**When asked:** asked after the final feature commit, attended, before anything leaves this machine.
+**When asked:** asked at the closing commit, attended, before anything leaves this machine; a yes also carries the last commit of the records written after the close.
 **Surfaces:** question box.
 **Options:**
 
