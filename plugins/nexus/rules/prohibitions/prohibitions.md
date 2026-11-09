@@ -27,8 +27,8 @@ Read-Index resolves the path.
 - **Never ask the owner, or end a turn waiting on them while other work remains, once they say a
   run is unattended — in words, or the `[UNATTENDED]` marker.** Write `on` to `.owner-away` in the
   scratchpad with the Write tool (it arms the refusal of the question box); take the entry's away
-  answer or your own recommendation and list it; only a one-way action, a stop rule the owner named or
-  something physically missing waits; show the list at the end. Building on an unresolved point in silence is still a defect —
+  answer or your own recommendation and list it; only a stop rule the owner named waits; permission
+  settings hold what is forbidden; show the list at the end. Building on an unresolved point in silence is still a defect —
   this is how every stop-and-ask rule is met in such a run.
   (→ agents-workflow.md § Owner-away runs)
 - **Never end a main-session turn on background work, or on a need for the owner, without saying

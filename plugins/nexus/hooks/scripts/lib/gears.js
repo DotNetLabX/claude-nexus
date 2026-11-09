@@ -33,6 +33,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { isSafeId } = require('./safe-id');
+const { specFolder } = require('./parts');
 
 const SHIPPED = JSON.parse(fs.readFileSync(path.join(__dirname, 'gears-shipped.json'), 'utf8'));
 const SHIPPED_NAMES = SHIPPED.gears;
@@ -175,15 +176,9 @@ function writeActive(o, ctx) {
 
 // ── the plan header ──────────────────────────────────────────────────────────
 function planFile(base, slug) {
-  const direct = path.join(base, 'docs', 'specs', slug, 'delivery', 'plan.md');
-  if (fs.existsSync(direct)) return direct;
-  let dirs = [];
-  try { dirs = fs.readdirSync(path.join(base, 'docs', 'specs'), { withFileTypes: true }).filter((d) => d.isDirectory()); } catch { return null; }
-  for (const d of dirs) {
-    const nested = path.join(base, 'docs', 'specs', d.name, slug, 'delivery', 'plan.md');
-    if (fs.existsSync(nested)) return nested;
-  }
-  return null;
+  const folder = specFolder(base, slug);
+  const file = folder && path.join(folder, 'delivery', 'plan.md');
+  return file && fs.existsSync(file) ? file : null;
 }
 
 /** `{exists, gear, source}` from the slug's plan — the tree's copy first, then the root's. */

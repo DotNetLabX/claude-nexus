@@ -69,7 +69,7 @@ function hashedPaths(tree, leftOut) {
   let listing;
   try {
     listing = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
-      cwd: tree, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024,
+      cwd: tree, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024, windowsHide: true,
     });
   } catch {
     return null;

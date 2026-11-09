@@ -82,6 +82,24 @@ A rule built from two sources lists both, separated by `;`. A rule its source co
 1. Team names are unique, compared without regard to case. *(Source: owner, Q4)*
 2. A deleted team's name can be reused at once. *(Source: added)*
 
+## Parts
+
+*Optional — only in a spec or epic too big for one plan, and only where the owner took the split, or, with the owner away, where its author's recommendation stood. Without it the spec is planned whole.*
+
+The parts the work is built in, one block per part. The PO calls them stories, the architect tasks: they are the same thing at one level, and only the word differs. Each block names what it builds and what it waits for; a part's detail goes in its entry or in the section it covers. Where a feature keeps an `sdd/` folder, the list goes in its SDD spec, never in a development spec beside it.
+
+Once the spec is Ready and committed, `parts.js --spec docs/specs/{slug}` (beside the plugin's `verify-run.js`) makes one folder per part under this spec's folder, its slug built from this spec's id, the part's id and the first words of its title, and its definition a generated pointer back to this entry, which is planned and built as a feature of its own. Change the list, commit it, and run the command again; never edit or add a file at a part's folder. Any spec folder may hold part folders, an epic's own story folder included (a story that is itself a part holds no list); the deepest is a part inside a story inside an epic.
+
+### Story 1: {title}
+**Covers:** {the sections, flows or rules of this spec the part builds}
+**Waits for:** none
+
+### Story 2: {title}
+**Covers:** {…}
+**Waits for:** Story 1
+
+`**Waits for:**` takes `none`, or a comma-separated list of parts of this list (`Story 1`, `Task 2`) and feature slugs — another feature's part included. Ids are letters, digits and dots, each unique within its kind (`Story 1` and `Task 1` may both stand); a heading off the `### Story {id}: {title}` form, an empty `**Covers:**` or `**Waits for:**`, a wait naming nothing, and parts that wait for each other in a loop, are refused.
+
 ## Technical part
 
 *Optional — omit the section when no architect adds one. Written by the architect for its own team only, from its own code repository: a few high-level points, with no class-level detail, no step list and no plan. It is the only section that may name a code fact, and the only one the architect writes.*

@@ -18,13 +18,16 @@
  * owner away; the plan's `## Decisions` rows and `## Decisions and why` entries (heading and bullet forms);
  * answered questions the owner did not answer; build steps' and fix rounds' `**Decisions:**` lines; code-review
  * findings at HIGH and CRITICAL with what the fix list did; the campaign close record's presumed choices; and
- * registry changelog rulings naming the feature. An epic folder adds every story folder under it.
+ * registry changelog rulings naming the feature. An epic folder adds every story folder under it, and each story's
+ * part folders (`{story}/{part}`); any other folder adds its own part folders — those whose definition is the parts
+ * command's generated pointer. An `sdd/` folder is never a story.
  * A plain reader: no agent, no network, no write.
  */
 
 const fs = require('fs');
 const path = require('path');
 const { readRules } = require('./spec-sources');
+const { parsePointer } = require('./parts');
 
 const KINDS = Object.freeze(['business', 'product', 'technical']);
 const PHASES = Object.freeze(['spec', 'plan', 'build', 'review', 'close']);
@@ -485,18 +488,29 @@ function storyFolders(folder) {
   let entries = [];
   try { entries = fs.readdirSync(folder, { withFileTypes: true }); } catch { return []; }
   return entries
-    .filter((e) => e.isDirectory() && !['definition', 'delivery'].includes(e.name))
+    .filter((e) => e.isDirectory() && !['definition', 'delivery', 'sdd'].includes(e.name))
     .filter((e) => ['definition', 'delivery'].some((d) => fs.existsSync(path.join(folder, e.name, d))))
     .map((e) => e.name)
     .sort();
+}
+
+// The sub-folders the parts command made: those whose definition is its generated pointer.
+function partFolders(folder) {
+  return storyFolders(folder).filter((name) => {
+    try { return parsePointer(fs.readFileSync(path.join(folder, name, 'definition', 'spec.md'), 'utf8')) !== null; } catch { return false; }
+  });
 }
 
 function readDecisions(folder) {
   if (!fs.existsSync(folder)) return [];
   const root = repoRoot(folder);
   const cards = folderCards(folder, root, null);
-  if (fs.existsSync(path.join(folder, 'definition', 'epic.md'))) {
-    for (const story of storyFolders(folder)) cards.push(...folderCards(path.join(folder, story), root, story));
+  const epic = fs.existsSync(path.join(folder, 'definition', 'epic.md'));
+  for (const story of epic ? storyFolders(folder) : partFolders(folder)) {
+    const storyFolder = path.join(folder, story);
+    cards.push(...folderCards(storyFolder, root, story));
+    if (!epic) continue;
+    for (const part of partFolders(storyFolder)) cards.push(...folderCards(path.join(storyFolder, part), root, `${story}/${part}`));
   }
   return uniqueIds(cards);
 }

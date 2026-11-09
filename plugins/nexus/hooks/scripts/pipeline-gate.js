@@ -275,7 +275,7 @@ process.stdin.on('end', () => {
   }
 
   // (10) Spec sources: a write that flips a spec to Ready with an unsourced or unkept rule.
-  const specMatch = fp.match(/(?:^|\/)docs\/specs\/([^/]+(?:\/[^/]+)?)\/definition\/spec\.md$/);
+  const specMatch = fp.match(/(?:^|\/)docs\/specs\/([^/]+(?:\/[^/]+){0,2})\/definition\/spec\.md$/);
   if (specMatch && !isSpawned(data)) {
     const reason = unsourcedSpecRules(root, fp, tool, ti, specMatch[1]);
     if (reason) return deny('10', reason);

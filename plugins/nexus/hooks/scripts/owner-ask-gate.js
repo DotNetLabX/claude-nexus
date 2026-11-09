@@ -214,7 +214,7 @@ const AWAY_REASON =
   'the owner is away for this run, so no question is asked. If the run was declared in the owner\'s ' +
   'words and the owner has written since, the run has ended: write `off` to `.owner-away` in the ' +
   'session scratchpad, then ask again. Otherwise put the point on the list and continue — take the ' +
-  'answer the open-point table gives, and let only the part that needs the owner wait ' +
+  'answer the open-point table gives, and let only a stop rule the owner named hold its part ' +
   '(agents-workflow.md § Owner-away runs).';
 
 const GEAR_ROWS = new Map(gears.ROWS.filter((r) => r.catalogue).map((r) => [normalizeName(r.catalogue), r.row]));

@@ -310,7 +310,7 @@ The report's own `Stop` line is a template element, never one of this entry's op
 neither listed here nor counted toward the four a question may carry.
 
 **Recommended:** the default action, unless the checkpoint's own findings argue against it.
-**With the owner away:** the recommended option, unless the point waits — the first three rows of the open-point table (→ agents-workflow.md § Owner-away runs).
+**With the owner away:** the recommended option, unless a stop rule the owner named holds the point (→ agents-workflow.md § Owner-away runs).
 **Long form:**
 
 ```
@@ -361,8 +361,8 @@ Research companion, routine: the other question rests on {the unknown}. Measurin
 | squash-merge now | the branch lands on the default line; records still to be written after the close land in a second merge under the same yes, and the working copy is removed once the last merge is in | always |
 | stop at the commit | the branch is handed to you by name and nothing merges | always |
 
-**Recommended:** squash-merge when the run closed clean and nothing else is building on the branch.
-**With the owner away:** stop at the commit and name the branch.
+**Recommended:** squash-merge when the run closed clean, no blocking row open, and nothing else is building on the branch.
+**With the owner away:** the recommended option.
 **Long form:**
 
 ```
@@ -388,7 +388,7 @@ Merge at close, routine: this feature's work is committed on {the branch}. It is
 | keep it local | nothing is published; the commits stay here | always |
 
 **Recommended:** push when the run closed clean and the branch is meant to be shared.
-**With the owner away:** the team lead's `autoPush` setting decides, by its push gate, whichever way the run was declared; no other seat pushes.
+**With the owner away:** the recommended option, at the team lead's push gate; no other seat pushes.
 **Long form:**
 
 ```

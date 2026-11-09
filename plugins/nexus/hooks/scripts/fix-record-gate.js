@@ -17,9 +17,9 @@
  *
  * WHERE: the slug is the `slug` of `.claude/audit/dev-steps/{agent_id}.json` in the session root
  * (handoff-tracker.js writes it from the fix-round dispatch), else the hand-back's `{name}` where
- * `docs/specs/{name}/` exists. The file is `docs/specs/{slug}/delivery/implementation.md`, or one level
- * deeper for a nested issue, in the session's declared worktree tree (lib/worktree-target.js), then in
- * the session root.
+ * a folder of that name exists. The file is `delivery/implementation.md` in the slug's folder — one, two or
+ * three levels under docs/specs, a part inside a story inside an epic the deepest (lib/parts.js
+ * `specFolder`) — in the session's declared worktree tree (lib/worktree-target.js), then in the session root.
  *
  * NEVER A LOOP: with `stop_hook_active` the block is still read — the line present passes silently, the
  * line still missing appends one `rule: "class-check"`, `blocked: false` row to
@@ -34,6 +34,7 @@ const { resolveRole } = require('./lib/resolve-role');
 const { handbackText } = require('./lib/step-checkpoint');
 const { resolveDeclaredTree } = require('./lib/worktree-target');
 const { isSafeId } = require('./lib/safe-id');
+const { specFolder } = require('./lib/parts');
 
 const RULE = 'class-check';
 const FIXES = /\bFixes applied for (.+?)\. (?:Cycle (\d+)\s*\/\s*\d+|Hand-up (\d+))\./;
@@ -53,22 +54,12 @@ function stateSlug(root, agentId) {
   return state && isSafeId(state.slug) ? state.slug : '';
 }
 
-function isDir(p) {
-  try { return fs.statSync(p).isDirectory(); } catch { return false; }
-}
-
 // The implementation.md of the slug under the first base that holds one, with that base.
 function findImplementation(bases, slug) {
   for (const base of bases) {
-    const specs = path.join(base, 'docs', 'specs');
-    const direct = path.join(specs, slug, 'delivery', 'implementation.md');
-    if (fs.existsSync(direct)) return { base, file: direct };
-    let parents = [];
-    try { parents = fs.readdirSync(specs, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name); } catch { continue; }
-    for (const parent of parents) {
-      const nested = path.join(specs, parent, slug, 'delivery', 'implementation.md');
-      if (fs.existsSync(nested)) return { base, file: nested };
-    }
+    const folder = specFolder(base, slug);
+    const file = folder && path.join(folder, 'delivery', 'implementation.md');
+    if (file && fs.existsSync(file)) return { base, file };
   }
   return null;
 }
@@ -108,7 +99,7 @@ function main(input) {
 
   const name = m[1].trim();
   const slug = stateSlug(root, data.agent_id)
-    || (isSafeId(name) && bases.some((b) => isDir(path.join(b, 'docs', 'specs', name))) ? name : '');
+    || (isSafeId(name) && bases.some((b) => specFolder(b, name)) ? name : '');
   if (!slug) {
     return logRow(root, { check: 'unreadable', ...who, why: `no slug: no developer state file names one, and no docs/specs/${name}/ folder` });
   }

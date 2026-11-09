@@ -262,19 +262,18 @@ function listDirs(path) {
     .sort();
 }
 
-// Every review record under docs/specs — the flat `{slug}/delivery/` form and the nested
-// `{epic}/{issue}/delivery/` one. (Spelled in prose: a glob written in a block comment would close it.)
+// Every review record under docs/specs — the flat `{slug}/delivery/` form, the nested
+// `{epic}/{issue}/delivery/` one, and a part folder one level further down, the deepest nesting.
+// (Spelled in prose: a glob written in a block comment would close it.)
 function findRecordFiles(root) {
   const specs = join(root, 'docs', 'specs');
   const out = [];
-  for (const slug of listDirs(specs)) {
-    const flat = join(specs, slug, 'delivery', 'review-critic.md');
-    if (existsSync(flat)) out.push(flat);
-    for (const nested of listDirs(join(specs, slug))) {
-      const p = join(specs, slug, nested, 'delivery', 'review-critic.md');
-      if (existsSync(p)) out.push(p);
-    }
-  }
+  const walk = (dir, depth) => {
+    const p = join(dir, 'delivery', 'review-critic.md');
+    if (existsSync(p)) out.push(p);
+    if (depth < 3) for (const sub of listDirs(dir)) walk(join(dir, sub), depth + 1);
+  };
+  for (const slug of listDirs(specs)) walk(join(specs, slug), 1);
   return out;
 }
 

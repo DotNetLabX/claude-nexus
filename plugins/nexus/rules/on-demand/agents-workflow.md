@@ -35,6 +35,8 @@ For a Jira issue nested under an epic:
 docs/specs/{epic-slug}/{issue-slug}/definition/
 docs/specs/{epic-slug}/{issue-slug}/delivery/
 ```
+**Any spec folder may hold part folders.** A spec or epic whose `## Parts` list has been turned into folders by `parts.js --spec` (beside `verify-run.js`) holds one part folder per part, beside its own `definition/`: `docs/specs/{slug}/{part-slug}/`, its definition a generated pointer to the parent's entry. A part folder is a feature folder like any other, found by its slug; an epic's own story folder may hold part folders too (a story that is itself a part holds none), and a part inside a story inside an epic is the deepest nesting — the command refuses anything deeper. A part folder never holds a list of its own. The template's `## Parts` section owns the list's form (`create-feature-spec`).
+
 Ad-hoc work has no `definition/` folder — only `delivery/`. (solo-only lane — Lane rule above).
 
 `communication-log.md` is the **canonical filename** for the inter-agent message log — the plugin always uses this name; a consumer project preferring another is their concern.
@@ -58,7 +60,7 @@ Every script that reads the default branch resolves it the same way, through one
 | On the default branch | Ask: the branch-strategy option set below, with a recommendation | Auto-create `{slug}` from the default, proceed |
 | Branch matches the slug | Proceed silently ("Working on `{branch}`") | Proceed silently |
 | Unrelated branch | Ask: the branch-strategy option set below, with a recommendation | Auto-create `{slug}` from the default, proceed |
-| Detached HEAD / no slug | Ask to create a branch | **Abort** (can't safely auto-branch) |
+| Detached HEAD / no slug | Ask to create a branch | Create `{slug}` at the current commit, proceed |
 
 **New-branch name = the slug.** The step-commit helper (`commit-step.js`) accepts any branch whose name **contains** the slug, case-folded — one-way: the branch must name the slug, never the reverse. The matrix's two-way "matches" heuristic above only classifies; this is the gate's real contract.
 
@@ -81,10 +83,10 @@ The agent judges "same work vs unrelated" from available signals — slug/branch
 - **Before each implementation-phase spawn or resume — publish the round's working tree for the verify gate.** Unpublished, the gate records a `pass` on a tree holding none of the round's changes (measured 2026-08-04). Whoever dispatches the round publishes (→ § The worktree-target contract).
 
 **Overlays (apply on top of the matrix):**
-- **Dirty tree:** applies **on top of every row, including a silent slug-match proceed** — a dirty/unrelated tree still gets a named warning even when the branch choice itself asks nothing, and the warning names *which files are dirty and whose work they appear to be* (attended). Where an ask is in play, the dirty state also feeds the recommendation (Recommendation duty above). Abort if it can't be cleanly isolated (unattended).
+- **Dirty tree:** applies **on top of every row, including a silent slug-match proceed** — a dirty/unrelated tree still gets a named warning even when the branch choice itself asks nothing, and the warning names *which files are dirty and whose work they appear to be* (attended). Where an ask is in play, the dirty state also feeds the recommendation (Recommendation duty above).
 - **Stale default:** when creating a branch *from* the default, `git fetch` the default and warn if local is behind `origin` before branching — never base new work on a stale default silently. The fetch is **unconditionally best-effort**: if it fails or errors for *any* reason (offline, no remote, a guard policy, a detached/remote-less repo), **warn-and-skip — never block or error**. (Not a hardened-mode deferral: hardened mode does **not** block `git fetch`, and the unconditional best-effort posture subsumes the policy case.)
 
-**Unattended note:** a worktree is **never auto-selected** — unattended keeps auto-branch per the matrix and the abort overlay. And **unattended runs never merge at close** (ADR-99): closure on the no-PR route ends with an attended squash-merge ask, or nothing.
+**Unattended note:** a worktree is **never auto-selected** — unattended keeps auto-branch per the matrix.
 
 ### The worktree-target contract <!-- id: worktree-target -->
 
@@ -106,8 +108,8 @@ The publisher (team lead, standalone architect, or solo editing cross-tree) **ap
 ## Host Adapter & PR Tail
 
 **Relocated.** The closure-side git/host-boundary rule — the four-op host-adapter surface, the
-`gh`-only adapter, host-capability-resolved-first, and the attended-only / unattended-unreachable /
-hardened-skip posture — is canonical in `team-lead.md` → Commit Protocol → **PR Tail**, the only role
+`gh`-only adapter, host-capability-resolved-first, and the opt-in / hardened-skip
+posture — is canonical in `team-lead.md` → Commit Protocol → **PR Tail**, the only role
 that runs it.
 
 ## Pipeline State (`.claude/pipeline-state/{session id}`)
@@ -140,10 +142,10 @@ To team-lead: "For {recipient}: {message content}"
 - **Never assume past an open question — stop and ask (hard rule).** Any ambiguity, missing input, or unmade decision means you STOP, surface it (write it to `questions.md` and report it), and wait — before writing a plan, code, or any artifact that bakes in the assumption. In a team, route the question through the team lead; standalone, ask the user. A developer on a `Lane: light.` dispatch asks only when blocked on a step (→ developer.md § Plan Workflow — Two Phases). A phase with **no** open question may proceed; a phase with an **unsurfaced** one may not. Duplicated in every agent file too (ADR-2/14). Corollary: an answer the user did not personally give is **not** a user answer — record a proceed-default as `presumed (proceed-default), not user-confirmed`, never under a user-answered heading. In an owner-away run this is met by the open-point table (→ agents-workflow.md § Owner-away runs).
 - **An approval is scoped to the facts you presented when you asked (hard rule).** Consent covers the change *as you described it*. If you later find one of those facts was wrong — the size estimate, what the current behavior is, whether something already shipped, which acceptance criterion the change re-baselines — **the approval no longer covers the work: stop and re-present before acting** — re-present it as the contract re-asks a corrected fact (research-before-asking.md § The owner-question contract) — even though permission appears to be in hand. Sibling of the rule above, and the more dangerous case: that one bars proceeding past an **open** question, this one bars proceeding on an approval a **closed** question has since re-opened — and the standing "yes" reads as authorization while it does it. Cost is one message; cost of skipping it is a change the user authorized but would not have. Highest exposure where asking and implementing sit in the same turn (`solo.md`). Mechanism: the asking session stamps the ask's named paths to its own file, `.claude/approval-scope/{session id}.json`; `prohibition-gate.js` refuses that session a file edit outside them; delete that file, never another session's, before you close.
 - **Your durable artifact is your primary deliverable, not your inline message (hard rule).** The record of record is the file you write (`plan.md`, `done-check.md`, `review.md`, `implementation.md`, `questions.md`, `lessons.md`, `summary.md`); the inline completion notice is partial by design under background spawn (ADR-12/16/17). Write the file **first**, then report — never return a verdict or findings inline-only with no file behind them. A missing artifact is an incomplete result, not a result delivered by message — save a checker whose role writes no file, the critic, whose findings message is its artifact (→ § Message Size Contract).
-- **A 0-byte spawn `output_file` is expected, not a hang — and never poll a sibling's output to track it (hard rule).** The spawn-result `output_file` / `tasks/{id}.output` is routinely **0 bytes**; the real transcript is the platform-written `agent-{id}.jsonl` (salvage finds it by agentId). So: (1) a 0-byte output file is **not** evidence of a hung or stranded agent — check the transcript before concluding anything; (2) **never poll another agent's output file to infer its progress** — that misread is the delegated-self-advancement breach vector (ADR-21), and it pairs with the never-spawn rule below; (3) **the same failure shape covers shell and container jobs, not only spawned agents** — a shell creates a redirection target (`cmd > out.log`) the instant the command *starts*, so a file-existence check (`until test -f out.log`) reads a partial, in-flight file and is not a completion check. Key a wait on a genuine completion signal — the producing script's own exit, an explicit terminal marker written after the work, or the harness's task notification. Who notifies on completion: a harness-tracked background Bash job **does** (wait for it — never add a second, independently-timed polling loop beside a job the harness already tracks); a spawned agent **not reliably** (file-first output contract + the recovery bullets in this section); a detached container-side job **never** — it is not a harness child, so run it synchronously with a bounded timeout and bulk output to files.
+- **A 0-byte spawn `output_file` is expected, not a hang — and never poll a sibling's output to track it (hard rule).** The spawn-result `output_file` / `tasks/{id}.output` is routinely **0 bytes**; the real transcript is the platform-written `agent-{id}.jsonl` (salvage finds it by agentId). So: (1) a 0-byte output file is **not** evidence of a hung or stranded agent — check the transcript before concluding anything; (2) **never poll another agent's output file to infer its progress** — that misread is the delegated-self-advancement breach vector (ADR-21), and it pairs with the never-spawn rule below; (3) **the same failure shape covers shell and container jobs, not only spawned agents** — a shell creates a redirection target (`cmd > out.log`) the instant the command *starts*, so a file-existence check (`until test -f out.log`) reads a partial, in-flight file and is not a completion check. Key a wait on a genuine completion signal — the producing script's own exit, an explicit terminal marker written after the work, or the harness's task notification. Who notifies on completion: a harness-tracked background Bash job **does** (a main session waits for it, and a spawned agent runs it in the foreground instead — the background-work bullet below — never add a second, independently-timed polling loop beside a job the harness already tracks); a spawned agent **not reliably** (file-first output contract + the recovery bullets in this section); a detached container-side job **never** — it is not a harness child, so run it synchronously with a bounded timeout and bulk output to files.
 - **Never author another agent's artifact or sign as a role you are not (hard rule).** One owner per artifact: developer → `implementation.md`, except its `## Solo Fixes` section, which a solo spawned inside the run writes, with its carry-over rows (and their table, where a written tail has none) and its entry on the `**Model:**` stamp (`implementation-format`); architect → `done-check.md`; reviewer → the Step-2 review and re-reviews in `review.md`, with one exception: a primary from outside the pipeline (Codex) writes no file, so the session that dispatched it persists its verdict file and, at the code review, its `review.md` section, signed `Primary: Codex — {GO | NO-GO}, persisted by {session}` — a persisted copy, never that session's own verdict (→ codex-dispatch.md § Code-review seat); and a second of the same kind: where a repo names Codex as its done check, the main session that dispatched it persists its `done-check.md` block, signed `Checker: Codex — persisted by {session}` (→ codex-dispatch.md § Done check); team lead → the fix list in `review.md` (the coordinator's merge of both checks), `summary.md`, commits, its session's phase token under `.claude/pipeline-state/` (exceptions: the standalone architect writes `summary.md` and commits at an Architect-Led Fast Lane close, and commits a solo's fix it delegated outside any run on the owner's word, `architect.md`; the standalone learner commits its consolidation at a run's close, `learner.md` step 9; and under a declared `per-step` commit strategy the implementation agent commits **its own finished step** — only through the plugin's `commit-step.js` helper, only on the slug branch, `developer.md`. That third exception is narrow on purpose: the helper refuses on the default branch and off a slug branch, stages only the paths it is given, and stamps a `Nexus-Step:` trailer the team lead's commit check keys on; every other subagent git write, and every raw git command a subagent runs, stays forbidden under every strategy — ADR-96. A fourth: any main session commits a plugin-feedback file it filed — that one file, nothing else — as the "Commit the plugin-feedback file you write" bullet above says. A fifth, for the PO and the architect: a commit made by an installed plugin's own save script, as one of that plugin's documented steps and in the repository that plugin's settings name, is the user's act, not yours: each push is still asked, and that plugin's own confirmation step is the ask). A verdict for a role that isn't yours — or a section signed as another agent — fabricates an independent gate: the most severe pipeline breach. If a gate hasn't run, **report it; never simulate it.** One artifact is shared. In `lessons.md` each role **appends under its own `## {Role} Lessons` heading** and never rewrites the file header or another role's sections — agents running at the same time (the done check beside the code review and its second reader) append through the plugin's `lessons-append.js`, with an Edit append as the fallback when the script cannot be found or run, or the scratch file cannot be written. Where the `brainstorm-mode` skill (`nexus-pro`) is in your skill list, a second is shared: `ideas.md` (the brainstorm record) is written by the PO and the architect, each adding its own topics' entries and never editing another role's. **A spec has one more writer:** the architect may write a product spec's `## Technical part` section — a few high-level points for its own team, from its own code repository, with no class-level detail, no step list and no plan — and touches no other section; the rest of the spec stays the PO's. **Spec write-back is a routed obligation, not a free edit:** the **solo** agent may apply **trivial factual** corrections to a **live** spec it is working from — never when spawned inside a feature's run (`solo.md`); the **developer never** writes to a spec or a plan — drift surfaces as a message to the architect or PO, who own the edit (owner-decided 2026-07-03; provenance `docs/proposals/sdd-generate-merge-2026-07.md` § D — provenance, not the rule's home). **A spec is live until its feature closes, and a record after:** after the closing commit its spec, plan and rule list are historical — a later feature that changes the behaviour writes its own documents, and the registry carries the behaviour forward.
 - **Never spawn a pipeline-role agent (hard rule).** Spawning po/architect/developer/reviewer/critic/learner/team-lead — or another instance of your own role — to advance the pipeline is the team lead's act alone. The platform may *let* a subagent spawn agents; that is not permission. Commissioning a correctly-typed agent to produce a gate is the same breach as authoring the gate yourself (ADR-18/ADR-21). When your phase ends, hand back and STOP. The only sanctioned spawns are the ones your own agent file names: research helpers (Explore) for discovery; the critic where your file directs it in standalone mode; the rule list's mining helpers (background `general-purpose`) where a standalone PO's or architect's file stages them; and the small-fix agent's architect consult on a rule-versus-code disagreement, main session only. One spawn of your own role is sanctioned: the main session of an architect-led fast lane spawns the done check as an architect (`architect.md`), and that spawned check spawns nothing. A solo is sanctioned for the sessions that coordinate a feature's run — the team lead and the architect-led lane's main session — for a red handover or complete run, a merge-in conflict at close, the timeouts a close let through, or a developer's `Bug found`, and for a main-session architect handed a failing test or a bug outside any run (`team-lead.md`, `architect.md`). A subagent's pipeline-role spawn is detected by the boundary detector and logged to `.claude/audit/violations.log`.
-- **Your FINAL message is the deliverable — never an acknowledgement after it (hard rule).** End every turn — the first return AND every resumed turn — with the handback itself: verdict, findings, questions, summary. The spawner reads your last message, and under background spawn anything after the deliverable can strand it (measured shape: a real handback followed by "Done." / "Acknowledged." — ADR-22). If there is nothing substantive to add, add nothing.
+- **Your FINAL message is the deliverable — never an acknowledgement after it (hard rule).** End every turn — the first return AND every resumed turn — with the handback itself: verdict, findings, questions, summary — and, for a spawned agent, never while work your hand-back needs still runs (the background-work bullet below). The spawner reads your last message, and under background spawn anything after the deliverable can strand it (measured shape: a real handback followed by "Done." / "Acknowledged." — ADR-22). If there is nothing substantive to add, add nothing.
 - **A main-session turn that ends on a wait or on a stop says which, in its last line.** This binds every main-session turn, attended or not. A turn that ends while background work it started — agents, or jobs such as a test run or a Codex review — still runs ends with `Not stopped — waiting for {what is running}; I continue when it finishes. Nothing is needed from you.` A turn that ends because nothing more can run without the owner ends with `Stopped — needs you: {what}.` Each is the last line before the role's footer; a turn with nothing running and nothing needed carries neither. Where a skill gives the turn a closing line of its own, that line keeps its place as the last of the turn's own content and the wait or stop line follows it, directly above the footer.
 - **A placeholder return is a non-result.** A dispatched subagent's first reply must carry its findings — a bare acknowledgement ("Ready.", "Standing by.", "Done.") is a non-result. The dispatcher re-dispatches **once** with an explicit "read the files and return findings — do not acknowledge"; if it placeholders again, do the bounded work yourself instead of burning more dispatch cycles. Never treat a placeholder as completed work.
 - **Arrival order is untrusted.** A teammate's completion report can arrive *after* its idle
@@ -156,17 +158,31 @@ To team-lead: "For {recipient}: {message content}"
   context intact and reliably recovers the payload — ADR-61), re-dispatch last. Distinct from the
   Relay Contract's thin-result recovery (a **completed** agent's stranded result, where re-asking is
   the least-reliable last resort) — this is the *live idled, no-payload-yet* case.
-- **Self-backgrounded builds strand — and the reliable guard is orchestration-side.** A subagent that
-  backgrounds its own long build can strand: it ends its turn waiting on a monitor event the detached
-  process never emits, and the completion notification fires at the pause, not at completion. Run
-  builds in the **foreground** inside subagents, and where the platform forces a detached run, drive
-  it with a bounded poll loop and never a single wait. Dispatch-prompt poll clauses do **not** prevent
-  it — every recurrence carried the poll-don't-wait rule verbatim — so the dispatcher owns the guard:
-  treat any **early task-notification whose result reads like a status line** ("X is building…") as a
-  stranded lane and resume it immediately with poll orders, never waiting for a completion that
-  already fired. Distinct from both neighbours: the agent is neither completed-with-a-thin-result
-  (the Relay Contract case) nor idled-without-payload — it is **paused mid-work**, so there is no
-  artifact and no transcript payload to salvage yet; resume is FIRST here, not last.
+- **Work a subagent backgrounds strands it — and the reliable guard is orchestration-side.** This is
+  any background work a spawned agent starts and its hand-back needs: a build, a test run, a helper
+  agent, a wait on one of them. For a spawned agent, ending the turn is finishing — the completion
+  notification fires at the pause, not at completion, and a detached process may never emit the
+  event the agent waits on. So never end the turn while such work runs. Run a shell build or test in
+  the **foreground** under a bounded `timeout N`, or, where the platform forces a detached run, under
+  a bounded poll of the command's own exit — "foreground" alone does not make a hang finite
+  (`team-lead.md` § Phase Failure Handling, item 5); a helper agent is spawned in the foreground,
+  never a background spawn plus a wait on its output file, which the 0-byte-output bullet above
+  already rules out as a completion check. Where the platform runs the spawn in the background
+  anyway, stay in the turn until the helper has finished and its result is taken in: its completion
+  notice, or, when short bounded foreground waits pass with none, its finish verified the 0-byte
+  bullet's way (its transcript by agent id, then a resume), never a read of its output file — and
+  never end the turn on a wait alone. Then hand back. A timer or watch the agent leaves running on
+  purpose is not such work, and the hand-back names it.
+  On the coordinator's side, a dispatch clause alone is not the guard — every recurrence carried a
+  poll-don't-wait clause verbatim — the coordinator's resume is: treat any hand-back or **early
+  task-notification that reads like a status line** (the agent says it is building, or still waiting
+  on something it started) as a stranded lane, and resume it at once with the measured resume
+  (`team-lead.md` § Phase Failure Handling, item 5), telling it to run that work again in the
+  foreground under a bounded `timeout N`, take the result in and hand back. Never end a turn waiting
+  for that work to finish on its own, and never wait for a completion that already fired. Distinct
+  from both neighbours: the agent is neither completed-with-a-thin-result (the Relay Contract case)
+  nor idled-without-payload — it is **paused mid-work**, so there is no artifact and no transcript
+  payload to salvage yet; resume is FIRST here, not last.
 - **Research-helper dispatch contract.** When spawning a research helper (Explore, general-purpose): point it at inputs **by file path** — never paste bulk content into the prompt — and require a structured return: counts + per-item one-liners + surprises, ~300 words ("return findings, not acknowledgements").
 - **Spawn-tasking contract: capability pins + no spawn name.** Every spawn/tasking carries the
   four explicit pins — spelled exactly as ADR-61 part 3 (the spawn-tasking hardening rules) names
@@ -215,7 +231,7 @@ in front of it. It adds no search before asking.
   of that step.
 - **Stop** on an entry whose Rests-on fact no longer holds, or which disagrees with the rules it sits
   under: never follow it. Attended, ask the owner, naming the earlier ruling by its effect and its date
-  and what changed. Owner away, it is decided as any other decision (§ Owner-away runs, row 6), its
+  and what changed. Owner away, it is decided as any other decision (§ Owner-away runs, row 4), its
   Context naming the ruling by its effect and date and the changed fact — never routed to the PO, whose
   answer would cite the same entry — and listed for the owner. An entry resting on `none — a preference` is never stopped by a changed fact.
 - **No entry** decides the question, or one only resembles it: the existing behaviour, unchanged.
@@ -327,20 +343,21 @@ same file.
 
 ### Owner-away runs
 
-A run the owner has left decides and goes on: only a one-way action, a stop rule the owner named or
-something physically missing waits. This
+A run the owner has left decides and goes on: only a stop rule the owner named waits. What the owner
+forbids lives in the profile and repository permission settings (ADR-182). Something missing that the
+run cannot start or fix is a failed build of the part that needs it (the fork table below). This
 subsection is the one home of that rule for every main-session persona — architect, PO, solo, team
 lead and learner.
 
 **One rule set.** An owner-away run follows the attended rules: every choice of checks, readers,
 models, rounds and suites is the attended run's, whichever of the two ways below declared it
-(ADR-160). Its own text keeps only who answers in the owner's seat, the one-way acts that wait, where
-the waiting items go, the no-ask mechanics of this subsection, and the owner's named exceptions — no
+(ADR-160). Its own text keeps only who answers in the owner's seat, where the listed items go, the
+no-ask mechanics of this subsection, and the owner's named exceptions — no
 Fable in a mining stage or a research spawn, lesson promotions wait for the owner, and no breadth
 research survey. It also keeps the stricter paths that protect the owner's checkout or correctness,
-and the product guards — among them the branch matrix's unattended column and its abort, the verify
-verdict deciding, the Codex early-failure stand-in on Fable (pair 2 of the reader-pair list), the
-miner's target-record refusal and halt, and no PO spawned.
+and the product guards — among them the branch matrix's unattended column, the verify
+verdict deciding, the Codex early-failure stand-in on Fable (pair 2 of the reader-pair list), and the
+miner's target-record refusal and halt.
 
 **The away answerer** takes the owner's seat, and is defined here once: a fixed question from the
 catalogue takes its entry's away line; any other decision takes the asker's own recommendation, after
@@ -372,8 +389,7 @@ line:
 
 The line is not a question, and it confirms nothing else. Then mark the session away: with the Write
 tool, write the single word `on` to a file named `.owner-away` in the session's scratchpad folder —
-always, whatever a file there holds. Writing to the session's own scratchpad is never a one-way
-action — row 1 below means a write into another repository or working copy. The hook answers in one
+always, whatever a file there holds. The hook answers in one
 line that the mark is set, and removes the file. Write `off` the same way when a words-declared run
 ends. A typed-marker run's mark is never cleared: that run does not end on a later message. A
 session with no scratchpad writes `.claude/.owner-away` in its current working folder instead. If
@@ -384,24 +400,22 @@ is untouched.
 
 **What the run does with an open point.** No question box opens, and no turn ends waiting on the
 owner while work that does not depend on the owner remains. Each open point takes the **first** row
-that fits — the three rows that wait come first, so no later row can carry a point past them:
+that fits — the owner's stop rule comes first, so no later row can carry a point past it:
 
 | # | The open point | What you do | On the list |
 |---|---|---|---|
-| 1 | A one-way action — a merge, a push, a deploy, a delete, a write outside this repo | do not do it. The one exception is an action your seat's own text already lets it take with no question; this subsection adds no such licence, and a merge has none | left for the owner; an action taken under the exception is reported as done, never listed as open |
-| 2 | A stop rule the owner named — in their launch message, a directive or a ruling of theirs, never one an agent wrote | the part it names waits | waiting for the owner |
-| 3 | Something physically missing — an account, a credential, a service that is down | the part that needs it waits | waiting for the owner |
-| 4 | A choice the owner already made in the launch message, other than rows 1–2 (the lane, the tree, the reviewers) | follow the owner's words | not listed |
-| 5 | A fixed question from the catalogue | take that entry's away line (`skills/questions-format/references/standard-questions.md`) | with the answer taken |
-| 6 | Any other decision | take your own recommendation, at any confidence, after its panel where the panel route below applies | with the answer taken |
+| 1 | A stop rule the owner named — in their launch message, a directive or a ruling of theirs, never one an agent wrote | the part it names waits | waiting for the owner |
+| 2 | A choice the owner already made in the launch message, other than row 1 (the lane, the tree, the reviewers) | follow the owner's words | not listed |
+| 3 | A fixed question from the catalogue | take that entry's away line (`skills/questions-format/references/standard-questions.md`) | with the answer taken |
+| 4 | Any other decision | take your own recommendation, at any confidence, after its panel where the panel route below applies | with the answer taken |
 
-**Decision entries come after rows 1–4, before rows 5–6.** A one-way action, a stop rule the owner
-named, something physically missing and a choice the owner made in the launch message are never
+**Decision entries come after rows 1–2, before rows 3–4.** A stop rule the owner named and a choice
+the owner made in the launch message are never
 overridden by an entry of the feature's `## Decisions and why` sections; an entry that disagrees with a launch choice is
 named on the list as overruled by the launch message. Then a point a current entry decides is settled
 by § Decision entries — listed with the answer taken, attributed
-`answered from {document} {id}, not owner-confirmed — {answer}`. A point whose entry stopped is decided at row 6
-(§ Decision entries). **A gear answers before row 5.** Under a gear, a catalogue question the gear answers takes the gear's
+`answered from {document} {id}, not owner-confirmed — {answer}`. A point whose entry stopped is decided at row 4
+(§ Decision entries). **A gear answers before row 3.** Under a gear, a catalogue question the gear answers takes the gear's
 value, not the entry's away line (→ § Gears).
 
 Where the `panel-mode` skill (`nexus-pro`) is in your skill list, **the PO and the architect
@@ -411,27 +425,26 @@ unrated — a question of your own or a writer's decision for the feature's `## 
 sections or its plan's `## Decisions` table — goes to a panel while the feature's budget
 has one, first come, first served; what the panel settles is then taken at whatever level it reads — at `low`, your own recommendation, the panel's answer beside it. A writer's decision is rated before it
 is written as current, so the entry that settles a point is one current before the point arose. Never to
-one: rows 1–4, a point a current entry settles, and anything at the done check, the review or the
+one: rows 1–2, a point a current entry settles, and anything at the done check, the review or the
 close. With its switch on, the twin's disagreement also takes a point there, at any confidence;
-rows 1–4 and the other exclusions still hold. Past the budget, and for every other persona, the recommendation is taken and listed. The route holds
+rows 1–2 and the other exclusions still hold. Past the budget, and for every other persona, the recommendation is taken and listed. The route holds
 from the moment the run turns owner-away until this subsection ends it, and for a spawned or resumed
 PO or architect whose dispatch carries the line `Run: unattended.` — a campaign feature's included;
 once the run ends, no panel or brainstorm starts by itself. A panel the owner asked for before the
 owner left was attended and costs nothing.
 
 For **solo**, the launch request is the confirmation its workflow asks for: solo states its
-approach in its first message and proceeds on it, the approach recorded as a row-6 point. A launch
-message that says "merge it when done" merges nothing: row 1 comes before row 4.
+approach in its first message and proceeds on it, the approach recorded as a row-4 point.
 
 **The record and the list.** Each listed point is one question in the feature's `questions.md`, in
 the questions-format grammar. A point whose answer was
-taken (rows 5 and 6) is `Status: Answered`, its Answer block attributed
-`presumed (proceed-default), not user-confirmed`. A point left for the owner or waiting (rows 1 to
-3) is `Status: Open` with what it holds up. A choice settled at launch (row 4) is not recorded. A
+taken (rows 3 and 4) is `Status: Answered`, its Answer block attributed
+`presumed (proceed-default), not user-confirmed`. A point a stop rule of the owner's holds (row 1)
+is `Status: Open` with what it holds up. A choice settled at launch (row 2) is not recorded. A
 run with no feature folder keeps the list in the conversation.
 
 **A spec line left unbuilt is always the owner's to rule.** A decision taken in the owner's seat, by any
-role, that leaves a spec acceptance criterion or a rule-list behaviour row unbuilt is taken as row 6
+role, that leaves a spec acceptance criterion or a rule-list behaviour row unbuilt is taken as row 4
 takes any other, and the run never stops for it, but its record carries one line,
 `Built less than its spec: {the lines} — handed to {the backlog row or change note | nobody}`, whatever its
 confidence, and the list opens with these under their own heading, ahead of the answers taken. A plan that
@@ -454,7 +467,7 @@ also written to its record as the owner's verdict, by whoever records the owner'
 (→ `panel-mode/SKILL.md` § Unattended panels); no reply leaves the verdict empty, never confirmed.
 
 A spec or plan resting on an answer taken may go Ready or be signed off and built on the feature's
-own branch; it gives no licence to merge (row 1), and one the owner overrules reopens what rests on it.
+own branch, and one the owner overrules reopens what rests on it.
 
 Where the `brainstorm-mode` skill (`nexus-pro`) is in your skill list, the PO and the architect run
 a brainstorm topic in defining and planning as an unattended brainstorm while the feature's budget
@@ -476,7 +489,7 @@ run declared in the owner's words and one under the typed marker:
 | an escalation | the architect's recommendation is taken and listed |
 | a close obligation | discharged as an attended run discharges it, a deferral question going to the away answerer; recorded open — in `summary.md` and where the last row says — only when it fails after its own fix attempts or needs a plugin that is not installed, then the close proceeds; a failed mutation re-check group is never recorded open — it holds the close like a red test (`team-lead.md` § Close Gate, item 10) |
 | lessons processing | the attended default: skipped when unanswered, and recorded as unprocessed; a learner run lists its promotions and promotes nothing |
-| the pull-request tail | not reached: no pull request, no merge |
+| the pull-request tail | as attended, where the repo switches it on |
 | where a deferred item is kept | the list; under the typed marker, `.claude/review-queue/` as well |
 
 A typed-marker run gets everything above as well — the fixed line, the mark, the open-point table,
@@ -485,8 +498,8 @@ obligation takes its row in the table above, never an open-point row. Every run 
 Codex where it is available; the Codex time limit, the early window and the fallback apply as always.
 
 **What this overrides.** In an owner-away run the stop-and-ask hard rules — this file's § All Agents,
-the kernel's, each agent file's — are met by the open-point table as a whole: rows 4 to 6 and a
-decision entry, current or stopped, settle a point, rows 1 to 3 hold the work that depends on them, and
+the kernel's, each agent file's — are met by the open-point table as a whole: rows 2 to 4 and a
+decision entry, current or stopped, settle a point, row 1 holds the work that depends on it, and
 the list is the surfacing. Building on an
 unresolved point in silence stays a defect.
 
@@ -629,7 +642,7 @@ The code-review fix rounds — the rounds a done check or a code review sends ba
 
 **The close predicate** replaces every close line that asked for a passing done check and an approved review. The close runs when all five hold: the done check's newest check is PASS; the rule check, where one runs, is in; no reader's latest verdict leaves a CRITICAL or HIGH open — a reviewer's APPROVED or COMMENT, or Codex's GO or a NO-GO resting only on under-bar items; no always-in item is open; and no leveled item at or above the next round's bar is open. A leveled item between the bar and the always-fix line that the developer left out with its reason, under the weighing rule above, is settled, not open; one at or above the always-fix line stays open whatever its block says.
 
-**The limit with the owner away.** At the fix-round limit no further round runs, whoever asks and whatever the finding, and the architect is not called. Each open in-bar item, an always-in item included, becomes a backlog row in the repo's row grammar, its status cell opening `Open — blocking the merge of {slug}`, with its `Cause:` and `Found:` fields (→ agents-workflow.md § Slug and Path Resolution), and is named in `summary.md` and on the run's list; with no backlog file, `summary.md` is the record. A campaign unit hands each row as a change note, since the backlog is a shared file. A CRITICAL is no exception, and is first on the list. The close then runs on those rows in place of the close predicate; the complete run is still required, and the merge stays the owner's.
+**The limit with the owner away.** At the fix-round limit no further round runs, whoever asks and whatever the finding, and the architect is not called. Each open in-bar item, an always-in item included, becomes a backlog row in the repo's row grammar, its status cell opening `Open — blocking the merge of {slug}`, with its `Cause:` and `Found:` fields (→ agents-workflow.md § Slug and Path Resolution), and is named in `summary.md` and on the run's list; with no backlog file, `summary.md` is the record. A campaign unit hands each row as a change note, since the backlog is a shared file. A CRITICAL is no exception, and is first on the list. The close then runs on those rows in place of the close predicate; the complete run is still required.
 
 **Nothing in the bar, no round.** When the merged items hold nothing at the round's bar, no round runs and the pipeline goes to the close: the fix list is a `## Step 2 — Merge, no fix round` section, carrying the under-bar block where there is one.
 
@@ -791,7 +804,7 @@ plugin's own decision record; a rule that means your project's register says so.
 | `roles` / the fast profile | The repo's command roster in `.claude/verify.json` (`build`/`unit`/`full`/`mutation`). `unit` is the **narrowest** command covering a change, never the whole suite, run through `verify-run.js --profile fast`. A developer runs per `developer.md` § The step test rule; the solo closes its change with one tied call (`--tied --changed`, within the repo's `stepLimitSeconds`, 90 s when unset; `--files` runs only the named test files). | — |
 | one-call step-close | The solo's single `verify-run.js --profile fast --tied` call closing its change; a developer's step runs instead (`developer.md` § The step test rule). | — |
 | `per-step` | The commit strategy where the developer commits each finished step on the slug branch through the plugin's commit helper, and integration squashes; declared as `commitStrategy` in `.claude/nexus-agents.json`. Default is 2 commits, all the team lead's. | see ADR-96 |
-| `mergeAtClose` | Config key (`.claude/nexus-agents.json`, `ask` default \| `never`): whether closure ends with the one attended squash-merge ask on the no-PR route (→ § Branch Pre-Flight & Default-Branch Resolution). |
+| `mergeAtClose` | Config key (`.claude/nexus-agents.json`, `ask` default \| `never`): whether closure ends with the one squash-merge ask on the no-PR route (→ § Branch Pre-Flight & Default-Branch Resolution). | — |
 | `Nexus-Step` | The commit trailer the helper stamps on a step commit, `Nexus-Step: {slug}/{n}`, so a later check can tell a sanctioned step commit from an unattributable one. | see ADR-96 |
 | `C2 attestation` | The durable log of merge-triage verdicts for one unit's rules. | — |
 | attestation staleness | A rule's registry revision has moved past its last attested one. | — |
@@ -835,7 +848,8 @@ plugin's own decision record; a rule that means your project's register says so.
 | ADR-62 | Shipped scripts run in place from the version-keyed plugin cache. | — |
 | ADR-93 | Cross-model checker pairing is always on; the master switch is removed. | — |
 | ADR-96 | Per-step commits are a declared strategy; the commit helper is the only sanctioned subagent git write. | amends ADR-18/20 |
-| ADR-99 | Closure never merges unattended; the no-PR route ends with one attended squash-merge ask. | — |
-| ADR-160 | A run with the owner away follows the attended rules; the owner's seat is taken by the away answerer (§ Owner-away runs). | replaces ADR-153's unattended panel seat |
+| ADR-99 | Closure on the no-PR route ends with one squash-merge ask. | amended by ADR-182 |
+| ADR-160 | A run with the owner away follows the attended rules; the owner's seat is taken by the away answerer (§ Owner-away runs). | replaces ADR-153's unattended panel seat; amended by ADR-182 |
+| ADR-182 | A run with the owner away waits only on a stop rule the owner named; permission settings hold what is forbidden. | amends ADR-35, ADR-99, ADR-160 and ADR-172 |
 | `F28-PROVE` | The seam where the regeneration loop's PROVE stage reads the suite report. | — |
 | `F53-ImproveCampaign` | The campaign-improvement spike whose measurements the regeneration loop cites. | — |

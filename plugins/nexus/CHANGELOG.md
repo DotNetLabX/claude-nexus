@@ -1,5 +1,55 @@
 # nexus — Changelog
 
+## [2.4.118] — 2026-11-09
+- PATCH bump. F417-WaitForOwnHelpers: a spawned agent no longer hands back while background work its answer needs still runs, and a coordinator resumes an agent whose last message says it is still waiting.
+  - `agents-workflow.md` § All Agents: the self-backgrounded-build rule is widened to any background work a spawned agent's hand-back needs (a build, a test run, a helper agent, a wait on one) — a shell job in the foreground under a bounded timeout, a helper agent spawned in the foreground, and where the platform runs it in the background anyway, the agent stays in the turn until the helper has finished and its result is taken in, never ending the turn on a wait alone; a timer or watch left on purpose is named in the hand-back. The coordinator side: a status-line hand-back is a stranded lane, resumed at once.
+  - The final-message rule in the seven agent files (architect, critic, developer, learner, po, reviewer, solo) and the helper spawn contract say it; the architect's lanes treat a spawned agent's status-line hand-back as the size check's stall branch, and the fast lane's checker pass is waited for; `team-lead.md`'s runtime caveat points at the widened rule.
+  - Estate growth across the feature: about 3.7 KB over 10 shipped files (reasons recorded in the baseline).
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 257326→257353 B — F417-WaitForOwnHelpers: fix round 1
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 130258→130411 B — F417-WaitForOwnHelpers: fix round 1
+
+## [2.4.117] — 2026-11-09
+- PATCH bump.
+  - hook behavior/enforcement change
+
+## [2.4.116] — 2026-11-09
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - F414-StepCommitsInArchitectLanes: the architect's lanes send the developer's git rule as one of two fixed lines — a build dispatch keeps the step commit through the commit helper, a fix-round or hand-up dispatch rules it out — and the developer reads a blanket "no git writes" as leaving a plan step's commit, while an instruction that names the step commit is still followed. Architect-led builds in per-step repos made no step commit in 61 of 138 features because their dispatch forbade every git write.
+  - estate raise: plugins/nexus/agents/architect.md 255805→256362 B — F414-StepCommitsInArchitectLanes: the fast lane's two verbatim git lines and the developer's reading rule for a blanket git ban
+  - estate raise: plugins/nexus/agents/developer.md 51566→52014 B — F414-StepCommitsInArchitectLanes: the fast lane's two verbatim git lines and the developer's reading rule for a blanket git ban
+
+## [2.4.115] — 2026-11-09
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - rule (always-on prohibitions envelope — injected every session)
+  - skill change (questions-format)
+
+## [2.4.114] — 2026-11-09
+- PATCH bump.
+  - hook behavior/enforcement change
+
+## [2.4.113] — 2026-11-09
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - skill change (create-feature-spec)
+  - skill change (critic-calibration)
+  - estate raise: plugins/nexus/agents/architect.md 254486→255823 B — F411: the spec lists its parts
+  - estate raise: plugins/nexus/agents/po.md 85521→86501 B — F411: the spec lists its parts
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 129013→129719 B — F411: the spec lists its parts
+  - estate raise: plugins/nexus/skills/create-feature-spec/SKILL.md 8352→8663 B — F411: the spec lists its parts
+  - estate raise: plugins/nexus/skills/create-feature-spec/workflows/Template.md 8907→10765 B — F411: the spec lists its parts
+
 ## [2.4.112] — 2026-11-08
 - a repo can run its helper jobs with no agent — `discovery`, `audit` and the new `general` — on Codex, with an effort per job; a helper job waits with `watch`, is never cut for going quiet while its worker lives, falls back to its Claude model when Codex fails, and records its Codex session (F408)
   - **needs nexus-pro 0.1.57 or later** (ADR-136): older usage records count a `helper` Codex job that names a plan or spec as a review reader, and read no window from `watch`; publish nexus-pro first

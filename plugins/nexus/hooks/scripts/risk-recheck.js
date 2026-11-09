@@ -16,6 +16,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { matchKinds, KIND_IDS } = require('./lib/sensitive-paths');
+const { specFolder } = require('./lib/parts');
 
 const USAGE = [
   'Usage:',
@@ -186,7 +187,8 @@ function recheck(opts) {
   let stat = null;
   try { stat = fs.statSync(opts.repo); } catch { /* reported below */ }
   if (!stat || !stat.isDirectory()) fail(`--repo is not a directory: ${opts.repo}`);
-  const featureFolder = `docs/specs/${opts.slug}`;
+  const found = specFolder(path.resolve(opts.repo), opts.slug);
+  const featureFolder = found ? path.relative(path.resolve(opts.repo), found).split(path.sep).join('/') : `docs/specs/${opts.slug}`;
   const delivery = `${featureFolder}/delivery`;
   const planText = readRequired(path.join(opts.repo, ...delivery.split('/'), 'plan.md'), `${delivery}/plan.md`);
   const implText = readRequired(path.join(opts.repo, ...delivery.split('/'), 'implementation.md'), `${delivery}/implementation.md`);

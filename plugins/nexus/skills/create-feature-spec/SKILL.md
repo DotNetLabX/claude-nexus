@@ -48,7 +48,7 @@ Before writing, ensure you have:
 
 3. **Ask clarifying questions in one batch.** For anything ambiguous or unspecified in the business spec for this feature — ask once, all together. Do not write the file yet. **For any feature with UI elements, help/tooltip content is a default deliverable — confirm-or-skip it *here*, in this upfront interview**, not as a trailing opt-in after the spec already exists (a help deliverable that arrives as a tail-end line gets skipped; it was user-reported as a plugin regression, a consuming repo's plugin-feedback).
 
-4. **Write the spec** — follow `workflows/Template.md`. Output path: `docs/specs/{slug}/definition/spec.md` (or `epic.md` for epics, `bug.md` for bugs). Every business rule ends with its source marker, in the template's Business Rules grammar; before the spec goes Ready, the check `spec-sources.js` (beside the plugin's `verify-run.js`) lists any rule without one and any `added` rule the owner has not kept.
+4. **Write the spec** — follow `workflows/Template.md`. Output path: `docs/specs/{slug}/definition/spec.md` (or `epic.md` for epics, `bug.md` for bugs). Every business rule ends with its source marker, in the template's Business Rules grammar; before the spec goes Ready, the check `spec-sources.js` (beside the plugin's `verify-run.js`) lists any rule without one and any `added` rule the owner has not kept. A spec too big for one plan may carry the template's optional `## Parts` list, written only where the owner took the split, or, with the owner away, where your recommendation stood.
 
 5. **Voice check.** Before telling the user, scan every section but the optional `## Technical part` (the architect's, above) for:
    - Code-formatted identifiers in backticks — for each one, ask: domain term or code artifact? Code artifacts move to the plan.
@@ -72,7 +72,7 @@ The `{slug}` is determined by the PO before invoking this skill, following the n
 - Bug: `B{N}-{Name}` (e.g., `B1-BugCountZero`) — writes `bug.md`, not `spec.md`. An older `BUG-{N}-{name}` bug folder stays valid and is never renamed; a new bug takes the number after the highest of either form. A bug's related feature goes in its `bug.md` header (`**Related:**`), never in the folder name.
 - Gap: `GAP-{N}-{name}` (e.g., `GAP-3-sub-team-management-ui`)
 
-For an issue nested under an epic, the path becomes `docs/specs/{epic-slug}/{issue-slug}/definition/spec.md`.
+For an issue nested under an epic, the path becomes `docs/specs/{epic-slug}/{issue-slug}/definition/spec.md`. A part of a spec's `## Parts` list gets its folder, and its slug, from the command the template names — never written by hand.
 
 ## Arguments
 

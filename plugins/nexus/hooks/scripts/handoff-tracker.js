@@ -47,7 +47,7 @@
  *     `phase: "review-fixes"` with `cycle: "N/M"` when it carries `Fix round for … Cycle N/M`, and the
  *     range comes from the prompt (`Your slice: a–b` beats `Your steps: a–b`; `Build {slug}, steps
  *     a–b`; `Implement. Steps: a–b`; en dash or hyphen); `total` is the plan's highest step
- *     number, every step counted — read from the `Plan:` path the prompt names, else `docs/specs/{slug}/delivery/plan.md` (under its `Tree:` when named), and
+ *     number, every step counted — read from the `Plan:` path the prompt names, else the slug folder's `delivery/plan.md`, one to three levels under docs/specs (under its `Tree:` when named), and
  *     left out when no plan is found; a resume keeps it; `slug` is the feature the prompt opens with
  *     (`Analyze`, `Fix round for`, `Build {slug}, steps`), else the folder its `Plan:` path names under
  *     docs/specs, and a resume that names one replaces it;
@@ -127,6 +127,7 @@ const { resolveRole } = require('./lib/resolve-role');
 const { stepCheckpoint, isRangeEnd, handbackText } = require('./lib/step-checkpoint');
 const { isSafeId } = require('./lib/safe-id');
 const { readRoundToken } = require('./lib/round-token');
+const { specFolder } = require('./lib/parts');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const STEP_ID = '(\\d+[a-z]?)';
@@ -258,16 +259,17 @@ function dispatchSlug(text) {
   return openingSlug(text) || (plan ? plan[1] : '');
 }
 
-// The plan a dispatch names: its `Plan:` path, else the slug's default plan, under the dispatch's
-// `Tree:` when it names one, else the session root.
+// The plan a dispatch names: its `Plan:` path, else the plan in the slug's folder at any supported depth,
+// under the dispatch's `Tree:` when it names one, else the session root.
 function planPaths(root, prompt) {
   const explicit = /\bPlan:\s*`?([^\s`]+\.md)/.exec(prompt);
-  const slug = openingSlug(prompt);
-  const rel = explicit ? explicit[1] : slug ? `docs/specs/${slug}/delivery/plan.md` : '';
-  if (!rel) return [];
-  if (path.isAbsolute(rel)) return [rel];
+  const slug = explicit ? '' : openingSlug(prompt);
+  if (!explicit && !slug) return [];
+  if (explicit && path.isAbsolute(explicit[1])) return [explicit[1]];
   const tree = /\bTree:\s*`?([^\s`]+)/.exec(prompt);
-  return [tree && tree[1], root].filter(Boolean).map((base) => path.join(base, rel));
+  const bases = [tree && tree[1], root].filter(Boolean);
+  if (explicit) return bases.map((base) => path.join(base, explicit[1]));
+  return bases.map((base) => specFolder(base, slug)).filter(Boolean).map((folder) => path.join(folder, 'delivery', 'plan.md'));
 }
 
 // The plan's highest whole-numbered step heading — every step counts, close-owned ones included,

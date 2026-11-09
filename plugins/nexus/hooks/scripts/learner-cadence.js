@@ -48,7 +48,13 @@ function computeNudge(summaryMtimes, stampMtime, now) {
   return `Learner cadence: ${count} slugs closed since the last learner consolidation (${date}) — consider 'be learner'.`;
 }
 
-module.exports = { computeNudge, THRESHOLD };
+/** Whether a written path is a `summary.md` close write, one to three folders under docs/specs. */
+function isCloseWrite(filePath) {
+  const fp = String(filePath || '').replace(/\\/g, '/');
+  return /(^|\/)docs\/specs\/[^/]+(\/[^/]+){0,2}\/delivery\/summary\.md$/.test(fp);
+}
+
+module.exports = { computeNudge, isCloseWrite, THRESHOLD };
 
 // Guarded I/O main (critic M4): importing computeNudge in a test triggers no stdin handler and no
 // process.exit — when the process entry point is the ESM test, require.main is undefined, so this
@@ -61,10 +67,7 @@ if (require.main === module) {
     try {
       const evt = JSON.parse(raw || '{}');
       const ti = evt.tool_input || {};
-      const fp = String(ti.file_path || '').replace(/\\/g, '/');
-      // Scope filter: only a `summary.md` close write, at either spec-folder nesting depth
-      // (docs/specs/<slug>/delivery/ or docs/specs/<epic>/<issue>/delivery/). Anything else: silent.
-      if (!/(^|\/)docs\/specs\/[^/]+(\/[^/]+)?\/delivery\/summary\.md$/.test(fp)) return process.exit(0);
+      if (!isCloseWrite(ti.file_path)) return process.exit(0);
 
       const root = process.env.CLAUDE_PROJECT_DIR || evt.cwd || process.cwd();
       const summaryMtimes = collectSummaryMtimes(path.join(root, 'docs', 'specs'));
