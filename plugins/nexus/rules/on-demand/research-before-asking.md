@@ -518,7 +518,8 @@ Slow tests are skipped by default because on 12 September you ruled the nine-min
 ```
 
 A routine question in the standard-question variant — the entry's question sentence, then the routine
-line, whose one sentence holds this run's facts, and the derived options (→ § Routine questions):
+line, whose one sentence holds this run's facts, and the derived options (→ § Routine questions), as
+the Standard model preset renders them (→ pipeline-guardrails.md § Model presets):
 
 ```
 Who reviews

@@ -71,7 +71,7 @@ inserted above it.
 ```
 # {Feature Name} — Summary
 Mode: team pipeline ({definition}) | architect-led fast lane ({level}, {definition})
-Gear: {gear} — {campaign | switch | repo} | none — at the spec review: {gear | none}, only where it differed
+Gear: {gear} — {campaign | switch | repo | profile} | none — at the spec review: {gear | none}, only where it differed
 
 ## Status: COMPLETE
 

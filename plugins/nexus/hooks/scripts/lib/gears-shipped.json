@@ -54,7 +54,7 @@
     },
     {
       "row": 5,
-      "setting": "Sonnet reviewer and critic effort",
+      "setting": "Reviewer and critic effort (the Standard preset's reader family)",
       "catalogue": null,
       "allowed": ["medium", "high", "extra-high", "as today", "ask me"],
       "values": {
@@ -92,11 +92,11 @@
       "row": 8,
       "setting": "Author model (PO, architect, developer, team lead)",
       "catalogue": null,
-      "allowed": ["Opus", "Sonnet", "as today", "ask me"],
+      "allowed": ["preset", "Opus", "Sonnet", "as today", "ask me"],
       "values": {
-        "fast": { "value": "Opus", "text": "Opus" },
-        "normal": { "value": "Opus", "text": "Opus" },
-        "quality": { "value": "Opus", "text": "Opus" },
+        "fast": { "value": "preset", "text": "the model preset" },
+        "normal": { "value": "preset", "text": "the model preset" },
+        "quality": { "value": "preset", "text": "the model preset" },
         "off": { "value": "as today", "text": "as today" }
       }
     },
@@ -104,11 +104,11 @@
       "row": 9,
       "setting": "Author effort",
       "catalogue": null,
-      "allowed": ["medium", "high", "extra-high", "as today", "ask me"],
+      "allowed": ["preset", "medium", "high", "extra-high", "as today", "ask me"],
       "values": {
-        "fast": { "value": "high", "text": "high" },
-        "normal": { "value": "high", "text": "high" },
-        "quality": { "value": "high", "text": "high" },
+        "fast": { "value": "preset", "text": "the model preset" },
+        "normal": { "value": "preset", "text": "the model preset" },
+        "quality": { "value": "preset", "text": "the model preset" },
         "off": { "value": "as today", "text": "as today" }
       }
     },

@@ -126,7 +126,7 @@ primary alone — your model is never a collision.
 ### Third reader
 
 When your brief carries the line `You are the third reader: …`, you are the **third reader** — a gear's
-Fable beside the pair, on the first review only: everything § Second reader says holds, with
+third reader beside the pair, on the first review only: everything § Second reader says holds, with
 `docs/specs/{slug}/delivery/review-third.md` as your file — **never** `review.md` or `review-second.md`.
 A resume that names you the round's promoted primary writes the round's `review.md` Step-2 section and
 re-heads your own `review-third.md` section to `## Promoted to primary — round {n}`

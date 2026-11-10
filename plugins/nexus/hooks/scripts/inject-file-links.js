@@ -5,8 +5,8 @@
  * (inject-reply-style.js). It fires on startup | clear | compact and never on resume, where the
  * transcript already carries the original delivery.
  *
- * WHAT IT CARRIES. rules/file-links/file-links.md — name a local file in a reply as a bare file:///
- * link of its absolute path — followed by one line giving this session's folder as a ready link
+ * WHAT IT CARRIES. rules/file-links/file-links.md — name a local file in a reply as a markdown link,
+ * the file name over the file:/// URL of its absolute path — followed by one line giving this session's folder as a ready link
  * prefix, so the agent never forms the drive letter, the slashes or the percent-encoding itself.
  *
  * WHEN IT PRINTS. Only in a terminal session: CLAUDE_CODE_ENTRYPOINT exactly `cli`. An IDE or the
@@ -20,8 +20,9 @@
  * does not reach this envelope.
  *
  * TERMINALS. Tested: Windows Terminal (2026-11-01) — a bare file:/// URL opens on click, a drive path
- * or a repo-relative path does not. Not tested: macOS Terminal.app, iTerm2, Linux terminals, the
- * VS Code terminal; there the worst case is a URL that does not open, no worse than a plain path.
+ * or a repo-relative path does not. The markdown-link form is the owner's choice (2026-11-10). Not
+ * tested: macOS Terminal.app, iTerm2, Linux terminals, the VS Code terminal; there the worst case is a
+ * link that does not open.
  *
  * The content lives in rules/file-links/, a subdirectory the kernel's non-recursive enumeration never
  * reads. Its budget (700 chars) covers the content file and the folder line's label, and is gated by

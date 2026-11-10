@@ -1,0 +1,79 @@
+{
+  "families": [
+    { "name": "fable", "cost": "high", "checker": true },
+    { "name": "opus", "cost": "high", "checker": true },
+    { "name": "sonnet", "cost": "medium", "checker": true },
+    { "name": "haiku", "cost": "low", "checker": false }
+  ],
+  "ranking": ["fable", "opus", "sonnet"],
+  "standardRetry": { "Explore": "sonnet", "general-purpose": "sonnet", "Plan": "sonnet" },
+  "presets": {
+    "standard": {
+      "claudeFamilies": ["sonnet", "opus"],
+      "authors": {
+        "architect": "as today", "po": "as today", "developer": "as today",
+        "solo": "as today", "team-lead": "as today", "learner": "as today"
+      },
+      "readers": { "critic": "as today", "reviewer": "as today" },
+      "types": { "Explore": "as today", "general-purpose": "as today", "Plan": "as today" },
+      "otherAgents": "as today",
+      "secondReader": { "default": "sonnet", "besidePrimary": { "sonnet": "opus" } },
+      "jobs": {
+        "discovery": { "model": "sonnet", "effort": null, "codexFallback": { "model": "sonnet", "effort": "medium" } },
+        "audit": { "model": "sonnet", "effort": null, "codexFallback": { "model": "sonnet", "effort": "high" } },
+        "general": { "model": "sonnet", "effort": null, "codexFallback": { "model": "sonnet", "effort": "high" } },
+        "doneCheck": "the architect's resolved model"
+      },
+      "effort": { "scope": "reader seats", "byFamily": { "sonnet": "high", "opus": "xhigh", "fable": "xhigh" } },
+      "lightLaneFloor": "low",
+      "gearEffortFamily": "sonnet",
+      "pairs": [["codex", "sonnet"], ["sonnet", "opus"], ["opus", "sonnet"]],
+      "substitute": { "fable": "opus" },
+      "fallback": {
+        "early": { "freshFrom": 2 },
+        "late": { "neverSpend": ["fable"], "freshFrom": 2 }
+      },
+      "authorModel": { "model": "opus", "effort": "high" },
+      "neverSuggested": ["fable"]
+    },
+    "fable": {
+      "claudeFamilies": ["fable", "opus"],
+      "authors": {
+        "architect": { "model": "fable", "effort": "medium" },
+        "po": { "model": "fable", "effort": "medium" },
+        "developer": { "model": "fable", "effort": "medium" },
+        "solo": { "model": "fable", "effort": "medium" },
+        "team-lead": { "model": "fable", "effort": "medium" },
+        "learner": { "model": "fable", "effort": "medium" }
+      },
+      "readers": {
+        "critic": { "model": "fable", "effort": "medium" },
+        "reviewer": { "model": "fable", "effort": "medium" }
+      },
+      "types": {
+        "Explore": { "model": "fable", "effort": "medium" },
+        "general-purpose": { "model": "fable", "effort": "medium" },
+        "Plan": { "model": "fable", "effort": "medium" }
+      },
+      "otherAgents": { "model": "fable", "effort": "medium" },
+      "secondReader": { "default": "fable", "besidePrimary": { "fable": "opus" } },
+      "jobs": {
+        "discovery": { "model": "fable", "effort": "medium", "codexFallback": { "model": "fable", "effort": "medium" } },
+        "audit": { "model": "fable", "effort": "medium", "codexFallback": { "model": "fable", "effort": "medium" } },
+        "general": { "model": "fable", "effort": "medium", "codexFallback": { "model": "fable", "effort": "medium" } },
+        "doneCheck": "the architect's resolved model"
+      },
+      "effort": { "scope": "every matched spawn", "byFamily": { "fable": "medium", "opus": "high", "sonnet": "high" } },
+      "lightLaneFloor": "medium",
+      "gearEffortFamily": null,
+      "pairs": [["codex", "fable"], ["opus", "fable"], ["fable", "opus"]],
+      "substitute": { "sonnet": "fable" },
+      "fallback": {
+        "early": { "freshFrom": 2 },
+        "late": { "neverSpend": [], "freshFrom": 2 }
+      },
+      "authorModel": { "model": "fable", "effort": "medium" },
+      "neverSuggested": ["sonnet"]
+    }
+  }
+}

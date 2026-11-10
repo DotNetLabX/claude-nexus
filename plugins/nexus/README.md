@@ -67,7 +67,7 @@ The **printed** half always runs, whatever the file half did: the key decides wh
 
 ## File links
 
-In a terminal session, a file path in a reply cannot be clicked, but a `file:///` link can. So each session started from a terminal is told to name the local files in its replies as bare `file:///` links of their absolute path, with any line number as plain text after the link, and is handed its own folder as a ready-made link to build on. Only the main session's replies carry the links: spawned agents report to it, and it names the files to you. Files the agents write — plans, specs, summaries, code — keep repo-relative paths.
+In a terminal session, a file path in a reply cannot be clicked, but a `file:///` link can. So each session started from a terminal is told to name the local files in its replies as links whose text is the file name and whose target is the `file:///` URL of the absolute path — `[plan.md](file:///…/docs/plan.md)` — with any line number as plain text after the link, and is handed its own folder as a ready-made link to build on. Only the main session's replies carry the links: spawned agents report to it, and it names the files to you. Files the agents write — plans, specs, summaries, code — keep repo-relative paths.
 
 It applies only when Claude Code runs in a terminal; an IDE or the desktop app already makes `path:line` clickable and gets nothing. It is on by default: set `"features": { "clickableFileLinks": false }` in the project's `.claude/nexus-agents.json` to turn it off. Any other value, a missing key or file, or a file that does not parse leaves it on. Tested in Windows Terminal; in other terminals the worst case is a link that does not open.
 

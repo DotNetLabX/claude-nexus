@@ -47,10 +47,10 @@ Both entries that ask which model checks another model's work when the two share
 reviewer and critic pairing checks — derive their options the same way, from the reader-pair list
 (`agents-workflow.md` § Critic rounds): the main reader of each pair whose conditions hold in this run
 and whose main is not the author's family, in the list's order, the recommended one first — counted
-from pair 3 where the colliding checker was set explicitly, by a spawn parameter or the repo's own
-per-agent entry, since that opts out of the first two pairs; then Fable,
-a plain option never recommended, left out where Fable is the author's family; then keep the same
-model. The `reader pair` entry, which asks who reads a first-round
+from pair 2 where the colliding checker was set explicitly, by a spawn parameter or the repo's own
+per-agent entry, since that opts out of pair 1; then each family that may check and that the model
+preset in force does not run (`pipeline-guardrails.md` § Model presets), a plain option never
+recommended, left out where it is the author's family; then keep the same model. The `reader pair` entry, which asks who reads a first-round
 review, is the one model question with its own option table. Options whose condition does not hold in a run are left out, and the set of
 models eligible to check is closed.
 
@@ -167,7 +167,7 @@ Plan overwrite or resume, routine: a plan for this feature was written on {when 
 **When asked:** asked at a review outside the first round — a re-review that covers no built step, or a later round whose author changed — when the code's author and its reviewer share a model family; a first-round match is the `reader pair` entry's.
 **Surfaces:** question box; checkpoint report.
 **Options:** derived — see the shared model-choice option set above.
-**Recommended:** the main reader of the reader-pair list's first applicable pair — the first whose conditions hold and whose main is not the author's family, from pair 3 on where the reviewer was set explicitly — never Fable.
+**Recommended:** the main reader of the reader-pair list's first applicable pair — the first whose conditions hold and whose main is not the author's family, from pair 2 on where the reviewer was set explicitly — never a family outside the preset.
 **With the owner away:** the pairing check runs as attended and takes the option it would have recommended, with no ask (`team-lead.md` § Checker-Seat Pairing Check).
 **Long form:**
 
@@ -187,7 +187,7 @@ Reviewer pairing check, routine: {the author model} wrote the code, and the revi
 **When asked:** asked at a review outside the first round — a later round whose author changed — when a spec's or plan's author and its critic share a model family; a first-round match is the `reader pair` entry's.
 **Surfaces:** question box; checkpoint report.
 **Options:** derived — see the shared model-choice option set above.
-**Recommended:** the main reader of the reader-pair list's first applicable pair, from pair 3 on where the critic was set explicitly, never Fable.
+**Recommended:** the main reader of the reader-pair list's first applicable pair, from pair 2 on where the critic was set explicitly, never a family outside the preset.
 **With the owner away:** the pairing check runs as attended and takes the option it would have recommended, with no ask (`team-lead.md` § Checker-Seat Pairing Check).
 **Long form:**
 
@@ -210,13 +210,15 @@ Critic pairing check, routine: {the author model} wrote the {artifact}, and {the
 
 | label | consequence | offered when |
 |---|---|---|
-| Codex, with Sonnet reading second | Codex leads every review — spec, plan, code and promotion — and Sonnet reads beside it | Codex is installed |
-| Sonnet, with Opus reading second | two readers from two families, the second one costlier | the author is not Sonnet |
-| Opus, with Sonnet reading second | two readers from two families, the second one cheaper | the author is not Opus |
+| Codex, with {the preset's second reader} reading second | Codex leads every review — spec, plan, code and promotion — and {the preset's second reader} reads beside it | Codex is installed |
+| {pair 2's main}, with {pair 2's second} reading second | two readers from two families | the author is not {pair 2's main} |
+| {pair 3's main}, with {pair 3's second} reading second | two readers from two families | the author is not {pair 3's main} |
 | {the checker model} alone | one reader, cheaper and faster than a pair, for this review only — the next kind of review asks again — and the record says the second was skipped | the configured model is not the author's family |
-| Fable, with Sonnet reading second | the strongest reader leads, at the highest cost | the author is not Fable |
+| {a family the preset does not run}, with {the preset's second reader} reading second | a reader family this preset does not run leads, at that family's own cost | the family may check and is not the author's |
 
-**Recommended:** the reader-pair list's first applicable pair (`agents-workflow.md` § Critic rounds) — the Codex option where it is offered; otherwise the first two-reader option, in the table's order, whose leading model is neither the author's family nor Fable. Either way, its second reader is replaced by the repo's `jobs.secondReader` model where that is set and usable, rendered under the option's concrete names — on the Codex option that is the reader beside Codex, at every review. Fable is never recommended, and where it is the configured checker its option is labelled as the configured model; the one exception is a repo-set Fable second reader, which the recommended option names.
+The pairs and families are the model preset's in force (`pipeline-guardrails.md` § Model presets), and each option renders their concrete names, with one option per family the preset does not run.
+
+**Recommended:** the reader-pair list's first applicable pair (`agents-workflow.md` § Critic rounds) — the Codex option where it is offered; otherwise the first two-reader option, in the table's order, whose leading model is neither the author's family nor outside the preset. Either way, its second reader is replaced by the repo's `jobs.secondReader` model where that is set and usable, rendered under the option's concrete names — on the Codex option that is the reader beside Codex, at every review. A family outside the preset is never recommended, and where it is the configured checker its option is labelled as the configured model; the one exception is a repo-set second reader of such a family that the consent guard lets stand, which the recommended option names.
 **With the owner away:** the pairing check runs as attended — its precedence, its collision check and its second-reader rules unchanged — and takes its recommended option with no ask, recorded `presumed` (`team-lead.md` § Checker-Seat Pairing Check).
 **Under a gear:** not asked; the gear's pair is taken, its second reader still the repo's `jobs.secondReader` where that is set and usable, and named in the record with the gear; under `off`, or where the gear says ask me, it is asked as above. A consolidation takes no gear, so the learner asks it as before.
 **Long form:**

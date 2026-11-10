@@ -1,6 +1,6 @@
 ---
-description: Show the pipeline gears side by side, set this repo's gear (writes gear in .claude/nexus-agents.json), or set the gear for the next feature planned in this session only
-argument-hint: "[set {gear} | next {gear}]"
+description: Show the pipeline gears side by side, set this repo's gear (writes gear in .claude/nexus-agents.json), set this Claude Code profile's gear for every repo without its own (--profile), or set the gear for the next feature planned in this session only
+argument-hint: "[set {gear} [--profile] | next {gear}]"
 disable-model-invocation: true
 ---
 !`node "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/gear.js" '$ARGUMENTS'`
@@ -14,15 +14,19 @@ make. Relay it as follows, adding nothing about gears the result does not say.
   one, else its `value`. Head the column of the repo gear (`repoGear.name`) as the repo's gear;
   where `repoGear.state` is `unset`, say no gear is set and the pipeline asks every process question
   as before; where it is `missing`, say the repo names a gear that does not exist, so it runs as if no
-  gear were set. Where `pendingSwitch` names a gear, say the next feature planned in this session
+  gear were set. Where `profileGear.name` is set, give it as this profile's gear: `set` — the repo runs
+  at it, since the repo sets none; `under the repo gear` — the repo's own gear wins here; `not defined
+  here` — this repo has no gear of that name, so it does not apply here. Where `pendingSwitch` names a gear, say the next feature planned in this session
   runs at it, and the repo gear after that. Where a row carries `overridden`, mark that row's cells as
   replaced by the repo's own setting, giving its `value` and saying it comes from the repo's
   settings. Where row 10 carries `repo`, give it beside the row. End with the result's `note`, then
-  the two ways to change gear: `/nexus:gear set {gear}` for the repo, `/nexus:gear next {gear}` for
-  the next feature only. `off` keeps every question the pipeline asks today.
-- **After `set`** it names the repo gear now written (`gear`) and the file (`path`): say the repo
-  runs at that gear from its next plan, and that a feature whose plan has already started keeps its
-  gear.
+  the three ways to change gear: `/nexus:gear set {gear}` for the repo, `/nexus:gear set {gear} --profile`
+  for every repo of this Claude Code profile that sets none, `/nexus:gear next {gear}` for the next
+  feature only. `off` keeps every question the pipeline asks today.
+- **After `set`** it names the gear now written (`gear`) and the file (`path`): where `scope` is
+  `profile`, say every repo of this profile without a gear of its own runs at it from its next plan;
+  otherwise say the repo runs at that gear from its next plan. Either way, a feature whose plan has
+  already started keeps its gear.
 - **After `next`** it names the gear (`next`): say the next plan started in this session takes it,
   and the repo gear applies again after that feature closes.
 - **With `create`, `change` or `show {name}`** — where the `custom-gears` skill (`nexus-pro`) is in

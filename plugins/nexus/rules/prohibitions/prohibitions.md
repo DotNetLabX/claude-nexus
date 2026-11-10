@@ -19,9 +19,9 @@ Read-Index resolves the path.
 - **Never discard uncommitted work you cannot show is yours, even when told to.** Before `git checkout`/`restore`
   (incl. `.` and `-f`), `stash drop`/`clear`, `clean` or replacing a whole file that has uncommitted edits, find whose
   edits they are; not yours or unsure → name the files and ask, then follow the owner's answer.
-- **Never override a specialized agent's model** outside the four sanctioned channels, a gear in the first: the
+- **Never override a specialized agent's model** outside the five sanctioned channels, a gear in the first: the
   config ladder (per-agent and per-job entries, then the repo's gear), an explicit owner-directed spawn parameter, the
-  reader-pair list, and the second reader (its job's model, additive).
+  reader-pair list, the second reader (its job's model, additive), and the model preset in force.
   Any other `model:` on a pipeline agent is the ad-hoc override this forbids.
   (→ pipeline-guardrails.md § Agent model overrides and pairing)
 - **Never ask the owner, or end a turn waiting on them while other work remains, once they say a

@@ -18,12 +18,12 @@ below is simply not offered. With the surfaces present, a start through the Code
 ## Code-review seat <!-- id: code-review -->
 
 On the reader pair's Codex option, **Codex is the code review's primary.** The nexus reviewer reads
-the same round as its second reader — on Sonnet, or the repo's `jobs.secondReader` model where it is
+the same round as its second reader — on the preset's second reader (→ pipeline-guardrails.md § Model presets), or the repo's `jobs.secondReader` model where it is
 set and no pick names the second — and writes `review-second.md`, never `review.md` unless promoted
 (below). That reader
 joins the first review and a follow-up whose `Covers:` lists a built or redone step; a follow-up
-covering no step is Codex alone. Under a gear that adds Fable, a Fable reviewer reads the first review
-as its third reader and writes `review-third.md` (→ agents-workflow.md § Critic rounds). The dispatcher is whoever starts the code review — the team lead, or
+covering no step is Codex alone. Under a gear that adds a third reader, a reviewer on the preset's
+third-reader family reads the first review as its third reader and writes `review-third.md` (→ agents-workflow.md § Critic rounds). The dispatcher is whoever starts the code review — the team lead, or
 the standalone architect at the fast lane's review gate — and the same session dispatches a fix
 round's follow-up, and the round-less follow-up after a solo fix or a hand-up made once the first
 review started (its own round, never a fix cycle) — save one made for a red at the close's complete
@@ -106,10 +106,10 @@ Merging the readers into one fix list is the merge section's, below — the only
 
 When Codex is picked at a critic seat — a spec, plan or promotion review — it **replaces** the nexus
 critic as the primary — an owner-ratified exception to "nexus agents own the pipeline" — and in
-round 1 a Sonnet second reader runs beside it, or the `jobs.secondReader` model where it is set and
+round 1 the preset's second reader runs beside it, or the `jobs.secondReader` model where it is set and
 no pick names the second (→ agents-workflow.md § Critic rounds) — except under a gear whose spec and
-plan review is `Codex alone`, where Codex reads alone; under a gear that adds Fable, Fable reads
-round 1 as a third reader (→ agents-workflow.md § Critic rounds). No nexus critic is spawned as that
+plan review is `Codex alone`, where Codex reads alone; under a gear that adds a third reader, it reads
+round 1 too (→ agents-workflow.md § Critic rounds). No nexus critic is spawned as that
 seat's primary. Its verdict lives at its **record path**: `docs/specs/{slug}/delivery/review-critic-codex.md`
 for a spec or plan review, and the consolidation report's round section for a promotion review (GO/NO-GO
 plus severity-rated findings, the code-review verdict file's grammar), kept distinct from
@@ -162,7 +162,7 @@ with a second reader, or a code review with one — runs to the **later** of tha
 the round's last other reader is in; every other job, and every job of a session that started no other
 reader of its round (a spawned agent spawns none), keeps the plain limit. Cutting earlier saves no
 time — the round waits for that reader anyway — and loses the review. Codex at its limit at minute 25
-while the Sonnet reader runs to minute 31 is collected after minute 31, finished or cut.
+while the second reader runs to minute 31 is collected after minute 31, finished or cut.
 
 **The stall check.** Inside the limit and past it, the helper reads the job's own log: 6 minutes with
 no new line is a **stall**, at any point in the job, for every kind but `helper` (→ codex-dispatch.md § Helper job) — measured, a working Codex job writes a log line
@@ -248,29 +248,32 @@ helper job by its job's Claude fallback (→ codex-dispatch.md § Helper job), a
 deadline. No question to the owner and no retry first: a retry spends the same wait again. The
 round's header note names the skipped reader and why.
 
-| Codex outcome | Seen | Attended | Typed-marker unattended |
-|---|---|---|---|
-| surfaces absent | — | no Codex pair; pair 3 by the reading rule | the same |
-| job failure | early (`earlyFailure: true`) | the reading rule below pair 1, reusing the readers that already ran | pair 2 — a fresh Fable main; the round keeps its own resolved second reader where it has one, never widened by the fallback; the author-family rule applies |
-| job failure, or cut at the limit | late (no flag) | the late rule | the late rule |
+| Codex outcome | Seen | Fallback, attended and unattended alike |
+|---|---|---|
+| surfaces absent | — | no Codex pair; pair 2 on by the reading rule |
+| job failure | early (`earlyFailure: true`) | the reading rule from pair 2 on, reusing the readers that already ran; the round keeps its own resolved second reader where it has one, never widened by the fallback |
+| job failure, or cut at the limit | late (no flag) | the late rule |
 
-**A seated third reader.** Under a gear that adds Fable (→ agents-workflow.md § Critic rounds), a
-failure flagged early makes the round's seated Fable its main in place of the early row — promoted as a
+The pair order is the preset's (→ pipeline-guardrails.md § Model presets).
+
+**A seated third reader.** Under a gear that adds a third reader (→ agents-workflow.md § Critic rounds), a
+failure flagged early makes the round's seated third reader its main in place of the early row — promoted as a
 second reader is, at the code review by "When Codex drops" (→ codex-dispatch.md § Code-review seat),
 at a critic seat by the reuse of a reader that already ran — attended and unattended alike, and no
-second Fable starts. Where the producer is Fable's family, the reading rule's next eligible main is
-taken instead and Fable's findings stay a reader section. A late drop runs the late rule unchanged,
-Fable's findings kept as a reader section. A Fable skipped or failed before the drop is not seated.
+fresh main starts. Where the producer is the third reader's family, the reading rule's next eligible main is
+taken instead and the third reader's findings stay a reader section. A late drop runs the late rule unchanged,
+the third reader's findings kept as a reader section. A third reader skipped or failed before the drop is not seated.
 
-**The late rule — no Fable, ever.** After the early window no Fable is spent. The round's second
-reader is promoted to main when its family is neither the author's nor Fable — at the code review by
+**The late rule — no held-back family.** After the early window no family the preset's late row holds
+back is spent (→ pipeline-guardrails.md § Model presets). The round's second
+reader is promoted to main when its family is neither the author's nor held back — at the code review by
 "When Codex drops" (→ codex-dispatch.md § Code-review seat), at a critic seat by the reuse of a reader
 that already ran (→ agents-workflow.md § Critic rounds) — and the round runs on that **one reader**. On the light lane's code review, a promoted second reader that
 read only the risky steps is re-briefed with the rest of the change, and its verdict counts as the main
 reader's only after that (→ architect.md § Light Lane (standalone only)). Where the
-second reader is the author's family or Fable (a repo may set `jobs.secondReader: fable`),
-its findings stay in the round as a reader section, and a fresh main is spawned from pairs 3–4 by the
-reading rule — Sonnet, or Opus where the author is Sonnet — never Fable. A round with no other reader
+second reader is the author's family or held back (a repo may set `jobs.secondReader` to one),
+its findings stay in the round as a reader section, and a fresh main is spawned from pair 2 on by the
+reading rule — never a held-back family. A round with no other reader
 (a critic round ≥ 2, a follow-up covering no step) takes the same fresh main, and gains no second
 reader by the fallback. The round's header note keeps its opening line
 `Primary: {model} — promoted from second reader; Codex dropped: {why}` and adds
@@ -283,14 +286,14 @@ a review primary after Codex drops; the done check and every other job keep thei
 same-model replacement of a reader that cannot be resumed is unchanged.
 
 Worked examples:
-1. Author Opus, Sonnet second, Codex late → the Sonnet second is promoted; one reader.
-2. Author Sonnet, Sonnet second, late → the second's findings are kept; a fresh Opus main (pair 3's Sonnet is the author's family).
-3. Author Opus, a repo-set Fable second (attended), late → the Fable findings are kept; a fresh Sonnet main.
-4. A critic round ≥ 2 (no second reader), author Opus, late → a fresh Sonnet main, alone.
-5. Author Sonnet, a repo-set Opus second, late → the Opus second is promoted.
-6. Typed-marker run, author Opus, Sonnet second, early → a fresh Fable main; the Sonnet second is kept.
+1. A second reader of another family than the author's, not held back, Codex late → the second reader is promoted; one reader.
+2. A second reader of the author's family, late → the second's findings are kept; a fresh main from pair 2 on, the first whose main is not the author's family. Under a preset whose authors and second reader share one family, every late drop is this case.
+3. A repo-set second reader of a held-back family (attended), late → its findings are kept; a fresh main from pair 2 on.
+4. A critic round ≥ 2 (no second reader), late → a fresh main from pair 2 on, alone.
+5. A repo-set second reader of a third family, neither the author's nor held back, late → it is promoted.
+6. Early → the first pair from pair 2 on whose main is not the author's family: where that main already read the round as its second reader it becomes the main; otherwise a fresh main starts and the second reader is kept.
 
-- A typed-marker job that never got going, its stall seen by `collect` at about minute 6:10 →
+- A job that never got going, its stall seen by `collect` at about minute 6:10 →
   `earlyFailure` → example 6's outcome.
 - A job that worked to minute 4 and then went quiet, stalled at about minute 10 → no flag → example
   1's outcome.
@@ -338,7 +341,7 @@ hands `done check owed` back to its main session, which runs the Codex check or 
 
 **Beside a Codex code review.** The done check starts first, as the architect spawn does — except in
 a typed-marker unattended run, where the code-review job starts first: there the done check has a free
-fallback, while a refused review job would spend Fable. Then alternate the two `wait` calls: the
+fallback, while a review job refused early needs a fresh main reader. Then alternate the two `wait` calls: the
 review's at its default, the done check's with `--max-seconds 5`, so the review job, the only one with
 an early window, is seen at the pace it would be seen alone.
 
@@ -390,7 +393,7 @@ skill-log home `unreadable` — sends the check to the architect spawn on the mo
 resolve to without the setting (the shipped default), with one disclosure line in the communication
 log: `Done check: Codex dropped — {why}; architect spawn on {model}.` A cut or unusable block is never
 persisted as a check: a done check is binary, and a cut one has not run. The early window does not
-apply here — there is no Fable stand-in to spare — but the stall check does: a stalled done check
+apply here — it decides only a review's replacement reader — but the stall check does: a stalled done check
 falls back at once, not at the limit.
 
 ## Critic-seat verdict consumption <!-- id: verdict-critic -->

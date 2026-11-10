@@ -39,7 +39,7 @@
  *     attempt filled in, or says no run is left and to write a `Test problem:` line, or, where the runner has
  *     no step run, says so.
  * The labeller (label-tests.js) is allowed on a developer seat only with `--run` of this agent's own step-run
- * record. The solo keeps every runner and labeller form, declared-role scripts included.
+ * record. The solo keeps every runner and labeller form, and runs any script file: none is read on its seat.
  * The mutation runner (mutation-run.js) is refused on a developer seat wherever the gate sees it run, checked
  * before the plugin's own folder is skipped. The command is read as shell words (lib/shell-words.js), and every
  * command it runs is judged, nested ones included (`bash -c`, `cmd /c`, `eval`, `find -exec`, `$(…)`): it runs
@@ -54,7 +54,7 @@
  * or a program cannot be fully read, and the misses lib/shell-words.js names, a runner path built at run time
  * and an assignment of the runner's name in a code file (refused, though it runs nothing) are stated limits.
  *
- * A SCRIPT FILE IS READ. On every gated seat, a chain segment that runs a file through an interpreter (`bash`,
+ * A SCRIPT FILE IS READ. On a developer seat, a chain segment that runs a file through an interpreter (`bash`,
  * `sh`, `zsh`, `pwsh`/`powershell -File`, `cmd /c`, `node`, `python`, `./{file}`, `source`, `.`) has the file
  * read. The interpreter's options are read up to its script only, so a word after the script never stops the
  * read; an option that runs no file (`bash -c`, `node -e` or `--check`, `python -m`) means no file. The file
@@ -66,9 +66,8 @@
  * `execFile`, `execFileSync` or `fork` call, in Python `subprocess` or `os.system`, in Perl or Ruby (`-e` code)
  * `system`, in PowerShell `Start-Process`
  * or `&` — and names it, quotes read as token boundaries, a call laid out over several lines one statement; a
- * name in a comment or a value runs nothing. On a
- * developer seat a build and the runner count beside the raw forms. A script this same command wrote from a
- * here-document is judged by that text, not read from disk. The runner, the labeller, the repo's slow-test
+ * name in a comment or a value runs nothing. A build and the runner count beside the raw forms. A script this
+ * same command wrote from a here-document is judged by that text, on every gated seat, not read from disk. The runner, the labeller, the repo's slow-test
  * tagger and every file a declared role names are never read.
  *
  * A BACKGROUND DENY IS A PLATFORM FACT, BY VERSION: dropped for a background subagent up to the
@@ -908,6 +907,7 @@ function main(input) {
       if (fired === 'developer') return refuse('script', `\`${script}\`, written by this command, runs a build or the test runner itself. ${developerWay()}`);
       continue;
     }
+    if (!developer) continue;
     const name = basename(script).toLowerCase();
     if (UNREAD.has(name) || RUNNER_SCRIPT.test(name) || LABELLER_SCRIPT.test(name) || isExemptScript(name)) continue;
     if (dirs === null && !path.isAbsolute(script)) {

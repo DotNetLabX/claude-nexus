@@ -11,7 +11,7 @@
 - **It auto-learns.** What the team learns on every feature becomes your conventions and your skills.
 - **It works in your stack.** Packs for .NET and Vue, Flutter, C++ and PHP — or the language of your choice.
 
-Stack extensions teach it your stack; eight paid plugins add extras for shaping, review and reporting, rule mining, data analysis, meeting-notes search, building several features side by side while you are away, a digital you that learns how you decide, and a product owner's lane from meeting notes to tracker tickets, with its Jira extension.
+Stack extensions teach it your stack; eight paid plugins add extras for shaping, review and reporting, rule mining, data analysis, meeting-notes search, building a whole product while you are away, a digital you that learns how you decide, and a product owner's lane from meeting notes to tracker tickets, with its Jira extension.
 
 ## And there is more
 
@@ -65,7 +65,7 @@ Every extension depends on `nexus`, so installing one installs the core with it.
 | [**nexus-notes**](#nexus-notes) | Every meeting decision in front of whoever writes the spec | `DotNetLabX/claude-nexus-notes` |
 | [**nexus-product**](#nexus-product) | A product owner's lane, from meeting notes to tracker tickets | `DotNetLabX/claude-nexus-product` |
 | [**nexus-product-jira**](#nexus-product-jira) | That lane on Jira Cloud | `DotNetLabX/claude-nexus-product-jira` |
-| [**nexus-factory**](#nexus-factory) | Several features built side by side while you are away | `DotNetLabX/claude-nexus-factory` |
+| [**nexus-factory**](#nexus-factory) | A whole product built while you are away — as many features as you give it | `DotNetLabX/claude-nexus-factory` |
 | [**nexus-digital-you**](#nexus-digital-you) | A digital you that learns how you decide | `DotNetLabX/claude-nexus-digital-you` |
 
 Each paid plugin lives in its own private repository, which is its own marketplace and carries its install lines.
@@ -146,15 +146,17 @@ Each paid plugin lives in its own private repository, which is its own marketpla
 
 ### nexus-factory
 
-**Hand it a list of ready features. Come back to finished branches and one report.**
+**Hand it the specs for a whole product. Come back to it built, merged and tested on one branch.**
 
-- **Several features built side by side, with nobody at the keyboard.**
+- **A whole product, not a feature.** Give it 5 features or 50 — there is no limit.
+- **As many at once as your machine can carry.** Features that don't depend on each other build at the same time — five by default, more on a bigger machine.
 - **A full team for every feature** — plan, code and reviews, each in its own worktree, on its own branch.
-- **Built in the right order.** A feature that builds on another starts only once that one is finished.
+- **Built in the right order.** A feature that builds on another starts only once that one is finished and merged.
+- **Merged and tested as it goes.** Each finished feature is merged into the campaign's own branch and tested there.
 - **It paces itself.** Near your usage limit nothing new starts, and the campaign carries on by itself after the reset.
 - **One stuck feature never stops the rest.**
-- **One report at the end**: each feature's final state, every open point, and the order to merge the branches.
-- **Nothing leaves your machine.** A campaign pushes nothing and merges nothing.
+- **One report at the end**: each feature's final state, every open point, and every decision taken without you, ready for your review.
+- **Nothing leaves your machine.** A campaign pushes nothing; the merge into your main branch is yours.
 
 ### nexus-digital-you
 
@@ -176,6 +178,18 @@ Each paid plugin lives in its own private repository, which is its own marketpla
 Install a stack extension the same way — for example `/plugin install nexus-dotnet@claude-nexus`. Each command also runs in a terminal as `claude plugin …`.
 
 Update with `claude plugin marketplace update claude-nexus`, then `claude plugin update nexus@claude-nexus`.
+
+## Model presets
+
+Nexus picks the model of every agent it starts from one of two presets, set once per Claude Code profile.
+
+- **Standard — the default.** Runs on every paid plan: Opus writes, Sonnet reads and helps.
+- **Fable — for Max, Ultra, Team premium and Enterprise**, where Fable is included. Every agent the
+  pipeline starts runs Fable at medium effort. Reviews are read first by Codex, or by Opus where Codex is
+  not installed, and Fable reads second.
+
+Switch with `/nexus:model-preset fable`, and back with `/nexus:model-preset standard`. A session you open
+yourself, like `/nexus:architect`, keeps the model and effort you chose.
 
 ## What you need
 

@@ -1,5 +1,48 @@
 # nexus — Changelog
 
+## [2.4.122] — 2026-11-10
+- The test-entry gate reads a script file for a raw test command on a developer seat only: a solo runs any
+  script again (the owner's publish among them); a script the command itself writes is still judged
+  - hook behavior/enforcement change
+
+## [2.4.121] — 2026-11-10
+- Model presets per Claude Code profile: Standard (today's models) or Fable (every started agent on Fable 5.2 at medium); /nexus:model-preset; every model choice in one table
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - rule (always-on prohibitions envelope — injected every session)
+  - skill change (create-implementation-plan)
+  - skill change (questions-format)
+  - skill change (review-format)
+  - skill change (summary-format)
+  - estate raise: plugins/nexus/agents/architect.md 257874→258919 B — F418-ModelSetsPerProfile: model presets per profile — one § Model presets section holds every model choice; every other passage names roles
+  - estate raise: plugins/nexus/agents/learner.md 67351→68193 B — F418-ModelSetsPerProfile: model presets per profile — one § Model presets section holds every model choice; every other passage names roles
+  - estate raise: plugins/nexus/agents/po.md 86622→87464 B — F418-ModelSetsPerProfile: model presets per profile — one § Model presets section holds every model choice; every other passage names roles
+  - estate raise: plugins/nexus/agents/reviewer.md 33333→33340 B — F418-ModelSetsPerProfile: model presets per profile — one § Model presets section holds every model choice; every other passage names roles
+  - estate raise: plugins/nexus/agents/team-lead.md 283538→284909 B — F418-ModelSetsPerProfile: model presets per profile — one § Model presets section holds every model choice; every other passage names roles
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 130411→130998 B — F418-ModelSetsPerProfile: model presets per profile — one § Model presets section holds every model choice; every other passage names roles
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 35019→35552 B — F418-ModelSetsPerProfile: model presets per profile — one § Model presets section holds every model choice; every other passage names roles
+  - estate raise: plugins/nexus/rules/on-demand/pipeline-guardrails.md 15984→22844 B — F418-ModelSetsPerProfile: model presets per profile — one § Model presets section holds every model choice; every other passage names roles
+  - estate raise: plugins/nexus/rules/on-demand/research-before-asking.md 41760→41849 B — F418-ModelSetsPerProfile: model presets per profile — one § Model presets section holds every model choice; every other passage names roles
+  - estate raise: plugins/nexus/rules/prohibitions/prohibitions.md 3823→3850 B — F418-ModelSetsPerProfile: model presets per profile — one § Model presets section holds every model choice; every other passage names roles
+  - estate raise: plugins/nexus/skills/create-implementation-plan/references/plan-template.md 20061→20071 B — F418-ModelSetsPerProfile: model presets per profile — one § Model presets section holds every model choice; every other passage names roles
+  - estate raise: plugins/nexus/skills/questions-format/references/standard-questions.md 36442→37019 B — F418-ModelSetsPerProfile: model presets per profile — one § Model presets section holds every model choice; every other passage names roles
+  - estate raise: plugins/nexus/skills/review-format/SKILL.md 32326→32333 B — F418-ModelSetsPerProfile: model presets per profile — one § Model presets section holds every model choice; every other passage names roles
+  - estate raise: plugins/nexus/skills/summary-format/SKILL.md 13728→13738 B — F418-ModelSetsPerProfile: model presets per profile — one § Model presets section holds every model choice; every other passage names roles
+
+## [2.4.120] — 2026-11-10
+- PATCH bump. adhoc-SpreadFactAsk: when a plan's steps would edit the same fact — a value, a rule, a name — in several files, the architect puts the spread to the owner before writing the step list (consolidate it into one home first, or edit the copies) and never decides that alone.
+  - agent instruction/behavior change
+  - shipped command changed
+  - estate raise: plugins/nexus/agents/architect.md 257353→257874 B — architect: ask before editing a spread fact (owner, 2026-11-10)
+
+## [2.4.119] — 2026-11-10
+- PATCH bump. adhoc-FileLinkLabels: in a terminal session, a reply names a local file as a markdown link whose text is the file name and whose target is its `file:///` URL — `[plan.md](file:///…/docs/plan.md)` — instead of the bare URL; the line number stays plain text after it.
+  - hook behavior/enforcement change
+  - rule (always-on file-links envelope — injected in terminal sessions)
+  - estate raise: plugins/nexus/rules/file-links/file-links.md 537→568 B — adhoc-FileLinkLabels: replies name a file as [file name](file:/// URL) instead of a bare URL (owner, 2026-11-10)
+
 ## [2.4.118] — 2026-11-09
 - PATCH bump. F417-WaitForOwnHelpers: a spawned agent no longer hands back while background work its answer needs still runs, and a coordinator resumes an agent whose last message says it is still waiting.
   - `agents-workflow.md` § All Agents: the self-backgrounded-build rule is widened to any background work a spawned agent's hand-back needs (a build, a test run, a helper agent, a wait on one) — a shell job in the foreground under a bounded timeout, a helper agent spawned in the foreground, and where the platform runs it in the background anyway, the agent stays in the turn until the helper has finished and its result is taken in, never ending the turn on a wait alone; a timer or watch left on purpose is named in the hand-back. The coordinator side: a status-line hand-back is a stranded lane, resumed at once.

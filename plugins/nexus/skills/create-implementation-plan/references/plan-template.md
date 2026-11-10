@@ -18,7 +18,7 @@ Use this template for every `docs/specs/{slug}/delivery/plan.md` file — the fu
 **Size:** {n} developer-built steps · {m} files · fullChecks: {matched globs | none}
 **Lane:** light — {why} | full — {why} | omit this line — a plan written for the team pipeline
 **Build lane:** {chosen option} — recommended: {recommended option} | omit this line — standalone plans only; written before the review with the owner present, after its last fold with the owner away
-**Gear:** {gear} — {campaign | switch | repo} | omit this line — no gear in force when the plan started
+**Gear:** {gear} — {campaign | switch | repo | profile} | omit this line — no gear in force when the plan started
 **Skills per step:** on | omit this line — the repo's skills-per-step switch is off
 **Mirrors:** {pattern} — {where the owner named it}; the ticket wins a conflict | omit this line — no pattern named
 **Limit:** defends against {the danger}; stops at {the ways round or the actors it deliberately leaves out, and why} | omit this line — the plan builds no check and no shared write

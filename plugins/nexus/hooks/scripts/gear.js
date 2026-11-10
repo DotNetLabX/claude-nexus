@@ -4,6 +4,7 @@
  *
  *   node gear.js show
  *   node gear.js set <name>                      the repo gear, in .claude/nexus-agents.json
+ *   node gear.js set <name> --profile            this Claude Code profile's gear, for every repo without its own
  *   node gear.js next <name>                     the next feature's gear, for this session only
  *   node gear.js begin --slug <s> [--campaign <name|off>]
  *   node gear.js fix --slug <s>                  prints the plan header line
@@ -56,7 +57,9 @@ function run(argv, env = process.env) {
   };
   switch (sub) {
     case 'show': return gears.show(o);
-    case 'set': return gears.setRepoGear({ ...o, name: needName() });
+    case 'set':
+      if (typeof flags.profile === 'string' && !positional[1]) return gears.setProfileGear({ ...o, name: flags.profile });
+      return flags.profile ? gears.setProfileGear({ ...o, name: needName() }) : gears.setRepoGear({ ...o, name: needName() });
     case 'next': return gears.next({ ...o, name: needName() });
     case 'begin': return gears.begin({ ...o, slug: needSlug(), campaign: typeof flags.campaign === 'string' ? flags.campaign : undefined });
     case 'fix': return gears.fix({ ...o, slug: needSlug() });

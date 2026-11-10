@@ -17,7 +17,9 @@
  * today, and a gear must not make it count.
  *
  * WHICH GEAR. Before a plan, the gear in force: the campaign gear, then the session's switch
- * (`.claude/audit/gear-next/{session}`), then the repo gear. A campaign `off` is a gear, never a
+ * (`.claude/audit/gear-next/{session}`), then the repo gear, then the Claude Code profile's (`gear` in
+ * the profile file `lib/model-presets.js` reads and writes). A profile gear this repo does not define
+ * reads as unset here, never as missing: another repo may define it. A campaign `off` is a gear, never a
  * fall-through. Once a plan starts the feature's gear is fixed, and the plan header's `**Gear:**`
  * line is its authority — committed, so a worktree carries it; a plan written with no such line keeps
  * no gear. A repeated `begin` of the same feature keeps its campaign gear and a fixed gear. Hooks read the session's active
@@ -34,6 +36,8 @@ const os = require('os');
 const path = require('path');
 const { isSafeId } = require('./safe-id');
 const { specFolder } = require('./parts');
+const presets = require('./model-presets');
+const { updateRepoConfig } = presets;
 
 const SHIPPED = JSON.parse(fs.readFileSync(path.join(__dirname, 'gears-shipped.json'), 'utf8'));
 const SHIPPED_NAMES = SHIPPED.gears;
@@ -42,9 +46,10 @@ const ROW_COUNT = ROWS.length;
 const ASKED_ROWS = new Set(ROWS.filter((r) => r.catalogue).map((r) => r.row));
 const AUTHOR_ROLES = ['po', 'architect', 'developer', 'team-lead'];
 const NO_VALUE = new Set(['as today', 'ask me']);
+const PRESET_TOKEN = 'preset';
 const EFFORT_LEVELS = { low: 'low', medium: 'medium', high: 'high', 'extra-high': 'xhigh' };
 const CONTEXT_MAX_AGE_MS = 7 * 24 * 3600 * 1000;
-const HEADER_RE = /^\*\*Gear:\*\*\s+(.+?)\s+[—–-]\s+(campaign|switch|repo)\s*$/;
+const HEADER_RE = /^\*\*Gear:\*\*\s+(.+?)\s+[—–-]\s+(campaign|switch|repo|profile)\s*$/;
 const SLUG_RE = /^[A-Za-z0-9._-]+$/;
 const CONFIG_REL = path.join('.claude', 'nexus-agents.json');
 const EXTENSION_REL = path.join('gears', 'custom.js');
@@ -101,7 +106,7 @@ function shippedCells(name) {
 function resolveGear(name, o = {}) {
   const missing = (why) => ({ gear: null, missing: name, why });
   if (typeof name !== 'string' || !name.trim()) return missing('no name');
-  if (SHIPPED_NAMES.includes(name)) return { gear: name, kind: 'shipped', base: null, cells: shippedCells(name) };
+  if (SHIPPED_NAMES.includes(name)) return { gear: name, kind: 'shipped', base: null, cells: presetCells(shippedCells(name), o) };
   const config = o.config === undefined ? readConfig(o.root) : o.config;
   const custom = objectOr(objectOr(config).gears);
   if (!Object.prototype.hasOwnProperty.call(custom, name)) return missing('no gear of that name');
@@ -125,7 +130,41 @@ function resolveGear(name, o = {}) {
     if (!row.allowed.includes(token)) return missing(`row ${row.row} cannot be "${token}"`);
     cells[row.row] = { value: token, text: token };
   }
-  return { gear: name, kind: 'custom', base: resolved.base, cells };
+  return { gear: name, kind: 'custom', base: resolved.base, cells: presetCells(cells, o) };
+}
+
+/** The model preset in force for the gear's repo, or for the config the caller read (`o.config`); the default where it cannot be read. */
+function presetContext(o) {
+  const given = o.config === undefined ? {} : { config: o.config };
+  try { return presets.resolvePreset({ root: o.root, env: o.env || process.env, ...given }); } catch { return null; }
+}
+
+const EFFORT_TOKENS = Object.fromEntries(Object.entries(EFFORT_LEVELS).map(([token, level]) => [level, token]));
+
+/**
+ * Cells read under the model preset in force: a row-3 reader token through the preset's token map, and
+ * rows 8 and 9's `preset` token as the preset's author model and effort. Every other cell, and a custom
+ * gear's own row-8 or row-9 value, stays as written.
+ */
+function presetCells(cells, o) {
+  const ctx = presetContext(o);
+  const preset = ctx ? ctx.preset : presets.presetNames()[0];
+  const reader = cells[3];
+  if (reader && typeof reader.value === 'string') {
+    const mapped = presets.pairToken(preset, reader.value);
+    if (mapped !== reader.value) {
+      const parts = mapped.split(' + ');
+      const prose = reader.text !== reader.value && parts.length === 3 ? `${parts[0]} + ${parts[1]}, plus ${parts[2]}` : mapped;
+      cells[3] = { value: mapped, text: prose };
+    }
+  }
+  const author = presets.authorModel(preset);
+  if (cells[8] && cells[8].value === PRESET_TOKEN) cells[8] = { value: titled(author.model), text: titled(author.model) };
+  if (cells[9] && cells[9].value === PRESET_TOKEN) {
+    const effort = EFFORT_TOKENS[author.effort] || author.effort;
+    cells[9] = { value: effort, text: effort };
+  }
+  return cells;
 }
 
 function knownNames(o) {
@@ -203,7 +242,13 @@ function planHeader(slug, o) {
 const headerLine = (gear, source) => (gear ? `**Gear:** ${gear} — ${source}` : null);
 
 // ── which gear ───────────────────────────────────────────────────────────────
-/** The gear in force before a plan: campaign → this session's switch → the repo gear → none. */
+/** The profile's gear name as written, or null. */
+function profileGearName(o) {
+  const name = presets.readProfile(o.env || process.env).gear;
+  return typeof name === 'string' && name ? name : null;
+}
+
+/** The gear in force before a plan: campaign → this session's switch → the repo gear → the profile's → none. */
 function gearInForce(o = {}) {
   const missing = [];
   if (typeof o.campaign === 'string' && o.campaign) {
@@ -220,6 +265,8 @@ function gearInForce(o = {}) {
     if (resolveGear(repo, o).gear) return { gear: repo, source: 'repo', missing };
     missing.push(repo);
   }
+  const profile = profileGearName(o);
+  if (profile && resolveGear(profile, o).gear) return { gear: profile, source: 'profile', missing };
   return { gear: null, source: null, missing };
 }
 
@@ -245,20 +292,23 @@ const titled = (model) => family(model).replace(/^./, (c) => c.toUpperCase());
 
 /** The repo's own committed setting for a row, or null when it sets none that applies. */
 function repoSetting(row, cell, o, config) {
+  const ctx = presetContext(o);
   if (row === 3) {
-    const second = objectOr(config.jobs).secondReader;
+    const second = objectOr(ctx ? ctx.jobs : config.jobs).secondReader;
     const parts = cell ? cell.value.split(' + ') : [];
     if (typeof second !== 'string' || !second.trim() || parts.length < 2) return null;
     if (family(second) === family(parts[0])) return null;
-    parts[1] = titled(second);
-    return parts.filter((p, i) => parts.findIndex((q) => family(q) === family(p)) === i).join(' + ');
+    const pair = [parts[0], titled(second)];
+    if (parts.length < 3) return pair.join(' + ');
+    const third = presets.thirdReaderFor(ctx ? ctx.preset : presets.presetNames()[0], pair.map(family));
+    return (third ? [...pair, titled(third)] : pair).join(' + ');
   }
   if (row === 6) {
     const effort = objectOr(config.codex).effort;
     return typeof effort === 'string' && effort ? effort : null;
   }
   if (row === 8 || row === 9) {
-    const v = objectOr(config[o.role])[row === 8 ? 'model' : 'effort'];
+    const v = objectOr(ctx ? ctx.agents[o.role] : config[o.role])[row === 8 ? 'model' : 'effort'];
     return typeof v === 'string' && v ? v : null;
   }
   return null;
@@ -363,24 +413,28 @@ function next(o) {
 function setRepoGear(o) {
   requireResolvable(o.name, o, 'the gear');
   const file = path.join(o.root, CONFIG_REL);
-  let text = '{}\n';
-  try { text = fs.readFileSync(file, 'utf8'); } catch (e) { if (!e || e.code !== 'ENOENT') refuse(`${file} cannot be read: ${e.message}`); }
-  try { JSON.parse(text); } catch (e) { refuse(`${file} does not parse (${e.message}) — repair it, then set the gear again`); }
-  const out = setTopLevelKey(text, 'gear', o.name);
-  if (out === null) refuse(`${file} is not a JSON object — repair it, then set the gear again`);
-  atomicWrite(file, out);
+  try {
+    updateRepoConfig(o.root, (current) => {
+      const text = current === null ? '{}\n' : current;
+      try { JSON.parse(text); } catch (e) { refuse(`${file} does not parse (${e.message}) — repair it, then set the gear again`); }
+      const out = setTopLevelKey(text, 'gear', o.name);
+      if (out === null) refuse(`${file} is not a JSON object — repair it, then set the gear again`);
+      return out;
+    });
+  } catch (e) {
+    if (e instanceof GearError) throw e;
+    refuse(`${file} cannot be written: ${e.message}`);
+  }
   return { gear: o.name, path: file };
 }
 
-function atomicWrite(target, text) {
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  const tmp = path.join(path.dirname(target), `.${path.basename(target)}.${process.pid}.tmp`);
+function setProfileGear(o) {
+  requireResolvable(o.name, o, 'the gear');
   try {
-    fs.writeFileSync(tmp, text, 'utf8');
-    fs.renameSync(tmp, target);
+    const { path: file } = presets.writeProfile({ gear: o.name }, o.env || process.env);
+    return { gear: o.name, scope: 'profile', path: file };
   } catch (e) {
-    try { fs.unlinkSync(tmp); } catch { /* best effort */ }
-    throw e;
+    refuse(`the profile cannot be written: ${e.message}`);
   }
 }
 
@@ -391,25 +445,30 @@ function show(o) {
   const resolved = names.map((n) => resolveGear(n, o));
   const repo = typeof config.gear === 'string' && config.gear ? config.gear : null;
   const repoState = !repo ? 'unset' : resolveGear(repo, o).gear ? 'set' : 'missing';
-  const roles = AUTHOR_ROLES.map((role) => ({ role, ...objectOr(config[role]) }))
+  const profile = profileGearName(o);
+  const profileState = !profile ? 'unset' : !resolveGear(profile, o).gear ? 'not defined here' : repoState === 'set' ? 'under the repo gear' : 'set';
+  const ctx0 = presetContext(o);
+  const jobs = objectOr(ctx0 ? ctx0.jobs : config.jobs);
+  const roles = AUTHOR_ROLES.map((role) => ({ role, ...objectOr(ctx0 ? ctx0.agents[role] : config[role]) }))
     .filter((r) => typeof r.model === 'string' || typeof r.effort === 'string')
     .map(({ role, model, effort }) => ({ role, ...(typeof model === 'string' ? { model } : {}), ...(typeof effort === 'string' ? { effort } : {}) }));
   const rows = ROWS.map((r) => {
     const values = {};
     for (const g of resolved) values[g.gear] = g.cells[r.row];
     const entry = { row: r.row, setting: r.setting, values };
-    if (r.row === 3 && typeof objectOr(config.jobs).secondReader === 'string') entry.overridden = { source: 'repo', value: `second reader ${config.jobs.secondReader}` };
+    if (r.row === 3 && typeof jobs.secondReader === 'string') entry.overridden = { source: 'repo', value: `second reader ${jobs.secondReader}` };
     if (r.row === 6 && typeof objectOr(config.codex).effort === 'string') entry.overridden = { source: 'repo', value: config.codex.effort };
     if ((r.row === 8 || r.row === 9) && roles.some((x) => (r.row === 8 ? x.model : x.effort))) {
       entry.overridden = { source: 'repo', value: roles.filter((x) => (r.row === 8 ? x.model : x.effort)).map((x) => `${x.role} ${r.row === 8 ? x.model : x.effort}`).join(', ') };
     }
-    if (r.row === 10 && typeof objectOr(config.jobs).doneCheck === 'string') entry.repo = `done check runs — on ${config.jobs.doneCheck} (repo)`;
+    if (r.row === 10 && typeof jobs.doneCheck === 'string') entry.repo = `done check runs — on ${jobs.doneCheck} (repo)`;
     return entry;
   });
   const ctx = readActive(o.root, o.session, o.now);
   return {
     gears: resolved.map((g) => ({ name: g.gear, kind: g.kind, ...(g.base ? { base: g.base } : {}) })),
     repoGear: { name: repo, state: repoState },
+    profileGear: { name: profile, state: profileState },
     pendingSwitch: readSwitch(o.root, o.session),
     active: ctx,
     rows,
@@ -515,5 +574,5 @@ function setTopLevelKey(text, key, value) {
 module.exports = {
   SHIPPED, SHIPPED_NAMES, ROWS, AUTHOR_ROLES, EFFORT_LEVELS, CONTEXT_MAX_AGE_MS, GearError,
   readConfig, findExtension, resolveGear, gearInForce, featureGear, planFile, planHeader, valueOf,
-  readSwitch, readActive, begin, fix, close, next, setRepoGear, show, setTopLevelKey,
+  readSwitch, readActive, begin, fix, close, next, setRepoGear, setProfileGear, show, setTopLevelKey, updateRepoConfig,
 };

@@ -42,6 +42,7 @@
 const fs = require('fs');
 const path = require('path');
 const { resolveReplyStyle } = require('./lib/reply-style-config');
+const { updateRepoConfig } = require('./lib/model-presets');
 
 const KEY = 'replyStyle';
 const CONTENT = path.resolve(__dirname, '..', '..', 'rules', 'reply-style', 'reply-form.md');
@@ -158,21 +159,6 @@ function insertFirst(text, value) {
   return text.slice(0, open + 1) + sep + member + ',' + text.slice(open + 1);
 }
 
-// Temp file + rename in the SAME directory: a rename is atomic there, so a failure mid-write leaves
-// the previous config intact rather than a truncated one.
-function atomicWrite(target, text) {
-  const dir = path.dirname(target);
-  fs.mkdirSync(dir, { recursive: true });
-  const tmp = path.join(dir, `.${path.basename(target)}.${process.pid}.tmp`);
-  try {
-    fs.writeFileSync(tmp, text, 'utf8');
-    fs.renameSync(tmp, target);
-  } catch (e) {
-    try { fs.unlinkSync(tmp); } catch { /* best effort — never mask the real error */ }
-    throw e;
-  }
-}
-
 // ── Report wording (the spec's Flow-5 vocabulary) ────────────────────────────
 function sourceWording(r) {
   switch (r.source) {
@@ -238,15 +224,12 @@ if (arg !== 'on' && arg !== 'off') {
     status = `already ${arg}, nothing written`;
   } else {
     try {
-      let text;
-      if (r.source === 'file-absent') {
-        text = `{\n  "${KEY}": ${JSON.stringify(arg)}\n}\n`;
-      } else {
-        const current = fs.readFileSync(r.path, 'utf8');
-        text = spliceValue(current, arg) ?? insertFirst(current, arg);
+      updateRepoConfig(path.dirname(path.dirname(r.path)), (current) => {
+        if (current === null) return `{\n  "${KEY}": ${JSON.stringify(arg)}\n}\n`;
+        const text = spliceValue(current, arg) ?? insertFirst(current, arg);
         if (text === null) throw new Error('the config file is not a JSON object');
-      }
-      atomicWrite(r.path, text);
+        return text;
+      });
       status = 'written to the config file';
     } catch (e) {
       status = `could not be written (${(e && e.message) || e}). The file is as it was.`;

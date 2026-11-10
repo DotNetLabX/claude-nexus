@@ -44,9 +44,9 @@
  * under the same opt-out: its named-files and tied runs fall back to the whole `unit` until the language
  * plugin is installed or updated. The line names no plugin.
  *
- * THE GEAR LINE, BESIDE THE LADDER. A repo with no `gear` in `.claude/nexus-agents.json` hears one
- * line naming the gear command; a `gear` that resolves to nothing (lib/gears.js decides) hears one
- * naming it. Any gear that resolves, `off` included, ends it. Its opt-out is its own:
+ * THE GEAR LINE, BESIDE THE LADDER. A repo with no `gear` in `.claude/nexus-agents.json` and no profile
+ * gear it defines hears one line naming the gear command; a repo `gear` that resolves to nothing
+ * (lib/gears.js decides) hears one naming it. Any gear that resolves, `off` included, ends it. Its opt-out is its own:
  * `"gearNudge": false` silences the gear line and nothing else, `"declarationsNudge": false` the
  * verify-roles lines and nothing else.
  *
@@ -60,6 +60,7 @@ const path = require('path');
 const { isFilteredFull, inferRunner, joinStop } = require('./lib/compose-test-command');
 const { loadRunner, RUNNERS } = require('./lib/test-runners');
 const { resolveGear } = require('./lib/gears');
+const { readProfile } = require('./lib/model-presets');
 
 const RELAY = 'Tell the user once, in your first reply, in your own words, keeping the quoted phrase exactly as written: ';
 const NUDGE = RELAY + 'This repo hasn\'t declared its verify roles (the build / unit / full test commands in .claude/verify.json) — until it does, the developer speed features stay off: every run rediscovers the build and test commands, and the close cannot prove the full suite ran. Say "declare verify roles" and I will set them up from this repo\'s conventions, or silence this with "declarationsNudge": false in .claude/nexus-agents.json.';
@@ -159,7 +160,13 @@ function readAgentsConfig(root) {
 function gearLine(root, cfg) {
   if (cfg.gearNudge === false) return null;
   const gear = cfg.gear;
-  if (gear === undefined || gear === null || gear === '') return NO_GEAR;
+  if (gear === undefined || gear === null || gear === '') {
+    try {
+      const profile = readProfile().gear;
+      if (typeof profile === 'string' && profile && resolveGear(profile, { root, config: cfg }).gear) return null;
+    } catch { /* an unreadable profile is no gear */ }
+    return NO_GEAR;
+  }
   try {
     if (typeof gear === 'string' && resolveGear(gear, { root, config: cfg }).gear) return null;
   } catch { return null; }
