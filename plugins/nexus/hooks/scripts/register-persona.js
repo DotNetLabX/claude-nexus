@@ -7,7 +7,10 @@
  *     whose plugin ships `agents/{agent}.md` records `{agent, plugin, unattended?, transcript?}`. The
  *     prompt arrives as typed, so the role is recorded whether or not the model later writes the
  *     trigger file. Runs synchronously on every prompt: anything not starting with `/` leaves before
- *     any file is read, and nothing is ever printed — a prompt hook's stdout reaches the model.
+ *     any file is read. A prompt hook's stdout reaches the model, so it prints one thing only: when a
+ *     session recorded as `architect`, and not as unattended, sends the team-lead command without
+ *     `[UNATTENDED]`, a notice that a full-team build costs less from a new session. It is worked out from the entry read
+ *     before the write, and never blocks or changes what is recorded.
  *   PostToolUse(Write|Edit) of .claude/.current-agent — the persona commands' own write, and the only
  *     path for the "be {agent}" phrase, which has no command. Naming the role already recorded keeps
  *     the entry's plugin, unattended mark and transcript; naming another role replaces the entry.
@@ -26,6 +29,10 @@ const { isSpawned } = require('./lib/is-spawned');
 
 const ROLE = /^[a-z][a-z-]{1,30}$/;
 const COMMAND = /^\/(?:([a-z0-9][a-z0-9._-]*):)?([a-z][a-z-]{1,30})(?=\s|$)/;
+const NEW_SESSION_NOTICE = 'This session was recorded as the architect and now takes the team lead\'s role, so it carries '
+  + 'its whole conversation into every later call. A full-team build costs less from a new session: offer the owner a '
+  + 'ready prompt for a new team-lead session, naming the plan to build, and carry on here only if the owner says so '
+  + '(or already chose this session after that offer).';
 
 let raw = '';
 process.stdin.on('data', (c) => (raw += c));
@@ -50,15 +57,21 @@ function run() {
     if (!text.startsWith('/')) return;
     const m = text.match(COMMAND);
     if (!m) return;
+    const unattended = text.includes('[UNATTENDED]');
+    let planner = false;
     record(evt, (prev, ctx) => {
       const found = ctx.findAgent(m[2], { plugin: m[1] || null, root: ctx.root });
       if (!found) return prev;
+      planner = m[2] === 'team-lead' && !unattended && !!prev && prev.agent === 'architect' && !prev.unattended;
       return {
         agent: m[2], plugin: found.plugin,
-        ...(text.includes('[UNATTENDED]') ? { unattended: true } : {}),
+        ...(unattended ? { unattended: true } : {}),
         ...transcriptOf(evt),
       };
     });
+    if (planner) process.stdout.write(JSON.stringify({
+      hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: NEW_SESSION_NOTICE },
+    }));
     return;
   }
 

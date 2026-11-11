@@ -184,9 +184,10 @@ Update with `claude plugin marketplace update claude-nexus`, then `claude plugin
 Nexus picks the model of every agent it starts from one of two presets, set once per Claude Code profile.
 
 - **Standard — the default.** Runs on every paid plan: Opus writes, Sonnet reads and helps.
-- **Fable — for Max, Ultra, Team premium and Enterprise**, where Fable is included. Every agent the
-  pipeline starts runs Fable at medium effort. Reviews are read first by Codex, or by Opus where Codex is
-  not installed, and Fable reads second.
+- **Fable — for Max, Ultra, Team premium and Enterprise**, where Fable is included. Reviewers and
+  planners run Fable at medium effort, builders stay on Opus and helpers on Sonnet, so Fable's weekly
+  share lasts for your own sessions. A code review is read first by Codex, or by Fable where Codex is not
+  installed; a spec or plan review is read first by Codex, or by Opus.
 
 Switch with `/nexus:model-preset fable`, and back with `/nexus:model-preset standard`. A session you open
 yourself, like `/nexus:architect`, keeps the model and effort you chose.

@@ -287,7 +287,7 @@ same-model replacement of a reader that cannot be resumed is unchanged.
 
 Worked examples:
 1. A second reader of another family than the author's, not held back, Codex late → the second reader is promoted; one reader.
-2. A second reader of the author's family, late → the second's findings are kept; a fresh main from pair 2 on, the first whose main is not the author's family. Under a preset whose authors and second reader share one family, every late drop is this case.
+2. A second reader of the author's family, late → the second's findings are kept; a fresh main from pair 2 on, the first whose main is not the author's family. Every late drop on a review whose author is the second reader's family is this case.
 3. A repo-set second reader of a held-back family (attended), late → its findings are kept; a fresh main from pair 2 on.
 4. A critic round ≥ 2 (no second reader), late → a fresh main from pair 2 on, alone.
 5. A repo-set second reader of a third family, neither the author's nor held back, late → it is promoted.
@@ -390,7 +390,8 @@ lane names (→ pipeline-guardrails.md § Effort in the light lane), and there i
 failure, a `readError` that lasts to the deadline, a cut at the limit or by the stall check, or an
 unusable block — no verdict line or two, or one naming the plan, `implementation.md` or every
 skill-log home `unreadable` — sends the check to the architect spawn on the model `doneCheck` would
-resolve to without the setting (the shipped default), with one disclosure line in the communication
+resolve to without the setting — the preset's done-check model and effort, passed on the spawn, where
+the preset names one, else the architect's resolved model — with one disclosure line in the communication
 log: `Done check: Codex dropped — {why}; architect spawn on {model}.` A cut or unusable block is never
 persisted as a check: a done check is binary, and a cut one has not run. The early window does not
 apply here — it decides only a review's replacement reader — but the stall check does: a stalled done check

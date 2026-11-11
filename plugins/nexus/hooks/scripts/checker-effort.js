@@ -12,8 +12,9 @@
  *
  * WHICH SPAWNS. An agent of any nexus plugin (`nexus:` or `nexus-{name}:`), the core agents' bare names,
  * and the built-in helper types the table names. Under a preset that fills every matched spawn, each one
- * with no `model` gets the preset's model for its role or type, and with no `effort` the preset's effort
- * for the model now in the call. Under the default preset only the critic and reviewer seats are
+ * with no `model` whose seat the preset names gets that seat's model and, with no `effort`, the seat's own
+ * effort; a spawn that names its own model and no effort gets the preset's effort for that model's family.
+ * A seat the preset leaves `as today`, another plugin's agent among them, is left to its agent file. Under the default preset only the critic and reviewer seats are
  * touched, and only their effort: the table's effort for the model in the seat, the call's `model` else
  * the `model:` frontmatter of this plugin's own agent file.
  *
@@ -100,12 +101,13 @@ function updatedInputFor(data) {
   if (!fill && !reader) return null;
   const out = { ...input };
   let model = hasValue(given) ? given : null;
-  if (!model && fill) { model = fill.model; out.model = model; }
+  let seatEffort = null;
+  if (!model && fill) { model = fill.model; out.model = model; seatEffort = fill.effort; }
   if (!model) model = frontmatterModel(type.startsWith('nexus:') ? type.slice('nexus:'.length) : type);
   if (!hasValue(input.effort)) {
     const f = family(model);
     const gearFamily = mp.gearEffortFamily(preset);
-    const effort = (reader && gearFamily && f === gearFamily && gearEffort(data)) || mp.effortFor(preset, f, { seat: reader });
+    const effort = seatEffort || (reader && gearFamily && f === gearFamily && gearEffort(data)) || mp.effortFor(preset, f, { seat: reader });
     if (effort) out.effort = effort;
   }
   return out.model !== input.model || out.effort !== input.effort ? out : null;

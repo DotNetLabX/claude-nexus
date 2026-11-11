@@ -11,19 +11,31 @@
     "standard": {
       "claudeFamilies": ["sonnet", "opus"],
       "authors": {
-        "architect": "as today", "po": "as today", "developer": "as today",
-        "solo": "as today", "team-lead": "as today", "learner": "as today"
+        "architect": { "model": "as today", "need": 9, "why": "planning a feature" },
+        "po": { "model": "as today", "need": 9, "why": "writing a spec" },
+        "developer": { "model": "as today", "need": 8, "why": "building code" },
+        "solo": { "model": "as today", "need": 7, "why": "a small fix" },
+        "team-lead": { "model": "as today", "need": 6, "why": "running the pipeline" },
+        "learner": { "model": "as today", "need": 6, "why": "turning lessons into rules" }
       },
-      "readers": { "critic": "as today", "reviewer": "as today" },
-      "types": { "Explore": "as today", "general-purpose": "as today", "Plan": "as today" },
+      "readers": {
+        "critic": { "model": "as today", "need": 9, "why": "spec or plan review, main reader" },
+        "reviewer": { "model": "as today", "need": 9, "why": "code review, main reader" }
+      },
+      "types": {
+        "Explore": { "model": "as today", "need": 2, "why": "finding where code lives" },
+        "general-purpose": { "model": "as today", "need": 7, "why": "review and verify passes" },
+        "Plan": { "model": "as today", "need": 5, "why": "design option sketches" }
+      },
       "otherAgents": "as today",
-      "secondReader": { "default": "sonnet", "besidePrimary": { "sonnet": "opus" } },
+      "secondReader": { "default": "sonnet", "besidePrimary": { "sonnet": "opus" }, "need": 7, "why": "second reader on reviews" },
       "jobs": {
-        "discovery": { "model": "sonnet", "effort": null, "codexFallback": { "model": "sonnet", "effort": "medium" } },
-        "audit": { "model": "sonnet", "effort": null, "codexFallback": { "model": "sonnet", "effort": "high" } },
-        "general": { "model": "sonnet", "effort": null, "codexFallback": { "model": "sonnet", "effort": "high" } },
-        "doneCheck": "the architect's resolved model"
+        "discovery": { "model": "sonnet", "effort": null, "codexFallback": { "model": "sonnet", "effort": "medium" }, "need": 2, "why": "finding where code lives" },
+        "audit": { "model": "sonnet", "effort": null, "codexFallback": { "model": "sonnet", "effort": "high" }, "need": 7, "why": "re-checking rules against code" },
+        "general": { "model": "sonnet", "effort": null, "codexFallback": { "model": "sonnet", "effort": "high" }, "need": 8, "why": "investigating a bug across code" },
+        "doneCheck": { "model": "as today", "need": 7, "why": "the done check" }
       },
+      "refusedReader": null,
       "effort": { "scope": "reader seats", "byFamily": { "sonnet": "high", "opus": "xhigh", "fable": "xhigh" } },
       "lightLaneFloor": "low",
       "gearEffortFamily": "sonnet",
@@ -39,31 +51,32 @@
     "fable": {
       "claudeFamilies": ["fable", "opus"],
       "authors": {
-        "architect": { "model": "fable", "effort": "medium" },
-        "po": { "model": "fable", "effort": "medium" },
-        "developer": { "model": "fable", "effort": "medium" },
-        "solo": { "model": "fable", "effort": "medium" },
-        "team-lead": { "model": "fable", "effort": "medium" },
-        "learner": { "model": "fable", "effort": "medium" }
+        "architect": { "model": "fable", "effort": "medium", "need": 9, "why": "planning a feature" },
+        "po": { "model": "fable", "effort": "medium", "need": 9, "why": "writing a spec" },
+        "developer": { "model": "opus", "effort": "high", "need": 8, "why": "building code" },
+        "solo": { "model": "opus", "effort": "high", "need": 7, "why": "a small fix" },
+        "team-lead": { "model": "opus", "effort": "high", "need": 6, "why": "running the pipeline" },
+        "learner": { "model": "fable", "effort": "medium", "need": 6, "why": "turning lessons into rules" }
       },
       "readers": {
-        "critic": { "model": "fable", "effort": "medium" },
-        "reviewer": { "model": "fable", "effort": "medium" }
+        "critic": { "model": "fable", "effort": "medium", "need": 9, "why": "spec or plan review, main reader" },
+        "reviewer": { "model": "fable", "effort": "medium", "need": 9, "why": "code review, main reader" }
       },
       "types": {
-        "Explore": { "model": "fable", "effort": "medium" },
-        "general-purpose": { "model": "fable", "effort": "medium" },
-        "Plan": { "model": "fable", "effort": "medium" }
+        "Explore": { "model": "sonnet", "effort": "medium", "need": 2, "why": "finding where code lives" },
+        "general-purpose": { "model": "sonnet", "effort": "high", "need": 7, "why": "review and verify passes" },
+        "Plan": { "model": "sonnet", "effort": "medium", "need": 5, "why": "design option sketches" }
       },
-      "otherAgents": { "model": "fable", "effort": "medium" },
-      "secondReader": { "default": "fable", "besidePrimary": { "fable": "opus" } },
+      "otherAgents": "as today",
+      "secondReader": { "default": "fable", "besidePrimary": { "fable": "opus" }, "need": 7, "why": "second reader on reviews" },
       "jobs": {
-        "discovery": { "model": "fable", "effort": "medium", "codexFallback": { "model": "fable", "effort": "medium" } },
-        "audit": { "model": "fable", "effort": "medium", "codexFallback": { "model": "fable", "effort": "medium" } },
-        "general": { "model": "fable", "effort": "medium", "codexFallback": { "model": "fable", "effort": "medium" } },
-        "doneCheck": "the architect's resolved model"
+        "discovery": { "model": "sonnet", "effort": "medium", "codexFallback": { "model": "sonnet", "effort": "medium" }, "need": 2, "why": "finding where code lives" },
+        "audit": { "model": "fable", "effort": "medium", "codexFallback": { "model": "fable", "effort": "medium" }, "need": 7, "why": "re-checking rules against code" },
+        "general": { "model": "sonnet", "effort": "high", "codexFallback": { "model": "sonnet", "effort": "high" }, "need": 8, "why": "investigating a bug across code" },
+        "doneCheck": { "model": "opus", "effort": "high", "need": 7, "why": "the done check" }
       },
-      "effort": { "scope": "every matched spawn", "byFamily": { "fable": "medium", "opus": "high", "sonnet": "high" } },
+      "refusedReader": "sonnet",
+      "effort": { "scope": "a spawn naming its own model", "byFamily": { "fable": "medium", "opus": "high", "sonnet": "high" } },
       "lightLaneFloor": "medium",
       "gearEffortFamily": null,
       "pairs": [["codex", "fable"], ["opus", "fable"], ["fable", "opus"]],
@@ -72,7 +85,6 @@
         "early": { "freshFrom": 2 },
         "late": { "neverSpend": [], "freshFrom": 2 }
       },
-      "authorModel": { "model": "fable", "effort": "medium" },
       "neverSuggested": ["sonnet"]
     }
   }

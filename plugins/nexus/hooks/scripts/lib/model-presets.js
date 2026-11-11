@@ -96,7 +96,7 @@ function pairToken(preset, token) {
   return out.map(display).join(' + ');
 }
 
-const seatValue = (v) => (v && typeof v === 'object' ? { model: v.model, effort: v.effort ?? null } : null);
+const seatValue = (v) => (v && typeof v === 'object' && typeof v.model === 'string' && v.model !== AS_TODAY ? { model: v.model, effort: v.effort ?? null } : null);
 
 /** The table's role for an agent type: a core agent's name, a helper type, another nexus plugin's agent. */
 function roleOf(preset, agentType) {
@@ -122,7 +122,7 @@ function seatFor(preset, { agentType, role, seat, job, primary } = {}) {
       const model = p.secondReader.besidePrimary[familyOf(primary) || String(primary || '').toLowerCase()] || p.secondReader.default;
       return { model, effort: effortFor(preset, model, { seat: true }) };
     }
-    if (HELPER_JOBS.includes(job)) return seatValue(p.jobs[job]);
+    if (HELPER_JOBS.includes(job) || job === 'doneCheck') return seatValue(p.jobs[job]);
     return null;
   }
   const named = role || seat;
@@ -154,7 +154,26 @@ function agentRole(agentType) {
 function gearEffortFamily(preset) { return presetOf(preset).gearEffortFamily || null; }
 
 function neverSuggested(preset) { return [...presetOf(preset).neverSuggested]; }
-function authorModel(preset) { return { ...presetOf(preset).authorModel }; }
+/** The author whose row answers a caller that names no role: the planners' row. */
+const NO_ROLE_AUTHOR = 'architect';
+
+/**
+ * The model and effort an author role runs on under a gear's `preset` token (rows 8 and 9): the role's own
+ * row, else the preset's top-level `authorModel` for an `as today` row, else null. A role that is no author
+ * is null. With no role it answers for the planners, never null: a campaign plugin published apart from
+ * this core may still call it so and read the one model off the answer.
+ */
+function authorModel(preset, role) {
+  const p = presetOf(preset);
+  const r = role === undefined || role === null ? NO_ROLE_AUTHOR : role;
+  if (!Object.hasOwn(p.authors, r)) return null;
+  const own = seatValue(p.authors[r]);
+  if (own) return own;
+  return p.authorModel ? { ...p.authorModel } : null;
+}
+
+/** The family a code review's first reader takes where the preset's reader family is refused and Codex is absent, or null. */
+function refusedReaderFor(preset) { return presetOf(preset).refusedReader || null; }
 function consentPresets() { return presetNames().filter((n) => presetOf(n).claudeFamilies.some((f) => !presetOf(DEFAULT_PRESET).claudeFamilies.includes(f))); }
 
 function frontmatterModel(file) {
@@ -184,17 +203,35 @@ function standardModelFor(agentType, { root = null, env = process.env } = {}) {
 // ── plain words ──────────────────────────────────────────────────────────────
 const listText = (items) => (items.length ? items.map(display).join(', ') : 'none');
 function seatText(value, asToday) {
-  if (!value || typeof value !== 'object') return asToday;
-  return value.effort ? `${display(value.model)} at ${value.effort}` : display(value.model);
-}
-function sameText(values, asToday) {
-  const texts = [...new Set(values.map((v) => seatText(v, asToday)))];
-  return texts.join('; ');
+  const seat = seatValue(value);
+  if (!seat) return asToday;
+  return seat.effort ? `${display(seat.model)} at ${seat.effort}` : display(seat.model);
 }
 
+const GEAR_AUTHORS = ['po', 'architect', 'developer', 'team-lead'];
+const ROLE_WORDS = { po: 'PO', 'team-lead': 'team lead' };
+const roleWords = (role) => ROLE_WORDS[role] || role;
+const andList = (items) => (items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`);
+
+/** One text per distinct value, each naming the roles that share it, in first-seen order; one shared value stands alone. */
+function perRoleText(roles, textOf) {
+  const groups = new Map();
+  for (const role of roles) {
+    const text = textOf(role);
+    if (!groups.has(text)) groups.set(text, []);
+    groups.get(text).push(roleWords(role));
+  }
+  if (groups.size === 1) return [...groups.keys()][0];
+  return [...groups].map(([text, names]) => `${text} for ${andList(names)}`).join('; ');
+}
+
+const AUTHOR_LABELS = { architect: 'Architect', po: 'PO', developer: 'Developer', solo: 'Solo', 'team-lead': 'Team lead', learner: 'Learner' };
+const seatRow = (setting, value, row) => ({ setting, value, need: row.need, why: row.why });
+
 /**
- * What a preset runs, one `{ setting, value }` row per setting, in plain words built from the table. The
- * command's `show` prints these rows, and the rule section's table holds the same rows for both presets.
+ * What a preset runs, one row per setting, in plain words built from the table: `{ setting, value }`, and
+ * on a seat's row its `need` (1–10, how much a better model changes the result) and `why`. The command's
+ * `show` prints these rows, and the rule section's table holds the same rows for both presets.
  */
 function describeRows(preset) {
   const p = presetOf(preset);
@@ -202,15 +239,21 @@ function describeRows(preset) {
   const late = p.fallback.late;
   const never = late.neverSpend.length ? ` or ${listText(late.neverSpend)}` : '';
   const neverFresh = late.neverSpend.length ? `, never ${listText(late.neverSpend)}` : '';
+  const authorGear = perRoleText(GEAR_AUTHORS, (role) => {
+    const a = authorModel(preset, role);
+    return a ? `${display(a.model)}, ${a.effort}` : "the agent file's model and effort";
+  });
+  const refused = refusedReaderFor(preset);
   return [
-    { setting: 'Authors (architect, po, developer, solo, team lead, learner)', value: sameText(Object.values(p.authors), "the agent file's model and effort") },
-    { setting: 'Critic and reviewer, where the spawn names no model', value: sameText(Object.values(p.readers), "the agent file's model") },
-    { setting: 'Second reader', value: `${display(p.secondReader.default)}, or ${Object.entries(p.secondReader.besidePrimary).map(([k, v]) => `${display(v)} beside a ${display(k)} primary`).join(', ')}` },
-    { setting: 'Helper jobs (discovery, audit, general)', value: sameText(HELPER_JOBS.map((j) => p.jobs[j]), 'today') },
+    ...Object.entries(p.authors).map(([role, row]) => seatRow(AUTHOR_LABELS[role] || role, seatText(row, "the agent file's model and effort"), row)),
+    ...Object.entries(p.readers).map(([role, row]) => seatRow(`${display(role)}, where the spawn names no model`, seatText(row, "the agent file's model"), row)),
+    seatRow('Second reader', `${display(p.secondReader.default)}, or ${Object.entries(p.secondReader.besidePrimary).map(([k, v]) => `${display(v)} beside a ${display(k)} primary`).join(', ')}`, p.secondReader),
+    { setting: 'Refused-start reader: a code review\'s first reader when its reader family is refused and Codex is absent', value: refused ? display(refused) : 'none' },
+    ...HELPER_JOBS.map((j) => seatRow(`Helper job ${j}`, seatText(p.jobs[j], 'today'), p.jobs[j])),
     { setting: 'Claude fallback of a helper job on Codex', value: HELPER_JOBS.map((j) => `${j} ${seatText(p.jobs[j].codexFallback, 'today')}`).join('; ') },
-    { setting: 'Helper types (Explore, general-purpose, Plan)', value: sameText(Object.values(p.types), "Claude Code's own default") },
+    ...Object.entries(p.types).map(([type, row]) => seatRow(`Helper type ${type}`, seatText(row, "Claude Code's own default"), row)),
     { setting: "Other nexus plugins' agents", value: seatText(p.otherAgents, "the agent file's model and effort") },
-    { setting: 'Done check', value: p.jobs.doneCheck },
+    seatRow('Done check', seatText(p.jobs.doneCheck, "the architect's resolved model"), p.jobs.doneCheck),
     { setting: 'Effort by model', value: `${effortList} (${p.effort.scope})` },
     { setting: 'Lowest effort on the light lane', value: p.lightLaneFloor },
     { setting: 'Reader pairs, in order', value: p.pairs.map((pair) => pair.map(display).join(' + ')).join('; ') },
@@ -218,7 +261,7 @@ function describeRows(preset) {
     { setting: 'Gear reader tokens', value: `${Object.entries(p.substitute).map(([from, to]) => `${display(from)} reads as ${display(to)}`).join(', ')}; a repeat takes the family the pair lacks, or is dropped` },
     { setting: 'After an early Codex drop', value: `the next eligible pair from pair ${p.fallback.early.freshFrom} on` },
     { setting: 'After a late Codex drop', value: `the second reader is promoted unless it is the author's family${never}; else a fresh main from pair ${late.freshFrom} on${neverFresh}` },
-    { setting: 'Author model and effort under a gear (rows 8 and 9)', value: `${display(p.authorModel.model)}, ${p.authorModel.effort}` },
+    { setting: 'Author model and effort under a gear (rows 8 and 9)', value: authorGear },
     { setting: 'Never suggested by the config advisor', value: listText(p.neverSuggested) },
   ];
 }
@@ -368,6 +411,7 @@ function setRepoKey(root, key, value) {
 
 module.exports = {
   AS_TODAY, table, families, familyPattern, familyOf, presetNames, presetName, pairsFor, thirdReaderFor, pairToken,
-  seatFor, codexFallbackFor, effortFor, agentRole, gearEffortFamily, neverSuggested, authorModel, standardModelFor, describeRows,
+  seatFor, codexFallbackFor, effortFor, agentRole, gearEffortFamily, neverSuggested, authorModel, refusedReaderFor, standardModelFor,
+  describeRows, perRoleText, GEAR_AUTHORS, NO_ROLE_AUTHOR,
   profileDir, profileFile, readProfile, writeProfile, resolvePreset, updateRepoConfig, setRepoKey,
 };

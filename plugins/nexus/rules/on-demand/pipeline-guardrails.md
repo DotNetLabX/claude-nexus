@@ -12,10 +12,15 @@ which every hook and script reads.
 
 - **Standard — the default.** Runs on every paid plan: the authors on their agent files' own models,
   Sonnet reading and running the helper jobs, Opus beside it. It seats Fable nowhere on its own.
-- **Fable** — for plans where Fable is included (Max, Ultra, Team premium, Enterprise): every agent a
-  session of that profile starts, and every helper job, runs Fable at medium unless the spawn names its
-  own model. Where Codex is installed it reads first and Fable second; without Codex the readers are
-  Opus and Fable, the one that did not write the work reading first. Sonnet is not used.
+- **Fable** — for plans where Fable is included (Max, Ultra, Team premium, Enterprise): Fable at
+  medium runs the readers and the planners a session of that profile starts — the critic, the
+  reviewer, the second reader, the architect, the PO and the learner — and the `audit` job; the
+  builders (developer, solo, team lead) run Opus at high, the helper types and the other helper jobs
+  Sonnet, and other nexus plugins' agents their own agent files' models. Fable goes, seat by seat, to
+  high-need work run in low volume, because Fable is included only up to a share of the weekly limit,
+  and the owner's own sessions need what is left. Where Codex is installed it reads
+  first and Fable second; without Codex the readers are Opus and Fable, the one that did not write the
+  work reading first.
 
 **Which preset is in force.** The repo's `modelPreset` key in `.claude/nexus-agents.json`, else the
 Claude Code profile's (`{CLAUDE_CONFIG_DIR, else ~/.claude}/nexus/profile.json`), else Standard.
@@ -32,50 +37,78 @@ owner's explicit spawn parameter is never overridden.
 
 **Who fills the model.** Under Standard a spawner passes the job's model (the helper rows below), and
 the `checker-effort.js` hook fills only the reader seats' effort, by the effort row; every other spawn
-is left as it is. Under Fable the same hook also fills every matched spawn — any nexus agent, `Explore`,
-`general-purpose` and `Plan` — that names no model with the preset's model for its role, and one that
-names no effort with the preset's effort for the model in the call. A spawn's own `model` or `effort`
-is never replaced. A session the owner opens with a persona is no started agent: it runs on the model
-and effort the owner picked, and the agent files keep their own `model:`.
+is left as it is. Under Fable the same hook also fills every matched spawn whose seat the preset gives a
+model — a core agent, `Explore`, `general-purpose` and `Plan` — that names no model with that seat's
+model and effort; a spawn of such a seat that names its own model and no effort takes the effort row's
+value for that model. Another plugin's agent, whose seat the preset leaves to its agent file, is left as
+it is, whatever it names. The hook sees the agent type, never the job, so under Fable a site starting a
+helper job (→ § Helper agents — model and type) passes nothing only where the job resolves to the
+preset's own value for its spawn's type — a `discovery` job on `Explore`, a `general` job on
+`general-purpose` — and the hook fills that model and effort. Otherwise the site passes the job's
+model: with the preset's effort for the job where the model is the preset's own (an `audit` job's),
+and with no effort where an owner direction or the repo's `jobs` entry names it, so the hook fills the
+effort row's value for that model. A spawn's own `model` or `effort` is never replaced. A session the owner opens with a persona is no
+started agent: it runs on the model and effort the owner picked, and the agent files keep their own
+`model:`.
 
-| Setting | Standard | Fable |
-|---|---|---|
-| Authors (architect, po, developer, solo, team lead, learner) | the agent file's model and effort | Fable at medium |
-| Critic and reviewer, where the spawn names no model | the agent file's model | Fable at medium |
-| Second reader | Sonnet, or Opus beside a Sonnet primary | Fable, or Opus beside a Fable primary |
-| Helper jobs (discovery, audit, general) | Sonnet | Fable at medium |
-| Claude fallback of a helper job on Codex | discovery Sonnet at medium; audit Sonnet at high; general Sonnet at high | discovery Fable at medium; audit Fable at medium; general Fable at medium |
-| Helper types (Explore, general-purpose, Plan) | Claude Code's own default | Fable at medium |
-| Other nexus plugins' agents | the agent file's model and effort | Fable at medium |
-| Done check | the architect's resolved model | the architect's resolved model |
-| Effort by model | Sonnet high, Opus xhigh, Fable xhigh (reader seats) | Fable medium, Opus high, Sonnet high (every matched spawn) |
-| Lowest effort on the light lane | low | medium |
-| Reader pairs, in order | Codex + Sonnet; Sonnet + Opus; Opus + Sonnet | Codex + Fable; Opus + Fable; Fable + Opus |
-| Third reader under a gear that adds one | the family the pair lacks among Sonnet, Opus; none where none is left | the family the pair lacks among Fable, Opus; none where none is left |
-| Gear reader tokens | Fable reads as Opus; a repeat takes the family the pair lacks, or is dropped | Sonnet reads as Fable; a repeat takes the family the pair lacks, or is dropped |
-| After an early Codex drop | the next eligible pair from pair 2 on | the next eligible pair from pair 2 on |
-| After a late Codex drop | the second reader is promoted unless it is the author's family or Fable; else a fresh main from pair 2 on, never Fable | the second reader is promoted unless it is the author's family; else a fresh main from pair 2 on |
-| Author model and effort under a gear (rows 8 and 9) | Opus, high | Fable, medium |
-| Never suggested by the config advisor | Fable | Sonnet |
+The **Need** column scores how much a better model changes the result of the seat's work, 1 to 10, and
+**Why** names that work; a change to a seat's model starts there.
+
+| Setting | Standard | Fable | Need | Why |
+|---|---|---|---|---|
+| Architect | the agent file's model and effort | Fable at medium | 9 | planning a feature |
+| PO | the agent file's model and effort | Fable at medium | 9 | writing a spec |
+| Developer | the agent file's model and effort | Opus at high | 8 | building code |
+| Solo | the agent file's model and effort | Opus at high | 7 | a small fix |
+| Team lead | the agent file's model and effort | Opus at high | 6 | running the pipeline |
+| Learner | the agent file's model and effort | Fable at medium | 6 | turning lessons into rules |
+| Critic, where the spawn names no model | the agent file's model | Fable at medium | 9 | spec or plan review, main reader |
+| Reviewer, where the spawn names no model | the agent file's model | Fable at medium | 9 | code review, main reader |
+| Second reader | Sonnet, or Opus beside a Sonnet primary | Fable, or Opus beside a Fable primary | 7 | second reader on reviews |
+| Refused-start reader: a code review's first reader when its reader family is refused and Codex is absent | none | Sonnet | — | — |
+| Helper job discovery | Sonnet | Sonnet at medium | 2 | finding where code lives |
+| Helper job audit | Sonnet | Fable at medium | 7 | re-checking rules against code |
+| Helper job general | Sonnet | Sonnet at high | 8 | investigating a bug across code |
+| Claude fallback of a helper job on Codex | discovery Sonnet at medium; audit Sonnet at high; general Sonnet at high | discovery Sonnet at medium; audit Fable at medium; general Sonnet at high | — | — |
+| Helper type Explore | Claude Code's own default | Sonnet at medium | 2 | finding where code lives |
+| Helper type general-purpose | Claude Code's own default | Sonnet at high | 7 | review and verify passes |
+| Helper type Plan | Claude Code's own default | Sonnet at medium | 5 | design option sketches |
+| Other nexus plugins' agents | the agent file's model and effort | the agent file's model and effort | — | — |
+| Done check | the architect's resolved model | Opus at high | 7 | the done check |
+| Effort by model | Sonnet high, Opus xhigh, Fable xhigh (reader seats) | Fable medium, Opus high, Sonnet high (a spawn naming its own model) | — | — |
+| Lowest effort on the light lane | low | medium | — | — |
+| Reader pairs, in order | Codex + Sonnet; Sonnet + Opus; Opus + Sonnet | Codex + Fable; Opus + Fable; Fable + Opus | — | — |
+| Third reader under a gear that adds one | the family the pair lacks among Sonnet, Opus; none where none is left | the family the pair lacks among Fable, Opus; none where none is left | — | — |
+| Gear reader tokens | Fable reads as Opus; a repeat takes the family the pair lacks, or is dropped | Sonnet reads as Fable; a repeat takes the family the pair lacks, or is dropped | — | — |
+| After an early Codex drop | the next eligible pair from pair 2 on | the next eligible pair from pair 2 on | — | — |
+| After a late Codex drop | the second reader is promoted unless it is the author's family or Fable; else a fresh main from pair 2 on, never Fable | the second reader is promoted unless it is the author's family; else a fresh main from pair 2 on | — | — |
+| Author model and effort under a gear (rows 8 and 9) | Opus, high | Fable, medium for PO and architect; Opus, high for developer and team lead | — | — |
+| Never suggested by the config advisor | Fable | Sonnet | — | — |
 
 - **The pairs** are the reader-pair list (→ agents-workflow.md § Critic rounds): pair 1 is Codex with
   the preset's second reader, where Codex is installed; pairs 2 and 3 are the preset's two Claude
   reader families, each leading once. A family the late row names is the one it holds back.
-- **The effort row** is the effort at the critic and reviewer seats under Standard, and at every spawn
-  the hook fills under Fable (→ § Effort by model at the checker seats). Under a gear, the gear's
-  checker effort replaces it for Standard's second-reader family only.
+- **The effort row** is the effort at the critic and reviewer seats under Standard, and under Fable
+  at every spawn that names its own model where the preset gives its seat a model
+  (→ § Effort by model at the checker seats); a seat the hook fills under Fable takes its own row's
+  effort. Under a gear, the gear's checker effort replaces it for Standard's second-reader family only.
 - **The model families** the presets know are Fable, Opus and Sonnet, which may check work, and
   Haiku, which never checks. The config advisor ranks them Fable, Opus, Sonnet, and its default
-  `modelRanking` is that order.
+  `modelRanking` is that order. The never-suggested row is about the advisor's checker suggestion
+  only: under Fable, Sonnet still runs the helpers and the refused-start reader below.
 
 **A refused start.** Claude Code never switches models on a usage-limit or billing error by itself.
 So a spawn on Fable that ends on a usage-limit, billing or model-unavailable error before it hands
-back is started again once: an author or a helper with `model` set by name to its Standard model —
-the agent file's model for a nexus agent, Sonnet for `Explore`, `general-purpose` and `Plan`; a reader
-by re-applying the reading rule (→ agents-workflow.md § Critic rounds) to the pair order in force with
-Fable left out, so its main is never the author's family. The run's record names the retry; a second
-refusal is handled as any failed spawn. The campaign runner restarts a refused campaign session the
-same way.
+back is started again once: a planner or the `audit` helper with `model` set by name to its Standard
+model — the agent file's model for a nexus agent, Sonnet for `general-purpose`; a reader by
+re-applying the reading rule (→ agents-workflow.md § Critic rounds) to the pair order in force with
+Fable left out, so its main is never the author's family; where that leaves no eligible main — a code
+review with no Codex, its author on Opus — the main is the preset's refused-start reader, Sonnet, for
+that case only. The builders and the other helpers run on no Fable, so no refused Fable start of theirs
+arises. The run's record names the retry; a second refusal is handled as any
+failed spawn. The campaign runner restarts a refused campaign session the same way, for a session
+started on a family the Standard preset never runs; a session on another family refused on the
+account's limit keeps the usage hold.
 
 ## Helper agents — model and type
 
@@ -87,17 +120,18 @@ same way.
   `model-preset.js show` (→ § Model presets). The spawning agent reads the file and the preset when it
   spawns the job — at most once per round for a round-shaped agent, once per invocation otherwise
   (the team lead captures `jobs` in its one pre-flight read). Every site that spawns a job names the
-  job and points here; a `discovery`, `audit` or `general` site writes no model of its own. The
+  job and points here; a `discovery`, `audit` or `general` site writes no model of its own — it uses
+  the job's model as read, passing it where the preset in force says (→ § Model presets). The
   Standard preset runs these helpers on its cheaper family because they research and summarize; they
   do not reason deeply.
 
 | Job | Covers | Claude fallback of a Codex job | When unset |
 |---|---|---|---|
-| `discovery` | helpers that locate or sketch — codebase discovery dives, options-panel sketches, the learner's scan | the preset's, for this job | the preset's helper model |
-| `audit` | `general-purpose` helpers that review or verify — substitute review passes, finder passes, the registry verifier, the reviewer's fan-out helpers | the preset's, for this job | the preset's helper model |
-| `general` | a helper no other row names — an investigation, an audit started by hand, a document written from sources, a summary | the preset's, for this job | the preset's helper model |
+| `discovery` | helpers that locate or sketch — codebase discovery dives, options-panel sketches, the learner's scan | the preset's, for this job | the preset's model for this job |
+| `audit` | `general-purpose` helpers that review or verify — substitute review passes, finder passes, the registry verifier, the reviewer's fan-out helpers — and any other helper its spawning agent judges to need real judgement within a clear brief (a short fact check, a bounded bug investigation, scoring a trial) and expects to be light, under about 10 minutes and about 20 files; such a helper expected over either, and a review or verify pass that large, runs as `general` | the preset's, for this job | the preset's model for this job |
+| `general` | a helper no other row names — an investigation, an audit started by hand, a document written from sources, a summary | the preset's, for this job | the preset's model for this job |
 | `secondReader` | the round-1 second reader at the critic and reviewer seats | — | the preset's second reader (→ agents-workflow.md § Critic rounds) |
-| `doneCheck` | the Step-1 done check and its re-checks, each a fresh architect spawn, or a read-only Codex job where the value is `codex` | the architect spawn (→ codex-dispatch.md § Done check) | the architect's resolved model — its per-agent entry, else its frontmatter |
+| `doneCheck` | the Step-1 done check and its re-checks, each a fresh architect spawn, or a read-only Codex job where the value is `codex` | the architect spawn, on this job's model (→ codex-dispatch.md § Done check) | the preset's done-check model and effort, passed on the architect spawn; where the preset names none, the architect's resolved model — its per-agent entry, else its frontmatter |
 
   The same block carries three miner keys — `minerGenerator`, `minerJudge` and `minerMechanical` —
   which are authored in the miner's own doctrine (`mine-family-core.md` § Kickoff checklist, in the
@@ -201,8 +235,10 @@ same way.
 ## Effort by model at the checker seats
 
 The critic and reviewer seats take their reasoning effort from the model in the seat, by the effort
-row of the preset in force (→ § Model presets); under a preset whose row covers every matched spawn,
-the same row also sets the effort of every spawn the hook fills.
+row of the preset in force (→ § Model presets); under a preset whose hook fills every matched spawn,
+the same row also sets the effort of a spawn that names its own model and no effort, where the preset
+gives that spawn's seat a model — never another plugin's agent — while a seat the hook fills takes its
+own row's effort.
 
 - **Who:** every `nexus:critic` and `nexus:reviewer` spawn — the primary, the second reader, the
   fallback main, a promoted or fresh replacement, in every round. Under a preset whose row covers
@@ -235,10 +271,12 @@ On the light lane every checker runs one effort level below its baseline (→ ar
 - **Claude readers:** the baseline is what runs when the spawn passes no effort — at the critic and
   reviewer seats the effort row's value for the model in the seat, the agent file's `effort` for a
   model outside the row (→ pipeline-guardrails.md § Effort by model at the checker seats), for the done
-  check and every other reader the agent file's `effort`; the per-agent `effort` key in
-  `.claude/nexus-agents.json` is a dispatch-prompt line, not a baseline. One step down the ladder `max → xhigh → high → medium →
-  low`, never below the preset's lowest light-lane effort (→ § Model presets), passed as the Agent
-  tool's per-spawn `effort` parameter — an explicit value, so the checker-effort hook leaves it alone.
+  check the preset's done-check effort where the preset names one (a light-lane done check runs one
+  step below it, on the same model), and for it otherwise and every other reader the agent file's
+  `effort`; the per-agent `effort` key in `.claude/nexus-agents.json` is a dispatch-prompt line, not a
+  baseline. One step down the ladder `max → xhigh → high → medium → low`, never below the preset's
+  lowest light-lane effort (→ § Model presets), passed as the Agent tool's per-spawn `effort`
+  parameter — an explicit value, so the checker-effort hook leaves it alone.
 - **Codex:** one level below the repo's `codex.effort` on the ladder `xhigh → high → medium → low`,
   floor `low`, sent with the Codex job helper's `--effort`. Where the repo sets it at `low` or below
   (`minimal`, `none`), no `--effort` is passed, the configured value stays, and the round's record

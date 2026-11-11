@@ -16,10 +16,12 @@ tail (ADR-22 Extended):
 | Head | the title line, `**Model:**` | read the first few lines |
 | Solo fixes (only when a solo ran) | `## Solo Fixes`, right after the head, one `### Solo fix {n} — {date}` block per spawn | `grep '^### Solo fix '` |
 | Steps (variable) | `## Step N — {step name}`, one per plan step, in plan order | `grep '^## Step '` |
+| Range notes (variable) | `## Range note — steps {a}–{b}`, one per developer's range, right after that range's last step block (§ Range Notes) | `grep '^## Range note'` — the last hit is the newest |
 | Tail (fixed) | `## Key Decisions`, `## Skills Used`, `## Carry-Over Findings`, `## KB Changes`, `## Unfinished Tests` (only when a block carries a `Test problem:` or `Unfinished:` line), `## Deviations from Plan`, `## Self-Review` (Fast lane only), the completion footer | `grep '^## '` — the step blocks match too; read past them |
 
 Grep for the heading you need, then `Read` with `offset/limit` around it rather than reading the
-whole file. A crash-resume reads the **last step block** to find where work stopped.
+whole file. A crash-resume reads the **last step block** to find where work stopped; a developer that
+starts on earlier work reads the newest range note first (§ Range Notes).
 
 `## Self-Review` appears **only on a Fast-lane run** (no reviewer agent), carrying the developer's
 own verdict and evidence. It sits with the other tail sections, before the completion footer — the
@@ -33,7 +35,7 @@ verify it exists on a Fast run, so it is required there and absent everywhere el
 
 ## Step 1 — {step name}
 **Files:** `full/path/to/File` — what changed and why; one line per file
-**Skills:** {skill-name}, tdd — or `None` with the plan's sanction
+**Skills:** {skill-name}, tdd — a skill this conversation loaded at an earlier step as `{skill-name} — loaded at step {n}` — or `None` with the plan's sanction
 **Rules:** one entry per rule the step lists under `Satisfies:` — `{ruleName}: tested — {test file} › {test name}` | `{ruleName}: not testable here — {reason}` | `{ruleName}: disputed — Q{n}`; omit the line where the step lists none
 **Decisions:** {kind}: implementation choices this step made that the plan did not specify — or `None`; `{kind}` is one word, business (what the customers or the company get or pay), product (what the user sees or can do) or technical (how it is built), and a line without it reads untagged
 **Deviations:** what was done differently, and why — or `None`
@@ -54,6 +56,7 @@ verify it exists on a Fast run, so it is required there and absent everywhere el
 | 1 | {skill-name}, tdd | |
 | 2 | None | wiring-only step (plan: TDD no) |
 | 3 | None — deviation: {reason} | mapped skill not invoked; reason documented |
+| 4 | {skill-name} — loaded at step 1 | applied from the text this conversation loaded; not invoked again |
 
 ## Carry-Over Findings
 | Title | Severity | For | Evidence | Note |
@@ -84,6 +87,7 @@ nothing else does:** a step that meets a bug this developer did not cause writes
 with a `Bug found:` line, before it hands back (the step is still in progress — it finishes that same
 block when it resumes, and a fresh developer finishes it from the partial block); and a solo writes
 its own block, any carry-over rows and, where the tail lacks one, their table, during the run (§ Solo Fixes).
+A range note is no step block: it is its own append, made once at a range's last step (§ Range Notes).
 
 **Flags the close gate reads.** Two flags are greped out of this file by name, so they must appear
 here verbatim, not paraphrased: an **`M3 re-mine`** flag (a registry rule the change falsified whose
@@ -106,7 +110,7 @@ sends a red to, start from them.
 
 **A fix round has no step of its own.** When the reviewer returns findings, every step block is
 already closed and there is no current step to append to. Add one `## Fix Round N` block in the step
-region, after the last step block, with the same four fields — `Files:` names what the fixes touched,
+region, after the last step block and its range note, with the same four fields — `Files:` names what the fixes touched,
 `Deviations:` records any other finding you did not act on and why — plus the round's `Test problem:` and
 `Unfinished:` lines as a step block writes them, `**Left out:**` lines and `**Class checked:**` lines. Each
 finding you weighed and left out — between the round's bar and its always-fix line (→ agents-workflow.md § Fix rounds) —
@@ -145,6 +149,26 @@ to the work that caused it.
 round is genuinely done (all steps, verification run). While work is in progress the file ends
 without it. The footer is how the artifact **self-certifies**: the team lead trusts the footer,
 not the completion message, so a stranded message costs nothing (ADR-17).
+
+## Range Notes
+
+At the last hand-back of its range — "range complete", or "ready for Step 1" — a build developer
+appends one range note right after its last step block: before that step's commit where steps are
+committed, and before the tail where the same hand-back writes it. It is short, appended and never
+rewritten; each range adds its own, and a fix round's block goes after it, in the step region.
+
+```
+## Range note — steps {a}–{b}
+**Done:** the plan steps built so far, this range's and every earlier one's
+**Files:** each file this range created or changed — paths only, one line
+**Open:** each unfinished or failing test, bug found, or deviation a later step must know, with its step — or `None`
+**Carried:** whatever the note before this one left open and is still open — or `None`
+```
+
+It carries no `**Decisions:**` line: the decisions stay on the step blocks, where the decision reader
+looks for them. The next developer reads the newest note and the blocks after it first, and an earlier block
+only where its own work builds on it (`developer.md` § Plan Workflow — Two Phases). No check looks for a range note: a missing one
+changes only what the next developer reads.
 
 ## Solo Fixes
 
@@ -203,7 +227,7 @@ Note cell opens `solo fix {n} —`, which names its source.
 - **Listing files without linking to plan steps.** A file belongs to the step block whose work touched it. If a file was touched that no plan step required, say why on that block's `Deviations:` line.
 - **Writing all at once at the end.** Update implementation.md after each step completes — not all at the end. Enables resume-from-timeout and gives architect incremental visibility.
 - **Re-opening the file to revise a finished block.** A completed step's block is done. Something learned later about an earlier step goes in the current step's block or a tail section — reworking old blocks is exactly the read-then-edit churn the step-block shape removes.
-- **Empty or missing Skills Used section.** Every step gets a row — the skill(s) actually invoked, or `None` with the plan's sanction (`TDD: no`, `Skill: None`; on a light-format plan, the step line's `None` and no `TDD: yes`) or a documented deviation reason. The architect's done-check verifies this table against the plan's Skill Mapping — a light-format plan's step lines, where it has no table; a mapped skill silently skipped is a Fail finding.
+- **Empty or missing Skills Used section.** Every step gets a row — the skill(s) actually invoked, or loaded at an earlier step (`loaded at step {n}`), or `None` with the plan's sanction (`TDD: no`, `Skill: None`; on a light-format plan, the step line's `None` and no `TDD: yes`) or a documented deviation reason. The architect's done-check verifies this table against the plan's Skill Mapping — a light-format plan's step lines, where it has no table; a mapped skill silently skipped is a Fail finding.
 - **Missing operator-owed callout.** When a step fired a plan-sanctioned fallback (live connection/credential unavailable at build time), its step block carries an explicit `OPERATOR ACTION REQUIRED` note + the helper script path — the fallback is a valid deviation only with that documentation.
 
 ## Consumers
@@ -212,5 +236,5 @@ Note cell opens `solo fix {n} —`, which names its source.
 |-------|---------------|---------------------|
 | Architect | The step blocks (files, decisions, deviations, and `Rules:` for the report-only rule count) plus `## Skills Used` against the plan's Skill Mapping; `## Unfinished Tests` as not verified at the step — the complete run and its solo start from it; `## Solo Fixes` as work done outside the plan's steps, never a step | Done check misses gaps or falsely fails |
 | Reviewer | All sections, especially `## Carry-Over Findings`; `## Solo Fixes` as code in the diff no step block names; `## Unfinished Tests` as not verified at the step — the complete run and its solo start from it | Reviewer misses developer-flagged risks, reads a cut step as verified, or leaves a solo fix unread |
-| Developer (resume) | The last `## Step N` block, to find where work stopped | Duplicate work or missed steps on resume |
-| Developer (fresh fix round or hand-up) | The round's fix list, `## Solo Fixes` for what a solo already found and changed, and the step blocks | Re-investigates a bug a solo already diagnosed, or undoes its fix |
+| Developer (resume) | The last `## Step N` block, to find where work stopped; a developer on earlier work, the newest `## Range note` and the blocks after it | Duplicate work or missed steps on resume |
+| Developer (fresh fix round or hand-up) | The round's fix list, `## Solo Fixes` for what a solo already found and changed, the newest `## Range note` and the blocks after it, and an earlier step block only where its fix row builds on it | Re-investigates a bug a solo already diagnosed, or undoes its fix |

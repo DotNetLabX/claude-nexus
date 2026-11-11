@@ -44,7 +44,7 @@ const SHIPPED_NAMES = SHIPPED.gears;
 const ROWS = SHIPPED.rows;
 const ROW_COUNT = ROWS.length;
 const ASKED_ROWS = new Set(ROWS.filter((r) => r.catalogue).map((r) => r.row));
-const AUTHOR_ROLES = ['po', 'architect', 'developer', 'team-lead'];
+const AUTHOR_ROLES = [...presets.GEAR_AUTHORS];
 const NO_VALUE = new Set(['as today', 'ask me']);
 const PRESET_TOKEN = 'preset';
 const EFFORT_LEVELS = { low: 'low', medium: 'medium', high: 'high', 'extra-high': 'xhigh' };
@@ -141,10 +141,18 @@ function presetContext(o) {
 
 const EFFORT_TOKENS = Object.fromEntries(Object.entries(EFFORT_LEVELS).map(([token, level]) => [level, token]));
 
+/** Row 8's or row 9's `preset` token for one author role: the preset's model for it, titled, or its effort token. */
+function presetAuthorValue(preset, row, role) {
+  const author = presets.authorModel(preset, role);
+  if (!author) return null;
+  return row === 8 ? titled(author.model) : EFFORT_TOKENS[author.effort] || author.effort;
+}
+
 /**
- * Cells read under the model preset in force: a row-3 reader token through the preset's token map, and
- * rows 8 and 9's `preset` token as the preset's author model and effort. Every other cell, and a custom
- * gear's own row-8 or row-9 value, stays as written.
+ * Cells read under the model preset in force: a row-3 reader token through the preset's token map. Rows 8
+ * and 9's `preset` token becomes the preset's one answer for a caller that names no role, marked `perRole`
+ * so `valueOf` resolves it per role, and its text names each value with the roles that share it. Every other
+ * cell, and a custom gear's own row-8 or row-9 value, stays as written.
  */
 function presetCells(cells, o) {
   const ctx = presetContext(o);
@@ -158,11 +166,14 @@ function presetCells(cells, o) {
       cells[3] = { value: mapped, text: prose };
     }
   }
-  const author = presets.authorModel(preset);
-  if (cells[8] && cells[8].value === PRESET_TOKEN) cells[8] = { value: titled(author.model), text: titled(author.model) };
-  if (cells[9] && cells[9].value === PRESET_TOKEN) {
-    const effort = EFFORT_TOKENS[author.effort] || author.effort;
-    cells[9] = { value: effort, text: effort };
+  for (const row of [8, 9]) {
+    if (cells[row] && cells[row].value === PRESET_TOKEN) {
+      cells[row] = {
+        value: presetAuthorValue(preset, row, presets.NO_ROLE_AUTHOR) || 'as today',
+        text: presets.perRoleText(AUTHOR_ROLES, (role) => presetAuthorValue(preset, row, role)),
+        perRole: true,
+      };
+    }
   }
   return cells;
 }
@@ -336,7 +347,12 @@ function valueOf(o) {
   }
   const fg = featureGear(o);
   const g = fg.gear ? resolveGear(fg.gear, o) : null;
-  const cell = g && g.gear ? g.cells[row] : null;
+  let cell = g && g.gear ? g.cells[row] : null;
+  if (cell && cell.perRole && (row === 8 || row === 9)) {
+    const ctx = presetContext(o);
+    const value = presetAuthorValue(ctx ? ctx.preset : presets.presetNames()[0], row, o.role);
+    cell = value ? { value, text: value } : { value: 'as today', text: 'as today' };
+  }
   const base = { setting: row, gear: g && g.gear ? g.gear : null, gearSource: g && g.gear ? fg.source : null, state: fg.state };
   if (fg.missing && fg.missing.length) base.missing = fg.missing;
   if (o.explicit !== undefined && o.explicit !== null && o.explicit !== true) return { ...base, value: String(o.explicit), source: 'explicit' };

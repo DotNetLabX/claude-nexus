@@ -37,7 +37,9 @@
  *     skipped, then the verb judged on its own arguments. A verb in WRITE_VERBS flags unless its
  *     arguments ask for a dry run or for help, or are one of the read-only forms readsOnly() lists;
  *     `fetch`, `config`, `clone`, `init`, the reads (`show`/`log`/`diff`/`status`…) and
- *     `git commit-graph` never flag. The prohibition gate
+ *     `git commit-graph` never flag. A `node …/close-run.js` call — the close command, which commits,
+ *     merges and pushes inside node — reads as a git write too, judged by the script's name, never
+ *     its file; `closeRun` reads a call to it and `closeRunPush` one carrying `--push`. The prohibition gate
  *     refuses such a write first, so a line here means one ran; the team lead's `git log` check
  *     (team-lead.md Enforcing the Rules) lists every commit it did not make and resets none.
  *
@@ -158,17 +160,72 @@ function wordsOf(text) {
   return words;
 }
 
-// The commands of a command line: its chain segments (lib/test-runners.js owns what a separator is), each
-// cut again where a substitution, a subshell or a block opens or closes. A substitution runs inside double
-// quotes too, never inside single quotes.
-function piecesOf(text) {
+// A parameter expansion holding no substitution, quote or nested brace stays inside its word: `${ROOT}/x`.
+const PARAMETER = /^\$\{[^{}()`$"'\s]+\}/;
+
+// Where the substitution opening at `i` (`$(` or, in Bash, a backtick) closes, or -1 when it never does.
+function substitutionEnd(text, i, ps) {
+  const escape = ps ? '`' : '\\';
+  if (text[i] === '`') {
+    for (let j = i + 1; j < text.length; j++) {
+      if (text[j] === '\\') j++;
+      else if (text[j] === '`') return j;
+    }
+    return -1;
+  }
+  let depth = 0;
+  let quote = '';
+  for (let j = i + 1; j < text.length; j++) {
+    const ch = text[j];
+    if (ch === escape && quote !== "'") { j++; continue; }
+    if (quote) { if (ch === quote) quote = ''; continue; }
+    if (ch === '"' || ch === "'") quote = ch;
+    else if (ch === '(') depth++;
+    else if (ch === ')' && --depth === 0) return j;
+  }
+  return -1;
+}
+
+// Each closed substitution outside single quotes is taken out into `bodies`, to be read as a command line of its
+// own, and a `_` stands in its place, so the word it sat in stays whole: `node $(pwd)/close-run.js` runs
+// `_/close-run.js`. PowerShell's backtick is its escape, never a substitution.
+function withoutSubstitutions(text, bodies, ps) {
+  let out = '';
+  let quote = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quote === "'") { out += ch; if (ch === quote) quote = ''; continue; }
+    if (ch === (ps ? '`' : '\\')) { out += ch + (text[i + 1] ?? ''); i++; continue; }
+    const end = (ch === '$' && text[i + 1] === '(') || (!ps && ch === '`') ? substitutionEnd(text, i, ps) : -1;
+    if (end >= 0) {
+      bodies.push(text.slice(ch === '$' ? i + 2 : i + 1, end));
+      out += '_';
+      i = end;
+      continue;
+    }
+    out += ch;
+    if (ch === quote) quote = '';
+    else if (!quote && (ch === '"' || ch === "'")) quote = ch;
+  }
+  return out;
+}
+
+// The commands of a command line: each substitution's commands, then its chain segments (lib/test-runners.js owns
+// what a separator is), each cut again where a subshell or a block opens or closes, or where a substitution opens
+// that never closes. A substitution runs inside double quotes too, never inside single quotes.
+function piecesOf(text, ps = false) {
   const pieces = [];
-  for (const segment of splitChain(text)) {
+  const bodies = [];
+  const rest = withoutSubstitutions(text, bodies, ps);
+  for (const body of bodies) pieces.push(...piecesOf(body, ps));
+  for (const segment of splitChain(rest)) {
     let start = 0;
     let quote = '';
     for (let i = 0; i < segment.length; i++) {
       const ch = segment[i];
       if (quote === "'") { if (ch === quote) quote = ''; continue; }
+      const expansion = ch === '$' && segment[i + 1] === '{' && PARAMETER.exec(segment.slice(i));
+      if (expansion) { i += expansion[0].length - 1; continue; }
       const opens = ch === '`' || (ch === '$' && segment[i + 1] === '(');
       if (opens || (!quote && '(){}'.includes(ch))) {
         pieces.push(segment.slice(start, i));
@@ -309,14 +366,51 @@ function gitArgsWrite(args) {
   return !readsOnly(args[i], own);
 }
 
-// The command in `words` changes the repository: git run as the command, or a command string a shell, an
-// eval or `find -exec` runs. `ps`: the line is PowerShell's.
-function runsWrite(words, depth, ps) {
+// The node options whose value is the next word. The line is read lower-cased, so `-c` is both `--check` and `-C`
+// (conditions): taken as valued, its next word is never the script either way.
+const NODE_VALUED = new Set(['-r', '--require', '--import', '--loader', '--experimental-loader', '-c', '--conditions',
+  '--env-file', '--input-type', '--title']);
+const NODE_RUNS_NOTHING = new Set(['--check', '-h', '--help', '-v', '--version', '-e', '--eval', '-p', '--print', '--v8-options']);
+
+// The arguments after the script of a `node …/close-run.js` call (node resolves the name without its extension
+// too), or null when the command is not one, or node is asked only to check, print help or run other code. The close
+// command commits, merges and pushes inside node, so a git write is read from its call, never from its file.
+function closeRunArgs(exe, rest) {
+  if (exe !== 'node') return null;
+  let k = 0;
+  for (; k < rest.length && isFlag(rest[k]); k++) {
+    if (NODE_RUNS_NOTHING.has(rest[k].split('=')[0])) return null;
+    if (!rest[k].includes('=') && NODE_VALUED.has(rest[k])) k++;
+  }
+  if (k >= rest.length) return null;
+  const script = basename(rest[k]);
+  return script === 'close-run.js' || script === 'close-run' ? rest.slice(k + 1) : null;
+}
+
+// A judge reads one command: true or false decides it, null leaves it to the shell, eval and `find` readers.
+function gitJudge(exe, rest) {
+  if (exe === 'git') return gitArgsWrite(rest);
+  return closeRunArgs(exe, rest) ? true : null;
+}
+
+function closeRunJudge(exe, rest) {
+  return closeRunArgs(exe, rest) ? true : null;
+}
+
+function pushJudge(exe, rest) {
+  const args = closeRunArgs(exe, rest);
+  return args ? args.includes('--push') : null;
+}
+
+// The command in `words` is what `judge` looks for — by default a git write: git run as the command, the close
+// command, or a command string a shell, an eval or `find -exec` runs. `ps`: the line is PowerShell's.
+function runsWrite(words, depth, ps, judge = gitJudge) {
   const at = commandStart(words);
   if (at >= words.length) return false;
   const exe = basename(words[at]);
   const rest = words.slice(at + 1);
-  if (exe === 'git') return gitArgsWrite(rest);
+  const verdict = judge(exe, rest);
+  if (verdict !== null) return verdict;
   if (depth >= MAX_DEPTH) return false;
   if (SHELLS.has(exe)) {
     let k = 0;
@@ -324,40 +418,50 @@ function runsWrite(words, depth, ps) {
       k += ['-o', '+o', '--rcfile', '--init-file'].includes(rest[k]) ? 2 : 1;
     }
     const script = SHELL_C.test(rest[k] || '') ? rest.slice(k + 1).find((w) => !isFlag(w)) : undefined;
-    return script !== undefined && writes(script, depth + 1, false);
+    return script !== undefined && writes(script, depth + 1, false, judge);
   }
   if (POWERSHELLS.has(exe)) {
     const k = rest.findIndex((w) => POWERSHELL_C.test(w));
-    return k >= 0 && writes(rest.slice(k + 1).join(' '), depth + 1, true);
+    return k >= 0 && writes(rest.slice(k + 1).join(' '), depth + 1, true, judge);
   }
   if (exe === 'cmd') {
     const k = rest.findIndex((w) => w === '/c' || w === '/k');
-    return k >= 0 && writes(rest.slice(k + 1).join(' '), depth + 1, false);
+    return k >= 0 && writes(rest.slice(k + 1).join(' '), depth + 1, false, judge);
   }
-  if (EVALS.has(exe)) return writes(rest.join(' '), depth + 1, ps);
+  if (EVALS.has(exe)) return writes(rest.join(' '), depth + 1, ps, judge);
   if (exe === 'find') {
     const k = rest.findIndex((w) => FIND_EXEC.has(w));
-    return k >= 0 && runsWrite(rest.slice(k + 1), depth + 1, ps);
+    return k >= 0 && runsWrite(rest.slice(k + 1), depth + 1, ps, judge);
   }
   return false;
 }
 
-function writes(command, depth, ps) {
+function writes(command, depth, ps, judge = gitJudge) {
   const c = command.replace(HERE_STRING, () => "''").replace(/[<>]&/g, (m) => m[0]).replace(/&>/g, () => '>');
   const { text, run } = withoutHeredocs(c);
-  if (depth < MAX_DEPTH && run.some((doc) => writes(doc.body, depth + 1, doc.ps))) return true;
+  if (depth < MAX_DEPTH && run.some((doc) => writes(doc.body, depth + 1, doc.ps, judge))) return true;
   const joined = withoutComments(text).replace(ps ? PS_CONTINUATION : CONTINUATION, () => ' ');
-  return piecesOf(joined).some((piece) => runsWrite(wordsOf(piece), depth, ps));
+  return piecesOf(joined, ps).some((piece) => runsWrite(wordsOf(piece), depth, ps, judge));
 }
 
-// True when a command the line runs is a git command that changes the repository — a `git` that a command
-// only mentions (in quoted text, a heredoc, a comment, a `grep` pattern) is no command. `tool`: the shell
-// tool that runs the line, `Bash` (the default) or `PowerShell`.
+// True when a command the line runs is a git command that changes the repository, or the close command
+// (`close-run.js`) — a `git` or a script that a command only mentions (in quoted text, a heredoc, a comment, a
+// `grep` pattern) is no command. `tool`: the shell tool that runs the line, `Bash` (the default) or `PowerShell`.
 function gitWrite(command, tool) {
   return writes(String(command || '').toLowerCase(), 0, tool === 'PowerShell');
 }
 
-module.exports = { gitWrite };
+// True when a command the line runs is the close command.
+function closeRun(command, tool) {
+  return writes(String(command || '').toLowerCase(), 0, tool === 'PowerShell', closeRunJudge);
+}
+
+// True when a command the line runs is the close command carrying `--push` after its script: it pushes.
+function closeRunPush(command, tool) {
+  return writes(String(command || '').toLowerCase(), 0, tool === 'PowerShell', pushJudge);
+}
+
+module.exports = { gitWrite, closeRun, closeRunPush };
 
 if (require.main === module) {
   let input = '';

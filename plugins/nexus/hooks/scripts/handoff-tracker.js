@@ -12,7 +12,7 @@
  * this instrumentation exists to establish.
  *
  * Records, appended one JSON line each to .claude/audit/handoff.jsonl:
- *   - SubagentStop                 -> { ts, event:"handback",   agent_id, agent_type, token, session[, step] }
+ *   - SubagentStop                 -> { ts, event:"handback",   agent_id, agent_type, token, session[, step | range_end] }
  *   - PostToolUse(SendMessage)     -> { ts, event:"resume",     target, token, session }
  *   - PostToolUse(Agent)           -> { ts, event:"spawn",      target, token, session }
  *   - Stop                         -> { ts, event:"turn-end",   prompt_id, session }
@@ -34,8 +34,15 @@
  * exactly — its resume-to-handback window against the platform transcript — instead of being
  * inferred from hand-back order. The role test goes through the shared resolver, since this
  * hook's own recorded `agent_type` keeps a named spawn's role-prefixed name (`dev-s1`) as it is. Any
- * other role, "ready for Step 1", "range complete" or an unrecognised message: no `step` key,
- * the record exactly as before. `--report` ignores the field.
+ * other role, "ready for Step 1", "range complete" or an unrecognised message: no `step` key (a
+ * developer's range end carries `range_end` instead, below). `--report` ignores the field.
+ *
+ * The optional `range_end`: the developer's hand-back that ends its range ("range complete" or "ready for
+ * Step 1", the matcher's range-end test) carries the range's last step id as `range_end`, read from the
+ * developer's state file below before this hand-back rewrites it, so the range's last step gets a window
+ * too. Never beside `step`; absent with no state file, no range, a fix phase or any other role. `--report`
+ * ignores it. A hand-back whose own line opens with `Step {n} done for` is a step checkpoint and carries none,
+ * whatever range-end phrase it quotes elsewhere; only that line itself naming a range end makes it one.
  *
  * One state file per developer (F176), .claude/audit/dev-steps/{agentId}.json —
  * `{ name, range: {from, to} | null, phase: "analyze" | "review-fixes" | "fixes" | null, step | null,
@@ -236,6 +243,22 @@ function onDevHandback(root, id, step, message) {
   const reached = step || (isRangeEnd(message) && state.range ? state.range.to : '');
   if (!reached) return;
   writeDevState(root, id, { ...state, step: reached, phase: null });
+}
+
+// The hand-back's own step line: a line opening with `Step {n} done for`, after any `For {role}:`.
+const OWN_STEP_LINE = /^[^\S\n]*(?:\*\*)?(?:For [^:\n]{1,40}:[^\S\n]*)?Step \d+[a-z]? done for\b(.*)$/m;
+
+// The last step of a build range, for the hand-back that ends it; read before that hand-back rewrites the state.
+// A step checkpoint is never one, whatever range-end phrase it quotes below its own line.
+function rangeEndOf(root, id, message) {
+  try {
+    if (!isRangeEnd(message)) return '';
+    const own = OWN_STEP_LINE.exec(message);
+    if (own && !isRangeEnd(own[1])) return '';
+    const state = readDevState(root, id);
+    if (!state || !state.range || !state.range.to || state.phase === 'review-fixes' || state.phase === 'fixes') return '';
+    return String(state.range.to);
+  } catch { return ''; }
 }
 
 function parseResponse(resp) {
@@ -463,11 +486,15 @@ process.stdin.on('end', () => {
       if (!agentId) return process.exit(0); // nothing to attribute the gap to
       if (!data.agent_type) return process.exit(0); // internal ~30s event, not a real handback
       const agentType = String(data.agent_type).toLowerCase().split(/[:/]/).pop();
-      // A developer's step checkpoint stamps the plan's step id (header, F175); nothing otherwise.
+      // A developer's step checkpoint stamps the plan's step id, its range end the range's last (header).
       const isDev = resolveRole(data.agent_type) === 'developer';
       const text = isDev ? handbackText(data) : '';
       const step = isDev ? stepCheckpoint(text) : '';
-      appendRecord(root, { ts, event: 'handback', agent_id: agentId, agent_type: agentType, token, session, ...(step ? { step } : {}) });
+      const rangeEnd = isDev && !step ? rangeEndOf(root, agentId, text) : '';
+      appendRecord(root, {
+        ts, event: 'handback', agent_id: agentId, agent_type: agentType, token, session,
+        ...(step ? { step } : {}), ...(rangeEnd ? { range_end: rangeEnd } : {}),
+      });
       if (isDev) {
         try { onDevHandback(root, agentId, step, text); } catch { /* display-only */ }
       }

@@ -495,7 +495,7 @@ Plan type, routine: the change is {its intent class}, and I expect a full plan. 
 |---|---|---|
 | fastest — lighter checks | it is built now, then checked once at lower effort, with one round of fixes | the plan declares no developer split |
 | fast — full checks | it is built now in this session; every fix is re-read, up to three rounds, so fewer issues slip through | the plan declares no developer split |
-| thorough — full team | separate roles plan, build and review it; it catches the most and can run while you are away | always |
+| thorough — full team | separate roles build and review it in a new session, started from a prompt you are given; it catches the most and can run while you are away | always |
 | stop after the plan | nothing is built; the plan waits | always |
 
 **Recommended:** `thorough — full team` for more than 8 developer-built steps or a declared developer split; otherwise the level the plan's `**Lane:**` header names — `fastest — lighter checks` for light, `fast — full checks` for full. The other offered options follow by preference: after `thorough — full team` — `fast — full checks`, then `fastest — lighter checks`; after `fast — full checks` — `thorough — full team`, then `fastest — lighter checks`; after `fastest — lighter checks` — `fast — full checks`, then `thorough — full team`; `stop after the plan` always last. The recommendation's reason says why in plain words — the plan's size, a developer split — and never names the `fullChecks` list.

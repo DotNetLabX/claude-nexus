@@ -39,6 +39,12 @@
  *       a spawned team lead is never refused; otherwise a spawned agent whose own role is a known
  *       role, or any spawned agent in a session whose persona is one.
  *
+ *       Before (c) and before any role is read: a spawned agent's call that runs the close command
+ *       (`close-run.js`, read by the detector's `closeRun`) is refused, the team lead included, with
+ *       fixed text asking it to hand `close run owed` back, and logged once with `blocked: true` under
+ *       its own rule. The command commits, merges and pushes inside node, so the team lead's exemption
+ *       from (c) never reaches it.
+ *
  * FAIL OPEN on every uncertainty — bad JSON, a missing session, an unresolvable role, an unparseable
  * or absent stamp, a missing file_path — so the gate can never wedge a run, including -p.
  *
@@ -167,10 +173,25 @@ const GIT_WRITE_REASON =
   'with `git grep --untracked`, diff one with `git diff --no-index`; undo an edit by editing again. ' +
   'A git write you still need goes in your hand-back.';
 
+const CLOSE_RUN_RULE = 'subagent close run refused';
+const CLOSE_RUN_REASON =
+  'the close command runs from the main session — a spawned agent never runs `close-run.js`, the team lead ' +
+  'included. Hand `close run owed` back to the session that spawned you.';
+
+/** This spawned shell call runs the close command, read by the detector's parser. Any exception allows. */
+function runsCloseRun(data) {
+  try {
+    const { closeRun } = require('./boundary-detector');
+    return closeRun(data.tool_input && data.tool_input.command, data.tool_name);
+  } catch {
+    return false;
+  }
+}
+
 /** Check (c): this spawned shell call runs a git write and is in reach. Any exception allows. */
 function refusesGitWrite(data, root) {
   try {
-    // Required here only, so a call off this path loads nothing new.
+    // Required only on a spawned shell call's path, so no other call loads the parser.
     const { gitWrite } = require('./boundary-detector');
     if (!gitWrite(data.tool_input && data.tool_input.command, data.tool_name)) return false;
     const own = resolveRole(data.agent_type);
@@ -196,6 +217,12 @@ function main(input) {
   const background = isSpawned(data);
   const tool = String(data.tool_name || '');
   const ti = data.tool_input || {};
+
+  // Before any role is read: the team lead's exemption from check (c) does not reach the close command.
+  if (background && SHELL_TOOLS.test(tool) && runsCloseRun(data)) {
+    logViolation(root, { agent: resolveRole(data.agent_type), tool, path: String(ti.command || ''), rule: CLOSE_RUN_RULE, blocked: true });
+    return deny(CLOSE_RUN_REASON);
+  }
 
   // ── check (c) ─────────────────────────────────────────────────────────────
   if (background && SHELL_TOOLS.test(tool) && refusesGitWrite(data, root)) {

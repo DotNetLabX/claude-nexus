@@ -1,5 +1,47 @@
 # nexus — Changelog
 
+## [2.4.126] — 2026-11-11
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - estate raise: plugins/nexus/agents/architect.md 260686→260825 B — F422-CloseCommand: the close's plain sequence runs as one command (close-run.js) — item 5's command paragraph, the Push gate line, the fast lane's Close clauses, and the usage-record skill's two writes at a command close
+  - estate raise: plugins/nexus/agents/team-lead.md 286260→288865 B — F422-CloseCommand: the close's plain sequence runs as one command (close-run.js) — item 5's command paragraph, the Push gate line, the fast lane's Close clauses, and the usage-record skill's two writes at a command close
+
+## [2.4.125] — 2026-11-11
+- F423-UsageRecordTruth: the hand-off log gains one key — a developer's hand-back that ends its range carries `range_end`, the range's last step, so that step's work can be told apart from what follows it; a hand-back that is itself a step checkpoint never carries it. The log only gains information: no reader loses anything, and a reader that does not know the key reads the record as before (ADR-136)
+  - hook behavior/enforcement change
+
+## [2.4.124] — 2026-11-11
+- F420-FreshSessionLeanStart: after a standalone plan, the full-team option means a new session, started from a ready prompt, and the role hook warns when an architect session becomes the team lead; a developer loads each mapped skill once per conversation, reads the plan and the build record once, and leaves a short range note for the next developer
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - skill change (create-implementation-plan)
+  - skill change (implementation-format)
+  - skill change (questions-format)
+  - estate raise: plugins/nexus/agents/architect.md 259617→260686 B — F420-FreshSessionLeanStart: a short range note for the next developer, and the reading rule that points at it
+  - estate raise: plugins/nexus/agents/developer.md 52135→54501 B — F420-FreshSessionLeanStart: a short range note for the next developer, and the reading rule that points at it
+  - estate raise: plugins/nexus/agents/team-lead.md 285617→286260 B — F420-FreshSessionLeanStart: a short range note for the next developer, and the reading rule that points at it
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 44363→44393 B — F420-FreshSessionLeanStart: a skill loaded once counts for a developer's later steps; plan and build record read once
+  - estate raise: plugins/nexus/skills/create-implementation-plan/references/plan-template.md 20071→20101 B — F420-FreshSessionLeanStart: a skill loaded once counts for a developer's later steps; plan and build record read once
+  - estate raise: plugins/nexus/skills/implementation-format/SKILL.md 17494→19555 B — F420-FreshSessionLeanStart: a short range note for the next developer, and the reading rule that points at it
+  - estate raise: plugins/nexus/skills/questions-format/references/standard-questions.md 37019→37067 B — F420-FreshSessionLeanStart: a full-team build starts in a new session, from a ready prompt
+
+## [2.4.123] — 2026-11-10
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 258919→259617 B — F419-FableForReadersAndPlanners: the Fable split per role — Model presets table gains Need and Why columns and one row per seat; helper-site model rule stated once; done-check model wording in the rules and agents
+  - estate raise: plugins/nexus/agents/learner.md 68193→68538 B — F419-FableForReadersAndPlanners: the Fable split per role — Model presets table gains Need and Why columns and one row per seat; done-check model wording in the rules and agents
+  - estate raise: plugins/nexus/agents/po.md 87464→87809 B — F419-FableForReadersAndPlanners: the Fable split per role — Model presets table gains Need and Why columns and one row per seat; done-check model wording in the rules and agents
+  - estate raise: plugins/nexus/agents/team-lead.md 284909→285617 B — F419-FableForReadersAndPlanners: the Fable split per role — Model presets table gains Need and Why columns and one row per seat; helper-site model rule stated once; done-check model wording in the rules and agents
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 130998→131353 B — F419-FableForReadersAndPlanners: the Fable split per role — Model presets table gains Need and Why columns and one row per seat; done-check model wording in the rules and agents
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 35552→35654 B — F419-FableForReadersAndPlanners: the Fable split per role — Model presets table gains Need and Why columns and one row per seat; done-check model wording in the rules and agents
+  - estate raise: plugins/nexus/rules/on-demand/pipeline-guardrails.md 22844→27112 B — F419-FableForReadersAndPlanners: the Fable split per role — Model presets table gains Need and Why columns and one row per seat; helper-site model rule stated once; done-check model wording in the rules and agents
+
 ## [2.4.122] — 2026-11-10
 - The test-entry gate reads a script file for a raw test command on a developer seat only: a solo runs any
   script again (the owner's publish among them); a script the command itself writes is still judged

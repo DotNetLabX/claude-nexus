@@ -219,10 +219,16 @@ const GIT_STATUS_TIMEOUT_MS = 5000;
 const RULE_CHECK_FOOTER = /^\*Status: COMPLETE — .+\*[ \t]*$/m;
 const REGISTRY_ROOT = 'docs/business-rules';
 
-let input = '';
-process.stdin.setEncoding('utf8');
-process.stdin.on('data', d => (input += d));
-process.stdin.on('end', () => {
+// Run as the hook only: close-run.js requires this file for the full-suite check, and a require must read no
+// stdin and never exit.
+if (require.main === module) {
+  let input = '';
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', d => (input += d));
+  process.stdin.on('end', () => gate(input));
+}
+
+function gate(input) {
   let data;
   try { data = JSON.parse(input || '{}'); } catch { return allow(); }
 
@@ -297,12 +303,8 @@ process.stdin.on('end', () => {
     const tree = resolveDeclaredTree(root, data.session_id);
     const denial = fullSuiteDeclared(tree) ? fullSuiteDenial(tree, root, data, slug) : null;
     if (denial) {
-      const { cause, gear, files, foreign } = denial;
-      const gloss = foreign
-        ? `the newest record at this content is ${foreign}'s and did not pass; this feature's own complete run, the newer record, is the remedy`
-        : EVIDENCE_CAUSES[cause]
-          ? `${gear ? `under the ${gear} gear, ` : ''}${EVIDENCE_CAUSES[cause]}${files.length ? `: ${files.join(', ')}` : ''}`
-          : DENY_CAUSES[cause];
+      const { cause } = denial;
+      const gloss = denialGloss(denial);
       return deny('4',
         `summary.md needs a passing full-suite record for ${slug} (cause: ${cause} — ${gloss}). ` +
         'This repo declares .claude/verify.json → roles.full. Run:\n' +
@@ -364,7 +366,7 @@ process.stdin.on('end', () => {
   }
 
   return allow();
-});
+}
 
 /**
  * The deny reason for a write that flips a spec to Ready while a rule is unsourced or an added rule
@@ -705,6 +707,15 @@ const EVIDENCE_CAUSES = {
   uncovered: 'no green tied run holds these files at their current hash since the latest record',
 };
 
+/** The one-clause gloss a refusal of invariant (4) names its cause with; close-run.js stops with the same words. */
+function denialGloss({ cause, gear, files, foreign }) {
+  return foreign
+    ? `the newest record at this content is ${foreign}'s and did not pass; this feature's own complete run, the newer record, is the remedy`
+    : EVIDENCE_CAUSES[cause]
+      ? `${gear ? `under the ${gear} gear, ` : ''}${EVIDENCE_CAUSES[cause]}${files.length ? `: ${files.join(', ')}` : ''}`
+      : DENY_CAUSES[cause];
+}
+
 /**
  * Why does the LATEST in-scope full-suite record not discharge this close? `{cause}` — plus `files`, and
  * the `gear` when one is set, when the close evidence fell short, or `foreign` (that record's slug) when
@@ -756,7 +767,7 @@ const EVIDENCE_CAUSES = {
  * A missing, empty or unparseable verdict file yields no records and therefore denies — that is
  * invariant (4)'s sanctioned exception, not an oversight (see the header).
  */
-function fullSuiteDenial(tree, root, data, slug) {
+function fullSuiteDenial(tree, root, data, slug, seen = {}) {
   const token = readRoundToken(root, data.session_id);
   const session = String(data.session_id || '');
 
@@ -794,17 +805,25 @@ function fullSuiteDenial(tree, root, data, slug) {
   }
   if (atContent >= 0) {
     const newest = records[atContent];
-    if (countsAsPassing(newest)) return null;
+    if (countsAsPassing(newest)) return judged(seen, newest, null, 'record');
     if (String(newest.slug) !== slug) return { cause: 'failing', foreign: String(newest.slug) };
-    return evidenceDenial('failing', { records, index: atContent, tree, root, slug });
+    return judged(seen, newest, evidenceDenial('failing', { records, index: atContent, tree, root, slug }), 'evidence');
   }
   if (!latest) return { cause: 'missing' };
   if (!sameTree(latest.tree, tree)) return { cause: 'wrong-tree' };
   let cause = null;
   if (hash !== null && latest.tree_hash !== hash && !labelsOnly({ records, index, tree })) cause = 'stale';
   else if (!countsAsPassing(latest)) cause = 'failing';
-  if (!cause) return null;
-  return evidenceDenial(cause, { records, index, tree, root, slug });
+  if (!cause) return judged(seen, latest, null, 'record');
+  return judged(seen, latest, evidenceDenial(cause, { records, index, tree, root, slug }), 'evidence');
+}
+
+// What decided, for a caller that asks (close-run.js): the record judged, and what discharged it — `record`
+// (it counts as passing) or `evidence` (the close evidence stands for it) — when nothing denies.
+function judged(seen, record, denial, by) {
+  seen.record = record;
+  seen.by = denial ? null : by;
+  return denial;
 }
 
 /** A `stale` or `failing` complete record read once more, as close evidence: `null` when it stands. */
@@ -1011,3 +1030,5 @@ function deny(check, reason) {
 }
 
 function allow() { process.exit(0); }
+
+module.exports = { fullSuiteDeclared, fullSuiteDenial, denialGloss };

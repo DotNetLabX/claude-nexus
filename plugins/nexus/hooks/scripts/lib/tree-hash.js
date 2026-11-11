@@ -126,4 +126,4 @@ function sameTree(a, b) {
   return path.resolve(a) === path.resolve(b);
 }
 
-module.exports = { treeHash, buildHash, fileHashes, hashTree: (tree) => hashTree(tree), fileHash, sameTree, isExcluded: excluded };
+module.exports = { treeHash, buildHash, fileHashes, hashTree: (tree) => hashTree(tree), fileHash, sameTree, isExcluded: excluded, pipelineWrite };

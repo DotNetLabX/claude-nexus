@@ -29,8 +29,9 @@
  *                         `env -S` string. The reviewer scope stops accidental edits by a
  *                         cooperating reviewer, not deliberate evasion: a shell cannot be
  *                         fully read, and those misses are its stated limits.
- *   hardened           — open PLUS: no git push at all, no network package installs,
- *                         no network fetches.
+ *   hardened           — open PLUS: no git push at all (a call to the close command,
+ *                         `close-run.js`, carrying `--push` counts as one), no network
+ *                         package installs, no network fetches.
  *   off                — no enforcement (audit-logger still records).
  *
  * Blocks by emitting a PreToolUse "deny" decision. Otherwise stays silent and exits 0,
@@ -215,6 +216,16 @@ function isAbsoluteOutside(fp, cwd) {
   return !(abs === root || abs.startsWith(root + '/'));
 }
 
+// The close command pushes inside node, so its `--push` is a push; read by the boundary detector's parser, which
+// tells a call from a mention. Any exception reads as no push.
+function closeRunPushes(cmd, tool) {
+  try {
+    return require('./boundary-detector').closeRunPush(cmd, tool);
+  } catch {
+    return false;
+  }
+}
+
 function badBash(cmd, mode, place) {
   const c = cmd.toLowerCase();
   const lifted = () => liftable(cmd, place);
@@ -247,7 +258,7 @@ function badBash(cmd, mode, place) {
   if (/:\(\)\s*\{\s*:\s*\|\s*:?\s*&\s*\}\s*;\s*:/.test(cmd)) return 'fork bomb';
 
   if (mode === 'hardened') {
-    if (/\bgit\s+push\b/.test(c)) return 'git push (hardened mode disables pushes)';
+    if (/\bgit\s+push\b/.test(c) || closeRunPushes(cmd, place.tool)) return 'git push (hardened mode disables pushes)';
     if (/\b(npm|pnpm|yarn|pip|pip3|cargo|gem|go)\s+(install|add|get|i)\b/.test(c)) {
       return 'network package install (hardened mode)';
     }

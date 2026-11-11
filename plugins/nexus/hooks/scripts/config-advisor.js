@@ -120,6 +120,12 @@ function resolveSeat(agent, cfg, preset) {
 
 const resolveModel = (agent, cfg, preset) => resolveSeat(agent, cfg, preset).model;
 
+/** The family the preset in force runs its own done check on, or null where the architect's resolved model decides. */
+function presetDoneCheckFamily(preset) {
+  const seat = presets.seatFor(preset.name, { job: 'doneCheck' });
+  return seat ? family(seat.model) : null;
+}
+
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 // JSON form, so a value with a line break or a quote cannot split or blur its advisory line.
 const show = (v) => JSON.stringify(v);
@@ -179,7 +185,7 @@ function checkJobs(jobs, cfg, preset) {
     if (!f) { out.push(valueLine(key, v)); continue; }
     if (NOT_A_CHECKER.includes(f) && CHECKER_JOBS.includes(key)) {
       out.push(`${PREFIX} jobs.${key} is ${f}, which is not a checker — the spawn reads it as unset.`);
-    } else if (key === 'doneCheck' && family(resolveModel('developer', cfg, preset)) === f) {
+    } else if (key === 'doneCheck' && family(resolveModel('developer', cfg, preset)) === f && f !== presetDoneCheckFamily(preset)) {
       out.push(`${PREFIX} jobs.doneCheck is ${f}, the developer's family — the done check would grade work from its own family; your setting stands.`);
     }
   }
