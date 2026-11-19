@@ -31,7 +31,7 @@
  *
  * A developer's stop runs nothing. A spawned DEVELOPER's tests are its step runs (developer.md § The step
  * test rule, held by test-entry-gate.js), at most two a step, and a run here would be a third the count
- * never sees; the complete run at close is the check of the whole. So at every developer stop the gate
+ * never sees; the full run after the merge is the check of the whole. So at every developer stop the gate
  * runs NO command and appends verdict:"skipped" — reason "step checkpoint" at a mid-slice
  * `Step {n} done for …` hand-back (lib/step-checkpoint.js), "developer step-run rule" at every other one:
  * "ready for Step 1", a range end, a fix round, anything else. It still WRITES, so every stop stays on
@@ -48,10 +48,10 @@
  * The file now carries two independent declarations:
  *   `commands` — THIS gate's quick set, run at every solo SubagentStop, never a developer's, under a
  *                120s per-command cap (hooks.json's outer cap is 180s).
- *   `roles`    — { build, unit, full, mutation }, each an optional command string, declared for
- *                READERS OTHER THAN THIS HOOK: the spawn-time carrier (inject-verify-roles.js)
- *                delivers them to the implementation subagent, and the close gate runs `full`
- *                from the main session via verify-run.js.
+ *   `roles`    — { build, unit, premerge, full, mutation }, each an optional command string, declared
+ *                for READERS OTHER THAN THIS HOOK: the spawn-time carrier (inject-verify-roles.js)
+ *                delivers them to the implementation subagent, the close runs `premerge` from the
+ *                main session via verify-run.js, and main-run.js runs `full` after the merge.
  * resolveCommands below reads `commands` and ONLY `commands`. This gate never executes a role, and
  * a `roles` key never suppresses the detection fallback: a file carrying `roles` but no `commands`
  * array is, to this gate, a file with no explicit config — it falls through to detection exactly as

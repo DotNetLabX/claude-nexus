@@ -17,8 +17,8 @@
  *   - PostToolUse(Agent)           -> { ts, event:"spawn",      target, token, session }
  *   - Stop                         -> { ts, event:"turn-end",   prompt_id, session }
  *   - UserPromptSubmit             -> { ts, event:"user-resume", prompt_id, session }
- * Every record also carries `plugin_version`, read from the plugin.json two levels above this script
- * (omitted when unreadable): a reader takes each spawn's plugin version from here — a subagent's by
+ * Every record also carries `plugin_version`, read from this plugin's own plugin.json (omitted when
+ * unreadable); lib/handoff-log.js builds and writes the rows: a reader takes each spawn's plugin version from here — a subagent's by
  * agent_id, a main session's by session — since no transcript line carries one.
  *
  * The last two bracket the OTHER half of the same dead time: `Stop` fires when the main session
@@ -83,7 +83,8 @@
  * total, and separately, per session, each turn-end -> next-user-resume gap (the human-wait
  * section) plus the per-session total. A later turn-end of the same session and the same non-empty prompt id
  * supersedes an earlier one no resume closed: dropped, neither counted nor left open, so the wait runs from the
- * last stop of the prompt. A refused stop (whose turn-end is still written) is one source; a notification wake-up
+ * last stop of the prompt. Rows marked `engine: "codex"` — a Codex seat job's start and end, written by the job
+ * helper (lib/seat-records.js) — pair with no Claude agent: a last section lists each seat job, start to end. A refused stop (whose turn-end is still written) is one source; a notification wake-up
  * turn, which carries its owner prompt's id, is the other.
  *
  * THREE PLATFORM ASSUMPTIONS, ALL UNVERIFIED — the live probe is operator-owed:
@@ -103,24 +104,9 @@
 const fs = require('fs');
 const path = require('path');
 
-let pluginVersion;
-function readPluginVersion() {
-  if (pluginVersion === undefined) {
-    pluginVersion = null;
-    try {
-      const v = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', '..', '.claude-plugin', 'plugin.json'), 'utf8')).version;
-      if (typeof v === 'string' && v) pluginVersion = v;
-    } catch { /* unreadable: the field is omitted */ }
-  }
-  return pluginVersion;
-}
-
-function appendRecord(root, record) {
-  const auditDir = path.join(root, '.claude', 'audit');
-  fs.mkdirSync(auditDir, { recursive: true });
-  const version = readPluginVersion();
-  fs.appendFileSync(path.join(auditDir, 'handoff.jsonl'), JSON.stringify(version ? { ...record, plugin_version: version } : record) + '\n');
-}
+// The rows themselves are built and written by lib/handoff-log.js, which another script recording a hand-back
+// no hook saw calls too.
+const { handbackRow, targetRow, appendHandoff: appendRecord } = require('./lib/handoff-log');
 
 // The near and far ends of a gap are named DIFFERENTLY by the platform, and pairing has to bridge
 // that or it silently never fires: a handback carries the instance `agent_id` (`agent_01AB…`), a
@@ -357,6 +343,7 @@ function printReport() {
   const open = [];
   const gaps = [];
   for (const r of rows) {
+    if (r.engine === 'codex') continue; // a seat job's row: listed under the seat below, never a Claude agent's
     if (r.event === 'handback') {
       if (!r.agent_id) continue; // nothing to attribute a gap to
       const gap = {
@@ -436,6 +423,23 @@ function printReport() {
   }
   process.stdout.write('\nhuman wait per-session total (ms)\n');
   for (const [session, total] of bySession) process.stdout.write(`  ${session}  ${total}\n`);
+
+  // Seat jobs: each end row paired with the earliest still-open start row of its role in its session.
+  const starts = [];
+  const seatJobs = [];
+  for (const r of rows) {
+    if (r.engine !== 'codex') continue;
+    if (r.event === 'spawn' && r.target) { starts.push(r); continue; }
+    if (r.event !== 'handback' || !r.agent_id) continue;
+    const i = starts.findIndex((s) => s.session === r.session && resolveRole(s.target) === resolveRole(r.agent_type));
+    const start = i === -1 ? null : starts.splice(i, 1)[0];
+    seatJobs.push({ agent: String(r.agent_id), type: String(r.agent_type || ''), ms: start ? Date.parse(r.ts) - Date.parse(start.ts) : null });
+  }
+  if (!seatJobs.length && !starts.length) return;
+  const seatWidth = Math.max(5, ...seatJobs.map((j) => j.agent.length));
+  process.stdout.write('\nseat jobs on Codex: start -> end (ms)\n');
+  for (const j of seatJobs) process.stdout.write(`  ${j.agent.padEnd(seatWidth)}  ${j.type}  ${j.ms === null ? 'no start row' : j.ms}\n`);
+  for (const s of starts) process.stdout.write(`  ${'(running)'.padEnd(seatWidth)}  ${resolveRole(s.target) || s.target}  no end row\n`);
 }
 
 if (process.argv[2] === '--report') {
@@ -485,16 +489,12 @@ process.stdin.on('end', () => {
       const agentId = String(data.agent_id || '');
       if (!agentId) return process.exit(0); // nothing to attribute the gap to
       if (!data.agent_type) return process.exit(0); // internal ~30s event, not a real handback
-      const agentType = String(data.agent_type).toLowerCase().split(/[:/]/).pop();
       // A developer's step checkpoint stamps the plan's step id, its range end the range's last (header).
       const isDev = resolveRole(data.agent_type) === 'developer';
       const text = isDev ? handbackText(data) : '';
       const step = isDev ? stepCheckpoint(text) : '';
       const rangeEnd = isDev && !step ? rangeEndOf(root, agentId, text) : '';
-      appendRecord(root, {
-        ts, event: 'handback', agent_id: agentId, agent_type: agentType, token, session,
-        ...(step ? { step } : {}), ...(rangeEnd ? { range_end: rangeEnd } : {}),
-      });
+      appendRecord(root, handbackRow({ ts, agentId, agentType: data.agent_type, token, session, step, rangeEnd }));
       if (isDev) {
         try { onDevHandback(root, agentId, step, text); } catch { /* display-only */ }
       }
@@ -513,7 +513,7 @@ process.stdin.on('end', () => {
       (event === 'spawn' ? ti.subagent_type : (ti.to || ti.recipient)) || ''
     );
     if (!target) return process.exit(0); // an unaddressable record cannot be paired with a handback
-    appendRecord(root, { ts, event, target, token, session });
+    appendRecord(root, targetRow({ ts, event, target, token, session }));
     try {
       if (event === 'spawn') onDevSpawn(root, ti, parseResponse(data.tool_response));
       else onDevResume(root, target, ti.message);

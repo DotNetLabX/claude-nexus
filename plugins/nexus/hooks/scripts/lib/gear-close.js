@@ -16,8 +16,9 @@
  *     it neither repairs a file item nor hides an earlier repair of it. The one filter allowed is the class
  *     selection a run naming the failed .cs file was built with, `FullyQualifiedName~` clauses joined by `|` in
  *     every `--filter` of its command. A failed .cs file is repaired only by a record whose `test_times` hold each
- *     failed test of that file by its name, `test` (a theory's data is in it), class and method, however it ran: a
- *     selection that matches nothing, or only the file's other tests or cases, exits green. A test whose name
+ *     failed test of that file by its name, `test` (a theory's data is in it), class and method — and, for a failure
+ *     that carries its `project`, timed in that project, since one source file can belong to two test projects —
+ *     however it ran: a selection that matches nothing, or only the file's other tests or cases, exits green. A test whose name
  *     cannot be matched (renamed, its data changed, a timeout the blame file names otherwise) takes a complete run.
  *     That content is held in `delta_hashes` against this complete record: every file whose content now differs from
  *     that is held at its current hash by a green record after it, or the newest whole-unit fast record of the
@@ -45,12 +46,21 @@
  * runs once beside the reviewers, for the routing: there a red joins that gear's fix round. pipeline-gate.js
  * invariant (4) reads the evidence, and the campaign plugin's closing check loads it from the installed
  * core. verify-run.js writes a fast record's `delta_base` and `delta_hashes` through `deltaSince`.
+ *
+ * The pre-merge evidence (`premergeEvidence`) needs no complete record: the change against its base covered by
+ * the same fast-record and label readings, plus a green `premerge` record at the current tree hash where the tree
+ * declares that role; what is missing is returned by name, so a caller runs exactly that.
  */
+const fs = require('fs');
+const path = require('path');
+const { execFileSync } = require('child_process');
 const { planHeader, valueOf } = require('./gears');
-const { treeHash, fileHashes, sameTree } = require('./tree-hash');
+const { treeHash, fileHashes, sameTree, isExcluded } = require('./tree-hash');
 const { isFilteredFull } = require('./test-runners');
 const { countsAsPassing, untouchedTimeouts } = require('./run-verdict');
+const { resolveDefaultBranch } = require('./default-branch');
 
+const GIT_TIMEOUT_MS = 10000;
 const ONCE = 'once beside the reviewers';
 const COMPLETE_RUN_SETTING = 12;
 const NAME_FILTER = /--test-name-pattern|--test-only/;
@@ -75,7 +85,7 @@ const selectsClassesOnly = (r) => unfiltered({ command: String(r.command || '').
 const names = (r, item) => Array.isArray(r.files) && r.files.includes(item);
 const ranTestOf = (r, file, failure) => Array.isArray(r.test_times) && r.test_times.some((t) => t && t.file === file
   && (!failure || (typeof failure.test === 'string' && failure.test !== '' && t.test === failure.test
-    && t.class === failure.class && t.method === failure.method)));
+    && t.class === failure.class && t.method === failure.method && (!failure.project || t.project === failure.project))));
 const differing = (a, b) => [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((p) => hashIn(a, p) !== hashIn(b, p));
 // A developer's step run that ran no test file.
 const noEvidence = (r) => r.step_run === true && !(Array.isArray(r.files) && r.files.length > 0);
@@ -120,12 +130,44 @@ function closeEvidence({ records, index, tree, slug }) {
   const namesProject = (r, item) => projectsOf(item).some((p) => names(r, p));
   const ranFailuresOf = (r, item) => ranTestOf(r, item) && owed.filter((t) => t && targetOf(t) === item).every((t) => ranTestOf(r, item, t));
 
+  const now = fileHashes(tree);
+  const changed = now === null ? [] : differing(complete.file_hashes, now).sort();
+  const { later, laterAt, failed, heldGreenAfter, wholeGreenAfter } = coverageAfter({ records, index, tree, slug, now });
+
+  const unrepaired = (failures || []).filter(owesRepair).filter((item) => {
+    const i = later.findLastIndex((r) => names(r, item) || (namesProject(r, item) && (!green(r) || unfiltered(r))));
+    const r = later[i];
+    if (!green(r)) return true;
+    if (!(names(r, item) && item.endsWith('.cs') ? selectsClassesOnly(r) : unfiltered(r))) return true;
+    if (item.endsWith('.cs') && !ranFailuresOf(r, item)) return true;
+    if (r.delta_base !== complete.ts || !r.delta_hashes || typeof r.delta_hashes !== 'object') return true;
+    if (now === null) return false;
+    if (failed.at(item, hashIn(now, item)) > laterAt[i]) return true;
+    const ranAt = (p) => (has(r.delta_hashes, p) ? r.delta_hashes[p] : hashIn(complete.file_hashes, p));
+    const moved = [...new Set([...Object.keys(r.delta_hashes), ...changed])].filter((p) => ranAt(p) !== hashIn(now, p));
+    return moved.some((p) => !heldGreenAfter(i, p)) && !wholeGreenAfter(i);
+  });
+  if (unrepaired.length) return { ok: false, cause: 'unrepaired', files: unrepaired };
+
+  if (now === null || changed.length === 0) return { ok: true };
+  if (wholeGreenAfter(-1)) return { ok: true };
+
+  const uncovered = changed.filter((p) => !heldGreenAfter(-1, p));
+  return uncovered.length ? { ok: false, cause: 'uncovered', files: uncovered } : { ok: true };
+}
+
+/**
+ * What the fast records of `slug` and `tree` after log place `index` hold for the content now (`now`, the file
+ * hashes): `heldGreenAfter(i, p)` — the newest of them holding `p` at its current hash, after place `i` among
+ * them, is green and stands after the newest failed two-leg check at that content, or a label stands for it;
+ * `wholeGreenAfter(i)` — the newest whole-unit one at the current tree hash, after `i`, is green with no check
+ * failed since. `later` are those records, `laterAt` their log places.
+ */
+function coverageAfter({ records, index, tree, slug, now }) {
   // `laterAt` holds each later record's place in the log, the append order a failed check is weighed by.
   const laterAt = [];
   records.forEach((r, k) => { if (k > index && r && r.profile === 'fast' && r.slug === slug && sameTree(r.tree, tree) && !noEvidence(r)) laterAt.push(k); });
   const later = laterAt.map((k) => records[k]);
-  const now = fileHashes(tree);
-  const changed = now === null ? [] : differing(complete.file_hashes, now).sort();
   const labels = labelRecords(records.slice(index + 1), tree);
   const failed = failedChecks(records, index, tree);
   // A label record stands for the labelled file as its run's coverage: that run is a later green fast record
@@ -151,27 +193,132 @@ function closeEvidence({ records, index, tree, slug }) {
     const j = later.findLastIndex((r) => r.files === undefined && r.tree_hash === hashNow);
     return j > i && green(later[j]) && !failed.since(laterAt[j], now);
   };
+  return { later, laterAt, failed, heldGreenAfter, wholeGreenAfter };
+}
 
-  const unrepaired = (failures || []).filter(owesRepair).filter((item) => {
-    const i = later.findLastIndex((r) => names(r, item) || (namesProject(r, item) && (!green(r) || unfiltered(r))));
-    const r = later[i];
-    if (!green(r)) return true;
-    if (!(names(r, item) && item.endsWith('.cs') ? selectsClassesOnly(r) : unfiltered(r))) return true;
-    if (item.endsWith('.cs') && !ranFailuresOf(r, item)) return true;
-    if (r.delta_base !== complete.ts || !r.delta_hashes || typeof r.delta_hashes !== 'object') return true;
-    if (now === null) return false;
-    if (failed.at(item, hashIn(now, item)) > laterAt[i]) return true;
-    const ranAt = (p) => (has(r.delta_hashes, p) ? r.delta_hashes[p] : hashIn(complete.file_hashes, p));
-    const moved = [...new Set([...Object.keys(r.delta_hashes), ...changed])].filter((p) => ranAt(p) !== hashIn(now, p));
-    return moved.some((p) => !heldGreenAfter(i, p)) && !wholeGreenAfter(i);
+function git(tree, args) {
+  return execFileSync('git', args, {
+    cwd: tree, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true, timeout: GIT_TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024,
   });
-  if (unrepaired.length) return { ok: false, cause: 'unrepaired', files: unrepaired };
+}
+const gitOk = (tree, args) => { try { return git(tree, args).trim(); } catch { return null; } };
+const commitOf = (tree, ref) => (ref ? gitOk(tree, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]) : null);
 
-  if (now === null || changed.length === 0) return { ok: true };
-  if (wholeGreenAfter(-1)) return { ok: true };
+/**
+ * The commit the change is measured from: the merge-base of HEAD with the default branch's ref, as
+ * lib/run-verdict.js resolves it with no fallback; on that branch itself its remote-tracking ref (its upstream,
+ * else `origin/{name}`); where neither resolves — a configured name no commit answers to included — the plan's base
+ * commit. `{base}`, `{base: null}` when nothing resolves, or `{unreadable}` when a ref resolves and git cannot read
+ * the merge-base.
+ */
+function changeBase(tree, planBase) {
+  const resolved = resolveDefaultBranch(tree, { fallback: false });
+  let ref = resolved ? resolved.ref : null;
+  if (resolved && ref === resolved.name && gitOk(tree, ['symbolic-ref', '--quiet', '--short', 'HEAD']) === resolved.name) {
+    const upstream = gitOk(tree, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', `${resolved.name}@{upstream}`]);
+    ref = commitOf(tree, upstream) ? upstream : commitOf(tree, `refs/remotes/origin/${resolved.name}`) ? `origin/${resolved.name}` : null;
+  }
+  if (ref && !commitOf(tree, ref)) ref = null;
+  if (ref) {
+    const base = gitOk(tree, ['merge-base', 'HEAD', ref]);
+    return base ? { base } : { unreadable: `git cannot read the merge-base of HEAD with ${ref}` };
+  }
+  const plan = commitOf(tree, planBase);
+  return { base: plan || null };
+}
 
-  const uncovered = changed.filter((p) => !heldGreenAfter(-1, p));
-  return uncovered.length ? { ok: false, cause: 'uncovered', files: uncovered } : { ok: true };
+// The paths that differ from `base` — committed, uncommitted and untracked — tree-relative, less what the tree hash
+// leaves out; null when git cannot read them.
+function changedSince(tree, base) {
+  try {
+    const diffed = git(tree, ['diff', '--name-only', '-z', '--no-renames', '--relative', base]).split('\0');
+    const untracked = git(tree, ['ls-files', '--others', '--exclude-standard', '-z']).split('\0');
+    return [...new Set([...diffed, ...untracked].filter(Boolean).map((p) => p.replace(/\\/g, '/')))].filter((p) => !isExcluded(p)).sort();
+  } catch {
+    return null;
+  }
+}
+
+function declaredRoles(tree) {
+  try {
+    const roles = JSON.parse(fs.readFileSync(path.join(tree, '.claude', 'verify.json'), 'utf8')).roles || {};
+    const on = (r) => typeof roles[r] === 'string' && roles[r].trim() !== '';
+    return { unit: on('unit'), premerge: on('premerge') };
+  } catch {
+    return { unit: false, premerge: false };
+  }
+}
+
+// A fast record's failed tests and touched timeouts.
+const failuresIn = (r) => [...(Array.isArray(r.failed_tests) ? r.failed_tests : []),
+  ...(Array.isArray(r.timed_out) ? r.timed_out.filter((t) => t && t.touched !== false) : [])];
+
+// The test files a red fast record failed in, or null when it cannot name them all: a cut run, a list that is not
+// whole, or a red with no failure in it.
+function failedFilesOf(r) {
+  if (r.reason === 'timeout' || !Array.isArray(r.failed_tests)) return null;
+  const items = failuresIn(r).map((t) => t && targetOf(t));
+  if (items.length === 0 || items.some((f) => typeof f !== 'string' || f === '')) return null;
+  return [...new Set(items)];
+}
+
+/**
+ * The evidence a merge needs, with no complete record: every file the change holds against its base
+ * (changeBase) is covered — the newest fast record of the slug and tree holding it at its current hash is green, or
+ * a label stands for it, or the newest whole-unit fast record at the current tree hash is green — and, where the
+ * tree declares `premerge`, the newest `premerge` record of the slug and tree at the current tree hash is green.
+ * With no base, no changed set can be trusted and only that whole-unit record stands (`whole`). A red that decides a
+ * file is cleared by a later green, unfiltered fast record at the red's own tree hash whose `files` hold every test
+ * file it failed in, and that timed each failed test placed in a .cs file that names its test project in that project
+ * (a source file can belong to two); otherwise its file is `unrepaired` — its failed test files named — only where the red sits at
+ * the current tree hash and names them, and `uncovered` everywhere else, for the next tied run to decide. A tree
+ * with no `unit` role stands on the `premerge` record alone, and one with neither stands empty.
+ *
+ * Returns `{ok, uncovered, unrepaired, premerge, whole, unreadable, why}`: `premerge` is null or `missing`, `stale`,
+ * `red`; `unreadable` names a change git cannot read, which never stands.
+ */
+function premergeEvidence({ records, tree, slug, planBase = '' }) {
+  const out = { ok: false, uncovered: [], unrepaired: [], premerge: null, whole: false, unreadable: null, why: '' };
+  const roles = declaredRoles(tree);
+  if (!roles.unit && !roles.premerge) return { ...out, ok: true, why: 'no unit and no premerge role is declared: nothing to run before the merge' };
+  const hash = treeHash(tree);
+  const now = fileHashes(tree);
+  if (hash === null || now === null) return { ...out, unreadable: 'git cannot list the tree' };
+
+  if (roles.premerge) {
+    const own = records.filter((r) => r && r.role === 'premerge' && r.slug === slug && sameTree(r.tree, tree)
+      && r.verdict !== 'undeclared' && r.verdict !== 'skipped');
+    const atHash = own.filter((r) => r.tree_hash === hash).at(-1);
+    out.premerge = atHash ? (green(atHash) ? null : 'red') : own.length ? 'stale' : 'missing';
+  }
+
+  if (roles.unit) {
+    const { later, heldGreenAfter, wholeGreenAfter } = coverageAfter({ records, index: -1, tree, slug, now });
+    const from = changeBase(tree, planBase);
+    if (from.unreadable) return { ...out, unreadable: from.unreadable };
+    if (!from.base) {
+      out.whole = !wholeGreenAfter(-1);
+    } else if (!wholeGreenAfter(-1)) {
+      const changed = changedSince(tree, from.base);
+      if (changed === null) return { ...out, unreadable: `git cannot read the change since ${from.base.slice(0, 7)}` };
+      const unrepaired = new Set();
+      for (const p of changed) {
+        if (heldGreenAfter(-1, p)) continue;
+        const j = later.findLastIndex((r) => has(r.changed_hashes, p) && r.changed_hashes[p] === hashIn(now, p));
+        const red = j >= 0 ? later[j] : null;
+        const names = red ? failedFilesOf(red) : null;
+        const placed = names ? failuresIn(red).filter((t) => t && t.project &&targetOf(t).endsWith('.cs')) : [];
+        const cleared = names && later.some((r, k) => k > j && green(r) && unfiltered(r) && r.tree_hash === red.tree_hash
+          && names.every((f) => Array.isArray(r.files) && r.files.includes(f)) && placed.every((t) => ranTestOf(r, targetOf(t), t)));
+        if (cleared) continue;
+        if (names && red.tree_hash === hash) names.forEach((f) => unrepaired.add(f));
+        else out.uncovered.push(p);
+      }
+      out.unrepaired = [...unrepaired].sort();
+    }
+  }
+  out.ok = !out.whole && !out.premerge && out.uncovered.length === 0 && out.unrepaired.length === 0;
+  return out;
 }
 
 /**
@@ -231,4 +378,4 @@ function labelsOnly({ records, index, tree }) {
     && labels.some((l) => l.files[p] && l.files[p].before === hashIn(complete.file_hashes, p) && l.files[p].after === hashIn(now, p)));
 }
 
-module.exports = { closeGear, closeEvidence, deltaSince, labelsOnly, ONCE };
+module.exports = { closeGear, closeEvidence, premergeEvidence, deltaSince, labelsOnly, failuresOf, targetOf, ranTestOf, ONCE };

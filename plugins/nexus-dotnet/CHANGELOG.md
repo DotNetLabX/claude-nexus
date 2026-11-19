@@ -1,6 +1,10 @@
 # nexus-dotnet — Changelog
 
 
+## [2.1.12] — 2026-11-13
+- PATCH bump.
+  - hook behavior/enforcement change
+
 ## [2.1.11] — 2026-11-07
 - a red .NET complete run names all its failures (a helper project with IsTestProject false is no test project; each failure points at its test file), and a re-run by name of each failed test closes the feature (F404)
   - hook behavior/enforcement change

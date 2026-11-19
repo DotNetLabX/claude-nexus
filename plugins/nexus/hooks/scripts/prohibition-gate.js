@@ -25,7 +25,8 @@
  *       declared set is refused. The platform's scratch and
  *       memory folders (lib/is-code-file.js `isScratchPath`, `isMemoryPath`) are never scope: they lie
  *       outside the project, so no ask could name them, and refusing them would bar every approved run
- *       from its own scratch files and memories.
+ *       from its own scratch files and memories. The live set and the test against it are exported
+ *       (`readApprovedSet`, `inApprovedSet`) for a script that checks an edit after the fact.
  *
  *       SHELL-SIDE WRITES ARE OUT OF SCOPE, by design and disclosed rather than half-enforced: a
  *       command's target paths are not reliably parseable, so `printf x > src/b.js` passes this gate.
@@ -164,6 +165,27 @@ function inScope(rel, declared) {
   return declared.some((d) => (d.endsWith('/') ? rel.startsWith(d) : rel === d));
 }
 
+const stampFile = (root, sid) => (isSafeId(sid) ? path.join(root, STAMP_DIR_REL, `${sid}.json`) : null);
+
+/** The session's live approved set — `{slug, ts, declared}` — or null: no stamp, another session's, or one past the TTL. */
+function readApprovedSet(root, sid) {
+  const file = stampFile(root, sid);
+  if (!file) return null;
+  let stamp;
+  try { stamp = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
+  if (!stamp || !sid || stamp.session_id !== sid) return null;
+  const age = Date.now() - Date.parse(stamp.ts);
+  if (!(age >= 0) || age > TTL_MS) return null;
+  const declared = (Array.isArray(stamp.paths) ? stamp.paths : []).map((p) => relDeclared(p, root));
+  return { slug: stamp.slug, ts: stamp.ts, declared };
+}
+
+/** A path the approved set covers: always-allowed surfaces and the declared paths. */
+function inApprovedSet(fp, root, set) {
+  const rel = relPath(fp, root);
+  return alwaysAllowed(rel, set.slug) || inScope(rel, set.declared);
+}
+
 const GIT_WRITE_RULE = 'subagent git write refused';
 const GIT_WRITE_REASON =
   'a git write from a spawned agent — the coordinating session owns commits and the repository state. ' +
@@ -208,7 +230,7 @@ function main(input) {
 
   const root = process.env.CLAUDE_PROJECT_DIR || data.cwd || process.cwd();
   const sid = data && data.session_id;
-  const stampPath = isSafeId(sid) ? path.join(root, STAMP_DIR_REL, `${sid}.json`) : null;
+  const stampPath = stampFile(root, sid);
   let stampExists = false;
   try { stampExists = Boolean(stampPath) && fs.existsSync(stampPath); } catch { /* fail open */ }
 
@@ -249,17 +271,12 @@ function main(input) {
   const fp = String(ti.file_path || ti.path || ti.notebook_path || '');
   if (!fp || isScratchPath(fp, root) || isMemoryPath(fp, root, data.transcript_path)) return allow();
 
-  let stamp;
-  try { stamp = JSON.parse(fs.readFileSync(stampPath, 'utf8')); } catch { return allow(); }
-  if (!stamp || !data.session_id || stamp.session_id !== data.session_id) return allow();
-  const age = Date.now() - Date.parse(stamp.ts);
-  if (!(age >= 0) || age > TTL_MS) return allow();
+  const stamp = readApprovedSet(root, sid);
+  if (!stamp) return allow();
+  if (inApprovedSet(fp, root, stamp)) return allow();
 
-  const declared = (Array.isArray(stamp.paths) ? stamp.paths : []).map((p) => relDeclared(p, root));
   const rel = relPath(fp, root);
-  if (alwaysAllowed(rel, stamp.slug) || inScope(rel, declared)) return allow();
-
-  const n = declared.length;
+  const n = stamp.declared.length;
   if (background) {
     const rule = `approval-scope: edit outside the stamped set (${n} paths, ${stamp.slug})`;
     logViolation(root, { agent: role, tool, path: rel, rule });
@@ -301,7 +318,7 @@ function deny(reason) {
 
 function allow() { process.exit(0); }
 
-module.exports = { needsInspection, unscopedStaging, alwaysAllowed, relPath };
+module.exports = { needsInspection, unscopedStaging, alwaysAllowed, relPath, readApprovedSet, inApprovedSet };
 
 if (require.main === module) {
   let input = '';

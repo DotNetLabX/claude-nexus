@@ -1,6 +1,6 @@
 # Codex Dispatch
 
-> Read when: dispatching a Codex job — availability, the review templates, the job helper and its limit, verdict consumption and merge.
+> Read when: dispatching a Codex job, or consuming or merging its verdict.
 
 The single authored home of the Codex surfaces. Consuming agent files carry marker-delimited,
 script-generated copies of the sections they need — never a hand-maintained copy. Edit this file;
@@ -17,7 +17,9 @@ below is simply not offered. With the surfaces present, a start through the Code
 
 ## Code-review seat <!-- id: code-review -->
 
-On the reader pair's Codex option, **Codex is the code review's primary.** The nexus reviewer reads
+Codex is never the main reader of a round Codex built in whole or in part — a seat job on Codex wrote any of
+it, as `implementation.md`'s stamp history shows: the reader-pair list is read from its second pair on
+(→ agents-workflow.md § Critic rounds). Otherwise, on the reader pair's Codex option, **Codex is the code review's primary.** The nexus reviewer reads
 the same round as its second reader — on the preset's second reader (→ pipeline-guardrails.md § Model presets), or the repo's `jobs.secondReader` model where it is
 set and no pick names the second — and writes `review-second.md`, never `review.md` unless promoted
 (below). That reader
@@ -26,15 +28,15 @@ covering no step is Codex alone. Under a gear that adds a third reader, a review
 third-reader family reads the first review as its third reader and writes `review-third.md` (→ agents-workflow.md § Critic rounds). The dispatcher is whoever starts the code review — the team lead, or
 the standalone architect at the fast lane's review gate — and the same session dispatches a fix
 round's follow-up, and the round-less follow-up after a solo fix or a hand-up made once the first
-review started (its own round, never a fix cycle) — save one made for a red at the close's complete
-run, which takes no follow-up review. Dispatch the two readers off the same implementation and feed neither the other's
+review started (its own round, never a fix cycle) — save one made for a red at the close's runs,
+which takes no follow-up review. Dispatch the two readers off the same implementation and feed neither the other's
 findings: the independent reading is the point.
 
 **What the brief carries:** the plan path, `implementation.md` with its carry-over findings table
 (Codex confirms or refutes each row), the registry and digest of every touched unit, the repo's conventions
 pointer (Codex reads no agent file, so the brief names them), and the round's
-run record — the handover's tied-run record on a first review (the complete run comes once, at
-the close; under a gear that runs the complete suite once beside the reviewers the handover run is
+run record — the handover's tied-run record on a first review (no complete run is made before the
+merge; under a gear that runs the complete suite once beside the reviewers the handover run is
 that complete run, which may still be `running` when the review starts), the producer's fast record on a follow-up
 (the fix developer's, the solo's or the hand-up developer's; `not verified at this round` where it is
 cut or missing), or `undeclared` where the repo declares no `unit` role, so the tied run records nothing. Every reader takes the
@@ -115,12 +117,16 @@ for a spec or plan review, and the consolidation report's round section for a pr
 plus severity-rated findings, the code-review verdict file's grammar), kept distinct from
 `review-codex.md` so a feature with Codex at both seats keeps two separate records.
 
-**Write posture — one for every Codex job.**
+**Write posture — one rule, and the seat job's exception.**
 
-**Dispatch READ-ONLY: every Codex job runs through the Codex job helper, which never sends `--write` or `--model` and sends `--effort` only where the repo sets `codex.effort` or a helper job's own effort, the dispatch passes `--effort` or the feature's gear names a Codex effort, and its brief says read-only in words too, so Codex can never touch the artifact under review.**
+**Dispatch READ-ONLY: every Codex job runs through the Codex job helper, and every one but a seat job's writing units and the sandbox check runs without `--write` (→ codex-dispatch.md § Seat job); the helper sends `--model` only from a helper job's or a seat's own `codexModel`, and sends `--effort` only where the repo sets `codex.effort` or a helper job's or a seat's own effort, the dispatch passes `--effort` or the feature's gear names a Codex effort, and a read-only job's brief says read-only in words too, so Codex can never touch the artifact under review.**
 
-Sending no model is deliberate: the Codex CLI resolves its own default, and the user's Codex config
-file is the model dial — and the effort dial, where the repo sets no `codex.effort`. The
+Wherever no `codexModel` names a model, none is sent, deliberately: the Codex CLI resolves its own
+default, and the user's Codex config file is the model dial — and the effort dial, where nothing
+above names an effort. A `codexModel` is checked for its shape only: a name of anything but letters,
+digits, `.`, `_`, `:` and `-`, or one that does not open with a letter or digit, is not sent — the job starts on the
+user's Codex default — and is named on the helper's stderr; a well-shaped name Codex does not know
+reaches Codex, and a job that fails on it falls back as any failed job does. The
 `codex:codex-rescue` forwarder is not a dispatch path: nothing can hold it to the time limit.
 
 **Persistence is the dispatching session's.** A read-only job cannot write the verdict file at all,
@@ -310,7 +316,8 @@ every Codex job does, with these differences:
 
 - **Start:** `start --prompt-file {brief} --kind helper --label {a label naming the job} --job-name {discovery | audit | general} --limit-minutes {n}`.
   With no `--effort`, the job's entry in `jobs` gives the effort, after a campaign's gear and before
-  `codex.effort`.
+  `codex.effort`. The entry's `codexModel`, where set, is the Codex model the job is started on,
+  with or without `--effort`; the start's output and the job record both name it.
 - **Wait with `watch`, in the background:** `watch --job {jobId} --deadline {deadline} --started {startedAt} --kind helper --out {path}`,
   started with the shell tool's background option, so the session spends no context on the wait. It
   runs the `wait`-then-`collect` loop in one process — the same cut at the limit, the same
@@ -326,12 +333,137 @@ every Codex job does, with these differences:
   Codex returned no final message, the job returned nothing and falls back to its job's Claude fallback
   (→ pipeline-guardrails.md § Helper agents — model and type).
 
+## Seat job <!-- id: seat-job -->
+
+No role is a seat today — no row of the seat table reads yes (→ pipeline-guardrails.md § Codex seats) — so this section applies once the table opens one.
+
+A seat job is one unit of a pipeline seat's work run as a Codex job that may write inside the round's tree — the
+seat's row allows it and its entry names Codex (→ pipeline-guardrails.md § Codex seats). This section is the one
+home of that form: the coordinator's rules point here wherever a seat set to Codex takes a step they state in its
+Claude form. The coordinating main session — the team lead, or the architect in its own lanes — starts, waits on,
+checks and records every seat job through the Codex job helper; Claude Code stays the only host. No Nexus hook runs
+inside Codex, and the only Nexus script a seat calls is the test runner.
+
+**Whether a seat runs on Codex.** Before each unit, `seat --role {role} --slug {slug} --tree {the round's tree}`
+answers for that unit: `engine` (`codex` or `claude`), the model and effort a job would be sent, and one disclosure
+line. Where the engine is `claude` and the role has a Codex entry, write that line — in the communication log, or in
+the architect's own lanes in the next message to the owner and in `summary.md` — and dispatch the role as a Claude
+seat, on the model the line names; never halt and never ask. Where the line says the sandbox check is owed, run the
+`seat-check` call it gives once — a few minutes, one check at a time on the machine — then call `seat` again. A
+coordinator that is itself a spawned agent starts no seat job: it passes `--spawned`, the entry reads as unset, and
+the role is spawned as today.
+
+**One unit, one job.** A unit is one value of the seat's row — for the developer a build slice (the whole plan where
+the plan cuts none), a fix round's list or a hand-up round; for the solo one fix. A job takes one unit and ends: it
+is never resumed and never messaged, and the next unit is a new job that rebuilds its state from the plan,
+`implementation.md` and the tree, as a fresh Claude developer does. There is no size check — every job starts
+fresh. Only one seat job runs in a tree at a time, and the helper refuses a second.
+
+**Start.** Write the phase token, as before any developer dispatch, then:
+`start --prompt-file {brief} --kind seat --seat {role} --unit {unit} --tree {the round's tree} --slug {slug} --skills {the mapped skills, comma-separated} --other-work {file} --limit-minutes {n}`
+from the session root. `{unit}` is `steps {a}–{b}`, `fix cycle {N}`, `fix cycle {N} part {k}`, `hand-up {n}`,
+`solo fix {n}`, `solo fix {n} attempt {k}` or `questions`; `{file}` holds the dispatch's unrelated-dirt exclusion
+list, one path per line, from a `git status` run now. The limit is yours to judge from the unit's steps; the helper
+raises it to the repo's Codex limit where shorter. A writing start checks its own conditions and the sandbox check's
+pass, and prints `refused` with the reason where one fails: the role then runs as a Claude seat, with the reason as
+its disclosure line. Before the job the helper copies every uncommitted file git shows in the tree to a safety copy
+outside it. **Wait** with `wait --job {jobId} --deadline {deadline} --started {startedAt} --max-seconds {seconds to the deadline}`,
+started with the shell tool's background option, then **collect** once it reads ended or past its deadline —
+`collect`, never `watch`, whose one line drops the lists below. Silence while the worker lives is not a stall; a
+worker gone while the job reads `running` fails it.
+
+**The brief — one template, written by the coordinator:**
+```
+{Role} seat for {slug}, {unit}. You are a Codex job in the {role}'s seat.
+Your rules: read {the installed agents/{role}.md} as text and follow it, save where this brief differs.
+Tree: {the round's tree} — your working folder and project root. Plan: {plan.md}. Answers: {questions.md}.
+Prior work: {implementation.md} — {the role's prior-work line, as its Claude dispatch gives it}.
+Unit: {the Claude dispatch's own lines for this unit: the step range, the fix list and its rows, or the solo's Failure}.
+Other work in the tree — never touch: {the unrelated-dirt exclusion list}.
+Tests: only through the runner's step form, in place of any other test call your rules name — `node "{verify-run.js}" --profile fast --step --attempt {1|2} --agent codex-seat-{role} --unit {the step | fix-c{N} | solo-fix-{n}} --slug {slug} --changed {files} [--files {test files}] --tree {tree} --session {session id}`.
+Verify roles: {the roles of .claude/verify.json}.
+What differs for you: no git command that writes or discards — no commit, add, stash, reset, clean, checkout or
+restore; no network; no other test or build command; questions go to questions.md and end the job; end each
+finished step's block in implementation.md with `**Step done:** {n}`; append `codex{ — {model}}` to the
+implementation.md `**Model:**` stamp, never over what is there; your last message is your hand-back, in your
+role's own phrases. You never commit — the coordinator does.
+{the text of the role's format skills, then of each skill the unit's steps map, each whole}
+```
+The format skills are those the role's agent file preloads (its `skills:` line). The skill texts are copied into
+the brief file whole, never read into the coordinator's own context; `{tree}` and `{session id}` are given outright,
+never left to the environment; the commit helper is never in the brief. A solo's brief names `agents/solo.md`, its
+`Failure:` and its fix number.
+
+**The question phase.** Where the lane has a Phase 1 today, the developer's first unit is a `--unit questions` start
+with `--questions`: it writes nothing, reads the whole plan and returns the questions or the all-clear. Route its
+questions as a developer's; the answers land in `questions.md`, which every later job reads. A lane with no Phase 1
+today has none.
+
+**A blocker** — a question written to `questions.md` with a `Blocked on step {N}` hand-back, or a `Bug found` — ends
+the job early. Route it as today; once it is answered or fixed, the next job starts at that step.
+
+**After the job.** `collect` returns what the coordinator acts on:
+- `end` — `confirmed`, or `unconfirmed` with the process or proof missing: an unconfirmed end holds the unit and the
+  tree, and nothing else writes there until `seat-release --tree {tree}` finds every process of the job gone; with
+  the owner present disclose the hold, with the owner away record it as a failed build of that unit;
+- `fallback` and `fallbackReason` — the job failed, lost its worker, was cut or cancelled, or ended with no hand-back
+  of the role's own (the fallback, below);
+- `finishedSteps` — the steps whose block ends with the done line and whose step-run record passes;
+- `seatChecks` — what a hook would have recorded, already written to the violations log: raw test commands and
+  separate builds as test-entry lines, a `seat-unread` line where Codex's session record could not be read whole or
+  git could not list the tree after the job (a disclosed miss, never a pass), the files outside the approved set, `stepRunsOverTwo`, and a fix round with no
+  class-check line — recorded and never sent back, since there is no job to send it to;
+- `safetyCopy` — other work put back, other work left changed, and feature files gone with their copies kept: put
+  back a gone feature file the unit's steps did not ask to remove;
+- `minutes`, and the carried step-run records (`stepRunsCarried`).
+
+On an unconfirmed end `seatChecks` and `safetyCopy` wait (`checksWait`): the call that confirms the end — a later
+`collect`, or `seat-release` — runs them once and returns them, with the step-run records written since.
+
+Then, under a per-step commit strategy, run the commit helper once for the job — the files it changed, the slice's
+last step number, the message naming the slice; a fix or hand-up round is committed as the coordinator commits one
+today. After a solo's job run the project's verify commands (`.claude/verify.json` `commands`) and append their
+verdict to `.claude/audit/verify-verdict.json`, the record a Claude solo's stop writes. In the
+message table the job's row reads its minutes in the time column and `n/a — Codex` in the size column.
+
+**While a job runs, nothing else is sent to it.** A late fix item, a solo's second red, a light-lane plan change and
+an answered question each wait for the running job and go as a new job of the same round — a late item as
+`fix cycle {N} part {k}`, a second red as `solo fix {n} attempt {k}` carrying the solo's earlier block — never two
+jobs in one tree. The round's count does not move, and the round ends when its last job has handed back. In the
+light lane the handover run waits for it, as today.
+
+**The fallback, per unit.** A seat job that cannot start, fails, loses its worker, is cut at its limit, is refused
+for the Codex plan's usage limit, or ends with no hand-back falls back with one disclosure line and no question, in
+this order:
+1. **The end is confirmed** — never a second writer in the tree before it.
+2. **Finished work is committed**, under a per-step strategy: the files `finishedSteps`' blocks name, whole, under the
+   last finished step's number, its message naming each such file an unfinished step also changed. Every other
+   changed file stays uncommitted, as the unfinished step's.
+3. **The role's own Claude agent takes the unit** on the dispatch the unit was given — a fresh developer on the
+   build-only or fix-round dispatch, a fresh solo for a solo's fix — from the first step not in `finishedSteps`, on
+   the model the seat has without its Codex entry.
+The rest of that unit stays on Claude; the next unit tries Codex again.
+
+**The architect's own lane.** The last slice's first review keeps its two parts: the seat writes `## Self-Review`
+from its own reading, and the coordinator runs the fresh read-only helper pass itself after the job, its real
+findings going to the round's fix list.
+
+**At close**, before a worktree is removed, run `seat-release --tree {tree} --close`: it ends that folder's Codex
+servers while no job runs there, and drops the tree's safety copies. Without `--close` it keeps them.
+
+**Not defended.** A seat's test runs take no turn in the machine's test queue; a seat reads any file the user can,
+secret files included, as read-only Codex jobs already do; more than two runs of one step are counted and reported,
+never stopped.
+
 ## Done check <!-- id: done-check -->
 
 **When it runs.** Where the coordinator's effective `jobs.doneCheck` is `codex` — the repo's setting,
 which an explicit owner-directed spawn parameter still outranks
 (→ pipeline-guardrails.md § Helper agents — model and type) — the Step 1 done check is a read-only
-Codex job instead of an architect spawn. Unset, it stays the architect spawn.
+Codex job instead of an architect spawn. Unset, it stays the architect spawn. Where the round has a Codex
+author — any family on `implementation.md`'s stamp history is `codex` — the check is the architect spawn on the
+preset's done-check model, the fallback's spawn below, with one disclosure line in the communication log, or in
+the architect's own lanes the next message to the owner: `Done check: a Codex-built round — architect spawn on {model}.`
 
 **Who runs it.** The coordinating main session — the team lead, or the standalone architect at the
 fast lane's review gate — through the Codex job helper with `--kind done-check`, beside the code review

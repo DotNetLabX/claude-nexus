@@ -12,7 +12,10 @@
  *
  * Files lib/tree-hash.js leaves out of the hash (docs/, the pipeline's own writes) are ignored, since no
  * close ever asks for them. Any other changed file that ties to no test makes the set unknown: `fallback`
- * names why, and the caller runs its declared step tests instead — a step never runs no test at all.
+ * names why, and the caller runs its declared step tests instead — a step never runs no test at all. A file
+ * another declared runner places (`placedElsewhere`: it ran for the file, reads its kind, and the main runner does
+ * not) is not untied: that runner's command covers it, and a change made only of such files leaves the main runner
+ * nothing to run and no fallback. The CLI lists those commands under `added`.
  *
  * failedTargets reads a run's output for the test targets it reports failing (each runner's reader), or null
  * when it names none it can place in the repo, names one it cannot place, or ran anything but a listed shape:
@@ -44,7 +47,34 @@ function declaredFor(cfg) {
   return { runner: runnerOf(cfg), unit, slow };
 }
 
-function tiedSet({ repo, changed, runner, unit = '', slow = null, listing = null, stopSeconds = 0, root = null }) {
+// The kinds of file each runner reads, by extension. A runner not listed reads every kind as the main runner and
+// none as another.
+const READS = new Map([
+  ['vstest', ['.cs', '.fs', '.vb', '.razor', '.cshtml', '.csproj', '.fsproj', '.vbproj', '.props', '.targets', '.sln', '.slnx', '.json', '.config', '.resx']],
+  ['node', ['.js', '.mjs', '.cjs', '.ts', '.mts', '.cts', '.json']],
+  ['vitest', ['.vue', '.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.mts', '.cts', '.css', '.scss', '.sass', '.less']],
+]);
+READS.set('mtp', READS.get('vstest'));
+
+const kindOf = (f) => path.posix.extname(slashes(f)).toLowerCase();
+
+// The changed files another runner placed for the change (`otherTied`'s items): named among the files a command ran
+// for, of a kind that runner reads and the main runner does not.
+function placedElsewhere(added, main) {
+  const mainReads = READS.get(main);
+  if (!mainReads) return [];
+  const placed = new Set();
+  for (const item of added || []) {
+    const reads = READS.get(item.name);
+    if (!reads || !item.ranFor) continue;
+    for (const f of item.files || []) if (reads.includes(kindOf(f)) && !mainReads.includes(kindOf(f))) placed.add(f);
+  }
+  return [...placed];
+}
+
+// `placed`: changed files another runner places (placedElsewhere). One the main runner leaves untied is taken out
+// before the fallback is decided, and the main runner ties what is left; with nothing left, no command and no fallback.
+function tiedSet({ repo, changed, runner, unit = '', slow = null, listing = null, stopSeconds = 0, root = null, placed = null }) {
   const named = [...new Set((changed || []).map((f) => relTo(repo, f)))];
   const considered = named.filter((f) => !isExcluded(f));
   const result = (fields) => ({
@@ -55,10 +85,20 @@ function tiedSet({ repo, changed, runner, unit = '', slow = null, listing = null
   const loaded = loadRunner(runner, { root: sessionRoot(root) });
   if (!loaded.runner) return result({ fallback: loaded.reason });
   if (typeof loaded.runner.tiedSet !== 'function') return result({ fallback: `the ${runner} runner ties no tests` });
-  const tie = loaded.runner.tiedSet({ repo, changed: considered, listing: listing || listFiles(repo), unit, slow, stopSeconds });
-  if (tie.untied.length) return result({ targets: tie.targets, untied: tie.untied, fallback: `no tied test for ${tie.untied.join(', ')}` });
-  if (tie.fallback) return result({ targets: tie.targets, fallback: tie.fallback });
-  return result({ targets: tie.targets, commands: tie.commands });
+  const files = listing || listFiles(repo);
+  const tieOf = (subset) => loaded.runner.tiedSet({ repo, changed: subset, listing: files, unit, slow, stopSeconds });
+  let tie = tieOf(considered);
+  const elsewhere = new Set((placed || []).map((f) => relTo(repo, f)));
+  const out = tie.untied.filter((f) => elsewhere.has(f));
+  if (out.length) {
+    const left = considered.filter((f) => !out.includes(f));
+    if (left.length === 0) return result({ placed: out });
+    tie = tieOf(left);
+  }
+  const moved = out.length ? { placed: out } : {};
+  if (tie.untied.length) return result({ targets: tie.targets, untied: tie.untied, fallback: `no tied test for ${tie.untied.join(', ')}`, ...moved });
+  if (tie.fallback) return result({ targets: tie.targets, fallback: tie.fallback, ...moved });
+  return result({ targets: tie.targets, commands: tie.commands, ...moved });
 }
 
 // What each other runner the repo declares runs for the change, whatever its main runner does with it: its tied
@@ -73,7 +113,7 @@ function otherTied({ repo, changed, cfg, stopSeconds = 0, root = null }) {
     const { runner } = loadRunner(name, { root: sessionRoot(root) });
     if (!runner || typeof runner.tiedSet !== 'function') return [];
     const tie = runner.tiedSet({ repo, changed: considered, listing: listFiles(repo), unit, slow, stopSeconds });
-    return tie.commands.map((text, i) => ({ text, name, ops: runner, files: tie.ranFor ? tie.ranFor[i] : tie.targets }));
+    return tie.commands.map((text, i) => ({ text, name, ops: runner, files: tie.ranFor ? tie.ranFor[i] : tie.targets, ranFor: Boolean(tie.ranFor) }));
   });
 }
 
@@ -146,7 +186,7 @@ function failedTargets({ output, repo, command = null, listing = null, root = nu
   return found.size ? [...found].sort() : null;
 }
 
-module.exports = { tiedSet, otherTied, failedTargets, nodeInvocation, runnerOf, declaredFor, readConfig, listFiles };
+module.exports = { tiedSet, otherTied, placedElsewhere, failedTargets, nodeInvocation, runnerOf, declaredFor, readConfig, listFiles };
 
 function cli(argv) {
   const at = (flag) => argv.indexOf(flag);
@@ -160,7 +200,10 @@ function cli(argv) {
   }
   const root = path.resolve(repo);
   const cfg = readConfig(root);
-  return { out: tiedSet({ repo: root, changed, ...declaredFor(cfg) }) };
+  const declared = declaredFor(cfg);
+  const added = otherTied({ repo: root, changed, cfg });
+  const set = tiedSet({ repo: root, changed, ...declared, placed: placedElsewhere(added, declared.runner) });
+  return { out: { ...set, added: added.map((a) => ({ runner: a.name, command: a.text, ...(a.ranFor ? { files: a.files } : { targets: a.files }) })) } };
 }
 
 if (require.main === module) {

@@ -9,7 +9,8 @@
  * `Fixes applied for {name}. Hand-up {n}.` — the hand-back text of lib/step-checkpoint.js, so a
  * hand-back made through the platform's tool counts too — and returns `{"decision":"block","reason":…}`
  * when the block, or a `**Class checked:**` line with text after it, is missing. The block runs from
- * its heading to the next `## ` heading; CRLF files read the same.
+ * its heading to the next `## ` heading; CRLF files read the same. The block and the line are read by
+ * lib/fix-record.js, so a script that checks a fix round after the fact reads them the same way.
  *
  * REACH: a stop whose `agent_type` resolves to `developer` (lib/resolve-role.js) and whose hand-back is
  * one of those two lines. Every other stop, and bad JSON, exits 0 with nothing written. A main-session
@@ -35,10 +36,10 @@ const { handbackText } = require('./lib/step-checkpoint');
 const { resolveDeclaredTree } = require('./lib/worktree-target');
 const { isSafeId } = require('./lib/safe-id');
 const { specFolder } = require('./lib/parts');
+const { roundBlock, hasClassLine } = require('./lib/fix-record');
 
 const RULE = 'class-check';
 const FIXES = /\bFixes applied for (.+?)\. (?:Cycle (\d+)\s*\/\s*\d+|Hand-up (\d+))\./;
-const CLASS_LINE = /^\s*(?:[-*]\s+)?\*\*Class checked:\*\*\s*\S/;
 const LINE_FORM = '`**Class checked:** {fix-list row}: {the search, as run} — {siblings fixed | none found | listed: {where}}`';
 const NONE_FORM = '`**Class checked:** none — {why}`';
 
@@ -62,18 +63,6 @@ function findImplementation(bases, slug) {
     if (file && fs.existsSync(file)) return { base, file };
   }
   return null;
-}
-
-// The round's block, from its heading to the next `## ` heading, or null when it has none.
-function roundBlock(text, round) {
-  const lines = String(text).split(/\r?\n/);
-  const heading = new RegExp(`^## ${round}(?!\\d)`);
-  let start = -1;
-  for (let i = 0; i < lines.length; i++) if (heading.test(lines[i])) start = i;
-  if (start < 0) return null;
-  const block = [];
-  for (let i = start + 1; i < lines.length && !/^## /.test(lines[i]); i++) block.push(lines[i]);
-  return block;
 }
 
 function logRow(root, row) {
@@ -111,7 +100,7 @@ function main(input) {
   }
 
   const block = roundBlock(text, round);
-  if (block && block.some((l) => CLASS_LINE.test(l))) return;
+  if (hasClassLine(block)) return;
   if (data.stop_hook_active === true) {
     return logRow(root, { ...who, slug, why: 'second stop without the line' });
   }

@@ -87,7 +87,7 @@ Each paid plugin lives in its own private repository, which is its own marketpla
 - **Custom gears — your own pipeline gear.** A new name, a base gear, and only the settings it changes.
 - **Flow atlas — which classes run for each entry point.** One page per endpoint, route, job or consumer, down to storage, marked stale the moment the code moves.
 - **Draw mockup — the screens your design left out, drawn before anyone builds them.** One clickable page in your app's own look, every piece marked as from the design, asked for by the spec, or new — and a check refuses the page while any piece points at nothing real.
-- **Live agent view — see what every agent is doing.** Each agent's row names its role, and a developer's shows its step, tokens and time — `dev-s1 · step 3/7 · 420k · 9 min`.
+- **Live agent view — see what every agent is doing.** One line above the prompt names each running pipeline agent, with the step a developer is building — `▶ dev-s1 step 3/7 · critic-second · reviewer · 2 helpers`.
 - **Suite methods for app agents.** When your app's own agents run on a model's API, their prompts start from a tested method instead of a blank page.
 - **Slice review — a big plan read as closely as a small one.** Each build slice gets its own readers, then one merged list of findings. You choose it per repository.
 

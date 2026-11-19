@@ -1215,13 +1215,20 @@ function create(h) {
     commandShape: shape,
     // A trx file in its own folder per command.
     withReport: (command, dir) => `${command} --logger trx --results-directory "${dir}"`,
-    // Each executed test by the file that declares its class and the line of its method. The report folder is
-    // removed once read.
+    // Each executed test by the file that declares its class and the line of its method, and the test project it
+    // ran in — read from its assembly as a run's failures are, null where no test project or more than one builds
+    // that assembly — since one source file can belong to two test projects. The report folder is removed once read.
     reportTimes({ tree, reportDir }) {
       const dir = path.join(tree, reportDir);
       const times = [];
       const cache = new Map();
       const sources = new Map();
+      let projects = null;
+      const projectOf = (codeBase) => {
+        if (projects === null) projects = readProjects(tree, h.listFiles(tree)).filter((p) => p.test);
+        const owners = projects.filter((p) => p.assembly.toLowerCase() === assemblyOf(codeBase));
+        return owners.length === 1 ? owners[0].file : null;
+      };
       try {
         for (const trx of h.sourceFiles(dir, '.trx')) {
           for (const e of parseTrx(fs.readFileSync(trx, 'utf8'))) {
@@ -1231,7 +1238,7 @@ function create(h) {
             const file = path.relative(tree, abs).split(path.sep).join('/');
             if (!sources.has(file)) sources.set(file, fs.readFileSync(abs, 'utf8'));
             const line = dotnetMethodLine(sources.get(file), short, e.method) || null;
-            times.push({ file, line, column: null, test: e.key.slice(e.key.indexOf('::') + 2), class: short, method: e.method, ms: e.ms });
+            times.push({ file, line, column: null, test: e.key.slice(e.key.indexOf('::') + 2), class: short, method: e.method, project: projectOf(e.codeBase), ms: e.ms });
           }
         }
       } catch { /* no report written: nothing was timed */ }

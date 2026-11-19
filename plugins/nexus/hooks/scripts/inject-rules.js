@@ -145,7 +145,7 @@ process.stdin.on('end', () => {
     `Fast profile (solo step close; developer: developer.md § The step test rule):\n` +
     `  node "${path.join(pluginRoot, 'hooks', 'scripts', 'verify-run.js')}" --profile fast\n` +
     `Codex job helper: codex-job.js, beside verify-run.js above\n` +
-    `Full suite (close gate, when .claude/verify.json declares roles.full):\n` +
+    `Full suite (after the merge, via main-run.js; a gear's handover run):\n` +
     `  node "${path.join(pluginRoot, 'hooks', 'scripts', 'verify-run.js')}" --profile complete --slug <slug> --session <id> [--tree <path>]\n`;
 
   // Prompt-audit tripwire (ADR-84). Appended BEFORE the size check below so the nag counts toward

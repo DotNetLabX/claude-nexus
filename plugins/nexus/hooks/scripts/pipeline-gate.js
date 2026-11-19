@@ -12,21 +12,22 @@
  *      answering the developer's Phase-1 questions may amend the plan.
  *   2) Verdict integrity. A review.md written with an APPROVED verdict while it still lists
  *      an unresolved CRITICAL or HIGH finding is an invalid verdict. Blocked.
- *   4) Full-suite evidence (F81, ADR-96). A summary.md's existence means "the pipeline completed".
- *      When the repo DECLARED a full suite (.claude/verify.json → roles.full), writing that file
- *      with no passing `role:"full"` record in the audit trail means the close gate's suite never
- *      ran. Blocked. Passing is lib/run-verdict.js's rule: a pass, or a run whose only failures are
- *      timed-out tests the change did not touch. The record must name the ROUND KEY — the folder holding delivery/ in the
- *      summary.md path being written, at any depth under docs/specs/, the form a run record carries — as well as matching
- *      the round's token or session; an unsigned record
- *      discharges nothing. Numbered 4 because 3 is retired below and is never reused. Whatever the
- *      gear, a stale or red latest record can still discharge it on the close evidence
- *      (lib/gear-close.js): each failure re-run green by name, every later change covered by a green
- *      run. The deny names what is not covered; a record that cannot stand as evidence (cut, crashed,
- *      or with no file hashes) keeps its own cause, and under a gear names the evidence's. Before all of that,
- *      the newest slug-stamped complete record in this tree at its current content is judged, whatever its
- *      slug or session: content makes a record valid, so it discharges when it counts as passing, and
- *      another slug's red denies (`failing`) — this slug's later runs cannot repair it.
+ *   4) Test evidence before the merge (F81, ADR-96). A summary.md's existence means "the pipeline
+ *      completed". When the repo DECLARED a full suite (.claude/verify.json → roles.full), that suite runs
+ *      once on the default branch after the merge, and the close owes the evidence a merge needs: every
+ *      file the change holds against its base covered by a green fast run of the feature at its current
+ *      content, and a green run of the whole-repo checks (`roles.premerge`) at the current tree hash where
+ *      the repo declares them (lib/gear-close.js `premergeEvidence`). Writing summary.md without it is
+ *      Blocked. A complete record at the current content that counts as passing (lib/run-verdict.js: a
+ *      pass, or a run whose only failures are timed-out tests the change did not touch) still discharges
+ *      it, whatever its slug. The feature's own newest complete record that does not count as passing —
+ *      one naming the ROUND KEY, the folder holding delivery/ in the summary.md path at any depth under
+ *      docs/specs/, and the round's token or session — is read for its failures at any content
+ *      (lib/gear-close.js `closeEvidence`): each owes a green run by name, and one whose failures cannot
+ *      all be named owes a complete run. A campaign unit whose marker does not accept pre-merge evidence
+ *      keeps the complete record its campaign finishes it on. The deny names what is missing and the runs
+ *      that supply it.
+ *      Numbered 4 because 3 is retired below and is never reused.
  *   5) Lessons evidence (F99, ADR-100 K5). "Write lessons before you close" was the one affirmative
  *      duty the always-on prohibitions envelope carried, and the W4 subagent probes measured it at
  *      0.000 — the prose was carrying nothing. The duty leaves the envelope and becomes observed:
@@ -92,6 +93,14 @@
  *      allows, while a `ruling:` there leaves the deny standing until it is re-written; the close
  *      procedure is the rule, this gate its backstop. The slug searched for is the folder holding delivery/, as in (4), the
  *      form a changelog line carries. The deny names each file and row id and the tree it read.
+ *      ONE EXEMPTION (F440): a row a rule check cut at its time limit. An unruled row is let through only
+ *      when BOTH hold: the newest verify row naming that exact register row (`{area}/{unit} {PREFIX}-n`)
+ *      in the `rule-check.md` beside the summary reads `not checked — time limit`, and the session
+ *      root holds a pass file under `.claude/audit/rule-check/` for this slug whose `deadline` has
+ *      passed. The record is read by a line scan of its table rows, newest wins, and no ruling word is
+ *      parsed; the pass files are read as JSON, never through the mining plugin's code. Each
+ *      uncertainty here keeps the deny: a newer row of another kind, a record that never names the row,
+ *      no readable record, no readable pass file or no passed deadline.
  *   8) Fix-list follow-up (F221, ADR-144). A `## Step 2 — Fix list, cycle {N}` section whose follow-up
  *      line reads `due` while its rows hold no CRITICAL/HIGH (a contested range reaching HIGH counts),
  *      no missing or failed step and no skill slip is Blocked: such a round is never re-read
@@ -174,8 +183,9 @@
  *   - Fail open on ANY uncertainty (bad JSON, missing state file, ambiguous content).
  *     ONE SANCTIONED EXCEPTION — invariant (4), ADR-96. For every other invariant a missing signal
  *     means the gate cannot tell whether a violation happened, so silence is the honest answer.
- *     For (4) the missing signal IS the violation: "no full-suite record exists" is precisely the
- *     state "the suite never ran", which is the only thing the invariant is for. Treating absence as
+ *     For (4) the missing signal IS the violation: "no record of the run exists" is precisely the
+ *     state "the tests never ran", which is the only thing the invariant is for; a change git cannot
+ *     read refuses too, never passing empty. Treating absence as
  *     uncertainty there would make the invariant unreachable in its main case. The exception is
  *     bounded three ways and does not generalize — it applies only to summary.md, only when the repo
  *     itself DECLARED roles.full (a repo that opted out is byte-unchanged), and only to foreground
@@ -197,7 +207,7 @@ const { execFileSync } = require('child_process');
 const { isCodeFile } = require('./lib/is-code-file');
 const { resolveDeclaredTree } = require('./lib/worktree-target');
 const { treeHash, sameTree } = require('./lib/tree-hash');
-const { closeGear, closeEvidence, labelsOnly } = require('./lib/gear-close');
+const { closeGear, closeEvidence, premergeEvidence, labelsOnly } = require('./lib/gear-close');
 const { countsAsPassing } = require('./lib/run-verdict');
 const { isNonRegistry } = require('./lib/registry-stamp');
 const { checkSpec, readCommitted, isReady } = require('./lib/spec-sources');
@@ -219,7 +229,7 @@ const GIT_STATUS_TIMEOUT_MS = 5000;
 const RULE_CHECK_FOOTER = /^\*Status: COMPLETE — .+\*[ \t]*$/m;
 const REGISTRY_ROOT = 'docs/business-rules';
 
-// Run as the hook only: close-run.js requires this file for the full-suite check, and a require must read no
+// Run as the hook only: close-run.js requires this file for check (4), and a require must read no
 // stdin and never exit.
 if (require.main === module) {
   let input = '';
@@ -287,7 +297,7 @@ function gate(input) {
     if (reason) return deny('10', reason);
   }
 
-  // (4) Full-suite evidence: summary.md needs a passing role:"full" record for THIS round.
+  // (4) Test evidence before the merge: summary.md needs it for THIS feature at the tree's content now.
   // The declaration is read from the tree verify-run.js would MEASURE (F51's session-matching
   // redirect), not blindly from the session root. Reading it from another tree makes the deny
   // undischargeable: if the root declares roles.full and the worktree does not, verify-run records
@@ -301,17 +311,15 @@ function gate(input) {
   const slug = feature.split('/').pop();
   if (summaryMatch && !isSpawned(data)) {
     const tree = resolveDeclaredTree(root, data.session_id);
-    const denial = fullSuiteDeclared(tree) ? fullSuiteDenial(tree, root, data, slug) : null;
+    const planBase = planBaseOf(path.join(tree, 'docs', 'specs', ...feature.split('/'), 'delivery', 'plan.md'));
+    const denial = fullSuiteDeclared(tree) ? fullSuiteDenial(tree, root, data, slug, {}, { planBase }) : null;
     if (denial) {
-      const { cause } = denial;
-      const gloss = denialGloss(denial);
+      const runs = remedyRuns(denial, slug, data.session_id);
       return deny('4',
-        `summary.md needs a passing full-suite record for ${slug} (cause: ${cause} — ${gloss}). ` +
-        'This repo declares .claude/verify.json → roles.full. Run:\n' +
-        `  node "${path.join(__dirname, 'verify-run.js')}" --profile complete --slug ${slug}` +
-        `${data.session_id ? ` --session ${data.session_id}` : ''}\n` +
-        'then write summary.md. (A failing suite is a fix, not a re-run; a stale or wrong-tree record needs ' +
-        'only the re-run; an undeclared role is recorded and disclosed, never a pass.)'
+        `summary.md needs passing test evidence for ${slug} before the merge (cause: ${denial.cause} — ${denialGloss(denial)}). ` +
+        'This repo declares .claude/verify.json → roles.full, which runs on the default branch after the merge. ' +
+        (runs.length ? `Run, each as a background call (a heavy run may wait its turn on the machine):\n${runs.map((r) => `  ${r}\n`).join('')}then write summary.md. ` : 'Fix what git names, then write summary.md. ') +
+        '(A red run is a fix, not a re-run; an undeclared role is recorded and disclosed, never a pass.)'
       );
     }
   }
@@ -339,7 +347,9 @@ function gate(input) {
   // (7) Unruled registry rows, read in (4)'s tree. `lib/worktree-target.js` is the only which-tree
   // rule a hook may use, so the tree is never derived from the summary.md path.
   if (summaryMatch && !isSpawned(data)) {
-    const reason = unruledRegistryRows(resolveDeclaredTree(root, data.session_id), slug);
+    const reason = unruledRegistryRows(resolveDeclaredTree(root, data.session_id), slug, {
+      record: path.join(path.dirname(path.resolve(root, fp)), 'rule-check.md'), root,
+    });
     if (reason) return deny('7', reason);
   }
 
@@ -457,11 +467,12 @@ function openRecheckGroups(summaryFile, slug) {
  * Registries this close wrote that still hold a `pending-triage` row with no `ruling:` key. Returns
  * the deny reason, or null to allow.
  */
-function unruledRegistryRows(tree, slug) {
+function unruledRegistryRows(tree, slug, cut = {}) {
   const rels = dirtyRegistryPaths(tree);
   if (!rels) return null;
   const namesSlug = new RegExp(`(?:^|[^\\w-])${slug.replace(/[.*+?^${}()|[\]\\]/g, (c) => `\\${c}`)}(?![\\w-])`);
   const found = [];
+  let exempt = null;
   for (const rel of rels) {
     if (!rel.endsWith('.md') || isNonRegistry(rel)) continue;
     const file = path.join(tree, ...rel.split('/'));
@@ -469,15 +480,64 @@ function unruledRegistryRows(tree, slug) {
     let text;
     try { text = fs.readFileSync(file, 'utf8'); } catch { continue; }
     if (!namesSlug.test(text)) continue;
-    for (const id of unruledRowIds(text)) found.push(`${rel} ${id}`);
+    const unit = rel.slice(`${REGISTRY_ROOT}/`.length, -'.md'.length);
+    for (const id of unruledRowIds(text)) {
+      if (exempt === null) exempt = cutRows(cut.record, cut.root, slug);
+      if (!exempt.has(`${unit} ${id}`)) found.push(`${rel} ${id}`);
+    }
   }
   if (!found.length) return null;
   return `summary.md for ${slug} — a registry this close wrote still holds an unruled pending-triage ` +
     `row (read in ${tree}):\n${found.map((f) => `  ${f}`).join('\n')}\n` +
     'Write a `ruling:` on each row — `code wrong`, `spec wrong or stale`, `accepted deviation` or ' +
-    '`deferred` (the architect rules; the close gate\'s item 1) — then write summary.md. `deferred` is ' +
+    '`deferred` (the architect rules; the close gate\'s item 1) — and its line in the rule check\'s record with ' +
+    'the tool\'s `rule` command (`rule-check.mjs rule`, the mining plugin\'s), then write summary.md. `deferred` is ' +
     'the ruling for a fix outside this feature and for an unattended run\'s open owner question, ' +
     'with the question on the row, a review-queue entry and a backlog row.';
+}
+
+const NOT_CHECKED_VERDICT = 'not checked — time limit';
+
+/**
+ * The register rows (`{area}/{unit} {PREFIX}-n`) a rule check cut at its limit: those whose newest verify
+ * row in `record` reads `not checked — time limit`, while `root` holds a pass file for `slug` whose
+ * deadline has passed. Empty on any read it cannot make — the exemption needs both facts read.
+ */
+function cutRows(record, root, slug) {
+  const none = new Set();
+  if (!record || !root) return none;
+  let names;
+  try { names = fs.readdirSync(path.join(root, '.claude', 'audit', 'rule-check')); } catch { return none; }
+  const passed = names.some((name) => {
+    if (!name.endsWith('.json')) return false;
+    try {
+      const p = JSON.parse(fs.readFileSync(path.join(root, '.claude', 'audit', 'rule-check', name), 'utf8'));
+      const deadline = Date.parse(p && p.deadline);
+      return p.slug === slug && Number.isFinite(deadline) && deadline <= Date.now();
+    } catch { return false; }
+  });
+  if (!passed) return none;
+  const text = readLf(record);
+  if (text === null) return none;
+  const newest = new Map();
+  let verdictAt = -1;
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith('|')) { verdictAt = -1; continue; }
+    const cells = line.trim().replace(/^\|/, '').replace(/\|$/, '').split(/(?<!\\)\|/).map((c) => c.trim());
+    if (/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(lines[i + 1] || '')) {
+      const header = cells.map((c) => c.toLowerCase());
+      verdictAt = header.includes('evidence') && !header.includes('ruling') ? header.indexOf('verdict') : -1;
+      i++;
+      continue;
+    }
+    if (verdictAt < 0) continue;
+    for (const name of cells[0].replace(/`/g, '').split(/\s*(?:,|;|<br\s*\/?>)\s*/i)) {
+      if (name) newest.set(name.trim(), cells[verdictAt] || '');
+    }
+  }
+  return new Set([...newest].filter(([, v]) => v === NOT_CHECKED_VERDICT).map(([k]) => k));
 }
 
 /**
@@ -693,81 +753,107 @@ function fullSuiteDeclared(tree) {
   } catch { return false; } // absent or malformed CONFIG -> not opted in -> fail open, as everywhere else
 }
 
-const DENY_CAUSES = {
-  missing: 'no full-suite record for this round is in .claude/audit/verify-verdict.json',
-  'wrong-tree': 'the latest record ran in another tree',
-  stale: 'the source tree changed after the latest record',
-  failing: 'the latest record for this tree state did not pass',
+/**
+ * A campaign unit whose marker (`.claude/.campaign-unit`) does not say pre-merge evidence is accepted: a campaign
+ * plugin that still finishes a unit only on a complete record, so the close keeps that run. A marker that holds no
+ * JSON says nothing, and keeps it too.
+ */
+function completeRunKept(tree) {
+  let text;
+  try { text = fs.readFileSync(path.join(tree, '.claude', '.campaign-unit'), 'utf8'); } catch { return false; }
+  try {
+    const marker = JSON.parse(text);
+    return !(marker && marker.premergeEvidence === true);
+  } catch { return true; }
+}
+
+// A complete record of this feature fell short; the files are named after the gloss.
+const EVIDENCE_CAUSES = {
+  'not-completed': 'this feature\'s newest complete record was cut or crashed, or its failures cannot all be named, so only a complete run can stand for it',
+  'complete-kept': 'this campaign unit\'s marker does not accept pre-merge evidence, so its campaign finishes it only on a complete record that passes at this content',
+  unrepaired: 'no green, unfiltered run by name of the feature\'s slug stands for the content these hold now since the latest record failed them',
 };
 
-// The close evidence fell short; the files are named after the gloss, and the re-run still discharges.
-const EVIDENCE_CAUSES = {
-  'not-completed': 'the latest record was cut or crashed, or its failures cannot all be named, so it cannot stand for the close',
-  unrepaired: 'no green, unfiltered run by name of the feature\'s slug stands for the content these hold now since the latest record failed them',
-  uncovered: 'no green tied run holds these files at their current hash since the latest record',
+// The pre-merge evidence fell short (lib/gear-close.js `premergeEvidence`).
+const PREMERGE_CAUSES = {
+  unreadable: 'git cannot read the change',
+  'whole-unit': 'no base to measure the change from (no default-branch ref and no plan base), so only a green whole-unit fast run at the current tree hash stands',
+  uncovered: 'no green tied run holds these files at their current hash',
+  unrepaired: 'a tied run failed these test files at the current content, and no green run of them by name followed',
+  premerge: 'the whole-repo checks (roles.premerge) have no green record at the current tree hash',
 };
 
 /** The one-clause gloss a refusal of invariant (4) names its cause with; close-run.js stops with the same words. */
-function denialGloss({ cause, gear, files, foreign }) {
-  return foreign
-    ? `the newest record at this content is ${foreign}'s and did not pass; this feature's own complete run, the newer record, is the remedy`
-    : EVIDENCE_CAUSES[cause]
-      ? `${gear ? `under the ${gear} gear, ` : ''}${EVIDENCE_CAUSES[cause]}${files.length ? `: ${files.join(', ')}` : ''}`
-      : DENY_CAUSES[cause];
+function denialGloss(denial) {
+  const { gear, complete, unreadable, whole, uncovered = [], unrepaired = [], premerge, evidence } = denial;
+  const list = (files) => (files.length ? `: ${files.join(', ')}` : '');
+  const geared = gear ? `under the ${gear} gear, ` : '';
+  if (complete) return `${geared}${EVIDENCE_CAUSES[denial.cause === 'complete-kept' ? 'complete-kept' : 'not-completed']}`;
+  if (evidence) return `${geared}${EVIDENCE_CAUSES.unrepaired}${list(unrepaired)}`;
+  const parts = [];
+  if (unreadable) parts.push(`${PREMERGE_CAUSES.unreadable}: ${unreadable}`);
+  if (whole) parts.push(PREMERGE_CAUSES['whole-unit']);
+  if (uncovered.length) parts.push(`${PREMERGE_CAUSES.uncovered}${list(uncovered)}`);
+  if (unrepaired.length) parts.push(`${PREMERGE_CAUSES.unrepaired}${list(unrepaired)}`);
+  if (premerge) parts.push(`${PREMERGE_CAUSES.premerge} (${premerge})`);
+  return parts.join('; ');
 }
 
+// The runs a refusal asks for, one command line each: what close-run.js runs, and what the deny prints.
+function remedyRuns(denial, slug, session) {
+  const runner = `node "${path.join(__dirname, 'verify-run.js')}"`;
+  const tail = `--slug ${slug}${session ? ` --session ${session}` : ''} --wait`;
+  const quoted = (files) => files.map((f) => `"${f}"`).join(' ');
+  if (denial.complete) return [`${runner} --profile complete ${tail}`];
+  const runs = [];
+  if (denial.whole) runs.push(`${runner} --profile fast ${tail}`);
+  if (denial.uncovered.length) runs.push(`${runner} --profile fast --tied --changed ${quoted(denial.uncovered)} ${tail}`);
+  if (denial.unrepaired.length) runs.push(`${runner} --profile fast --files ${quoted(denial.unrepaired)} ${tail}`);
+  if (denial.premerge) runs.push(`${runner} --role premerge ${tail}`);
+  return runs;
+}
+
+const denialOf = (fields) => ({
+  cause: '', gear: null, files: [], uncovered: [], unrepaired: [], premerge: null, whole: false, complete: false, unreadable: null, evidence: false, ...fields,
+});
+
 /**
- * Why does the LATEST in-scope full-suite record not discharge this close? `{cause}` — plus `files`, and
- * the `gear` when one is set, when the close evidence fell short, or `foreign` (that record's slug) when
- * another feature's red at this content denies — or `null` when it does.
+ * Why may this close not write `summary.md` yet? `null` when it may, else a denial: `cause`, and what is
+ * missing by name — `uncovered` (changed files no green tied run holds), `unrepaired` (failed test files owed a
+ * run by name), `premerge` (`missing`, `stale` or `red`), `whole` (a whole-unit fast run owed), `complete` (a
+ * complete run owed), `unreadable` (a change git cannot read) — plus `gear` and `files`. `seen` tells a caller
+ * that asks (close-run.js) which record decided and how: `record` (a passing complete record), `evidence` (this
+ * feature's red complete record repaired, then the pre-merge evidence) or `premerge` (the pre-merge evidence).
  *
- * Latest, not any. The audit file is append-only, so a run/fix/re-run cycle leaves several
- * full-suite records for one round; "any pass discharges" would let an early green shadow the red
- * that came after it, and close a feature whose suite is failing right now. The gate's question is
- * "is the suite green?", not "was it ever green?", so only the most recent in-scope record counts.
+ * In order (plan P1 — the full suite runs on the default branch after the merge, not here):
  *
- * TWO FACTORS, both required.
+ * (a) A complete record at this content that counts as passing discharges it, whatever its slug or session:
+ *     content makes a record valid, so a gear's handover run or a solo's run is never paid twice. "At this
+ *     content" is the newest slug-stamped `full` record of this tree at the current tree hash; this feature's
+ *     newest one in this round also counts when the only changes since it are labels label-tests.js wrote
+ *     (lib/gear-close.js labelsOnly), or when the tree has no hash (git cannot list it).
  *
- * (1) The ROUND KEY — `slug`, stamped by `verify-run --slug` and compared against the folder holding
- *     delivery/ in the summary.md path being written. This is what makes the match round-scoped. Without it the
- *     session path alone was too loose: a session outlives a feature, so two features closed in one
- *     session could discharge each other (found in review, fixed by plan amendment). A record with
- *     no slug — a pre-amendment record, or a hand-written one — can never name its round, so it
- *     discharges nothing. Unsigned is not evidence.
+ * (b) This feature's newest complete record — in this round (the ROUND KEY: the slug, the folder holding
+ *     delivery/ in the summary.md path, and the round's token or session, both compared only when non-empty),
+ *     or at this content from any session — where it does not count as passing is read with
+ *     lib/gear-close.js `closeEvidence` WHATEVER its content, for its failures only: `not-completed` (a cut
+ *     run, or failures it cannot all name) owes a complete run, and `unrepaired` a run of each failure by name.
+ *     Its `uncovered` is not used; (c) decides coverage. A gear's red handover run is held to its failures
+ *     this way even after a fix moved the content. Judging the newest, never the newest pass, keeps an older
+ *     green from hiding a newer red. Another feature's red at this content does not refuse.
  *
- * (2) The ROUND INSTANCE — token or session. The session's round token, read at the root, is the primary
- *     key, but a repo that never writes one has an empty token, and a token that moved on after the
- *     suite ran would otherwise permanently wedge the only writer of summary.md. So the record's
- *     `session` is a second way to prove it belongs here. Both are exact comparisons against a
- *     NON-EMPTY value: an empty token must not match an empty token, or every unkeyed record in the
- *     log would discharge every unkeyed close.
+ * (c) Otherwise the pre-merge evidence decides (lib/gear-close.js `premergeEvidence`): every file the change
+ *     holds against its base covered by a green fast record of this feature, and a green `premerge` record at
+ *     the current tree hash where the tree declares one; the plan's `**Base:**` commit (`planBase`) is its base
+ *     where no default-branch ref resolves.
  *
- * The two are ANDed, and neither is sufficient alone: the slug says which feature, the token/session
- * says which run of it. A correctly-slugged record from a stale round is still not this round's.
+ * In a campaign unit whose marker does not accept pre-merge evidence (`completeRunKept`), (c) is not read: this
+ * feature's own complete record stands on the close evidence, as before the full suite moved after the merge — a
+ * gear's uncovered files owe tied runs — and anything else owes a complete run (`complete-kept`).
  *
- * THEN THREE FACTS ON THE LATEST (F147), checked in this order: it ran in THIS tree (`wrong-tree`
- * otherwise), at this tree's current source hash (`stale`), and it counts as passing (`failing`) — it
- * passed, or its only failures are timed-out tests the change did not touch (lib/run-verdict.js, the rule
- * the gear close and the campaign's closing check read too). A tree whose every change since the record is
- * a label label-tests.js wrote (lib/gear-close.js labelsOnly) is not stale. The order is the
- * remedy's: a red record from another tree or an earlier state needs a re-run, and reading it as
- * `failing` would send the closer into a fix loop for a failure the current tree may not have. Matching
- * the hash is what lets the close reuse a complete record still at this content (a gear's handover run, or
- * the record the newest-at-content rule below reads) instead of paying the suite twice. A `stale` or
- * `failing` record is then read once more, as close evidence (lib/gear-close.js `closeEvidence`).
- *
- * THE NEWEST RECORD AT THIS CONTENT FIRST. Before the two factors, the newest `full` record that names a
- * slug, ran in THIS tree and carries the current hash — any slug, any session — is judged as the latest
- * would be: passing discharges; this slug's red is read as close evidence; another slug's red denies
- * `failing`, because this slug's fast records carry `delta_base` from this slug's own complete record
- * (lib/gear-close.js `deltaSince`) and so can never repair it — its remedy is this slug's complete run,
- * which becomes the newer record. Judging the newest, never the newest PASS, keeps any older green from
- * hiding a newer red. A tree with no hash skips this, and with no record at the content the factors decide.
- *
- * A missing, empty or unparseable verdict file yields no records and therefore denies — that is
- * invariant (4)'s sanctioned exception, not an oversight (see the header).
+ * An unreadable or missing verdict file yields no records: (c) then names everything as missing.
  */
-function fullSuiteDenial(tree, root, data, slug, seen = {}) {
+function fullSuiteDenial(tree, root, data, slug, seen = {}, { planBase = '' } = {}) {
   const token = readRoundToken(root, data.session_id);
   const session = String(data.session_id || '');
 
@@ -777,62 +863,75 @@ function fullSuiteDenial(tree, root, data, slug, seen = {}) {
     // tree — verify-run.js makes the same measure-there/write-here split, so one log home holds
     // every record and the token-scoped queries keep working.
     lines = fs.readFileSync(path.join(root, '.claude', 'audit', 'verify-verdict.json'), 'utf8').split('\n');
-  } catch { return { cause: 'missing' }; }
+  } catch { lines = []; }
 
-  // The hash factor fails open on one condition only: a tree git cannot list has no hash, so the factor
-  // is skipped whole — a record without `tree_hash` included — while the tree and verdict still bind.
   const hash = treeHash(tree);
   const records = [];
-  let latest = null;
-  let index = -1;
   let atContent = -1;
+  let own = -1;
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
     let rec;
     try { rec = JSON.parse(trimmed); } catch { continue; } // per-line tolerance, as every reader of this file has
     if (rec) records.push(rec);
-    if (!rec || rec.role !== 'full') continue;
-    if (hash !== null && rec.slug && rec.tree_hash === hash && sameTree(rec.tree, tree)) atContent = records.length - 1;
-    // Factor 1: the round key. An absent or empty slug fails here — never compared as '' === '',
-    // which would make every unsigned record match every close.
-    if (!rec.slug || String(rec.slug) !== slug) continue;
-    // Factor 2: which run of that round. Both comparisons are against a NON-EMPTY value — an empty
-    // token must not match an empty token, or one unscoped record would discharge every close.
-    if (!inThisRound(rec, token, session)) continue; // out of scope for the own-record path, in either direction; the newest-at-content read above takes any session
-    latest = rec; // append-only: the last in-scope record wins
-    index = records.length - 1;
+    if (!rec || rec.role !== 'full' || !rec.slug || !sameTree(rec.tree, tree)) continue;
+    const here = hash !== null && rec.tree_hash === hash;
+    if (here) atContent = records.length - 1;
+    // An absent or empty slug never matches: '' === '' would make every unsigned record match every close.
+    if (String(rec.slug) === slug && (here || inThisRound(rec, token, session))) own = records.length - 1;
   }
-  if (atContent >= 0) {
-    const newest = records[atContent];
-    if (countsAsPassing(newest)) return judged(seen, newest, null, 'record');
-    if (String(newest.slug) !== slug) return { cause: 'failing', foreign: String(newest.slug) };
-    return judged(seen, newest, evidenceDenial('failing', { records, index: atContent, tree, root, slug }), 'evidence');
+
+  if (atContent >= 0 && countsAsPassing(records[atContent])) return judged(seen, records[atContent], null, 'record');
+  const ownRecord = own >= 0 ? records[own] : null;
+  if (ownRecord && countsAsPassing(ownRecord)
+    && (hash === null || ownRecord.tree_hash === hash || labelsOnly({ records, index: own, tree }))) {
+    return judged(seen, ownRecord, null, 'record');
   }
-  if (!latest) return { cause: 'missing' };
-  if (!sameTree(latest.tree, tree)) return { cause: 'wrong-tree' };
-  let cause = null;
-  if (hash !== null && latest.tree_hash !== hash && !labelsOnly({ records, index, tree })) cause = 'stale';
-  else if (!countsAsPassing(latest)) cause = 'failing';
-  if (!cause) return judged(seen, latest, null, 'record');
-  return judged(seen, latest, evidenceDenial(cause, { records, index, tree, root, slug }), 'evidence');
+  if (ownRecord && !countsAsPassing(ownRecord)) {
+    const evidence = closeEvidence({ records, index: own, tree, slug });
+    if (!evidence.ok && evidence.cause !== 'uncovered') {
+      const gear = closeGear(slug, { tree, root });
+      const denial = evidence.cause === 'not-completed'
+        ? denialOf({ cause: 'not-completed', gear, complete: true })
+        : denialOf({ cause: 'unrepaired', gear, evidence: true, unrepaired: evidence.files, files: evidence.files });
+      return judged(seen, ownRecord, denial, 'evidence');
+    }
+  }
+
+  if (completeRunKept(tree)) {
+    const kept = ownRecord ? closeEvidence({ records, index: own, tree, slug }) : null;
+    if (kept && kept.ok) return judged(seen, ownRecord, null, 'evidence');
+    const gear = closeGear(slug, { tree, root });
+    const denial = gear && kept && kept.cause === 'uncovered'
+      ? denialOf({ cause: 'uncovered', gear, uncovered: kept.files, files: kept.files })
+      : denialOf({ cause: 'complete-kept', gear, complete: true });
+    return judged(seen, ownRecord, denial, 'evidence');
+  }
+
+  const ev = premergeEvidence({ records, tree, slug, planBase });
+  const by = ownRecord && !countsAsPassing(ownRecord) ? 'evidence' : 'premerge';
+  if (ev.ok) return judged(seen, by === 'evidence' ? ownRecord : null, null, by);
+  const cause = ev.unreadable ? 'unreadable' : ev.whole ? 'whole-unit' : ev.uncovered.length ? 'uncovered'
+    : ev.unrepaired.length ? 'unrepaired' : 'premerge';
+  return judged(seen, null, denialOf({
+    cause, uncovered: ev.uncovered, unrepaired: ev.unrepaired, premerge: ev.premerge, whole: ev.whole,
+    unreadable: ev.unreadable, files: [...ev.uncovered, ...ev.unrepaired],
+  }), 'premerge');
 }
 
-// What decided, for a caller that asks (close-run.js): the record judged, and what discharged it — `record`
-// (it counts as passing) or `evidence` (the close evidence stands for it) — when nothing denies.
+// What decided, for a caller that asks (close-run.js): the record judged, and what discharged it — `record`,
+// `evidence` or `premerge` — when nothing denies.
 function judged(seen, record, denial, by) {
   seen.record = record;
   seen.by = denial ? null : by;
   return denial;
 }
 
-/** A `stale` or `failing` complete record read once more, as close evidence: `null` when it stands. */
-function evidenceDenial(cause, { records, index, tree, root, slug }) {
-  const evidence = closeEvidence({ records, index, tree, slug });
-  if (evidence.ok) return null;
-  const gear = closeGear(slug, { tree, root });
-  if (!gear && evidence.cause === 'not-completed') return { cause };
-  return { cause: evidence.cause, gear, files: evidence.files };
+// The plan's `**Base:**` commit, the base of the change where no default-branch ref resolves.
+function planBaseOf(file) {
+  const m = (readLf(file) || '').match(/^\*\*Base:\*\*\s*`?([0-9a-f]{7,40})\b/m);
+  return m ? m[1] : '';
 }
 
 function writtenContent(tool, ti) {
@@ -1031,4 +1130,4 @@ function deny(check, reason) {
 
 function allow() { process.exit(0); }
 
-module.exports = { fullSuiteDeclared, fullSuiteDenial, denialGloss };
+module.exports = { fullSuiteDeclared, fullSuiteDenial, denialGloss, remedyRuns };

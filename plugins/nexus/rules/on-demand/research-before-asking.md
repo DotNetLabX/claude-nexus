@@ -110,16 +110,16 @@ Off, every change and question goes by the rules below, technical ones included,
   questions; then the critiques that would change the source's fixes; then the asks held for later —
   a note claim, a permission, a decision met along the way. A Decide turn asks its topic's questions
   in one question box, at most three (§ The owner-question contract), the facts and your
-  recommendation in prose above the box. A decision another answer already settles becomes a Read
+  recommendation in short prose above the box. A decision another answer already settles becomes a Read
   topic instead, said in one line. A topic found later joins the table, said in one line, and comes
   in a turn of its own; one left unanswered is asked again before the spec or the plan is written.
 - **The Read turn** comes after the last Decide turn. It runs only when there is a Read topic: a
   conversation with none has no Read turn, and the total does not count one. A Read topic that
   appears later — a decision another answer settled, an idea topic that closed with nothing chosen —
   brings the Read turn in, the total growing by one, said in one line. It shows every Read topic, each with its title
-  line, one line of text and its `Change: none` line, and ends with one question: "Is there anything
-  here you disagree with?" — "Nothing — go on" recommended, or "Yes, some", the owner naming them in
-  the free-text answer. A topic the owner disagrees with becomes the next Decide turn.
+  line, one line of text and its `Change: none` line, and opens no question box: one plain line asks
+  the owner to reply "go on" or to name the points they disagree with. A point the owner names
+  becomes the next Decide turn.
 - **The closing turn** is the last turn of every conversation that ends in a spec or a plan, right
   after the Read turn, or after the last Decide turn where there is none: one question box, at most
   three questions, each with your recommendation and each asked as its catalogue entry — the
@@ -176,7 +176,10 @@ Off, every change and question goes by the rules below, technical ones included,
 - **An answer is prose:** the answer, its confidence, one line of why — no question box; the owner
   overrules by reply, and a low-confidence answer says so plainly. **A Decide topic is prose and a
   question:** the facts and your recommendation in prose, its question in the box under them — the
-  owner rules by reply there.
+  owner rules by reply there. **A reply that opens a question box stays short above it** — about
+  eight lines at most, since an open box pushes longer text out of the owner's view: what the owner
+  needs to answer goes in the box's own text (§ The owner-question contract), anything longer in an
+  earlier reply.
 - **Spawned by the team lead**, there is no owner to reply. A question you resolved — case (a) or
   (c) — is written as a decision, a writer's decision in the spec's or the plan's
   `## Decisions and why` (with its `## Decisions` row where it meets that section's bar), and
@@ -335,8 +338,8 @@ these.
 architect.md / developer.md / team-lead.md). What the contract binds is the part of that report
 where the owner must choose — the "Needs your attention" items and the action options — not the
 metrics above them. A choice asked in prose while shaping — a pick among ideas or a problem statement
-to work from — is a discussion turn, not a decision request, because nothing is built on it before a
-later ruling in the question box, or it is dropped; this contract does not bind it.
+to work from — is a discussion turn, not a decision request, because it only steers what is shown
+next, and a reply can still change it before anything is built on it; this contract does not bind it.
 
 **The same ask on each surface.** The parts above are the ask — its header, its question sentence,
 its paragraph and its options, in that order. The shape binds what reaches the owner's screen; what

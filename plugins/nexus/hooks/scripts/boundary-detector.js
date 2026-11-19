@@ -22,6 +22,7 @@
  *     implementation.md=developer, summary.md=team-lead (lessons.md is shared by design). A Codex
  *     done check's done-check.md block is a main-session write, which this detector skips, so a
  *     spawned coordinator hands that check back and never writes the block itself
+ *     — `artifactOwners` gives a path's owners, exported for a script that checks a write after the fact
  *   - ANY subagent writing a phase token under .claude/pipeline-state/ (the team lead owns it, main-session only)
  *   - ANY subagent spawning a pipeline-role agent via Agent/Task (ADR-21: delegated
  *     self-advancement — the F16 incident vector: a developer commissioned done-checks, a
@@ -67,14 +68,19 @@ const ARTIFACT_OWNERS = [
   [/\/summary\.md$/, new Set(['team-lead'])],
 ];
 
+/** The roles that own an artifact path, or null where the path is no role's artifact. */
+function artifactOwners(fp) {
+  const found = ARTIFACT_OWNERS.find(([re]) => re.test(fp));
+  return found ? [...found[1]] : null;
+}
+
 function violation(role, fp, root) {
   if (/(^|\/)\.claude\/pipeline-state\/./.test(fp)) {
     return 'subagent wrote a phase token under .claude/pipeline-state/ — the team lead (main session) is its sole writer (ADR-18)';
   }
-  for (const [re, owners] of ARTIFACT_OWNERS) {
-    if (re.test(fp) && !owners.has(role)) {
-      return `wrote an artifact whose owner is another role (${fp}) — each artifact has exactly one owner (ADR-18)`;
-    }
+  const owners = artifactOwners(fp);
+  if (owners && !owners.includes(role)) {
+    return `wrote an artifact whose owner is another role (${fp}) — each artifact has exactly one owner (ADR-18)`;
   }
   if (NONCODE_ROLES.has(role) && isCodeFile(fp, root)) {
     return `non-code role edited application source (${fp}) — route code changes to the developer`;
@@ -461,7 +467,7 @@ function closeRunPush(command, tool) {
   return writes(String(command || '').toLowerCase(), 0, tool === 'PowerShell', pushJudge);
 }
 
-module.exports = { gitWrite, closeRun, closeRunPush };
+module.exports = { gitWrite, closeRun, closeRunPush, artifactOwners };
 
 if (require.main === module) {
   let input = '';

@@ -22,7 +22,9 @@
  * table's families is its own family — kept, compared and suggested like any other. The job checks
  * below use the same list, since a job value must be one of the families — save `codex`:
  * usable at `doneCheck`, where a repo may name Codex as its done check, and at the helper jobs
- * (`discovery`, `audit`, `general`), where it may also be `{ "model": "codex", "effort": "{level}" }`;
+ * (`discovery`, `audit`, `general`), where it may also be `{ "model": "codex", "effort": "{level}" }`
+ * with an optional `"codexModel": "{name}"`, whose value is the Codex job helper's to check at start (the
+ * entry's keys and the Codex levels are lib/codex-entry.js's, the one reader of a Codex entry);
  * at a miner key `codex` draws a line naming nexus-miner's mining job table, where Codex already leads
  * the jobs that only read; at every other job `codex` draws the same outside-the-families line, and it
  * is never listed as a family.
@@ -41,6 +43,12 @@
  * reads to pick a plan's check level: a value that is not a list of non-blank strings draws one line.
  * A per-agent `effort` key draws one line too, saying what it does, never that it is wrong.
  *
+ * A ROLE'S CODEX ENTRY (`"developer": { "model": "codex", … }`) is a seat setting, never the seat's Claude
+ * model: a seat resolves as if it were unset, and its `effort` draws no per-agent effort line, since a seat's
+ * effort is sent to Codex. Where the model preset library reads the entry as unset — the role's row allows no
+ * Codex seat, or the entry carries a key outside `model`, `effort` and `codexModel` — one line names it with
+ * that reason; a well-shaped entry at a seat that allows one draws nothing, whatever model it names.
+ *
  * `modelRanking` default is the table's ranking, best first. It feeds this advisory only — no checker is
  * picked from it — and it is an ORDERING default, never a list of permitted models.
  *
@@ -56,6 +64,8 @@ const PLUGIN_ROOT = path.resolve(__dirname, '..', '..');
 
 let presets = null;
 try { presets = require('./lib/model-presets'); } catch { presets = null; }
+let ce = null;
+try { ce = require('./lib/codex-entry'); } catch { ce = null; }
 const DEFAULT_RANKING = presets ? [...presets.table().ranking] : [];
 // Never a checker, so never a suggested checker model.
 const NOT_A_CHECKER = presets ? presets.families().filter((f) => !f.checker).map((f) => f.name) : [];
@@ -83,12 +93,9 @@ const JOBS = [
 // reads stays recognised above and is never listed to a user who did not ask for it.
 const OWN_JOBS = ['discovery', 'audit', 'general', 'secondReader', 'doneCheck'];
 const HELPER_JOBS = ['discovery', 'audit', 'general'];
-const CODEX_JOB_KEYS = ['model', 'effort'];
 const RESEARCH_TIERS = ['routine', 'highStakes'];
 const CHECKER_JOBS = ['secondReader', 'doneCheck'];
 const MINER_JOBS = ['minerGenerator', 'minerJudge', 'minerMechanical'];
-const CODEX = 'codex';
-const CODEX_EFFORTS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 
 // The family a model value reads as: a family named as a whole word (a full model id, an alias with a
 // suffix), else the value itself, so an unknown name stays its own family.
@@ -105,7 +112,7 @@ function family(value) {
  */
 function resolveSeat(agent, cfg, preset) {
   const entry = cfg && cfg[agent];
-  if (entry && typeof entry.model === 'string' && entry.model.trim()) {
+  if (entry && typeof entry.model === 'string' && entry.model.trim() && !ce.readsCodex(entry.model)) {
     return { model: entry.model.trim().toLowerCase(), from: 'repo' };
   }
   const seat = presets.seatFor(preset.name, { role: agent });
@@ -138,15 +145,17 @@ function exactFamily(v) {
   return FAMILIES.includes(s) ? s : '';
 }
 
-const isCodex = (v) => typeof v === 'string' && v.trim().toLowerCase() === CODEX;
+const isCodex = (v) => ce.isCodexValue(v);
+const levelsText = () => ce.LEVELS.join(', ');
 
 // The effort is matched exactly, as codex-job.js matches it before sending it.
 function checkCodexJob(key, v) {
-  if (!isCodex(v.model) || Object.keys(v).some((k) => !CODEX_JOB_KEYS.includes(k))) {
-    return [`${PREFIX} jobs.${key} takes a family name, codex, or {"model": "codex", "effort": "{level}"} — the spawn reads it as unset.`];
+  const entry = ce.codexEntry(v);
+  if (!entry || !entry.textModel) {
+    return [`${PREFIX} jobs.${key} takes a family name, codex, or {"model": "codex", "effort": "{level}", "codexModel": "{name}"} — the spawn reads it as unset.`];
   }
-  if ('effort' in v && !CODEX_EFFORTS.includes(v.effort)) {
-    return [`${PREFIX} jobs.${key}.effort is ${show(v.effort)}, outside the Codex levels (${CODEX_EFFORTS.join(', ')}) — the entry's effort is not sent.`];
+  if ('effort' in v && !entry.effort) {
+    return [`${PREFIX} jobs.${key}.effort is ${show(v.effort)}, outside the Codex levels (${levelsText()}) — the entry's effort is not sent.`];
   }
   return [];
 }
@@ -208,8 +217,8 @@ function checkCodex(codex) {
       out.push(`${PREFIX} codex.timeLimitMinutes is ${show(v)}, not a positive number of minutes.`);
     }
   }
-  if ('effort' in codex && !CODEX_EFFORTS.includes(codex.effort)) {
-    out.push(`${PREFIX} codex.effort is ${show(codex.effort)}, outside the Codex levels (${CODEX_EFFORTS.join(', ')}).`);
+  if ('effort' in codex && !ce.effortLevel(codex.effort)) {
+    out.push(`${PREFIX} codex.effort is ${show(codex.effort)}, outside the Codex levels (${levelsText()}).`);
   }
   return out;
 }
@@ -222,7 +231,7 @@ process.stdin.setEncoding('utf8');
 process.stdin.on('data', (d) => (input += d));
 process.stdin.on('end', () => {
   try {
-    if (!presets) return process.exit(0);
+    if (!presets || !ce) return process.exit(0);
     const data = JSON.parse(input || '{}');
     if (!/^(Write|Edit)$/.test(data.tool_name || '')) return process.exit(0);
 
@@ -233,7 +242,8 @@ process.stdin.on('end', () => {
     const root = process.env.CLAUDE_PROJECT_DIR || data.cwd || process.cwd();
     const abs = path.isAbsolute(fp) ? fp : path.join(root, fp);
     const cfg = JSON.parse(fs.readFileSync(abs, 'utf8'));
-    const preset = { name: presets.resolvePreset({ config: cfg, env: process.env }).preset };
+    const resolved = presets.resolvePreset({ config: cfg, env: process.env });
+    const preset = { name: resolved.preset };
     const NEVER_SUGGESTED = presets.neverSuggested(preset.name);
     const neverText = NEVER_SUGGESTED.join(', ');
     const notCheckerText = NOT_A_CHECKER.join(', ');
@@ -273,6 +283,9 @@ process.stdin.on('end', () => {
           `add another family to modelRanking.`
       );
     }
+    for (const i of resolved.ignored) {
+      if (i.why) out.push(`${PREFIX} ${i.key} is a Codex entry, but ${i.why} — the ${i.key} runs on the model it has without it.`);
+    }
     if (isObject(cfg.jobs)) out.push(...checkJobs(cfg.jobs, cfg, preset));
     if (isObject(cfg.codex)) out.push(...checkCodex(cfg.codex));
     // `in` throws on a scalar config, which would silence the collision lines already gathered.
@@ -280,7 +293,7 @@ process.stdin.on('end', () => {
       out.push(`${PREFIX} fullChecks is ${show(cfg.fullChecks)}, not a list of path patterns — the architect reads it as unset.`);
     }
     const perAgentEffort = Object.entries(cfg)
-      .some(([key, v]) => !['jobs', 'codex', 'fullChecks'].includes(key) && isObject(v) && 'effort' in v);
+      .some(([key, v]) => !['jobs', 'codex', 'fullChecks'].includes(key) && isObject(v) && 'effort' in v && !ce.readsCodex(v.model));
     if (perAgentEffort) {
       out.push(`${PREFIX} a per-agent effort value is a line in the dispatch prompt only — it is never ` +
         `passed as the Agent tool's per-spawn effort; an agent's baseline effort is its agent file's ` +

@@ -1,0 +1,104 @@
+{
+  "seats": [
+    {
+      "role": "developer",
+      "codexSeat": "not yet",
+      "notYetReason": "a seat job's end cannot yet be confirmed on a real Codex server",
+      "unit": "a build slice — the whole plan where the plan cuts none — a fix round's list, or a hand-up round",
+      "questionPhase": "yes, where the lane has a Phase 1 today",
+      "handbackPhrases": {
+        "unit": ["ready for Step 1", "range complete", "Fixes applied for"],
+        "blocker": ["Blocked on step", "Bug found in"],
+        "fix": ["Fixes applied for"],
+        "questions": ["Questions before implementing", "All clear"]
+      },
+      "checksAfterJob": {
+        "checks": ["skill-lines", "handback-rows", "step-run-carry", "test-commands", "runs-per-step", "approved-set", "class-check", "safety-copy"],
+        "coordinatorRuns": [],
+        "note": "all of the after-job checks"
+      },
+      "claudeFallback": "developer"
+    },
+    {
+      "role": "solo",
+      "codexSeat": "not yet",
+      "notYetReason": "a seat job's end cannot yet be confirmed on a real Codex server",
+      "unit": "one fix",
+      "questionPhase": "no",
+      "handbackPhrases": {
+        "unit": ["Solo fix"],
+        "blocker": ["too big", "not caused here"],
+        "fix": ["fixed"]
+      },
+      "checksAfterJob": {
+        "checks": ["skill-lines", "handback-rows", "step-run-carry", "test-commands", "runs-per-step", "class-check", "safety-copy"],
+        "coordinatorRuns": ["the project's verify commands"],
+        "note": "all but the approved-set compare; the project's verify commands"
+      },
+      "claudeFallback": "solo"
+    },
+    {
+      "role": "reviewer",
+      "codexSeat": "not a seat",
+      "unit": null,
+      "questionPhase": null,
+      "handbackPhrases": null,
+      "checksAfterJob": { "checks": [], "coordinatorRuns": [], "note": "it already runs on Codex as a read-only job" },
+      "claudeFallback": null
+    },
+    {
+      "role": "critic",
+      "codexSeat": "not a seat",
+      "unit": null,
+      "questionPhase": null,
+      "handbackPhrases": null,
+      "checksAfterJob": { "checks": [], "coordinatorRuns": [], "note": "it already runs on Codex as a read-only job" },
+      "claudeFallback": null
+    },
+    {
+      "role": "done-check",
+      "codexSeat": "not a seat",
+      "unit": null,
+      "questionPhase": null,
+      "handbackPhrases": null,
+      "checksAfterJob": { "checks": [], "coordinatorRuns": [], "note": "it already runs on Codex as a read-only job" },
+      "claudeFallback": null
+    },
+    {
+      "role": "architect",
+      "codexSeat": "not yet",
+      "unit": null,
+      "questionPhase": null,
+      "handbackPhrases": null,
+      "checksAfterJob": { "checks": [], "coordinatorRuns": [], "note": "it interviews the owner or starts other agents, which a Codex job cannot do today" },
+      "claudeFallback": null
+    },
+    {
+      "role": "po",
+      "codexSeat": "not yet",
+      "unit": null,
+      "questionPhase": null,
+      "handbackPhrases": null,
+      "checksAfterJob": { "checks": [], "coordinatorRuns": [], "note": "it interviews the owner or starts other agents, which a Codex job cannot do today" },
+      "claudeFallback": null
+    },
+    {
+      "role": "learner",
+      "codexSeat": "not yet",
+      "unit": null,
+      "questionPhase": null,
+      "handbackPhrases": null,
+      "checksAfterJob": { "checks": [], "coordinatorRuns": [], "note": "it interviews the owner or starts other agents, which a Codex job cannot do today" },
+      "claudeFallback": null
+    },
+    {
+      "role": "team-lead",
+      "codexSeat": "not a seat",
+      "unit": null,
+      "questionPhase": null,
+      "handbackPhrases": null,
+      "checksAfterJob": { "checks": [], "coordinatorRuns": [], "note": "the coordinator is the host that starts the jobs; no main-session persona has a seat" },
+      "claudeFallback": null
+    }
+  ]
+}

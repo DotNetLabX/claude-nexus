@@ -13,30 +13,20 @@ Written after approval: `docs/specs/{slug}/delivery/summary.md`. Its existence m
 declares no suite, where it reads `undeclared`. An absent line and a disclosed absence are different
 claims, and only the second is evidence that anyone checked.
 
-Its verdict, duration and timestamp are transcribed from the close gate's full-suite record — the one
-`verify-run.js --profile complete` appends, which is the close's complete run, after the default
-branch was merged in — never from recollection. Where the record that discharged the close is another
-feature's run at the same content (the newest complete record at this tree's content governs, whatever
-its slug), the line names that slug; where a catch-up ran the complete suite again because the repo
-declares no `fullChecks` list, the line says so, naming the list as the way to save that run. The record carries no test **count**,
-so read `N tests` off the suite's own output, or drop that clause when the runner reports none. The
-three values are the record's verdict: `pass`, `fail`, or `undeclared` when the repo declared no
-`roles.full`. A record whose only failures are timeouts in tests the change did not touch counts as
-passing at the close yet still reads `fail` here; the Notes' `Timed out, sent to solo:` line says why
-it closed. A red whose every failure passed when re-run alone also closes yet reads `fail` here; the
-Notes' flaky line says why. Carry the timestamp so a reader can tell a fresh run from a stale one. The gate that
-produces the record, and the fork a `fail` takes, are `team-lead.md` § Close Gate item 5 — cited, not
-restated.
-
-The line's two measurement fields come from the same record. `filtered` is transcribed from the
-record's `filtered` field. **Complete red on a fast-green tree** is derived from two fields: `yes` when
-the record's `verdict` is `fail` **and** its `fast_green` is `pass`; `not measured` when `fast_green` is `none`;
-`no` otherwise — a passing complete run on a fast-green tree reads `no`, never `yes`, and so does a `fail`
-whose only failures are timeouts in tests the change did not touch (`reason: "tests-timed-out"`, every
-`timed_out` entry `touched: false`): it counts as passing, so it is no red. Worked:
-`verdict: pass, fast_green: pass` → `no`; `verdict: fail, fast_green: pass` → `yes`;
-`verdict: fail, reason: tests-timed-out, all untouched, fast_green: pass` → `no`;
-`verdict: fail, fast_green: none` → `not measured`.
+`summary.md` is written before the full suite runs: the suite runs once on the default branch after
+the merge, and its result goes to the communication log and the closing report, never back into this
+file. So the line says the full suite follows and states what ran before the merge, each value
+transcribed from the newest record of that run at this tree's content, never from recollection:
+`tied` from the tied runs that cover the change, `premerge` from the `premerge` role's record, or
+`undeclared` where the repo names no `premerge` role. Where a passing complete record at this content
+discharged the close in their place (a gear's handover run, or another feature's run), the line names
+it and its slug instead. Where the repo declares no `roles.full` the line reads `undeclared`, and where
+no full run follows — a close that merges nothing — it reads `not run — {why}` in place of
+`after the merge`. **A summary never states that a complete run passed when none ran before it was
+written.** A red whose every failure passed when re-run alone, or whose only failures are timeouts in
+tests the change did not touch, still closes; the Notes' flaky line or its `Timed out, sent to solo:`
+line says why. The gate that produces the records, and the fork a red takes, are
+`team-lead.md` § Close Gate item 5 — cited, not restated.
 
 **The `**Tests and builds:**` line sits under the full-suite line in every summary.md** — what the feature
 spent on test runs and builds, summed from the run records. The summary's writer runs
@@ -81,7 +71,7 @@ Gear: {gear} — {campaign | switch | repo | profile} | none — at the spec rev
 ## Key Outcomes
 - [Files created/modified count]
 - [Build status]
-- **Full suite:** pass | fail | undeclared — {duration} (recorded {ts}; complete red on a fast-green tree: yes | no | not measured; filtered: yes | no{; record of {slug} | ; re-run at a catch-up — no fullChecks list declared})
+- **Full suite:** after the merge | not run — {why} | undeclared — before it: tied {pass} · premerge {pass | undeclared}{ | complete {pass} ({slug})}
 - **Tests and builds:** {test-time.js's line after its label, verbatim} | not measured — {why}
 - **Map delta:** {the meter's headline line verbatim} | none | unavailable
 - **Rules:** {n} listed behaviour rules without a disposition · {n} `tested` rules whose named test does not exist (the done-check's report-only count, from the newest footed check in `done-check.md` — any completion footer counts, a Codex check's `*Status: COMPLETE — Codex, persisted by {session}, {date}*` included; omit the line when the plan listed no rules). In an architect-led fast lane, also the close's rulings, one per row: `{unit} {row id}: {ruling}`
@@ -98,6 +88,7 @@ Gear: {gear} — {campaign | switch | repo | profile} | none — at the spec rev
 - **Slow tests kept:** {`{test} — {reason}`, one per line} | none
 - **Timed out, sent to solo:** {`{file}:{line} {test} — {the solo's commit | pending}`, one per line} | none — the solo runs after the closing commit (`team-lead.md` § After the Close), so its commit is usually `pending` here; a test it does not clear goes to a backlog row
 - **Flaky — passed when re-run alone:** {`{file} — {its failing test}`, one per line} — **Backlog row:** {row id} | no backlog (this line is the record) | none
+- **Rules not checked — time limit:** {`{rule} — {verifier: fails | verifier: unclear | no verdict}`, one per line, those a verifier saw fail first} — **Backlog row:** {row id} | no backlog (this line is the record) | none
 - **Blocking, open:** {the backlog rows an owner-away close left at the fix-round limit, one per line, `{row id | no backlog} — [LEVEL] title`, a CRITICAL first} | none
 - **Decision review:** {file} — {cards} cards, {shortList} in the short list | not written — {why} — owner-away runs only
 ```
@@ -110,6 +101,8 @@ Gear: {gear} — {campaign | switch | repo | profile} | none — at the spec rev
 
 **The `**Left out:**` line** sits beside it and gathers every `**Left out:**` line of `implementation.md`'s fix-round blocks — the findings a developer weighed between the round's bar and its always-fix line and left out (→ agents-workflow.md § Fix rounds) — each with its reason, keeping only a finding's newest line and dropping a finding a later round fixed, deduped by file:line and title, as the under-bar union is. Those left out `later` are also listed on the carry-over row, which they alone are reason to write; those left out `drop` get no row. `none` when no developer left one out.
 
-**The three test lines name tests, not a run.** They are apart from the `slow` a complete record may carry, which says a crowded machine slowed the whole run. `Slow tests kept:` gathers every `Slow kept:` line of `implementation.md`, which only a solo block carries (`implementation-format`): a test still over the speed-up line after its one try, kept with its reason. `Timed out, sent to solo:` lists every timeout in a test the change did not touch that a record of the round let through the close (`team-lead.md` § Close Gate, the full-suite item). The solo runs after the closing commit, so the line reads `pending` when it is written; in a campaign unit no solo runs, and the line names the backlog row instead. `Flaky — passed when re-run alone:` lists each failed test file of a red complete run that passed when re-run once by name from the coordinating session, or that passed on the once-unchanged complete re-run where `--files` cannot take its target — flaky, never fixed in the run (`team-lead.md` § Close Gate, the full-suite item); its **Backlog row** field names the one row the close wrote listing them, or reads `no backlog (this line is the record)` in a repo with no backlog file. Each line reads `none` when there is nothing to list.
+**The three test lines name tests, not a run.** They are apart from the `slow` a complete record may carry, which says a crowded machine slowed the whole run. `Slow tests kept:` gathers every `Slow kept:` line of `implementation.md`, which only a solo block carries (`implementation-format`): a test still over the speed-up line after its one try, kept with its reason. `Timed out, sent to solo:` lists every timeout in a test the change did not touch that a record of the round let through the close (`team-lead.md` § Close Gate, the tests item), or the full run after the merge lists. The solo runs after the closing commit, so the line reads `pending` when it is written; in a campaign unit no solo runs, and the line names the backlog row instead. `Flaky — passed when re-run alone:` lists each failed test file of a red run of the round that passed when re-run once by name from the coordinating session, or that passed on the once-unchanged re-run where `--files` cannot take its target — flaky, never fixed in the run (`team-lead.md` § Close Gate, the tests item); its **Backlog row** field names the one row the close wrote listing them, or reads `no backlog (this line is the record)` in a repo with no backlog file. Each line reads `none` when there is nothing to list.
+
+**The `**Rules not checked — time limit:**` line** lists the rows a rule check cut at its time limit, as the pass's `close` printed them — a row a verifier saw fail first — and names the one backlog row the close wrote for them, or reads `no backlog (this line is the record)` in a repo with no backlog file (→ rules/on-demand/rule-check.md § What a result owes). `none` when every pass finished.
 
 **The `**Risky steps:**` line** appears on a light-lane run only (mode line level `light`), or a team pipeline run on the light path under a gear: it transcribes the one line of `review.md`'s `## Step 2 — Risky steps` section verbatim, the failed-recheck form included, so the close record says which steps had the second reader's full read (`review-format`); on a light-lane run whose plan carries `**Skills per step:** on`, that reader also ran the skills check over every other step (→ architect.md § Light Lane (standalone only)). Every other summary omits it.

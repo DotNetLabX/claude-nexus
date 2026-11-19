@@ -2,7 +2,8 @@
 /**
  * Nexus model preset: the command line over lib/model-presets.js, behind /nexus:model-preset.
  *
- *   node model-preset.js [show]                  the preset in force, its source, and what each preset runs
+ *   node model-preset.js [show]                  the preset in force, its source, the repo values it ignores, the
+ *                                                roles' Codex seat settings, and what each preset runs
  *   node model-preset.js set <preset> [--repo]   the profile's preset; --repo writes this repo's instead
  *   node model-preset.js <preset> [--repo]       the same as set
  *
@@ -38,8 +39,12 @@ function inForce(root, env) {
 }
 
 function show(root, env) {
+  const r = mp.resolvePreset({ root, env });
   return {
-    ...inForce(root, env),
+    preset: r.preset,
+    source: r.source,
+    ignored: r.ignored,
+    seats: r.seats,
     profilePath: mp.profileFile(env),
     repoPath: path.join(root, '.claude', 'nexus-agents.json'),
     presets: mp.presetNames().map((name) => ({ name, runs: mp.describeRows(name) })),

@@ -37,6 +37,7 @@ const path = require('path');
 const { isSafeId } = require('./safe-id');
 const { specFolder } = require('./parts');
 const presets = require('./model-presets');
+const codexEntry = require('./codex-entry');
 const { updateRepoConfig } = presets;
 
 const SHIPPED = JSON.parse(fs.readFileSync(path.join(__dirname, 'gears-shipped.json'), 'utf8'));
@@ -61,6 +62,9 @@ function readConfig(root) {
   try { return JSON.parse(fs.readFileSync(path.join(root, CONFIG_REL), 'utf8')); } catch { return null; }
 }
 const objectOr = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+// A role's entry as the raw config holds it, where the preset could not be resolved: a Codex entry is a seat
+// setting, never an author model or effort, as `resolvePreset` reads it.
+const authorEntry = (v) => (codexEntry.readsCodex(objectOr(v).model) ? {} : objectOr(v));
 
 // ── custom gears: the installed extension ────────────────────────────────────
 function versionKey(v) { return String(v || '0').split('.').map((p) => parseInt(p, 10) || 0); }
@@ -319,7 +323,7 @@ function repoSetting(row, cell, o, config) {
     return typeof effort === 'string' && effort ? effort : null;
   }
   if (row === 8 || row === 9) {
-    const v = objectOr(ctx ? ctx.agents[o.role] : config[o.role])[row === 8 ? 'model' : 'effort'];
+    const v = (ctx ? objectOr(ctx.agents[o.role]) : authorEntry(config[o.role]))[row === 8 ? 'model' : 'effort'];
     return typeof v === 'string' && v ? v : null;
   }
   return null;
@@ -465,7 +469,7 @@ function show(o) {
   const profileState = !profile ? 'unset' : !resolveGear(profile, o).gear ? 'not defined here' : repoState === 'set' ? 'under the repo gear' : 'set';
   const ctx0 = presetContext(o);
   const jobs = objectOr(ctx0 ? ctx0.jobs : config.jobs);
-  const roles = AUTHOR_ROLES.map((role) => ({ role, ...objectOr(ctx0 ? ctx0.agents[role] : config[role]) }))
+  const roles = AUTHOR_ROLES.map((role) => ({ role, ...(ctx0 ? objectOr(ctx0.agents[role]) : authorEntry(config[role])) }))
     .filter((r) => typeof r.model === 'string' || typeof r.effort === 'string')
     .map(({ role, model, effort }) => ({ role, ...(typeof model === 'string' ? { model } : {}), ...(typeof effort === 'string' ? { effort } : {}) }));
   const rows = ROWS.map((r) => {

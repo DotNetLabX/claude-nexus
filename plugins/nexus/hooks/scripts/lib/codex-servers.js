@@ -12,10 +12,15 @@
  * closed, nor one whose pid file path or record cannot be read.
  *
  * A workspace's forgotten servers are ended only while no live `codex-companion.mjs` process belongs
- * to it, whatever its subcommand or age: the companion is every Codex job's process, whichever session
- * or profile started it. Command lines are read by the Codex plugin's own option rules (the last value
- * wins, `--` ends the options). A companion with no `--cwd`, whose folder cannot be read, or — off
- * Windows — whose `--cwd` cannot be told apart from prompt text, belongs to every workspace. Every
+ * to it, whatever its age: the companion is every Codex job's process, whichever session or profile
+ * started it. A companion running `status`, `result` or `task-resume-candidate` is no Codex job and
+ * belongs to no workspace, with or without `--cwd`: those subcommands only read the plugin's job and
+ * state files and never connect to a server, so ending one cannot touch them, and the job a status wait
+ * waits on keeps its own folder busy through its worker. Command lines are read by the Codex plugin's
+ * own option rules (the last value wins, `--` ends the options). Any other companion with no `--cwd`
+ * (a foreground `task` may have inherited a server's endpoint), whose folder cannot be read, whose
+ * subcommand the plugin does not know, or — off Windows — whose `--cwd` cannot be told apart from
+ * prompt text, belongs to every workspace. Every
  * companion's folder is looked up before the listing taken right before each server's tree is ended;
  * in that listing a companion that appeared, one whose folder was not looked up yet, a server whose pid
  * or command line changed, a pid file back or a record that now names it or cannot be read stops that
@@ -29,6 +34,11 @@
  * NEXUS_CODEX_LIST and NEXUS_CODEX_KILL replace the list and kill commands (a JSON array, the kill
  * receiving the platform's arguments after it). Off Windows a server, started detached, is ended by
  * its process group.
+ *
+ * WITH `all`, a workspace's every server is ended, the recorded one included, under the same rule that no
+ * Codex job runs there: a seat job's tree must lose its servers before the tree can be removed, since
+ * Windows refuses to remove a folder a server still runs in. The Codex plugin starts a new server at its
+ * next job there.
  *
  * closeForgotten returns { closed: [{ pid, workspace, ageMinutes }], workspaces: [{ workspace, closed,
  * kept, why }], reason? } and never throws for a process it could not read.
@@ -47,6 +57,7 @@ const RECHECK_STEP_MS = 250;
 const SERVER_SCRIPT = 'app-server-broker.mjs';
 const COMPANION_SCRIPT = 'codex-companion.mjs';
 const PIPE_SUFFIX = '-codex-app-server';
+const FILE_READERS = new Set(['status', 'result', 'task-resume-candidate']);
 const EVERY = Symbol('every workspace');
 const UNREAD = Symbol('a folder not looked up');
 
@@ -349,7 +360,7 @@ function keptBecause(stateRoots, f, stat) {
   return null;
 }
 
-function closeForgotten({ workspace = null, excludeJob = null, stateRoots = [], platform, env = process.env, deps = {} } = {}) {
+function closeForgotten({ workspace = null, excludeJob = null, stateRoots = [], all = false, platform, env = process.env, deps = {} } = {}) {
   const plat = platform || env.NEXUS_CODEX_PLATFORM || process.platform;
   const now = deps.now || Date.now;
   const list = deps.list || (() => defaultList(plat, env));
@@ -377,7 +388,7 @@ function closeForgotten({ workspace = null, excludeJob = null, stateRoots = [], 
     const keys = new Set();
     for (const p of procs) {
       const c = companionOptions(p, plat);
-      if (!c) continue;
+      if (!c || FILE_READERS.has(c.sub)) continue;
       if (excludeJob && c.sure && c.sub === 'task-worker' && c.jobId === excludeJob) continue;
       if (!c.sure || !c.cwd) { keys.add(EVERY); continue; }
       if (!resolve && !tops.has(c.cwd)) { keys.add(UNREAD); continue; }
@@ -411,8 +422,9 @@ function closeForgotten({ workspace = null, excludeJob = null, stateRoots = [], 
     const row = rowFor(key === null ? EVERY : key, top || opts.cwd || '(unknown folder)');
     if (top === null) { keep(row, 'its folder cannot be read'); continue; }
     const { endpoint, pidFile } = pidFileFor(opts);
-    if (!pidFile) { keep(row, 'its pid file path cannot be read'); continue; }
     const f = { proc: p, top, endpoint, pidFile };
+    if (all) { row.forgotten.push(f); continue; }
+    if (!pidFile) { keep(row, 'its pid file path cannot be read'); continue; }
     const why = keptBecause(stateRoots, f, deps.stat);
     if (why) { keep(row, why); continue; }
     row.forgotten.push(f);
@@ -450,7 +462,7 @@ function closeForgotten({ workspace = null, excludeJob = null, stateRoots = [], 
         stop('a server changed before the close');
         break;
       }
-      const why = keptBecause(stateRoots, f, deps.stat);
+      const why = all ? null : keptBecause(stateRoots, f, deps.stat);
       if (why) {
         stop(why);
         break;
@@ -489,4 +501,7 @@ function defaultStateRoots(dataDir, env = process.env) {
   return roots;
 }
 
-module.exports = { closeForgotten, parseListing, splitWindows, recordFile, gitTopLevel, workspaceKey, commandOverride, defaultStateRoots };
+module.exports = {
+  closeForgotten, parseListing, splitWindows, recordFile, gitTopLevel, workspaceKey, commandOverride, defaultStateRoots,
+  serverOptions, companionOptions, isServer, defaultKill,
+};

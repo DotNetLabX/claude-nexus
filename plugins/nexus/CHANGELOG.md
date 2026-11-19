@@ -1,5 +1,112 @@
 # nexus — Changelog
 
+## [2.4.135] — 2026-11-17
+- PATCH bump.
+  - F440-RuleWorkCapped: the close's rule check has one home (`rules/on-demand/rule-check.md`), a tool writes its record, and every pass ends at its time limit — 10 minutes to check and up to 5 for a ruling, and after the merge no register or summary write starts past 10 minutes. What a limit cuts stays in the feature's record and on one backlog row for a finishing run, and never blocks the close or asks the owner. The agent files point at the home instead of repeating it, `close-run.js` names the next call after `--until merge-in`, and the summary gate lets through a row a cut explains (ADR-189). It needs `nexus-miner` 0.1.17, of this release, for the tools.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - skill change (summary-format)
+  - estate raise: plugins/nexus/agents/architect.md 264354→264754 B — F440-RuleWorkCapped: the rule check's copies become pointers to its one home; a ruling is written in two halves, the record's through the tool, and carries the pass token; the close is reported before the after-close work
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 133977→134046 B — F440-RuleWorkCapped: the rule check's procedure moves to one on-demand home, rules/on-demand/rule-check.md, written for the tool that runs each pass; team-lead.md keeps pointers and shrinks
+  - estate raise: plugins/nexus/rules/on-demand/rule-check.md 0→12086 B — F440-RuleWorkCapped: the close's rule check gets one on-demand home, written for the tool that runs each pass: its rows, its record, its time limits, the pass token and the unlock rule
+  - estate raise: plugins/nexus/skills/summary-format/SKILL.md 12821→13457 B — F440-RuleWorkCapped: the architect's lanes point at the rule check's home and report the close before the after-close work; summary-format gains the line for rules a time limit cut
+
+## [2.4.134] — 2026-11-17
+- PATCH bump.
+  - F438-CodexAgentSeats: a pipeline seat can be set to Codex as a write-enabled job checked from outside — built, and shipped shut: the developer's and the solo's rows of the seat table read `not yet`, so no seat job starts until a seat job's end can be confirmed on a real Codex server. One shared reader now reads every Codex entry; a Codex call that only reads job files no longer keeps leftover servers alive.
+  - A log `nexus-pro` reads gained information and lost no reader (ADR-136): the hand-back log may carry rows marked `engine: "codex"` and the skill log lines marked `via: "brief"`; `nexus-pro` 0.1.69, of this release, reads both forms.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - skill change (implementation-format)
+  - estate raise: plugins/nexus/agents/architect.md 261947→264354 B — F438-CodexAgentSeats: pointers to the seat job, Codex as an author family, the done check of a Codex-built round
+  - estate raise: plugins/nexus/agents/learner.md 68994→69552 B — F438-CodexAgentSeats: pointers to the seat job, Codex as an author family, the done check of a Codex-built round
+  - estate raise: plugins/nexus/agents/po.md 88436→88994 B — F438-CodexAgentSeats: pointers to the seat job, Codex as an author family, the done check of a Codex-built round
+  - estate raise: plugins/nexus/agents/team-lead.md 288817→291035 B — F438-CodexAgentSeats: pointers to the seat job, Codex as an author family, the done check of a Codex-built round
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 133129→133977 B — F438-CodexAgentSeats: pointers to the seat job, Codex as an author family, the done check of a Codex-built round
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 36262→47617 B — F438-CodexAgentSeats: pointers to the seat job, Codex as an author family, the done check of a Codex-built round; fix round 1: a held end's checks wait for its confirmed end, and seat-release drops the safety copies only with --close; fix round 2: a tree git cannot list is a disclosed miss, and the confirming call carries late step-run records; fix round 4: a held tree is released once every process of the job is gone; step 21: the seat job section opens saying no role is a seat today
+  - estate raise: plugins/nexus/rules/on-demand/pipeline-guardrails.md 27600→33126 B — F438-CodexAgentSeats: the seat table, the seat job's rules and the write posture's seat exception; step 21: the developer and solo rows read not yet, with the reason
+  - estate raise: plugins/nexus/skills/implementation-format/SKILL.md 19720→19886 B — F438-CodexAgentSeats: the seat table, the seat job's rules and the write posture's seat exception
+
+## [2.4.133] — 2026-11-16
+- PATCH bump.
+  - agent instruction/behavior change
+  - rule (on-demand tier — read on trigger)
+  - shipped command changed
+  - estate raise: plugins/nexus/agents/architect.md 261843→261947 B — F441-ConfirmOnlyOnChange: the brainstorm skill states when the confirm question is asked, what it recommends and that its own text says why; the architect, PO and core-rule sentences are reworded to match
+  - estate raise: plugins/nexus/agents/po.md 88332→88436 B — F441-ConfirmOnlyOnChange: the brainstorm skill states when the confirm question is asked, what it recommends and that its own text says why; the architect, PO and core-rule sentences are reworded to match
+  - estate raise: plugins/nexus/rules/on-demand/research-before-asking.md 42077→42092 B — F441-ConfirmOnlyOnChange: the brainstorm skill states when the confirm question is asked, what it recommends and that its own text says why; the architect, PO and core-rule sentences are reworded to match
+
+## [2.4.132] — 2026-11-15
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - estate raise: plugins/nexus/agents/architect.md 261836→261843 B — F436-OneTestRunAtATime: the handover's tied-run call carries --wait, so it waits its turn on the machine
+  - estate raise: plugins/nexus/agents/team-lead.md 288810→288817 B — F436-OneTestRunAtATime: the handover's tied-run call carries --wait, so it waits its turn on the machine
+
+## [2.4.131] — 2026-11-15
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 261380→261836 B — F437-CodexModelPerJob: a helper job's Codex entry may name the Codex model its runs are sent
+  - estate raise: plugins/nexus/agents/learner.md 68538→68994 B — F437-CodexModelPerJob: a helper job's Codex entry may name the Codex model its runs are sent
+  - estate raise: plugins/nexus/agents/po.md 87876→88332 B — F437-CodexModelPerJob: a helper job's Codex entry may name the Codex model its runs are sent
+  - estate raise: plugins/nexus/agents/team-lead.md 288354→288810 B — F437-CodexModelPerJob: a helper job's Codex entry may name the Codex model its runs are sent
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 35645→36262 B — F437-CodexModelPerJob: a helper job's Codex entry may name the Codex model its runs are sent
+  - estate raise: plugins/nexus/rules/on-demand/pipeline-guardrails.md 27112→27600 B — F437-CodexModelPerJob: a helper job's Codex entry may name the Codex model its runs are sent
+
+## [2.4.130] — 2026-11-15
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - estate raise: plugins/nexus/agents/solo.md 36576→37169 B — F429-TiedRunAndSoloFence: a solo's do-not-touch list never stops its lessons or its record
+
+## [2.4.129] — 2026-11-15
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - skill change (create-implementation-plan)
+  - estate raise: plugins/nexus/agents/architect.md 260691→261380 B — F434-MinerRunByDeveloper: the semantic-model miner can be started by a developer on a plan step; its questions go to the architect (cited evidence only) and the owner, kept open with the owner away; a skill that stops for answers gets its own build slice
+  - estate raise: plugins/nexus/agents/team-lead.md 288222→288354 B — F434-MinerRunByDeveloper: the semantic-model miner can be started by a developer on a plan step; its questions go to the architect (cited evidence only) and the owner, kept open with the owner away; a skill that stops for answers gets its own build slice
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 131942→133129 B — F434-MinerRunByDeveloper: the semantic-model miner can be started by a developer on a plan step; its questions go to the architect (cited evidence only) and the owner, kept open with the owner away; a skill that stops for answers gets its own build slice
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 44452→45153 B — F434-MinerRunByDeveloper: the semantic-model miner can be started by a developer on a plan step; its questions go to the architect (cited evidence only) and the owner, kept open with the owner away; a skill that stops for answers gets its own build slice
+
+## [2.4.128] — 2026-11-13
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - skill change (create-implementation-plan)
+  - skill change (declare-verify-roles)
+  - skill change (implementation-format)
+  - skill change (review-format)
+  - skill change (summary-format)
+  - estate raise: plugins/nexus/agents/developer.md 54501→54718 B — F427-TestAfterMerge: tests before the merge and one full run after it — the close order in every seat's text, the premerge role, the campaign's full run and its fix session
+  - estate raise: plugins/nexus/agents/reviewer.md 33340→33391 B — F427-TestAfterMerge: tests before the merge and one full run after it — the close order in every seat's text, the premerge role, the campaign's full run and its fix session
+  - estate raise: plugins/nexus/agents/solo.md 36105→36576 B — F427-TestAfterMerge: tests before the merge and one full run after it — the close order in every seat's text, the premerge role, the campaign's full run and its fix session
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 131353→131942 B — F427 fix round 1: the premerge role in the roster enumerations, and a busy retest
+  - estate raise: plugins/nexus/skills/create-implementation-plan/SKILL.md 44393→44452 B — F427-TestAfterMerge: tests before the merge and one full run after it — the close order in every seat's text, the premerge role, the campaign's full run and its fix session
+  - estate raise: plugins/nexus/skills/declare-verify-roles/SKILL.md 17947→18410 B — F427-TestAfterMerge: tests before the merge and one full run after it — the close order in every seat's text, the premerge role, the campaign's full run and its fix session
+  - estate raise: plugins/nexus/skills/implementation-format/SKILL.md 19555→19720 B — F427-TestAfterMerge: tests before the merge and one full run after it — the close order in every seat's text, the premerge role, the campaign's full run and its fix session
+
+## [2.4.127] — 2026-11-12
+- adhoc-ReadListVisible: in an interview walk the Read turn asks by a plain line ("go on", or name the points you disagree with) instead of a question box, and a reply that opens a box keeps its text above the box to about eight lines, so the open box no longer hides it
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 260825→260892 B — adhoc-ReadListVisible: the Read turn opens no question box, and a reply that opens one stays short above it (about eight lines), since an open box hides longer text
+  - estate raise: plugins/nexus/agents/po.md 87809→87876 B — adhoc-ReadListVisible: the Read turn opens no question box, and a reply that opens one stays short above it (about eight lines), since an open box hides longer text
+  - estate raise: plugins/nexus/rules/on-demand/research-before-asking.md 41849→42077 B — adhoc-ReadListVisible: the Read turn opens no question box, and a reply that opens one stays short above it (about eight lines), since an open box hides longer text
+
 ## [2.4.126] — 2026-11-11
 - PATCH bump.
   - agent instruction/behavior change

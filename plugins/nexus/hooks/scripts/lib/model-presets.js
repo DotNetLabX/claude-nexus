@@ -13,10 +13,17 @@
  * a `modelPreset`, a `jobs` entry or a per-agent `model` — applies only where the profile's own preset uses
  * that family, because a committed setting is no consent of another account. Each ignored value is reported.
  *
+ * A ROLE'S CODEX ENTRY (`"developer": { "model": "codex", … }`) is never a Claude model: it is kept out of
+ * `agents` whole, so every reader of `agents` sees the role as it is without it and its Claude spawn takes the
+ * model and effort it would have had. Where the role's row in the seat table allows a Codex seat and the entry
+ * has the Codex entry's shape (lib/codex-entry.js), it comes back in `seats` as the role's seat setting; any
+ * other joins `ignored` with its reason.
+ *
  * LOCKED WRITES. Every script writer of the profile file and of `.claude/nexus-agents.json` goes through
  * `writeProfile` or `updateRepoConfig`: a lock file beside the target, a re-read, only the change applied,
- * a temp file renamed into place. A lock older than STALE_MS is taken over (its writer died); a lock held
- * past WAIT_MS refuses the write rather than waiting on.
+ * a temp file renamed into place. The lock (lib/file-lock.js) is each write's own, and a writer removes only its
+ * own. A lock older than STALE_MS is taken over (its writer died); a lock held past WAIT_MS refuses the write
+ * rather than waiting on.
  *
  * FAIL SOFT ON READ. A missing, unreadable or malformed profile or repo file, or an unknown preset name,
  * reads as unset.
@@ -24,6 +31,8 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const codexEntry = require('./codex-entry');
+const fileLock = require('./file-lock');
 
 const TABLE = JSON.parse(fs.readFileSync(path.join(__dirname, 'model-presets.json'), 'utf8'));
 const DEFAULT_PRESET = 'standard';
@@ -279,8 +288,8 @@ function readJsonObject(file) {
 function readProfile(env = process.env) { return readJsonObject(profileFile(env)); }
 
 /**
- * The preset in force, its source, the repo values the consent guard ignored, and the guarded repo jobs and
- * agents. `config`, where given, is the repo's config already read (a campaign's, as committed at its pin).
+ * The preset in force, its source, the repo values the consent guard ignored, the guarded repo jobs and
+ * agents, and the roles' Codex seat settings. `config`, where given, is the repo's config already read (a campaign's, as committed at its pin).
  */
 function resolvePreset({ root, env = process.env, config: given } = {}) {
   const profilePreset = presetName(readProfile(env).modelPreset);
@@ -307,48 +316,48 @@ function resolvePreset({ root, env = process.env, config: given } = {}) {
     jobs[job] = value;
   }
   const agents = {};
+  const seats = {};
   const roles = Object.keys(presetOf(DEFAULT_PRESET).authors).concat(Object.keys(presetOf(DEFAULT_PRESET).readers));
   for (const [role, value] of Object.entries(config)) {
     if (!roles.includes(role) || !objectOr(value)) continue;
+    if (codexEntry.readsCodex(value.model)) {
+      const seat = seatSetting(role, value);
+      if (seat.why) ignored.push({ key: role, value, why: seat.why });
+      else seats[role] = seat.setting;
+      continue;
+    }
     const entry = { ...value };
     if (guarded(familyOf(entry.model))) { ignored.push({ key: `${role}.model`, value: entry.model }); delete entry.model; }
     agents[role] = entry;
   }
-  return { preset, source, ignored, profilePreset, jobs, agents };
+  return { preset, source, ignored, profilePreset, jobs, agents, seats };
+}
+
+/** A role's Codex entry read as its seat setting, or why it is read as unset. */
+function seatSetting(role, value) {
+  const row = codexEntry.seatRow(role);
+  const read = codexEntry.codexEntry(value);
+  if (!row || row.codexSeat !== 'yes') {
+    return { why: `the ${role}'s seat does not run on Codex (${codexEntry.seatAnswer(role)}), so the entry is read as unset` };
+  }
+  if (!read || !read.textModel) {
+    return { why: `a Codex entry takes the keys model, effort and codexModel and no other, so the ${role}'s entry is read as unset` };
+  }
+  return { setting: { entry: { ...value }, effort: read.effort, codexModel: read.codexModel } };
 }
 
 // ── locked writes ────────────────────────────────────────────────────────────
 const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 
-// Two waiters can read the same stale age: only one rename of the lock succeeds, and a lock that another
-// writer made fresh in between is linked back in place, never over a lock that stands.
-function takeOver(lock) {
-  const claimed = `${lock}.${process.pid}.${Date.now()}`;
-  try { fs.renameSync(lock, claimed); } catch { return; }
-  let fresh = false;
-  try { fresh = Date.now() - fs.statSync(claimed).mtimeMs <= STALE_MS; } catch { /* already gone */ }
-  if (fresh) { try { fs.linkSync(claimed, lock); } catch { /* a newer lock stands */ } }
-  try { fs.unlinkSync(claimed); } catch { /* already gone */ }
-}
-
 function withLock(target, fn) {
-  fs.mkdirSync(path.dirname(target), { recursive: true });
   const lock = `${target}.lock`;
+  const token = fileLock.newToken();
   const start = Date.now();
-  for (;;) {
-    try {
-      fs.closeSync(fs.openSync(lock, 'wx'));
-      break;
-    } catch (e) {
-      if (!e || e.code !== 'EEXIST') throw e;
-      let age = 0;
-      try { age = Date.now() - fs.statSync(lock).mtimeMs; } catch { continue; }
-      if (age > STALE_MS) { takeOver(lock); continue; }
-      if (Date.now() - start > WAIT_MS) throw new Error(`${lock} is held by another writer — try again in a moment`);
-      sleep(POLL_MS);
-    }
+  while (!fileLock.take(lock, { staleMs: STALE_MS, token })) {
+    if (Date.now() - start > WAIT_MS) throw new Error(`${lock} is held by another writer — try again in a moment`);
+    sleep(POLL_MS);
   }
-  try { return fn(); } finally { try { fs.unlinkSync(lock); } catch { /* already gone */ } }
+  try { return fn(); } finally { fileLock.release(lock, token); }
 }
 
 function atomicWrite(target, text) {

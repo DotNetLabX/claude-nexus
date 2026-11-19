@@ -10,7 +10,8 @@
  * process id); a lock whose process is gone is never taken over — the call exits 2 naming it for the caller to remove.
  *
  * The result is plain text, one line per stage and a last line, at most 40 lines; what is cut is kept beside the
- * state. Exit 0 done or ended at `--until`, 3 stopped for the caller, 2 refused with nothing changed.
+ * state. A finished `after` call whose commit reached the default branch adds one line after it: the
+ * `main-run.js request` the full run on that branch is owed by, with that commit as `--commit` (owedRun). Exit 0 done or ended at `--until`, 3 stopped for the caller, 2 refused with nothing changed.
  */
 const fs = require('fs');
 const path = require('path');
@@ -37,10 +38,6 @@ const RECORD_LIMIT_MS = 10 * 60 * 1000;
 const BACKLOG = 'docs/backlog.md';
 const CLOSE_GATE = 'team-lead.md § Close Gate, item 5';
 const RED_RUNS = 'agents-workflow.md § Red runs';
-// The summary gate's refusals the complete run answers, and those a run of each named file answers.
-// `uncovered` names changed files a run by name cannot cover, so it takes the complete run as a stale record does.
-const SUITE_CAUSES = new Set(['missing', 'wrong-tree', 'stale', 'uncovered']);
-const BY_NAME_CAUSES = new Set(['unrepaired']);
 
 class Refusal extends Error {}
 const refuse = (why) => { throw new Refusal(why); };
@@ -514,24 +511,45 @@ function lastRecord(stdout) {
   return null;
 }
 
-// Done exactly when the summary gate's own full-suite check would let summary.md through.
+/**
+ * Done exactly when the summary gate's check (4) would let summary.md through, running only what its refusal
+ * names, each at most once a call: the complete run where the feature's own red complete record cannot name its
+ * failures (a gear's handover run), else a whole-unit fast run where the change has no base, one tied run over
+ * the uncovered files, one run by name of the unrepaired test files, and the whole-repo checks (`premerge`).
+ * Never the complete run otherwise — the full suite runs on the default branch after the merge — save in a campaign
+ * unit whose marker does not accept pre-merge evidence, which the gate holds to a complete record. A run it makes
+ * that comes back red stops the call, so a red is a fix, never a loop; after another merge-in the same stage
+ * re-runs what the moved content left uncovered.
+ */
 function stageTests(ctx) {
   const gate = ctx.gate || require(path.join(SCRIPTS, 'pipeline-gate.js'));
   if (!gate.fullSuiteDeclared(ctx.tree)) return { status: 'done', why: 'undeclared — the repo declares no complete suite' };
   const data = { session_id: ctx.flags.session };
   const verify = path.join(SCRIPTS, 'verify-run.js');
-  const tail = ['--slug', ctx.slug, '--session', ctx.flags.session, '--tree', ctx.tree];
+  // The close runs in the background, so a heavy run it makes can wait its turn on the machine (`--wait`).
+  const tail = ['--slug', ctx.slug, '--session', ctx.flags.session, '--tree', ctx.tree, '--wait'];
   const env = { ...ctx.env, CLAUDE_PROJECT_DIR: ctx.root };
-  const ranByName = new Set();
-  // The flaky files stand for the complete record they failed in, so a call that runs nothing keeps them.
+  const base = planBase(ctx);
+  // The flaky files stand for the record they failed in, so a call that runs nothing keeps them.
   const saved = ctx.state.data;
   let flaky = Array.isArray(saved.flaky) ? saved.flaky.slice() : [];
   let flakyRecord = saved.flakyRecord || null;
   const runs = [];
-  let ranComplete = false;
+  const made = new Set();
+  const once = (key) => (made.has(key) ? false : (made.add(key), true));
+  const verifyRun = (label, args) => {
+    const r = ctx.run(process.execPath, [verify, ...args, ...tail], { cwd: ctx.root, env });
+    const rec = lastRecord(r.stdout);
+    const passed = rec ? rec.verdict === 'pass' : r.status === 0;
+    runs.push(`${label}: ${passed ? 'green' : rec ? rec.verdict : `exit ${r.status}`}${rec && rec.run_id ? ` (${rec.run_id})` : ''}`);
+    return passed;
+  };
+  const redStop = (seen, label) => ({
+    status: 'stopped', why: `the ${label} is red`, list: [...runs, ...recordNotes(seen.record)], next: `${RED_RUNS}, then call again`,
+  });
   for (;;) {
     const seen = {};
-    const denial = gate.fullSuiteDenial(ctx.tree, ctx.root, data, ctx.slug, seen);
+    const denial = gate.fullSuiteDenial(ctx.tree, ctx.root, data, ctx.slug, seen, { planBase: base });
     const recordId = seen.record && seen.record.run_id ? seen.record.run_id : null;
     if (!denial) {
       if (flakyRecord !== recordId) { flaky = []; flakyRecord = null; }
@@ -540,31 +558,40 @@ function stageTests(ctx) {
       saved.untouchedTimeouts = untouchedTimeouts(seen.record).map((t) => `${t.file || '?'} › ${t.test || '?'}`);
       return testsPassed(seen, runs, flaky);
     }
-    const files = Array.isArray(denial.files) ? denial.files : [];
-    const todo = !denial.foreign && BY_NAME_CAUSES.has(denial.cause) ? files.filter((f) => !ranByName.has(f)) : [];
-    if (todo.length) {
-      if (flakyRecord !== recordId) { flaky = []; flakyRecord = recordId; }
-      for (const file of todo) {
-        ranByName.add(file);
-        const r = ctx.run(process.execPath, [verify, '--profile', 'fast', '--files', file, ...tail], { cwd: ctx.root, env });
-        const rec = lastRecord(r.stdout);
-        const passed = rec ? rec.verdict === 'pass' : r.status === 0;
-        runs.push(`${file} by name: ${passed ? 'green' : 'red'}${rec && rec.run_id ? ` (${rec.run_id})` : ''}`);
-        if (passed && denial.cause === 'unrepaired' && !flaky.includes(file)) flaky.push(file);
+    const list = (v) => (Array.isArray(v) ? v : []);
+    const uncovered = list(denial.uncovered);
+    const unrepaired = list(denial.unrepaired).filter((f) => !made.has(`by-name ${f}`));
+    let ran = false;
+    if (denial.complete && once('complete')) {
+      ran = true;
+      if (!verifyRun('complete run', ['--profile', 'complete'])) return redStop(seen, 'complete run');
+    }
+    if (!denial.complete && !denial.unreadable) {
+      if (denial.whole && once('whole')) {
+        ran = true;
+        if (!verifyRun('whole-unit run', ['--profile', 'fast'])) return redStop(seen, 'whole-unit run');
       }
-      continue;
+      if (uncovered.length && once(`tied ${uncovered.join('\0')}`)) {
+        ran = true;
+        if (!verifyRun(`tied run over ${uncovered.length} file(s)`, ['--profile', 'fast', '--tied', '--changed', ...uncovered])) return redStop(seen, 'tied run');
+      }
+      if (unrepaired.length) {
+        ran = true;
+        unrepaired.forEach((f) => made.add(`by-name ${f}`));
+        if (flakyRecord !== recordId) { flaky = []; flakyRecord = recordId; }
+        if (!verifyRun(`${unrepaired.join(', ')} by name`, ['--profile', 'fast', '--files', ...unrepaired])) return redStop(seen, 'run by name');
+        for (const f of unrepaired) if (!flaky.includes(f)) flaky.push(f);
+      }
+      if (denial.premerge && once('premerge')) {
+        ran = true;
+        if (!verifyRun('premerge run', ['--role', 'premerge'])) return redStop(seen, 'premerge run');
+      }
     }
-    if ((denial.foreign || SUITE_CAUSES.has(denial.cause)) && !ranComplete) {
-      ranComplete = true;
-      const r = ctx.run(process.execPath, [verify, '--profile', 'complete', ...tail], { cwd: ctx.root, env });
-      const rec = lastRecord(r.stdout);
-      runs.push(`complete run: ${rec ? rec.verdict : `exit ${r.status}`}${rec && rec.run_id ? ` (${rec.run_id})` : ''}`);
-      continue;
-    }
+    if (ran) continue;
     return {
       status: 'stopped',
       why: `the summary gate refuses: ${denial.cause} — ${gate.denialGloss(denial)}`,
-      list: [...runs, ...files.map((f) => `${f} — not discharged`), ...recordNotes(seen.record)],
+      list: [...runs, ...list(denial.files).map((f) => `${f} — not discharged`), ...recordNotes(seen.record)],
       next: `${RED_RUNS}, then call again`,
     };
   }
@@ -580,13 +607,15 @@ function recordNotes(record) {
 
 function testsPassed(seen, runs, flaky) {
   const id = seen.record && seen.record.run_id ? seen.record.run_id : 'without a run id';
-  const why = seen.by === 'evidence'
-    ? `the close evidence stands for record ${id}`
-    : `passing record ${id}${runs.length ? '' : ', no run needed'}`;
+  const why = seen.by === 'premerge'
+    ? `the pre-merge evidence stands${runs.length ? '' : ', no run needed'}`
+    : seen.by === 'evidence'
+      ? `the close evidence stands for record ${id}`
+      : `passing record ${id}${runs.length ? '' : ', no run needed'}`;
   return {
     status: 'done',
     why,
-    list: [...runs, ...flaky.map((f) => `${f} — flaky: failed in the complete run, green alone`), ...recordNotes(seen.record)],
+    list: [...runs, ...flaky.map((f) => `${f} — flaky: failed in its run, green alone`), ...recordNotes(seen.record)],
   };
 }
 
@@ -776,6 +805,17 @@ function madeLine(ctx) {
   return parts.length ? ` — ${parts.join(', ')}` : '';
 }
 
+// The full run a commit that reached the default branch owes on it (main-run.js): the merge this call made, else the
+// closing commit of a close on the default branch itself, else that branch's tip; none for a campaign unit or a
+// close that did not merge.
+function owedRun(ctx) {
+  if (ctx.campaign) return '';
+  const d = ctx.state.data;
+  const commit = d.merged ? d.mergeCommit || ctx.deflt.name : !ctx.offDefault ? d.closingCommit || ctx.deflt.name : '';
+  if (!commit) return '';
+  return `next: start in the background — node "${slash(path.join(SCRIPTS, 'main-run.js'))}" request --slug ${ctx.slug} --session ${ctx.flags.session} --commit ${commit}`;
+}
+
 // ── the result ───────────────────────────────────────────────────────────────────────────────────────
 
 function keepWhole(ctx, stage, text) {
@@ -804,7 +844,7 @@ function emit(ctx, blocks, last, out) {
   const whole = [...blocks.flatMap((b) => [b.head, ...b.details]), last];
   // One line is held back for the cut note; a block marked `keep` (the record's, which can carry an owed notice) is
   // given its lines before any other.
-  let budget = MAX_LINES - 2 - blocks.length;
+  let budget = MAX_LINES - 1 - last.split('\n').length - blocks.length;
   const shown = blocks.map(() => 0);
   const order = blocks.map((b, i) => i).sort((a, b) => Number(blocks[b].keep) - Number(blocks[a].keep));
   for (const i of order) {
@@ -845,9 +885,20 @@ function runStages(ctx, out) {
       last = `close-run: stopped at ${stage} — ${res.why}; next: ${res.next || 'settle it, then call again'}`;
       break;
     }
-    if (stage === ctx.flags.until) { last = `close-run: ended after ${stage}`; break; }
+    if (stage === ctx.flags.until) {
+      last = `close-run: ended after ${stage}`;
+      if (ctx.sub === 'before' && stage === 'merge-in') {
+        last += '\nclose-run: next — where a rule re-check or a mutation re-check runs, start it now; call before again as soon as '
+          + 'the mutation re-check is in, or at once where none runs — never waiting for the rule re-check';
+      }
+      break;
+    }
   }
-  if (code === 0 && last === 'close-run: done' && ctx.sub === 'after') last += madeLine(ctx);
+  if (code === 0 && last === 'close-run: done' && ctx.sub === 'after') {
+    last += madeLine(ctx);
+    const owed = owedRun(ctx);
+    if (owed) last += `\n${owed}`;
+  }
   emit(ctx, blocks, last, out);
   return code;
 }

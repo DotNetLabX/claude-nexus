@@ -53,8 +53,9 @@
  * audit-logger).
  */
 'use strict';
-const fs = require('fs');
-const path = require('path');
+// The line itself is built and written by lib/skill-log.js, shared with any script recording a skill no Skill
+// call loaded.
+const { skillLine, appendSkillLine } = require('./lib/skill-log');
 // Shared with audit-logger.js and guard.js — the '|| persona || main' attribution chain's middle
 // tier. Was a hand-copied local definition until F45-RuntimeDriftHardening Step 3.
 const { readSessionPersona } = require('./lib/read-session-persona');
@@ -78,17 +79,11 @@ process.stdin.on('end', () => {
     // Attribution: subagent agent_type, else this session's recorded persona, else 'main'
     // (audit-logger.js:99 — the '|| main' tail is load-bearing for solo/fast runs).
     const agentRaw = data.agent_type || readSessionPersona(session, root) || 'main';
-    const agent = String(agentRaw).toLowerCase().split(/[:/]/).pop();
 
     // Round window for Step 3 scoping (read-tracker.js:52-53 round-keying).
     const token = readRoundToken(root, session);
 
-    const auditDir = path.join(root, '.claude', 'audit');
-    fs.mkdirSync(auditDir, { recursive: true });
-    fs.appendFileSync(
-      path.join(auditDir, 'skill-invocations.log'),
-      JSON.stringify({ ts: new Date().toISOString(), agent, skill, token, session }) + '\n'
-    );
+    appendSkillLine(root, skillLine({ ts: new Date().toISOString(), agentType: agentRaw, skill, token, session }));
   } catch { /* fail silent — observe-only */ }
   process.exit(0);
 });

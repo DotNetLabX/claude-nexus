@@ -107,6 +107,11 @@
  *
  * FAIL OPEN on bad JSON, a missing session, an unresolvable seat, an unreadable declaration or a reservation
  * file that cannot be written.
+ *
+ * SHARED READING. `isRawTestCommand`, `isSeparateBuild`, `declaresUnit`, `fold` and `classifyCommand` — the whole
+ * seat reading above, script files and declared role scripts included, with each script it could not read — are
+ * exported, and this file reads its input only when run directly, so a script that judges a command after the fact
+ * uses the same reading the gate does.
  */
 'use strict';
 const fs = require('fs');
@@ -860,7 +865,6 @@ function main(input) {
 
   const tree = resolveDeclaredTree(root, data.session_id);
   const cfg = readJson(path.join(tree, '.claude', 'verify.json'));
-  const armed = declaresUnit(cfg);
   // The session's own token, at the root whatever tree is resolved (lib/round-token.js).
   const token = readRoundToken(root, data.session_id);
 
@@ -890,50 +894,16 @@ function main(input) {
     : 'This repo\'s test runner has no step run: write a `Test problem:` line in the step block and go on — the complete run covers it.');
   const soloWay = `Run tests through node "${runnerPath}" --profile fast --tied --changed <every file you changed> --slug <slug> (a by-name proof: --profile fast --files <test file>...).`;
 
-  if (seen.raw && armed) {
-    return refuse('raw', `a raw test command (\`${fold(command).slice(0, COMMAND_EXCERPT)}\`). ${developer ? developerWay() : soloWay}`);
-  }
-  if (developer && seen.builds) return refuse('build', `a separate build (\`${fold(command).slice(0, COMMAND_EXCERPT)}\`): the step run builds what its tests need. ${developerWay()}`);
   const mutationWhy = `a developer's test runs are its step runs; a mutation battery is the reviewer's or a solo's. ${developerWay()}`;
-  if (developer && seen.mutator) return refuse('mutation-run', `the mutation runner (\`mutation-run.js\`): ${mutationWhy}`);
-
-  const cwd = data.cwd || root;
-  const declared = declaredFiles(cfg, tree);
-  for (const { script, dirs, text: held, code } of seen.scripts) {
-    if (held !== undefined) {
-      const fired = fileFires(held, developer, code, { writes: seen.writes });
-      if (fired === 'raw' && armed) return refuse('script', `\`${script}\`, written by this command, runs a raw test command. ${developer ? developerWay() : soloWay}`);
-      if (fired === 'mutation-run') return refuse('mutation-run', `\`${script}\`, written by this command, starts the mutation runner: ${mutationWhy}`);
-      if (fired === 'developer') return refuse('script', `\`${script}\`, written by this command, runs a build or the test runner itself. ${developerWay()}`);
-      continue;
-    }
-    if (!developer) continue;
-    const name = basename(script).toLowerCase();
-    if (UNREAD.has(name) || RUNNER_SCRIPT.test(name) || LABELLER_SCRIPT.test(name) || isExemptScript(name)) continue;
-    if (dirs === null && !path.isAbsolute(script)) {
-      logViolation(root, { ...row('script-unread'), blocked: false, file: script, why: 'after a cd the gate cannot follow' });
-      continue;
-    }
-    const file = path.resolve(cwd, ...(dirs || []), script);
-    // The plugin's own helpers (the commit helper among them) name the runner in their text without running it.
-    if (samePath(path.dirname(file), __dirname)) continue;
-    if (declared.some((d) => samePath(d, file))) {
-      if (developer) return refuse('role-script', `\`${script}\` is a declared verify role's script, and a developer never runs a role. ${developerWay()}`);
-      continue;
-    }
-    let size = -1;
-    try { size = fs.statSync(file).size; } catch { /* unreadable */ }
-    if (size < 0 || size > SCRIPT_LIMIT) {
-      logViolation(root, { ...row('script-unread'), blocked: false, file: script, why: size < 0 ? 'unreadable' : 'over 256 KB' });
-      continue;
-    }
-    let text = '';
-    try { text = fs.readFileSync(file, 'utf8'); } catch { continue; }
-    const fired = fileFires(text, developer, CODE_EXT.test(script), { writes: seen.writes });
-    if (fired === 'raw' && armed) return refuse('script', `\`${script}\` runs a raw test command. ${developer ? developerWay() : soloWay}`);
-    if (fired === 'mutation-run') return refuse('mutation-run', `\`${script}\` starts the mutation runner: ${mutationWhy}`);
-    if (fired === 'developer') return refuse('script', `\`${script}\` runs a build or the test runner itself. ${developerWay()}`);
-  }
+  const read = classifySeen(seen, { developer, cfg, tree, cwd: data.cwd || root });
+  for (const u of read.unread) logViolation(root, { ...row('script-unread'), blocked: false, file: u.file, why: u.why });
+  const by = read.script === undefined ? '' : read.written ? `\`${read.script}\`, written by this command,` : `\`${read.script}\``;
+  if (read.check === 'raw') return refuse('raw', `a raw test command (\`${fold(command).slice(0, COMMAND_EXCERPT)}\`). ${developer ? developerWay() : soloWay}`);
+  if (read.check === 'build') return refuse('build', `a separate build (\`${fold(command).slice(0, COMMAND_EXCERPT)}\`): the step run builds what its tests need. ${developerWay()}`);
+  if (read.check === 'mutation-run') return refuse('mutation-run', by ? `${by} starts the mutation runner: ${mutationWhy}` : `the mutation runner (\`mutation-run.js\`): ${mutationWhy}`);
+  if (read.check === 'role-script') return refuse('role-script', `${by} is a declared verify role's script, and a developer never runs a role. ${developerWay()}`);
+  if (read.check === 'script' && read.fired === 'raw') return refuse('script', `${by} runs a raw test command. ${developer ? developerWay() : soloWay}`);
+  if (read.check === 'script') return refuse('script', `${by} runs a build or the test runner itself. ${developerWay()}`);
 
   const logs = () => [...readLog(root), ...(samePath(root, tree) ? [] : readLog(tree))];
   if (developer && seen.labellers.length) {
@@ -1063,7 +1033,60 @@ function deny(reason) {
 
 function allow() { process.exit(0); }
 
-module.exports = { isRawTestCommand, scriptOf };
+// A command runs a separate build where one of its commands does.
+const isSeparateBuild = (command) => scan(command).builds;
+
+// What a scanned command runs on a seat, by the gate's reading: `check` is `raw`, `build`, `mutation-run`,
+// `role-script` or `script` (with the `script` it came from, `written` where this command wrote it, and what it
+// `fired`), else null; `unread` lists each script file that could not be read. Script files are read from `cwd`.
+function classifySeen(seen, { developer, cfg, tree, cwd = tree }) {
+  const armed = declaresUnit(cfg);
+  const unread = [];
+  const hit = (check, extra = {}) => ({ check, unread, ...extra });
+  if (seen.raw && armed) return hit('raw');
+  if (developer && seen.builds) return hit('build');
+  if (developer && seen.mutator) return hit('mutation-run');
+  const declared = declaredFiles(cfg, tree);
+  const judged = (fired, extra) => {
+    if (fired === 'raw' && armed) return hit('script', { ...extra, fired });
+    if (fired === 'mutation-run') return hit('mutation-run', extra);
+    if (fired === 'developer') return hit('script', { ...extra, fired });
+    return null;
+  };
+  for (const { script, dirs, text: held, code } of seen.scripts) {
+    if (held !== undefined) {
+      const out = judged(fileFires(held, developer, code, { writes: seen.writes }), { script, written: true });
+      if (out) return out;
+      continue;
+    }
+    if (!developer) continue;
+    const name = basename(script).toLowerCase();
+    if (UNREAD.has(name) || RUNNER_SCRIPT.test(name) || LABELLER_SCRIPT.test(name) || isExemptScript(name)) continue;
+    if (dirs === null && !path.isAbsolute(script)) {
+      unread.push({ file: script, why: 'after a cd the gate cannot follow' });
+      continue;
+    }
+    const file = path.resolve(cwd, ...(dirs || []), script);
+    // The plugin's own helpers (the commit helper among them) name the runner in their text without running it.
+    if (samePath(path.dirname(file), __dirname)) continue;
+    if (declared.some((d) => samePath(d, file))) return hit('role-script', { script });
+    let size = -1;
+    try { size = fs.statSync(file).size; } catch { /* unreadable */ }
+    if (size < 0 || size > SCRIPT_LIMIT) {
+      unread.push({ file: script, why: size < 0 ? 'unreadable' : 'over 256 KB' });
+      continue;
+    }
+    let text = '';
+    try { text = fs.readFileSync(file, 'utf8'); } catch { continue; }
+    const out = judged(fileFires(text, developer, CODE_EXT.test(script), { writes: seen.writes }), { script });
+    if (out) return out;
+  }
+  return { check: null, unread };
+}
+
+const classifyCommand = (command, opts) => classifySeen(scan(String(command || '')), opts);
+
+module.exports = { isRawTestCommand, isSeparateBuild, declaresUnit, scriptOf, classifyCommand, fold };
 
 if (require.main === module) {
   let input = '';

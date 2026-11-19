@@ -1,6 +1,6 @@
 # Pipeline Guardrails
 
-> Read when: spawning any agent — choosing a subagent model or type, applying the cross-model pairing doctrine, or a third-party/specialist agent taking a pipeline role.
+> Read when: spawning any agent — its model or type, cross-model pairing, or a third-party agent in a pipeline role.
 
 ## Model presets
 
@@ -143,7 +143,10 @@ account's limit keeps the usage hold.
 
   ```json
   {
-    "jobs": { "doneCheck": "codex" },
+    "jobs": {
+      "doneCheck": "codex",
+      "discovery": { "model": "codex", "effort": "medium", "codexModel": "{a Codex model name}" }
+    },
     "codex": { "timeLimitMinutes": 25, "effort": "xhigh" }
   }
   ```
@@ -154,7 +157,11 @@ account's limit keeps the usage hold.
   it is the effective value — an explicit owner-directed spawn parameter still outranks it
   (→ codex-dispatch.md § Done check); at any other job it is read as unset, with the disclosure line
   below. At the three helper jobs `codex` may carry an effort, `{ "model": "codex", "effort": "{level}" }`
-  with one of the Codex levels below; every other job takes a string. A value that cannot be used is read as unset, with one disclosure line in the spawning
+  with one of the Codex levels below. With or without that effort, the entry may name the Codex model
+  sent with that job's runs, `"codexModel": "{name}"` (unset: the user's own Codex config decides) —
+  a name of letters, digits, `.`, `_`, `:` and `-` that opens with a letter or digit; a name of
+  another shape is not sent (→ codex-dispatch.md § Critic seat). An entry with any other key is read
+  as unset; every other job takes a string. A value that cannot be used is read as unset, with one disclosure line in the spawning
   turn naming the job, the value and the value taken — never a halt: an unknown family, a job name
   no table declares, a family that never checks at `secondReader` or `doneCheck`. One job
   exists to add a family, so a setting that would lose it is read as unset too: a `secondReader`
@@ -177,8 +184,8 @@ account's limit keeps the usage hold.
   **A helper job on Codex.** Where `discovery`, `audit` or `general` has the value `codex` and Codex
   is available, a main session starting that helper decides by the job's size whether Codex is worth
   it; a job of a minute or two stays on Claude for now. The job only reads and reports back, and the
-  session saves anything to be saved. A job that must edit files, or that a plugin agent does, stays on
-  Claude, and a job that scores or judges work never goes to the family that produced it. A helper
+  session saves anything to be saved. A helper job that must edit files, or that a plugin agent does, stays on
+  Claude — a pipeline seat's work is § Codex seats', below — and a job that scores or judges work never goes to the family that produced it. A helper
   started inside another agent stays on Claude for now. A job that stays on Claude runs on the job's
   Claude fallback in the table. The session starts the job with the `helper` kind, a label naming the
   job, `--job-name` and the limit it judges right (→ codex-dispatch.md § Helper job). A job that cannot
@@ -191,6 +198,67 @@ account's limit keeps the usage hold.
   helper must **write its deliverable**, must **audit or verify** (the `audit` job — `Explore`
   locates code, it doesn't review it), or needs a tool `Explore` lacks. This is a `subagent_type` rule — it composes with the job's model above, it does not replace
   it.
+
+## Codex seats
+
+A pipeline seat may run on Codex: its work is then one Codex job per unit of work, which may write inside the
+round's tree and is started, checked and recorded from outside by the coordinating main session
+(→ codex-dispatch.md § Seat job). Which roles may is this table and nothing else — no script, hook or other rule
+names a role as one. The scripts read the same table from the plugin's seat data file
+(`hooks/scripts/lib/codex-seats.json`), and a check holds the two equal. No row reads yes today, so no seat runs on
+Codex in any repo.
+
+| Role | Codex seat | Unit of work | Question phase | Hand-back phrases | Checks after the job | Claude fallback |
+|---|---|---|---|---|---|---|
+| `developer` | not yet | a build slice — the whole plan where the plan cuts none — a fix round's list, or a hand-up round | yes, where the lane has a Phase 1 today | unit and fix: `ready for Step 1`, `range complete`, `Fixes applied for`; blocker: `Blocked on step`, `Bug found in`; questions: `Questions before implementing`, `All clear` | all of them | the developer |
+| `solo` | not yet | one fix | no | unit: `Solo fix`; fix: `fixed`; blocker: `too big`, `not caused here` | all but the approved-set compare; the coordinator runs the project's verify commands | the solo |
+| `reviewer` | not a seat | — | — | — | it already runs on Codex as a read-only job | — |
+| `critic` | not a seat | — | — | — | it already runs on Codex as a read-only job | — |
+| `done-check` | not a seat | — | — | — | it already runs on Codex as a read-only job | — |
+| `architect` | not yet | — | — | — | it interviews the owner or starts other agents, which a Codex job cannot do today | — |
+| `po` | not yet | — | — | — | it interviews the owner or starts other agents, which a Codex job cannot do today | — |
+| `learner` | not yet | — | — | — | it interviews the owner or starts other agents, which a Codex job cannot do today | — |
+| `team-lead` | not a seat | — | — | — | the coordinator is the host that starts the jobs; no main-session persona has a seat | — |
+
+The checks after the job are the job helper's, made where a Claude seat's hooks would have acted: the skill-log
+lines, the hand-back rows, the step-run records carried into the session's log, the raw test commands, the runs per
+step, the approved-set compare, the class-check line and the safety copy (→ codex-dispatch.md § Seat job). The
+Claude fallback is the role itself, on the model it has without its Codex entry. The developer's and the solo's rows
+read not yet because a seat job's end cannot yet be confirmed on a real Codex server; their other cells are the seat
+as built.
+
+**The setting.** A repo sets a seat to Codex with the role's own entry in `.claude/nexus-agents.json`, in the shape
+a helper job's Codex entry has:
+
+```json
+{ "developer": { "model": "codex", "effort": "high", "codexModel": "{a Codex model name}" } }
+```
+
+`codexModel` names the Codex model the seat's jobs are sent — any model the user's Codex plan offers; unset, the
+user's own Codex config decides. `effort` is optional too; unset, the repo's `codex.effort` and then the user's
+Codex config decide. The name is checked for its shape only, as a helper job's is
+(→ § Helper agents — model and type): nothing refuses, replaces or warns against a model name. One piece of
+advice, and nothing more: a seat's work is an agent's work, so the strongest Codex model suits it — Sol today.
+
+**When the entry is used.** Only where all four hold: the role's row reads yes; Codex is available
+(→ codex-dispatch.md § Availability detection); the machine's sandbox check has passed (→ codex-dispatch.md § Seat job);
+and the coordinator is a main session — under a coordinator that is itself a spawned agent the entry reads as
+unset, as a helper job started inside another agent stays on Claude. Otherwise the entry reads as unset — the seat
+runs on the model it would have without it — with one disclosure line naming the seat, the reason and the model
+taken; never a halt and never a question. The job helper's `seat` call answers all four at once and prints that
+line. A repo that sets no such entry runs as before: the shipped default stays Claude.
+
+**Against a gear.** The order stands: a campaign's gear that names the author model wins over the repo's entry, and
+the repo's entry wins over a feature's own gear (→ agents-workflow.md § Gears). So a campaign unit's developer runs
+on the gear's model and its solo, which no gear row names, on the seat entry; where a gear decides, the disclosure
+line names that gear.
+
+**A new row.** A role's seat is ready for Codex when its work has this shape: a brief goes in, files change inside
+the tree, a hand-back comes out — and it needs nothing only a Claude Code subagent has: starting agents, asking the
+owner, or being messaged while it works. "Not yet" says what a Codex job can do today; it is not a ban, and no
+model is refused. A row turns to yes, its fields filled, by a change to this table and the data file — never to
+the job helper or the coordinator's rules.
+
 ## Agent model overrides and pairing
 
 - **Never override specialized agent models — outside five sanctioned channels, a gear riding the first** — specialized
@@ -304,6 +372,9 @@ On the light lane every checker runs one effort level below its baseline (→ ar
   `jobs.doneCheck` to `codex`: a read-only Codex job, persisted by its dispatcher
   (→ codex-dispatch.md § Done check). Where Codex fails, its stand-in is the nexus reader the
   reading rule picks from the preset's pair order (→ codex-dispatch.md § Time limit and fallback).
+  **A second exception: a seat whose row allows it** (→ § Codex seats) runs as a Codex job that may write in
+  the round's tree, started, checked and recorded by the coordinating main session through the Codex job helper
+  (→ codex-dispatch.md § Seat job); where it fails, the role's own nexus agent takes the unit.
 - **Third-party specialist agents are fine for standalone tasks** outside the pipeline (e.g. a dedicated debugger, security reviewer, or designer) — just not as replacements for the pipeline roles themselves.
 
 ## Output Size Constraint

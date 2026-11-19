@@ -13,7 +13,9 @@
  * record's. The change is every file that differs from the merge-base with the tree's default branch, as
  * lib/default-branch.js resolves it with no `main` fallback — the tree's `.claude/.base-branch`, else
  * `origin/HEAD` (compared as `origin/{branch}`), else `.claude/nexus-agents.json` `defaultBranch` — plus
- * untracked files. Files the tree
+ * untracked files. Where NEXUS_MAIN_RUN_BASE is set — the full run on a branch after its merges (main-run.js) — the
+ * change is every file that differs from that commit instead, so a test the covered merges touched reads touched
+ * on the branch itself, where the merge-base is the head. Files the tree
  * hash leaves out and prose (`.md`, `.txt`) never make a change untied: prose cannot make a test hang, so a
  * change with no code touches nothing, whatever the runner. Otherwise a node timeout is touched when its file
  * is in the change or tied to a changed file, a vstest one when its test project is tied to a changed file
@@ -59,10 +61,11 @@ function baseRef(repo) {
 // names paths from the repository's top, untracked ones from the tree: a tree below the top strips its
 // prefix, and a code change outside the tree reads as unreadable, since nothing inside can tie it.
 function changedFiles(repo) {
-  const ref = baseRef(repo);
-  if (!ref) return null;
+  const given = process.env.NEXUS_MAIN_RUN_BASE;
+  const ref = given ? null : baseRef(repo);
+  if (!given && !ref) return null;
   try {
-    const base = git(repo, ['merge-base', 'HEAD', ref]).trim();
+    const base = given ? git(repo, ['rev-parse', '--verify', '--quiet', `${given}^{tree}`]).trim() : git(repo, ['merge-base', 'HEAD', ref]).trim();
     const prefix = git(repo, ['rev-parse', '--show-prefix']).trim().replace(/\\/g, '/');
     const diffed = [];
     for (const f of git(repo, ['diff', '--name-only', '-z', base]).split('\0').filter(Boolean).map((p) => p.replace(/\\/g, '/'))) {

@@ -69,9 +69,9 @@ const { resolveDeclaredTree } = require('./lib/worktree-target');
 const IMPL_ROLES = new Set(['developer', 'solo']);
 
 // Declaration order is fixed here, never taken from the file's key order: the roster reads as a
-// sequence (what you compile with, what you close a step with, what the close gate runs, what the
-// mutation lane runs), and a repo's JSON key order is incidental.
-const ROLE_ORDER = ['build', 'unit', 'full', 'mutation'];
+// sequence (what you compile with, what you close a step with, the whole-repo checks run before every
+// merge, the full suite, what the mutation lane runs), and a repo's JSON key order is incidental.
+const ROLE_ORDER = ['build', 'unit', 'premerge', 'full', 'mutation'];
 
 // `full` is the close gate's, run from the main session by verify-run.js — annotated inline so the
 // roster itself says why the subagent must not run it, without carrying the rule.

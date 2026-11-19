@@ -87,7 +87,12 @@
  *
  * `--tied --changed` runs the tests tied to the named changed files (lib/tied-tests.js), recorded with
  * `files` (the tied test files or projects), `tied: true`, `changed` and `changed_hashes`; a change it
- * cannot tie runs roles.unit whole, its record naming why in `tied_fallback`. Where an untied file is of a
+ * cannot tie runs roles.unit whole, its record naming why in `tied_fallback`. A file another declared runner
+ * places — its tied command ran for the file, it reads the file's kind and the main runner does not — is not
+ * untied; a change made only of such files runs those commands alone, `files` naming them, with no
+ * `tied_fallback`. A `--changed` entry holding a comma that names no file in the tree and no path git tracks
+ * (index or HEAD) exits 2 before anything runs, nothing written: several files joined into one argument.
+ * Where an untied file is of a
  * kind no stage of a known runner in the unit takes and the unit has a stage that is neither such a stage
  * nor setup, the record also names `uncovered` (those files) and `unread_stages` (those stages, whose test
  * count is not read), on one stderr line after the run; a file leaves `uncovered` once another runner's command for
@@ -212,11 +217,20 @@
  * slowdown would stop every run after it; so the usual time only ever raises an undeclared limit, to
  * twice it where that is above 10 minutes, and never lowers one.
  *
- * COMPLETE RUNS TAKE TURNS ACROSS THE MACHINE, BEST EFFORT. At most NEXUS_COMPLETE_RUNS_AT_ONCE (default
- * 2; 0 turns it off) run at once over every repo, session and profile of the user; the rest wait, say
- * so, and record `waited_ms` and `others` — the wait counts toward neither `duration_ms` nor the limit.
- * `waited_ms` includes the settle period, so a run that never waited records about 500 ms; contention
- * shows as `others` and the waiting line, never as `waited_ms` above zero.
+ * HEAVY RUNS TAKE TURNS ACROSS THE MACHINE, BOTH WAYS, BEST EFFORT. A run is heavy when it runs a declared
+ * role's command whole: a complete run, a tied run that fell back to the unit, a named-files run no runner
+ * takes, a bare fast or unit run, a bare premerge run. Every other run is small — a step run, a run by named or
+ * tied files, a build, a mutation run — and never waits. A heavy run waits only where its caller sized the call
+ * for a wait: a complete run, or `--wait` (the close and the handover's tied run pass it). An explicit
+ * `--timeout-ms` alone never makes a run wait: a foreground call passes one sized to fit the Bash tool's cap, and
+ * a wait inside it would outlast the call. Any other heavy run starts at once and is counted by its marker. A waiting run takes its turn: at
+ * most NEXUS_RUNS_AT_ONCE (else NEXUS_COMPLETE_RUNS_AT_ONCE; default 1; 0 turns the queue off) at once over every
+ * repo, session and profile of the user. Then it waits for the end of every run, small or heavy, whose presence
+ * marker was live when it claimed — never one that started later, nor one that holds a turn, which the queue
+ * already orders. One cap covers both waits, from the claim. A waiting run says so and records `waited_ms` and
+ * `others`; the wait counts toward neither `duration_ms` nor the limit. `waited_ms` includes the settle period,
+ * so a run that never waited records about 500 ms; contention shows as `others` and the waiting lines, never as
+ * `waited_ms` above zero.
  * Each run publishes its own uniquely named claim in NEXUS_RUN_SLOTS_DIR (else ~/.nexus/run-slots),
  * refreshes it every 10 s, settles, and starts when the started claims plus its place among the waiting
  * ones (by claim time, then name) are under the limit. A claim is stale once its heartbeat is 60 s old,
@@ -225,21 +239,26 @@
  * until that expiry. A stale claim is skipped, never renamed, rewritten or deleted by another run; only
  * its owner deletes it, on release. Any run sweeps a file named like a claim once it is a day past its
  * expiry, or unparsable and a day unwritten, ignoring any error. A run started inside a live claim
- * (NEXUS_COMPLETE_RUN_CLAIM) takes no turn. A broken folder never blocks: the run goes ahead as
- * `slot: "unavailable"` — also the record's slot when, after the turn, the claim can no longer be
- * refreshed or released; at the wait cap (NEXUS_SLOT_WAIT_MS, 30 min) as `"waited out"`. Accepted gaps:
+ * (NEXUS_COMPLETE_RUN_CLAIM) or under another run's live marker (NEXUS_HEAVY_RUN) is nested: it takes no
+ * turn and waits for nothing, so a run its own command starts never waits behind it. A broken folder never
+ * blocks: the run goes ahead as `slot: "unavailable"` — also the record's slot when, after the turn, the
+ * claim can no longer be refreshed or released; at the wait cap (NEXUS_SLOT_WAIT_MS, 30 min) as
+ * `"waited out"`. Accepted gaps:
  * a runner stalled past the settle period between its read and marking itself started can start beside
  * one other run; a hard-killed runner's suite stops counting 60 s after its heartbeat stops; a run
  * whose heartbeat stalled past a minute (a machine asleep) is uncounted until its next heartbeat; a
  * hard-killed runner's claim stays in the folder until the sweep; a retained tree still alive past
  * its expiry is a runaway and no longer counts.
  *
- * EVERY RECORD SAYS WHETHER THE MACHINE WAS BUSY. `busy_machine` is true when another heavy run — another full
- * run, from its turn on — was live at the run's start, at a read every 10 s (NEXUS_BUSY_SAMPLE_MS) while its
- * command ran, or at its end (lib/heavy-runs.js). For that a full run keeps a presence marker in the `presence/`
- * subfolder of the queue folder, whatever NEXUS_COMPLETE_RUNS_AT_ONCE says; the queue never reads it, so a marker
- * takes no place and makes no run wait. A run never counts the run it runs under, nor the runs its own command
- * starts. A full run that timed out tests on a busy machine says so beside them in its summary.
+ * EVERY RECORD SAYS WHETHER THE MACHINE WAS BUSY. `busy_machine` is true when another heavy run was live at the
+ * run's start, at a read every 10 s (NEXUS_BUSY_SAMPLE_MS) while its command ran, or at its end
+ * (lib/heavy-runs.js). For that every run keeps a presence marker of its kind in the `presence/` subfolder of the
+ * queue folder — a waiting run from its turn on, its expiry covering the rest of its wait and its limit, any
+ * other run from its start — whatever the queue setting says; the queue never reads it, so a marker takes no
+ * place in the queue. Small runs never make a machine busy, nor does a run still waiting for the runs going
+ * (its marker says so until its command starts), so the slow-test labeller is starved neither by other
+ * sessions' step runs nor, for those step runs, by a run waiting on them. A run never counts the run it runs under, nor the runs its own command starts. A full run
+ * that timed out tests on a busy machine says so beside them in its summary.
  */
 'use strict';
 const fs = require('fs');
@@ -251,11 +270,11 @@ const { filesCommand, routeFiles, buildCommand, isFilteredFull, nodeLegs, shareC
 const { loadRunner, RUNNERS, stagesOf, isAssignment, splitChain, setupStage, inferRunner, runnerOfFile } = require('./lib/test-runners');
 const { hashTree, buildHash, fileHash, sameTree } = require('./lib/tree-hash');
 const { readBuildEntries, hasBuildLedger, startBuild, endBuild, mayHaveBuilt, lastBuildReusable } = require('./lib/build-ledger');
-const { tiedSet, otherTied, failedTargets, declaredFor, nodeInvocation, runnerOf } = require('./lib/tied-tests');
+const { tiedSet, otherTied, placedElsewhere, failedTargets, declaredFor, nodeInvocation, runnerOf } = require('./lib/tied-tests');
 const { deltaSince } = require('./lib/gear-close');
 const { markTouched } = require('./lib/run-verdict');
 const { readTestEvents } = require('./lib/test-events');
-const { HEAVY_RUN_ENV, holdMarker, othersLive, busyWatch } = require('./lib/heavy-runs');
+const { HEAVY_RUN_ENV, holdMarker, chainState, othersLive, waitableRuns, busyWatch } = require('./lib/heavy-runs');
 const { stepTestsFor } = require('./lib/prose-tests');
 const { keepGoing, extraWords, WINDOW_MS, WINDOWS } = require('./lib/keep-going');
 const { mainCheckout } = require('./usage-level');
@@ -298,7 +317,7 @@ const PIPE_GRACE_MS = 2000;
 const USUAL_WINDOW = 10;
 const USUAL_MIN_RUNS = 5;
 const SLOW_RATIO = 1.5;
-const DEFAULT_RUNS_AT_ONCE = 2;
+const DEFAULT_RUNS_AT_ONCE = 1;
 const HEARTBEAT_MS = 10000;
 // A claim whose heartbeat is older than this is stale; also the slack added to a claim's expiry.
 const CLAIM_STALE_MS = 60000;
@@ -632,10 +651,18 @@ function slowLine(ratio, usual) {
   return `verify-run: this complete run has reached ${ratio}x its usual time (${humanMs(usual.usual_ms)}; the last passing run took ${humanMs(usual.last_ms)}) — it goes on, nothing is stopped\n`;
 }
 
-function runsAtOnce(raw, note = () => {}) {
+// The queue setting by its name, the old name read where the new one is unset or empty.
+function runsSetting(env) {
+  for (const name of ['NEXUS_RUNS_AT_ONCE', 'NEXUS_COMPLETE_RUNS_AT_ONCE']) {
+    if (env[name] !== undefined && env[name] !== '') return { name, raw: env[name] };
+  }
+  return { name: 'NEXUS_RUNS_AT_ONCE', raw: undefined };
+}
+
+function runsAtOnce(raw, note = () => {}, name = 'NEXUS_RUNS_AT_ONCE') {
   if (raw === undefined || raw === '') return DEFAULT_RUNS_AT_ONCE;
   if (/^\d+$/.test(raw)) return Number(raw);
-  note(`NEXUS_COMPLETE_RUNS_AT_ONCE is ${JSON.stringify(raw)}, not a whole number >= 0 — using ${DEFAULT_RUNS_AT_ONCE}`);
+  note(`${name} is ${JSON.stringify(raw)}, not a whole number >= 0 — using ${DEFAULT_RUNS_AT_ONCE}`);
   return DEFAULT_RUNS_AT_ONCE;
 }
 
@@ -762,7 +789,7 @@ const CLAIM_IO = {
 // `hold` receives `release(treeEnded)` as soon as a claim exists, so a signal during the wait releases
 // it too; release deletes the claim, or keeps it `retained` until its expiry when the command's tree
 // could not be confirmed ended.
-async function takeTurn({ env, n, settleMs, pollMs, waitCapMs, heartbeatMs = HEARTBEAT_MS, runLimitMs, info, say, hold = () => {}, io = {} }) {
+async function takeTurn({ env, n, settleMs, pollMs, waitCapMs, heartbeatMs = HEARTBEAT_MS, runLimitMs, info, say, hold = () => {}, io = {}, setting = 'NEXUS_RUNS_AT_ONCE' }) {
   const ops = { ...CLAIM_IO, ...io };
   const t0 = Date.now();
   const fields = {};
@@ -843,7 +870,7 @@ async function takeTurn({ env, n, settleMs, pollMs, waitCapMs, heartbeatMs = HEA
     }
     if (!said) {
       said = true;
-      say(`waiting for a turn — ${turn.ahead} complete run(s) ahead, at most ${n} at once on this machine (NEXUS_COMPLETE_RUNS_AT_ONCE)`);
+      say(`waiting for a turn — ${turn.ahead} heavy run(s) ahead, at most ${n} at once on this machine (${setting})`);
     }
     await sleep(Math.max(1, Math.min(pollMs, waitCapMs - (Date.now() - t0))));
   }
@@ -992,6 +1019,13 @@ function startedIn(tree) {
   return same(repo, tree);
 }
 
+// Whether git tracks `file` in the tree's index or at its HEAD; false outside git.
+function gitKnows(tree, file) {
+  const rel = path.relative(tree, path.resolve(tree, file)).split(path.sep).join('/');
+  const git = (args) => spawnSync('git', ['--literal-pathspecs', ...args], { cwd: tree, encoding: 'utf8', timeout: 5000, windowsHide: true }).status === 0;
+  return git(['ls-files', '--error-unmatch', '--', rel]) || git(['cat-file', '-e', `HEAD:./${rel}`]);
+}
+
 async function main(argv = process.argv.slice(2), { env = process.env, run = runCommand, out = (s) => process.stdout.write(s) } = {}) {
   const args = parseArgs(argv);
   const profile = typeof args.profile === 'string' ? args.profile : '';
@@ -1076,6 +1110,16 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
     process.stderr.write(`verify-run: measuring the worktree published for this session: ${tree}\n`);
   }
 
+  // A deleted file is a real changed file, so only an entry that also holds a comma is refused: several files
+  // joined into one argument would otherwise drop out of the tied run silently.
+  if (tied) {
+    const joined = changed.find((f) => f.includes(',') && !fs.existsSync(path.resolve(tree, f)) && !gitKnows(tree, f));
+    if (joined !== undefined) {
+      process.stderr.write(`verify-run: --changed ${joined} names no file — pass the changed files as separate arguments\n`);
+      return 2;
+    }
+  }
+
   // The session's own token, at the root whatever tree is measured (lib/round-token.js).
   const token = readRoundToken(root, session);
 
@@ -1117,6 +1161,8 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   // The tests the repo declares for the step's changed files (`stepTests`), run beside the named ones on node.
   let stepAdded = [];
   let runFiles = null;
+  // A run that fell back to the declared unit, run whole: a heavy run.
+  let wholeUnit = false;
   if (step) {
     relFiles = files ? files.map(relOf) : [];
     if (runner === 'node') stepAdded = stepTestsFor({ cfg, tree, changed: relChanged }).filter((f) => !relFiles.includes(f));
@@ -1160,6 +1206,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
       return 2;
     } else if (runnerMissing) {
       process.stderr.write(`verify-run: --files: ${runnerMissing} — running roles.unit\n`);
+      wholeUnit = true;
     } else {
       relFiles = files.map(relOf);
       composed = true;
@@ -1179,13 +1226,17 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   let ownFrom = composed ? 0 : null;
   // Another declared runner's commands a tied run adds after the rest, each with its runner.
   let added = [];
+  // A tied change every file of which another runner places: the main runner runs nothing, not even an untargeted node leg.
+  let mainNone = false;
   if (tied) {
     if (commands.length === 0) {
       process.stderr.write('verify-run: --tied: no roles.unit declared in .claude/verify.json — nothing ran and nothing is recorded; take the undeclared-unit fallback\n');
       return 3;
     }
     const declared = declaredFor(cfg);
-    const set = tiedSet({ repo: tree, changed, ...declared, stopSeconds, root });
+    added = otherTied({ repo: tree, changed, cfg, stopSeconds, root });
+    const set = tiedSet({ repo: tree, changed, ...declared, stopSeconds, root, placed: placedElsewhere(added, runner) });
+    mainNone = Boolean(set.placed) && !set.fallback && set.commands.length === 0;
     // The test files the change itself touched run whole beside what runs for it, timed, whatever that holds:
     // a node file as one more leg; another runner's, a command it composes (no slow exclusion), with its report —
     // beside a tied set unless that set provably runs every test: no slow tests declared and no filter in any of
@@ -1201,11 +1252,17 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
       : [];
     if (set.fallback) {
       process.stderr.write(`verify-run: tied: ${set.fallback} — running roles.unit\n`);
+      wholeUnit = true;
       if (runner === 'node') changedTests = ownTests;
       if (ownCommands.length) {
         ownFrom = runner === 'node' ? null : commands.length;
         commands = [...commands, ...ownCommands];
       }
+    } else if (mainNone) {
+      commands = [];
+      relFiles = set.placed;
+      composed = true;
+      ownFrom = 0;
     } else {
       const whole = (c) => { try { const read = runnerOps.exclusionOf(c); return Boolean(read && read.none); } catch { return false; } };
       const everyTest = !declared.slow && Boolean(runnerOps && typeof runnerOps.exclusionOf === 'function') && set.commands.every(whole);
@@ -1214,10 +1271,10 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
       composed = true;
       ownFrom = 0;
     }
+    // A placed file still counts toward `uncovered` until its own command starts.
     const gap = set.fallback
-      ? unreadGap({ unit: commands[0], untied: set.untied, shapeOf: (r) => (r === runner && runnerOps && runnerOps.commandShape) || null })
+      ? unreadGap({ unit: commands[0], untied: set.changed.filter((f) => set.untied.includes(f) || (set.placed || []).includes(f)), shapeOf: (r) => (r === runner && runnerOps && runnerOps.commandShape) || null })
       : null;
-    added = otherTied({ repo: tree, changed, cfg, stopSeconds, root });
     tiedFields = { tied: true, changed: set.changed, ...(set.fallback ? { tied_fallback: set.fallback } : {}), ...(gap || {}) };
   }
   // The runner that composed each command, or null for one none did; such a command takes no report, no reuse and no timing.
@@ -1251,7 +1308,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   // The record keeps the unsplit command: the readers of `command` (the usual time, `filtered`, the
   // failure list's shape check) read the legs as one run.
   const command = commands.join(' && ');
-  const plan = runPlan({ commands: commands.slice(0, addedFrom), composed: composed || ownFrom !== null, runner, relFiles: runFiles || relFiles, settings, tree, root, changedTests, ownFrom: step ? 0 : ownFrom, routes });
+  const plan = runPlan({ commands: commands.slice(0, addedFrom), composed: !mainNone && (composed || ownFrom !== null), runner, relFiles: runFiles || relFiles, settings, tree, root, changedTests, ownFrom: step ? 0 : ownFrom, routes });
   for (const [i, route] of added.entries()) {
     plan.items.push({ ...routeItem(route, commands[addedFrom + i], { settings, tree }), added: true, command: addedFrom + i });
     plan.stop = true;
@@ -1283,12 +1340,12 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   // The queue's fields are read when the record is written: a release or a heartbeat that failed
   // after the turn was taken still reaches it.
   let turn = { fields: {}, claimFile: null };
-  let heavy = null;
+  let held = null;
   let watch = null;
   let clock = null;
   // A queue folder that cannot be found (no home folder) never stops a run: the mark then reads no other run.
   const markerSlots = () => { try { return slotsDir(process.env); } catch { return null; } };
-  const busyNow = () => (watch ? watch.finish() : othersLive({ slots: markerSlots(), env: process.env, own: heavy && heavy.id }) > 0);
+  const busyNow = () => (watch ? watch.finish() : othersLive({ slots: markerSlots(), env: process.env, own: held && held.id }) > 0);
   // A tree whose runner reuses no build needs no ledger, unless one is already kept there.
   const reuses = [runnerOps, ...owners].some(builderOf);
   const ledgered = () => reuses || hasBuildLedger(tree);
@@ -1369,35 +1426,86 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
     endRunningOnSignal('SIGINT', 130);
     endRunningOnSignal('SIGTERM', 143);
   }
-  if (role === 'full') {
-    const say = (line) => process.stderr.write(`verify-run: ${line}\n`);
+  const heavyRun = !step && (role === 'full' || wholeUnit || (!files && !tied && (role === 'unit' || role === 'premerge')));
+  const waits = heavyRun && (role === 'full' || args.wait !== undefined);
+  const say = (line) => process.stderr.write(`verify-run: ${line}\n`);
+  const setting = runsSetting(process.env);
+  // The marker's expiry counts from its start; a waiting run's covers the rest of its wait too.
+  let markerMs = heldMs;
+  // The runs a waiting run waits for, read when it claims its place, and when and how long.
+  let pending = [];
+  let claimedAt = 0;
+  let waitCapMs = 0;
+  // A run before this one in the same process released its turn and its marker already.
+  releaseTurn = () => {};
+  if (waits) {
     const outer = process.env.NEXUS_COMPLETE_RUN_CLAIM;
-    const n = runsAtOnce(process.env.NEXUS_COMPLETE_RUNS_AT_ONCE, say);
-    if (n > 0 && outer && claimFileLive(outer)) turn.fields = { slot: 'nested' };
+    const n = runsAtOnce(setting.raw, say, setting.name);
+    if (n > 0 && ((outer && claimFileLive(outer)) || chainState({ slots: markerSlots(), env: process.env }).live)) turn.fields = { slot: 'nested' };
     else if (n > 0) {
+      waitCapMs = wholeMs(process.env.NEXUS_SLOT_WAIT_MS, DEFAULT_SLOT_WAIT_MS);
+      claimedAt = Date.now();
+      pending = waitableRuns({ slots: markerSlots(), env: process.env });
       turn = await takeTurn({
         env: process.env, n,
         settleMs: wholeMs(process.env.NEXUS_SLOT_SETTLE_MS, DEFAULT_SETTLE_MS),
         pollMs: wholeMs(process.env.NEXUS_SLOT_POLL_MS, DEFAULT_POLL_MS),
-        waitCapMs: wholeMs(process.env.NEXUS_SLOT_WAIT_MS, DEFAULT_SLOT_WAIT_MS),
+        waitCapMs,
         heartbeatMs: wholeMs(process.env.NEXUS_SLOT_HEARTBEAT_MS, HEARTBEAT_MS),
-        runLimitMs: heldMs, info: { tree, ...(slug ? { slug } : {}) }, say,
+        runLimitMs: heldMs, info: { tree, ...(slug ? { slug } : {}) }, say, setting: setting.name,
         hold: (release) => { releaseTurn = release; },
       });
+      markerMs = Math.max(0, waitCapMs - (Date.now() - claimedAt)) + heldMs;
+      // A queue folder that cannot be used never blocks a run, so the wait for the runs going ends with it.
+      if (turn.fields.slot === 'unavailable') pending = [];
     }
     if (turn.claimFile) process.env.NEXUS_COMPLETE_RUN_CLAIM = turn.claimFile;
     else if (turn.fields.slot !== 'nested') delete process.env.NEXUS_COMPLETE_RUN_CLAIM;
-    heavy = holdMarker({ slots: markerSlots(), env: process.env, limitMs: heldMs });
-    if (heavy) {
-      const own = heavy;
-      process.env[HEAVY_RUN_ENV] = own.id;
+    const claimVar = process.env.NEXUS_COMPLETE_RUN_CLAIM;
+    if (claimVar !== outer) {
       const releaseClaim = releaseTurn;
       releaseTurn = (treeEnded) => {
-        own.release(treeEnded);
-        if (process.env[HEAVY_RUN_ENV] === own.id) delete process.env[HEAVY_RUN_ENV];
         releaseClaim(treeEnded);
+        if (process.env.NEXUS_COMPLETE_RUN_CLAIM !== claimVar) return;
+        if (outer === undefined) delete process.env.NEXUS_COMPLETE_RUN_CLAIM;
+        else process.env.NEXUS_COMPLETE_RUN_CLAIM = outer;
       };
     }
+  }
+  held = holdMarker({ slots: markerSlots(), env: process.env, limitMs: markerMs, kind: heavyRun ? 'heavy' : 'small', turn: Boolean(turn.claimFile), waiting: pending.length > 0 });
+  if (held) {
+    const own = held;
+    const inheritedChain = process.env[HEAVY_RUN_ENV];
+    process.env[HEAVY_RUN_ENV] = own.exported;
+    const releaseClaim = releaseTurn;
+    let restored = false;
+    releaseTurn = (treeEnded) => {
+      own.release(treeEnded);
+      if (!restored && process.env[HEAVY_RUN_ENV] === own.exported) {
+        if (inheritedChain === undefined) delete process.env[HEAVY_RUN_ENV];
+        else process.env[HEAVY_RUN_ENV] = inheritedChain;
+      }
+      restored = true;
+      releaseClaim(treeEnded);
+    };
+  }
+  if (pending.length) {
+    const pollMs = wholeMs(process.env.NEXUS_SLOT_POLL_MS, DEFAULT_POLL_MS);
+    const going = () => {
+      const live = new Set(waitableRuns({ slots: markerSlots(), env: process.env, own: held && held.id }));
+      return pending.filter((id) => live.has(id));
+    };
+    let left = going();
+    if (left.length) {
+      if (Date.now() - claimedAt < waitCapMs) say(`waiting for ${left.length} run(s) already going on this machine to end`);
+      while (left.length && Date.now() - claimedAt < waitCapMs) {
+        await sleep(Math.max(1, Math.min(pollMs, waitCapMs - (Date.now() - claimedAt))));
+        left = going();
+      }
+      if (left.length && turn.fields.slot === undefined) turn.fields.slot = 'waited out';
+      turn.fields.waited_ms = Date.now() - claimedAt;
+    }
+    if (held) held.ready();
   }
   // Every run hands its command the events file and, where this Node takes it, the child-call preload.
   const eventsFile = path.join(root, '.claude', 'audit', `test-events-${runId}.jsonl`);
@@ -1488,7 +1596,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   };
 
   if (!builds || !builds.items.filter((b) => b.ops).every((b) => b.reuse)) beginBuild();
-  watch = busyWatch({ slots: markerSlots(), env: process.env, own: heavy && heavy.id, everyMs: wholeMs(process.env.NEXUS_BUSY_SAMPLE_MS, HEARTBEAT_MS) });
+  watch = busyWatch({ slots: markerSlots(), env: process.env, own: held && held.id, everyMs: wholeMs(process.env.NEXUS_BUSY_SAMPLE_MS, HEARTBEAT_MS) });
   const started = Date.now();
   if (role === 'full') clock = keepGoing({ limitMs: timeoutMs, windowMs });
   // A full run's commands share its clock; every other run's command gets the time left of its limit.
@@ -1979,6 +2087,6 @@ function runPlan({ commands, composed, runner, relFiles, settings, tree, root = 
   };
 }
 
-module.exports = { main, timeoutFor, testSettings, readTestEvents, runPlan, unreadGap, endTree, runCommand, endRunning, runningPids, startOptions, usualTime, slowField, runsAtOnce, readClaims, mayStart, takeTurn, fullSummary };
+module.exports = { main, timeoutFor, testSettings, readTestEvents, runPlan, unreadGap, endTree, runCommand, endRunning, runningPids, startOptions, usualTime, slowField, runsAtOnce, runsSetting, readClaims, mayStart, takeTurn, fullSummary };
 
 if (require.main === module) main().then((code) => process.exit(code));

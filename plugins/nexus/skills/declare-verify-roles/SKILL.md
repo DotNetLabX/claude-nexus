@@ -1,12 +1,12 @@
 ---
 name: declare-verify-roles
-description: "Declare a repo's verify roles (build / unit / full / mutation commands in .claude/verify.json), its slow-test declaration and exclusion, and optionally its commit strategy — the one-time onboarding the developer speed features need. Use when the session-start nudge fires, when the user says declare verify roles, or at pipeline pre-flight when the repo has no roles yet. Reads the repo's conventions first, proposes the block against a contract with a cost bound, times each command and verifies it runs, then writes the files with the measurement."
+description: "Declare a repo's verify roles (build / unit / premerge / full / mutation commands in .claude/verify.json), its slow-test declaration and exclusion, and optionally its commit strategy — the one-time onboarding the developer speed features need. Use when the session-start nudge fires, when the user says declare verify roles, or at pipeline pre-flight when the repo has no roles yet. Reads the repo's conventions first, proposes the block against a contract with a cost bound, times each command and verifies it runs, then writes the files with the measurement."
 ---
 
 # Declare verify roles
 
 The solo closes each change with **one call** of the declared `unit` command, through
-`verify-run.js --profile fast`, a developer's step runs go through the runner it names, and the close gate runs `full` once and keeps a record — but only
+`verify-run.js --profile fast`, a developer's step runs go through the runner it names, the close runs `premerge` before the merge, and `full` runs once on the default branch after it and keeps a record — but only
 in a repo that has **declared** those commands. The plugin never guesses them: they are the repo's
 facts. This recipe writes them, once — with the owner, or by the unattended path below when the
 owner is away.
@@ -25,13 +25,14 @@ owner is away.
    |---|---|---|
    | `build` | an **incremental** build of what changed, used only in a solo's compile-fix loop | never a clean or forced full rebuild — that guarantee belongs to CI and to the close |
    | `unit` | the **narrowest** command covering the step's change; where the repo's convention chains build and test, chain them here (`… && …`) rather than dropping the build | **the `stepLimitSeconds` you declare** (step 5); never the whole suite, and never the full command minus a filter clause — the slow-test exclusion below is added to a `unit` already scoped this way and never scopes it |
-   | `full` | everything, the suite the close gate runs once (it may take minutes) | **once, at close, from the main session** — never in a subagent; within the `fullLimitSeconds` you declare (step 5); unset, 10 minutes, or twice the suite's usual time once 5 passing runs exist, where that is longer |
+   | `premerge` | the whole-repo checks any change can break — lint, generated-copy and wiring checks — run before every merge beside the tests tied to the feature's change | **seconds, not minutes**; never a test of one feature's behaviour. Optional: a repo that names none runs nothing extra before the merge |
+   | `full` | everything, the full suite (it may take minutes) | **once on the default branch after the merge, at the main session's request** — never in a subagent; within the `fullLimitSeconds` you declare (step 5); unset, 10 minutes, or twice the suite's usual time once 5 passing runs exist, where that is longer |
 
    - `mutation` — only if the repo has a mutation runner; otherwise omit the key.
 
    A declared command is a **fixed** string, so `unit` cannot be narrowest for every individual step
    the way an agent composing one per step can be. Declare the narrowest set that covers a typical
-   step in **this** repo and let the unconditional `full` run at close cover the rest — that rail is
+   step in **this** repo and let the unconditional `full` run on the default branch after the merge cover the rest — that rail is
    what makes any narrowing safe.
    Keep the existing `commands` list (the quick gate) as it is — `roles` sits beside it. **One
    exception: where a `commands` entry is the same broad command you just narrowed, narrow it too.**
@@ -149,8 +150,8 @@ owner is away.
    ```
 
    A fast call cut at this limit records `reason: "timeout"`. Where the repo declares `roles.full`,
-   the caller reads that as *not finished* rather than red — the complete run at close covers the
-   tests that were cut — and without `roles.full` it stays red. Say so when you propose the value.
+   the caller reads that as *not finished* rather than red — the full run on the default branch after
+   the merge covers the tests that were cut — and without `roles.full` it stays red. Say so when you propose the value.
 
    **The full-run limit.** A full run — `--profile complete`, or `verify-run.js --role full` — runs
    under a top-level `"fullLimitSeconds"` beside `stepLimitSeconds` where the repo declares one, in
@@ -241,6 +242,6 @@ declares the roles at the campaign's preparation, and the unit reads its worktre
   *covers*, not how it is spelled: if narrowing the filter clause is the only thing separating `unit`
   from `full`, `unit` has not been scoped at all. The slow-test exclusion from step 2 changes nothing
   here: it is added to a `unit` already scoped by what it covers, and never scopes `unit` by itself.
-- **A `full` role that carries a filter clause.** `full` is the complete suite the close runs once; a
+- **A `full` role that carries a filter clause.** `full` is the complete suite run once after the merge; a
   clause in it leaves tests that no gate ever runs, and the session-start nudge warns about it. The
   composer's `filtered` check in step 3 is the test — re-propose `full` without the clause.
