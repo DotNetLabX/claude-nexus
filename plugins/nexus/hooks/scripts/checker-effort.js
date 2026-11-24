@@ -14,11 +14,12 @@
  * and the built-in helper types the table names. Under a preset that fills every matched spawn, each one
  * with no `model` whose seat the preset names gets that seat's model and, with no `effort`, the seat's own
  * effort; a spawn that names its own model and no effort gets the preset's effort for that model's family.
- * A seat the preset leaves `as today`, another plugin's agent among them, is left to its agent file. Under the default preset only the critic and reviewer seats are
- * touched, and only their effort: the table's effort for the model in the seat, the call's `model` else
- * the `model:` frontmatter of this plugin's own agent file.
+ * A seat the preset leaves `as today`, another plugin's agent among them, is left to its agent file.
+ * Standard and Speed fill effort at the critic and reviewer seats from the call's `model` or the
+ * agent file's `model:`. A model named in a Speed spawn takes its effort from the review list where
+ * it has an entry, then from the preset's effort row.
  *
- * UNDER A GEAR, the default preset's reader family takes the gear's reader effort (row 5 of
+ * UNDER A GEAR, Standard's reader family takes the gear's reader effort (row 5 of
  * lib/gears-shipped.json) in place of the table, read through lib/gears.js for the spawning session's
  * active gear context — pending or fixed, so a spec review is covered. `as today` and no context keep the
  * table. A learner or solo session never takes a gear, whatever context survives.
@@ -67,7 +68,7 @@ const hasValue = (v) => (typeof v === 'string' ? v.trim() !== '' : v !== undefin
 const rootOf = (data) => process.env.CLAUDE_PROJECT_DIR || data.cwd || process.cwd();
 
 function presetInForce(data) {
-  try { return mp.resolvePreset({ root: rootOf(data), env: process.env }).preset; } catch { return DEFAULT_PRESET; }
+  try { return mp.resolvePreset({ root: rootOf(data), env: process.env }); } catch { return { preset: DEFAULT_PRESET }; }
 }
 
 /** Row 5's runtime level for the spawning session's active gear context, or null. Never throws. */
@@ -95,7 +96,7 @@ function updatedInputFor(data) {
   if (!kind) return null;
   const given = input.model;
   if (given !== undefined && given !== null && typeof given !== 'string') return null;
-  const preset = presetInForce(data);
+  const { preset, lists } = presetInForce(data);
   const fill = mp.seatFor(preset, { agentType: type });
   const reader = kind === 'readers';
   if (!fill && !reader) return null;
@@ -107,7 +108,9 @@ function updatedInputFor(data) {
   if (!hasValue(input.effort)) {
     const f = family(model);
     const gearFamily = mp.gearEffortFamily(preset);
-    const effort = seatEffort || (reader && gearFamily && f === gearFamily && gearEffort(data)) || mp.effortFor(preset, f, { seat: reader });
+    const listEffort = reader && hasValue(given) && lists?.review.find((entry) => entry.model === f)?.effort;
+    const effort = seatEffort || listEffort || (reader && gearFamily && f === gearFamily && gearEffort(data))
+      || mp.effortFor(preset, f, { seat: reader });
     if (effort) out.effort = effort;
   }
   return out.model !== input.model || out.effort !== input.effort ? out : null;

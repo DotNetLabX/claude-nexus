@@ -95,8 +95,9 @@ here verbatim, not paraphrased: an **`M3 re-mine`** flag (a registry rule the ch
 tests could not be updated in the same pass) and a **`Distill owed: {module} — {date}`** flag (a
 module whose concept digest the change made stale). Write each on the `Deviations:` line of the step
 that caused it, or in a tail section when it surfaces later. An `M3 re-mine` flag blocks the run's
-close until discharged; a `Distill owed` flag goes on the close's after-close list and is discharged
-by the distill after the closing commit — the rules are the Registry guardrail's and the close gate's;
+close until discharged; a `Distill owed` flag becomes the module's `## Owed` row at the close and is
+discharged by the summary drafted in the review and published at the close, or by the next feature that
+touches the module — the rules are the Registry guardrail's and the close gate's;
 this format only fixes where they live.
 
 **What a step run leaves for the end.** Every problem a developer's step run shows
@@ -106,8 +107,8 @@ line — is one `Test problem:` line, fixed or not, with what was tried. A step 
 cut and the limit, and no `Test problem:` line. At the end of the run the developer gathers every
 such line — a solo block's `Unfinished:` lines included — into `## Unfinished Tests`, the way Key
 Decisions is gathered, without reopening an earlier block; the section is absent when there is
-none. Its readers take each entry as not verified at the step: the close's runs, the full run after
-the merge, and the solo either sends a red to, start from them.
+none. Its readers take each entry as not verified at the step: the close's runs, CI, the full run after
+the merge where `features.fullSuite` is on, and the solo either sends a red to, start from them.
 
 **A fix round has no step of its own.** When the reviewer returns findings, every step block is
 already closed and there is no current step to append to. Add one `## Fix Round N` block in the step
@@ -173,7 +174,7 @@ changes only what the next developer reads.
 
 ## Solo Fixes
 
-A solo spawned inside a feature's run — for a red run on the handover ladder (the handover's tied run, or a run at close), for a red full run after the merge, for a merge-in conflict at close, for a bug a developer met and did
+A solo spawned inside a feature's run — for a red run on the handover ladder (the handover's tied run, or a run at close), for a red full run after the merge (where `features.fullSuite` is on), for a merge-in conflict at close, for a bug a developer met and did
 not cause, or after the closing commit for the timed-out tests the change did not touch — records its work here, never in a step block. The section sits **immediately after the
 head, before the first step block**: a developer's step blocks are appended at the end of the file,
 so they never land after it, mid-build or at close. The first solo creates the section; each later
@@ -199,10 +200,10 @@ solo inserts its block inside it, after the last solo block. Solo appends its ow
 **The verdicts.** `fixed` — it made the change its approach named. The fast calls' outcomes are
 recorded apart, on `Verify:`, and the coordinator routes on them (`team-lead.md` § Message Handoffs (you are the hub)):
 mid-build, green stands, red resumes the solo once and then goes to the architect, unfinished is left
-to the close's runs. On the handover ladder the solo's proof is each failed test file run by name plus its
-tied call: every failure green by name ends the red, a red proof is the
-ladder's next attempt — at most three, then the architect — and only a failure that cannot be named, or a
-by-name run cut at its limit, waits for the next run that covers it (at handover and at close, the close's runs; after the merge, a green full run). `too big` — the fix is outside
+to the close's runs. On the handover ladder the solo's proof is one call by name over every failed test file, with no tied call
+after it, and the stage's second pass follows whatever it shows: that pass decides, and at its cap the stage
+ends not verified (→ agents-workflow.md § Red runs); a failure that cannot be named, or a by-name run cut at
+its limit, is left to that pass. `too big` — the fix is outside
 solo's size rule, or would change something the plan or the spec decided; nothing is left half-done,
 and a `questions.md` entry to the architect points at the block. `not caused here` — the failure is
 real but nothing in this feature's change caused it (a default branch that moved, the environment, a
@@ -235,7 +236,7 @@ Note cell opens `solo fix {n} —`, which names its source.
 
 | Agent | What they read | Impact of stale data |
 |-------|---------------|---------------------|
-| Architect | The step blocks (files, decisions, deviations, and `Rules:` for the report-only rule count) plus `## Skills Used` against the plan's Skill Mapping; `## Unfinished Tests` as not verified at the step — the close's runs, the full run after the merge and their solo start from it; `## Solo Fixes` as work done outside the plan's steps, never a step | Done check misses gaps or falsely fails |
-| Reviewer | All sections, especially `## Carry-Over Findings`; `## Solo Fixes` as code in the diff no step block names; `## Unfinished Tests` as not verified at the step — the close's runs, the full run after the merge and their solo start from it | Reviewer misses developer-flagged risks, reads a cut step as verified, or leaves a solo fix unread |
+| Architect | The step blocks (files, decisions, deviations, and `Rules:` for the report-only rule count) plus `## Skills Used` against the plan's Skill Mapping; `## Unfinished Tests` as not verified at the step — the close's runs, CI, the full run after the merge where `features.fullSuite` is on, and their solo start from it; `## Solo Fixes` as work done outside the plan's steps, never a step | Done check misses gaps or falsely fails |
+| Reviewer | All sections, especially `## Carry-Over Findings`; `## Solo Fixes` as code in the diff no step block names; `## Unfinished Tests` as not verified at the step — the close's runs, CI, the full run after the merge where `features.fullSuite` is on, and their solo start from it | Reviewer misses developer-flagged risks, reads a cut step as verified, or leaves a solo fix unread |
 | Developer (resume) | The last `## Step N` block, to find where work stopped; a developer on earlier work, the newest `## Range note` and the blocks after it | Duplicate work or missed steps on resume |
 | Developer (fresh fix round or hand-up) | The round's fix list, `## Solo Fixes` for what a solo already found and changed, the newest `## Range note` and the blocks after it, and an earlier step block only where its fix row builds on it | Re-investigates a bug a solo already diagnosed, or undoes its fix |

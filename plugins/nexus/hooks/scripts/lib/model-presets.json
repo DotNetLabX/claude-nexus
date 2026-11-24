@@ -86,6 +86,59 @@
         "late": { "neverSpend": [], "freshFrom": 2 }
       },
       "neverSuggested": ["sonnet"]
+    },
+    "speed": {
+      "claudeFamilies": ["sonnet", "opus"],
+      "authors": {
+        "architect": { "model": "as today", "need": 9, "why": "planning a feature" },
+        "po": { "model": "as today", "need": 9, "why": "writing a spec" },
+        "developer": { "model": "as today", "need": 8, "why": "building code" },
+        "solo": { "model": "as today", "need": 7, "why": "a small fix" },
+        "team-lead": { "model": "as today", "need": 6, "why": "running the pipeline" },
+        "learner": { "model": "as today", "need": 6, "why": "turning lessons into rules" }
+      },
+      "readers": {
+        "critic": { "model": "as today", "need": 9, "why": "spec or plan review, main reader" },
+        "reviewer": { "model": "as today", "need": 9, "why": "code review, main reader" }
+      },
+      "types": {
+        "Explore": { "model": "as today", "need": 2, "why": "finding where code lives" },
+        "general-purpose": { "model": "as today", "need": 7, "why": "review and verify passes" },
+        "Plan": { "model": "as today", "need": 5, "why": "design option sketches" }
+      },
+      "otherAgents": "as today",
+      "secondReader": { "default": "opus", "besidePrimary": { "opus": "sonnet" }, "need": 7, "why": "second reader on reviews" },
+      "jobs": {
+        "discovery": { "model": "sonnet", "effort": null, "codexFallback": { "model": "sonnet", "effort": "medium" }, "need": 2, "why": "finding where code lives" },
+        "audit": { "model": "sonnet", "effort": null, "codexFallback": { "model": "sonnet", "effort": "high" }, "need": 7, "why": "re-checking rules against code" },
+        "general": { "model": "sonnet", "effort": null, "codexFallback": { "model": "sonnet", "effort": "high" }, "need": 8, "why": "investigating a bug across code" },
+        "doneCheck": { "model": "as today", "need": 7, "why": "the done check" }
+      },
+      "refusedReader": null,
+      "effort": { "scope": "a spawn naming its own model", "byFamily": { "opus": "high", "sonnet": "high" } },
+      "lightLaneFloor": "low",
+      "gearEffortFamily": null,
+      "pairs": [["codex", "opus"], ["sonnet", "opus"], ["opus", "sonnet"]],
+      "substitute": { "fable": "opus" },
+      "fallback": {
+        "early": { "freshFrom": 2 },
+        "late": { "neverSpend": ["fable"], "freshFrom": 2 }
+      },
+      "authorModel": { "model": "opus", "effort": "high" },
+      "neverSuggested": ["fable"],
+      "seats": {
+        "developer": { "model": "codex", "effort": "xhigh", "codexModel": "gpt-6.2-sol" },
+        "solo": { "model": "codex", "effort": "xhigh", "codexModel": "gpt-6.2-sol" }
+      },
+      "lists": {
+        "review": [{ "model": "gpt-6.2-astra", "effort": "xhigh" }, { "model": "gpt-6.2-sol", "effort": "xhigh" }, { "model": "opus", "effort": "high" }, { "model": "sonnet", "effort": "high" }],
+        "doneCheck": [{ "model": "gpt-6.2-astra", "effort": "xhigh" }, { "model": "gpt-6.2-sol", "effort": "xhigh" }, { "model": "opus", "effort": "high" }, { "model": "sonnet", "effort": "high" }],
+        "panel": [{ "model": "gpt-6.2-astra", "effort": "xhigh" }, { "model": "gpt-6.2-sol", "effort": "xhigh" }, { "model": "opus", "effort": "high" }, { "model": "sonnet", "effort": "high" }],
+        "research": [{ "model": "gpt-6.2-sol", "effort": "xhigh" }, { "model": "opus", "effort": "high" }, { "model": "sonnet", "effort": "high" }],
+        "general": [{ "model": "gpt-6.2-sol", "effort": "xhigh" }, { "model": "sonnet", "effort": "high" }],
+        "audit": [{ "model": "gpt-6.2-sol", "effort": "xhigh" }, { "model": "sonnet", "effort": "high" }],
+        "discovery": [{ "model": "gpt-6.1-terra", "effort": "medium" }, { "model": "sonnet", "effort": "medium" }]
+      }
     }
   }
 }

@@ -40,13 +40,38 @@ Reference the product spec (`docs/product/index.md`) section that owns the canon
 
 ## User Flows
 
-Numbered step-by-step interactions. One flow per distinct user journey.
+Use numbered step-by-step interactions by default, one flow per distinct user journey.
 
 ```
 Flow 1: {Name}
 1. User does X
 2. System responds with Y
 3. ...
+```
+
+For a source listing feedback points on an existing feature, the optional **feedback-point** shape
+uses one flow per point, in source order, named after the point. Include the parts that apply, each
+in a few lines:
+
+- **Today** describes what happens and why it hurts the user. Check it against what is at hand about
+  the feature's behaviour, as in § Acceptance Criteria.
+- **After** gives the steps after the change.
+- **Unchanged** names what a reader might otherwise expect to change.
+- **Options** are lettered, unattributed and undecided. Include them only where the source names no
+  fix, and write each option here once.
+- **Open questions** lists the relevant question numbers.
+
+```
+Flow 1: Finding a saved item
+Today: The saved-items page lists items by name. A shopper returning to the newest saved item has to scan the list.
+After:
+1. Open saved items.
+2. Sort by date saved.
+Unchanged: The name sort remains available.
+Options:
+A. Remember the last sort for this shopper.
+B. Start each visit with the name sort.
+Open questions: 1
 ```
 
 ## API Surface
@@ -77,7 +102,7 @@ Each rule ends with its source, in italics in parentheses — `*(Source: {kind} 
 - `pattern` — the existing pattern the owner said to mirror, by name;
 - `added` — no source: the spec's author or a reviewer added it.
 
-A rule built from two sources lists both, separated by `;`. A rule its source covers only in part is split in two: the covered part keeps its source, the rest is `added`. Where the ticket and the mirrored pattern disagree, the ticket wins: the rule cites the ticket, never the pattern. An `added` rule keeps the spec from Ready until the owner keeps or drops it: a kept rule reads `Source: added — kept by owner {YYYY-MM-DD}` — settled by its author with the owner away, `Source: added — kept, owner away {YYYY-MM-DD}` — and a dropped one leaves this list for `## Out of Scope`, its reason `dropped at the owner's keep-or-drop`. The check `spec-sources.js`, beside the plugin's `verify-run.js`, lists every rule with no source and every `added` rule not yet kept; a main-session write that marks the spec Ready with one of them is refused.
+A rule built from two sources lists both, separated by `;`. If a source covers a rule only in part, cite it for the covered part and route any open scope or solution choice to § Open Questions. Use `added` for behaviour no source asks for. Where the ticket and the mirrored pattern disagree, the ticket wins: the rule cites the ticket, never the pattern. An `added` rule keeps the spec from Ready until the owner keeps or drops it: a kept rule reads `Source: added — kept by owner {YYYY-MM-DD}` — settled by its author with the owner away, `Source: added — kept, owner away {YYYY-MM-DD}` — and a dropped one leaves this list for `## Out of Scope`, its reason `dropped at the owner's keep-or-drop`. The check `spec-sources.js`, beside the plugin's `verify-run.js`, lists every rule with no source and every `added` rule not yet kept; a main-session write that marks the spec Ready with one of them is refused.
 
 1. Team names are unique, compared without regard to case. *(Source: owner, Q4)*
 2. A deleted team's name can be reused at once. *(Source: added)*
@@ -110,7 +135,7 @@ Once the spec is Ready and committed, `parts.js --spec docs/specs/{slug}` (besid
 
 The why behind this document's decisions — the owner's reasons, what was turned down and the fact each decision rests on — so a run without the owner decides as the owner would, and stops where a decision no longer holds. When an agent follows or stops on an entry is `rules/on-demand/agents-workflow.md` § Decision entries; this section owns only the entry's shape.
 
-Two kinds of entry: an **owner ruling** (`By: owner`), and a **writer's decision** — a question the PO or architect resolved itself by recommendation, still listed for the owner as today, its `By` naming the role that decided and never presented as the owner's.
+Two kinds of entry: an **owner ruling** (`By: owner`), and a **writer's decision** — a question a fact or the source settles, still listed for the owner, its `By` naming the role that decided and never presented as the owner's. Open scope or solution choices go to § Open Questions.
 
 An owner ruling gets an entry when (a) the owner gave a reason in words, (b) the owner chose something other than the recommendation — another listed option or an answer of their own, (c) a discussion settled it, or (d) it changes a decision that already has an entry, even by a plain pick. A plain pick of the recommendation with no words gets no entry: the document's text already carries the outcome.
 
@@ -129,7 +154,7 @@ Entries are numbered `D1`, `D2`, … (`P1`, `P2`, … in a plan), and every refe
 
 ## Acceptance Criteria
 
-Checklist format. Each item is an observable outcome — something a tester can verify from the outside without reading source code. Name endpoints and HTTP status codes, not classes or methods.
+Use a checklist of observable outcomes a tester can verify from outside the product. Each item checks the change and fails on today's product. Rewrite a check today's product already passes until it fails there, or remove it. Use only what is at hand for today's behaviour (the source, people in the conversation or a document already open). Record any missing fact as an open question at once. Name endpoints and HTTP status codes where they describe the outcome.
 
 - [ ] {Criterion}
 - [ ] {Criterion}
@@ -144,7 +169,18 @@ What this feature explicitly does NOT include. Each item has a reason.
 
 *Omit section if all questions are resolved.*
 
-Questions that must be answered before the implementation plan can be written.
+Keep scope or solution choices the source leaves open here. Give the writer's suggestion and its
+reason, leaving the choice to the owner or a decider the owner names. Leave it out of the rules and
+decisions until that choice is settled. With the owner away, follow the owner-away rule
+(→ rules/on-demand/agents-workflow.md § Owner-away runs) to take the suggestion as presumed and list it.
+Behaviour no source asks for belongs in the owner keep-or-drop route for `added` rules. A question a
+fact or the source settles can be recorded as a writer's decision.
 
-- [ ] {Question}
+Leave out facts absent from the source and any checked source. Keep checked corrections with where
+they were checked. Attribute a preference only to the decider who expressed it. Labels can still
+identify who requested something or who can answer a question.
+
+Number questions a flow points to. A question about flow options names the flow and the option letters.
+
+- [ ] 1. Which sort should shoppers see when reopening saved items (Flow 1, Finding a saved item, A or B)? Suggestion: A, because returning shoppers can pick up where they left off.
 ```

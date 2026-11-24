@@ -11,7 +11,8 @@
  * a gone file on the other-work list — the path itself, or a folder that holds it — is put back (`restored`);
  * an other-work file whose content changed is left as it is and named (`changed`), since another session may
  * have changed it; a gone file of the feature's own is named (`featureGone`) and its copy kept, for the
- * coordinator to put back where the unit's steps did not ask for the removal.
+ * coordinator to put back where the unit's steps did not ask for the removal. The copy's `restoring.json` names
+ * each file before it is put back, so a look stopped after putting one back and run again still reports it.
  *
  * A COPY OUTLIVES THE JOB. A later writing start for the same tree drops an earlier copy once its feature
  * files are committed — none still uncommitted there, none gone; `seat-release --close` drops every copy of the
@@ -23,6 +24,7 @@ const crypto = require('crypto');
 const { seatDir, reservationFile } = require('./codex-seat');
 
 const MANIFEST = 'manifest.json';
+const RESTORING = 'restoring.json';
 
 const treeCopies = (tree, env = process.env) => path.join(seatDir(env), 'copies', path.basename(reservationFile(tree, env), '.json'));
 const slash = (p) => String(p).replace(/\\/g, '/').replace(/\/+$/, '');
@@ -63,19 +65,39 @@ function makeCopy({ tree, intent, unit, files, otherWork, env = process.env }) {
   return { dir, count: held.length };
 }
 
+function readRestoring(dir) {
+  try {
+    const value = JSON.parse(fs.readFileSync(path.join(dir, RESTORING), 'utf8'));
+    return Array.isArray(value) ? value.filter((p) => typeof p === 'string') : [];
+  } catch { return []; }
+}
+
+function writeRestoring(dir, paths) {
+  const file = path.join(dir, RESTORING);
+  fs.writeFileSync(`${file}.${process.pid}.tmp`, JSON.stringify(paths));
+  fs.renameSync(`${file}.${process.pid}.tmp`, file);
+}
+
 /** `{restored, changed, featureGone}` after a job — only gone files are put back, and only other work. */
 function checkCopy(dir) {
   const manifest = readManifest(dir);
   const out = { restored: [], changed: [], featureGone: [] };
   if (!manifest) return { ...out, reason: `the safety copy's manifest in ${dir} cannot be read` };
+  const restoring = readRestoring(dir);
   for (const f of manifest.files) {
     const target = path.join(manifest.tree, f.path);
     if (fs.existsSync(target)) {
-      if (f.otherWork && hashOf(target) !== f.sha) out.changed.push(f.path);
+      const same = hashOf(target) === f.sha;
+      if (f.otherWork && same && restoring.includes(f.path)) out.restored.push(f.path);
+      else if (f.otherWork && !same) out.changed.push(f.path);
       continue;
     }
     if (!f.otherWork) { out.featureGone.push(f.path); continue; }
     try {
+      if (!restoring.includes(f.path)) {
+        restoring.push(f.path);
+        writeRestoring(dir, restoring);
+      }
       fs.mkdirSync(path.dirname(target), { recursive: true });
       fs.copyFileSync(path.join(dir, 'files', f.path), target, fs.constants.COPYFILE_EXCL);
       out.restored.push(f.path);

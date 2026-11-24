@@ -21,11 +21,11 @@ Shipped nexus skills live in the plugin's version-keyed cache — not editable f
 
 > **Dev-repo carve-out (ADR-1).** In the plugin *source* repo itself, this inverts: shipped skills are authored and fixed **directly** in `plugins/{plugin}/skills/` and the skill's own lint is the done-condition — and a **new** shipped skill runs the full New-Skill recipe here, including its Judgment Gate (below). The feedback-file channel below is the *consuming-project* path (where the cache is read-only) — don't route a dev-repo fix to it. The in-repo edit itself follows `edit-shipped-plugin-skill` — the coherent-edit recipe (smallest-coherent-edit scoping, the enumeration/adjacent-surface sweeps, two-surface reconciliation, the skill-lint E9/E7/E6 traps). Authoring a **new** mine-family member or program-home pipeline skill additionally follows `mine-member-authoring` (`nexus-miner`; the family-authoring specialization), on top of the New-Skill recipe.
 
-- **Fix to a shipped (plugin) skill** → append to the portable feedback file `docs/plugin-feedback/nexus-{plugin-version}-{date}.md` (same entry format as improve-flow: suggested target = the skill + section, action, evidence, condensed lesson); commit it as `agents-workflow.md` § All Agents says. Never edit the cache.
+- **Fix to a shipped (plugin) skill** → append to the portable feedback file `docs/plugin-feedback/nexus-{plugin-version}-{date}.md` in the `plugin-feedback` skill's layout (the skill and section are where the problem showed, the fix at most a hint); commit it as `agents-workflow.md` § All Agents says. Never edit the cache.
 - **Fix to a project-local skill** (one that lives in this project's `.claude/skills/`) → apply directly **as a consolidating pass**: read the SKILL.md fully, fold the fix into the section it belongs to — net complexity flat or down, never additive patching. A skill that only ever grows becomes unreadable and stops being followed. Check the fix against `references/proven-patterns.md` — especially AP2 (sweep every normative surface the rule lives on, not just where it was reported) and AP3 (one owner per fact).
 - **Skill gap** → decide the home:
   - **Project-specific pattern** (this codebase's stack/structure) → scaffold a **project-local** skill in `.claude/skills/{name}/` (a consumer project legitimately owns its local skills).
-  - **Pipeline-generic pattern** (useful to every nexus consumer) → feedback-file entry proposing a new plugin skill; don't scaffold locally.
+  - **Pipeline-generic pattern** (useful to every nexus consumer) → a feedback-file entry for the recurring work no skill covers — the need, in the `plugin-feedback` skill's layout; don't scaffold locally.
 
 ## Pattern-Pack Seeding (Reference-Model Entry Point)
 

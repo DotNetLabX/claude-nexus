@@ -8,24 +8,24 @@ the generator propagates it.
 
 ## Availability detection <!-- id: availability -->
 
-**Codex is available when the Codex plugin's surfaces are present in your session context** — its
-`codex:*` skills and agents — read once per review, at the reading rule's first pass. There is no
-probing protocol beyond that and no shared file to read. Absent those surfaces, every Codex option
-below is simply not offered. With the surfaces present, a start through the Codex job helper
-(`codex-job.js`) that returns `unavailable` is a **start failure**, judged by the early window
-(→ § Time limit and fallback).
+**Codex is available when the session has the Codex plugin's `codex:*` skills and agents or the
+session-start line `Codex starts directly: yes`.** Read those signals once per review, at the
+reading rule's first pass. Offer Codex only where available. A start through the Codex job helper
+(`codex-job.js`) that returns `unavailable` where Codex is available is a **start failure**, judged by
+the early window (→ § Time limit and fallback). For a seat job, the helper's `seat` call answers
+whether Windows and the npm Codex launcher can run it (→ codex-dispatch.md § Seat job).
 
 ## Code-review seat <!-- id: code-review -->
 
-Codex is never the main reader of a round Codex built in whole or in part — a seat job on Codex wrote any of
-it, as `implementation.md`'s stamp history shows: the reader-pair list is read from its second pair on
-(→ agents-workflow.md § Critic rounds). Otherwise, on the reader pair's Codex option, **Codex is the code review's primary.** The nexus reviewer reads
-the same round as its second reader — on the preset's second reader (→ pipeline-guardrails.md § Model presets), or the repo's `jobs.secondReader` model where it is
-set and no pick names the second — and writes `review-second.md`, never `review.md` unless promoted
+When the pairing check resolves a Codex primary, **Codex is the code review's primary**. A round built
+on Codex can take a Codex reader whose model differs from every author model on its stamp history
+(→ agents-workflow.md § Critic rounds). Start with `--kind review --model {the slot's model}`, using
+`--model codex` for a bare slot. The reviewer runs on the resolved second reader's model and effort
+(the `jobs.secondReader` rung still applies) and writes `review-second.md`, never `review.md` unless promoted
 (below). That reader
 joins the first review and a follow-up whose `Covers:` lists a built or redone step; a follow-up
-covering no step is Codex alone. Under a gear that adds a third reader, a reviewer on the preset's
-third-reader family reads the first review as its third reader and writes `review-third.md` (→ agents-workflow.md § Critic rounds). The dispatcher is whoever starts the code review — the team lead, or
+covering no step is Codex alone. Under a gear that adds a third reader, a reviewer on the resolved
+third slot reads the first review as its third reader and writes `review-third.md` (→ agents-workflow.md § Critic rounds). The dispatcher is whoever starts the code review — the team lead, or
 the standalone architect at the fast lane's review gate — and the same session dispatches a fix
 round's follow-up, and the round-less follow-up after a solo fix or a hand-up made once the first
 review started (its own round, never a fix cycle) — save one made for a red at the close's runs,
@@ -79,8 +79,8 @@ of that file keeps reading one primary section per round:
 Keeping the findings as severity headings is deliberate: the pipeline gate refuses an `APPROVED` that
 sits beside an open HIGH or CRITICAL heading, so a mistranslated verdict is caught mechanically.
 
-**When Codex drops, its second reader writes the round.** Which reader is promoted, and when a fresh
-main is spawned instead, is the late rule's (→ § Time limit and fallback). Where it makes the round's
+**When Codex drops, follow the review fallback** (→ codex-dispatch.md § Time limit and fallback).
+Where the fallback makes the round's
 second reader its main, wait for that reader's hand-back if it is still running,
 then resume it as round {n}'s primary, naming the dropped reader and why. It writes the round's
 `review.md` Step-2 section itself, in that file's grammar, opening with the line
@@ -88,9 +88,8 @@ then resume it as round {n}'s primary, naming the dropped reader and why. It wri
 note — and re-heads its own `review-second.md` section for that round to
 `## Promoted to primary — round {n}`, so that file keeps second-reader verdicts only. A reader you can
 no longer resume is replaced by a fresh `nexus:reviewer` on the same model, handed the round's merge so
-far with `review-second.md`, for the same two writes. The new pair's second reader, where the round
-carries one, writes `review-second.md` as usual. Both files stay the reviewer's: nothing is persisted
-for a promoted reader. Where an early drop makes a seated third reader the main
+far with `review-second.md`, for the same two writes. The replacement second reader, where the fallback fills that slot, writes `review-second.md` as usual. Both files stay the reviewer's: nothing is persisted
+for a promoted reader. Where the fallback makes a seated third reader the main
 (→ § Time limit and fallback), it is resumed the same way and re-heads its own `review-third.md`
 section instead.
 
@@ -106,28 +105,34 @@ Merging the readers into one fix list is the merge section's, below — the only
 
 ## Critic seat <!-- id: critic-seat -->
 
-When Codex is picked at a critic seat — a spec, plan or promotion review — it **replaces** the nexus
-critic as the primary — an owner-ratified exception to "nexus agents own the pipeline" — and in
-round 1 the preset's second reader runs beside it, or the `jobs.secondReader` model where it is set and
-no pick names the second (→ agents-workflow.md § Critic rounds) — except under a gear whose spec and
-plan review is `Codex alone`, where Codex reads alone; under a gear that adds a third reader, it reads
-round 1 too (→ agents-workflow.md § Critic rounds). No nexus critic is spawned as that
-seat's primary. Its verdict lives at its **record path**: `docs/specs/{slug}/delivery/review-critic-codex.md`
+A Codex primary at a critic seat — spec, plan or promotion review — replaces the nexus critic as
+primary. It can read work written on another Codex model under the same author comparison as the
+code-review seat. Start it with `--kind review --model {the slot's model}`, or `--model codex` for a
+bare slot. In round 1 spawn the resolved second reader beside it where the round carries one (the
+`jobs.secondReader` rung applies), plus the gear's third reader where it adds one. A gear's
+`Codex alone` spec or plan review runs one reader (→ agents-workflow.md § Critic rounds). Its verdict lives at its **record path**: `docs/specs/{slug}/delivery/review-critic-codex.md`
 for a spec or plan review, and the consolidation report's round section for a promotion review (GO/NO-GO
 plus severity-rated findings, the code-review verdict file's grammar), kept distinct from
 `review-codex.md` so a feature with Codex at both seats keeps two separate records.
 
 **Write posture — one rule, and the seat job's exception.**
 
-**Dispatch READ-ONLY: every Codex job runs through the Codex job helper, and every one but a seat job's writing units and the sandbox check runs without `--write` (→ codex-dispatch.md § Seat job); the helper sends `--model` only from a helper job's or a seat's own `codexModel`, and sends `--effort` only where the repo sets `codex.effort` or a helper job's or a seat's own effort, the dispatch passes `--effort` or the feature's gear names a Codex effort, and a read-only job's brief says read-only in words too, so Codex can never touch the artifact under review.**
+**Dispatch READ-ONLY: every Codex job runs through the job helper. Writing seat units and the two sandbox-check jobs use the `workspace-write` box (→ codex-dispatch.md § Seat job). Every other job uses the read-only sandbox and says read-only in its brief, so Codex can never touch the artifact under review.**
 
-Wherever no `codexModel` names a model, none is sent, deliberately: the Codex CLI resolves its own
-default, and the user's Codex config file is the model dial — and the effort dial, where nothing
-above names an effort. A `codexModel` is checked for its shape only: a name of anything but letters,
-digits, `.`, `_`, `:` and `-`, or one that does not open with a letter or digit, is not sent — the job starts on the
-user's Codex default — and is named on the helper's stderr; a well-shaped name Codex does not know
-reaches Codex, and a job that fails on it falls back as any failed job does. The
-`codex:codex-rescue` forwarder is not a dispatch path: nothing can hold it to the time limit.
+**Model and effort at start.** For a resolved slot the dispatcher passes only its `--model`. Pass
+`--model codex` for a bare slot so the helper uses the account default without choosing a list
+model. With no `--model`, the helper reads a Codex helper or done-check job's repo entry first,
+including its model-less form. Otherwise a Speed job reads the first eligible Codex model from its
+job list. A list with no eligible Codex model returns `unavailable`. A job with no list uses the
+account default. Seat jobs take their model from the effective seat entry. Mining keeps its own
+dispatch rules. Model names are shape-checked before launch. A well-shaped model that fails in
+Codex takes that job's fallback.
+
+The helper resolves effort in this order: an explicit dispatch `--effort`, the campaign gear, the
+repo's job or seat entry or the repo list entry for the chosen model, the repo's `codex.effort`, the
+feature gear, then the shipped list entry for that model. A list lookup uses the selected model,
+with the bare entry matched as `codex`. With no applicable effort, Codex takes its account setting.
+The `codex:codex-rescue` forwarder is outside this dispatch path because it cannot enforce the limit.
 
 **Persistence is the dispatching session's.** A read-only job cannot write the verdict file at all,
 so the session that dispatched it takes the GO/NO-GO, the findings and any `Beyond the limit:` list from
@@ -156,11 +161,17 @@ agent file, so the brief carries the pointer.
 **Every Codex job runs through the Codex job helper, under one time limit.** It is `codex-job.js`:
 in the main session it sits in the folder of the fast-profile line of the session-start plugin-paths
 block (its `Codex job helper` line says so); a spawned agent finds it in the scripts folder its spawn
-names. Run every one of its subcommands from the session
-root — never a worktree — because the Codex companion keeps its job records per working directory,
-and a call from anywhere else finds no job. Either shell tool serves: a shell that lacks the Codex
-plugin's data folder is pointed at it by the helper, so a job started from one shell is found from
-the other.
+names. Run every subcommand from the session root. Either shell tool serves. A Codex job sends no
+completion notice to the session, so a turn never ends on one unless a background `wait` or `watch`
+is running for it.
+
+**The route.** For jobs outside the pipeline seats, `features.codexDirect` set to JSON `true`
+starts Codex directly in a read-only box on Windows with the npm Codex launcher available. Where the
+repo leaves the switch unset, the profile's `codexDirect` (`nexus/profile.json`) decides the same way;
+a repo `true` or `false` wins. Otherwise the helper uses the plugin route. A job keeps its starting route through collection, including after
+a settings change. On the plugin route the companion's records are per working directory, which is
+why calls from a worktree cannot find a session-root job. The helper supplies the plugin's data
+folder when a shell lacks it, so both shells find the same job.
 
 **The limit** is `codex.timeLimitMinutes` from the repo's agent config, 25 minutes when unset, counted
 from the job's start. A review job with other readers in its round — a spec, plan or promotion review
@@ -170,8 +181,8 @@ reader of its round (a spawned agent spawns none), keeps the plain limit. Cuttin
 time — the round waits for that reader anyway — and loses the review. Codex at its limit at minute 25
 while the second reader runs to minute 31 is collected after minute 31, finished or cut.
 
-**The stall check.** Inside the limit and past it, the helper reads the job's own log: 6 minutes with
-no new line is a **stall**, at any point in the job, for every kind but `helper` (→ codex-dispatch.md § Helper job) — measured, a working Codex job writes a log line
+**The plugin route's stall check.** The helper reads the job's own log inside and past the limit: 6 minutes with
+no new line is a **stall** for plugin jobs other than `helper` and legacy `seat` jobs — a working companion job writes a log line
 at least every few minutes, and a stuck one goes silent. `wait` returns `stalled: true`, with the quiet
 minutes, as soon as a stall falls due; call `collect` at once. `collect` decides: a job still stalled is
 cancelled and its log returned as `partial` with the reason `stalled — no Codex output for 6 minutes`,
@@ -183,17 +194,40 @@ cut is countable in the review records.
 `unavailable` with a reason, or `refused` with a reason. `wait --job {jobId} --deadline {deadline} --started {startedAt}`
 returns the job's `state` — `queued`, `running`, `completed`, `failed` or `cancelled`, or `unknown`
 with `readError: true` when the helper could not read the job's state (a read error is no job
-failure: keep waiting to the deadline) — within about two minutes, so call it again until the state
-is terminal, it returns `stalled: true`, or it adds `deadlinePassed: true`, which it does once the
+failure: keep waiting to the deadline — a lost job, below, aside) — within about two minutes, so call
+it again until the state is terminal, it returns `stalled: true`, or it adds `deadlinePassed: true`, which it does once the
 limit is reached on an unfinished job: you need no clock of your own. Then
 `collect --job {jobId} --deadline {deadline} --started {startedAt} --kind {kind}` — `review` for a
 review, `done-check` for the done check, `helper` for a helper job, a skill's own kind for its job — returns the `state`, the
 `output`, the `verdict` it found (`GO` or `NO-GO` for a review, `PASS` or `FAIL` for a done check,
 none for any other kind) and, where it had to, a `reason` and the `partial` output.
-A `queued` job whose worker process has gone never runs: `wait` and `collect` return it as `failed`
+On the plugin route a `queued` job whose worker process has gone never runs: `wait` and `collect` return it as `failed`
 with the reason `the Codex worker exited before it took the job`, a job failure like any other.
+A plugin job **lost** by the companion, as two jobs started seconds apart can be, is judged
+once the early window has ended: a review, done-check, research, panel or mining job whose `wait`,
+`collect` or `watch` passes `--started`, its log path recorded and no end recorded, whose status read says no such job while its job file, its
+log and its worker process are all gone — the status and the two files read again after a short pause, the worker searched once — ends `failed` with the reason
+`lost — the Codex companion holds no record of the job`, a job failure like any other. Any other read
+error keeps waiting to the deadline, and a later read that finds the job governs.
+On the direct route a confirmed keeper exit while the job was running, or a launch that was never
+reported and whose holder and keeper are both confirmed gone, is a job failure. Silence alone leaves
+a direct job running.
 A failure it saw inside the early window (below) carries `earlyFailure: true`. Every call prints one
 JSON object.
+
+**Waiting in the background.** For the jobs of a review round and a Codex done check, an
+**interactive** main session runs that `wait` as
+`wait --job {jobId} --deadline {deadline} --started {startedAt} --max-seconds {the time limit in seconds}`
+with the shell tool's background option, and its turn may end while it runs: the shell's notice wakes
+the session when the call returns. The helper caps the wait at the deadline itself, so no clock is
+needed; a wait started past the deadline — a job taken up again after it — is the hold's foreground
+call instead (below). A terminal state, `stalled: true` or `deadlinePassed` is handled as above; any other return
+starts the background wait again. A **headless** session — one started with `claude -p`, as a
+campaign's unit and merge sessions are, which ends when its turn ends — and a spawned agent keep the
+foreground calls above, and so does a session that cannot tell which it is. A helper job, a seat job
+and a skill's own job keep the wait their own section or skill names
+(→ codex-dispatch.md § Helper job; → codex-dispatch.md § Seat job). Nothing else the loop decides moves: the
+stall check, the early window, `collect`'s cut at the limit, the `end` line.
 
 **A job a later session can find.** Every Codex job of a review round or a done check starts with its
 `--kind` and the label `{slug} {spec-review|plan-review|promotion-review|code-review} round {n}`, or
@@ -206,13 +240,13 @@ Before a session
 starts the readers of a round whose record is missing, it runs `jobs --label {that label}`:
 - `none` — the round never started: start it as usual;
 - a job with its id — take up the loop above from where the job stands: `wait`, then `collect`,
-  holding for the round's other readers, a read error held to the deadline, and a cut, a stall or a
-  failure falling back for that seat with no retry;
+  holding for the round's other readers, a read error held to the deadline (a lost job aside), and a
+  cut, a stall or a failure falling back for that seat with no retry;
 - `started, id not recorded` or `unreadable` — the job may still run and cannot be reached: that
   seat's fallback, the reason in the round's header note.
 
 A `collect` or `watch` that returns a finished, failed or cancelled job started with a label adds one
-`end` line to the same record — when the job ended, its state, for a failed or cancelled job its reason,
+`end` line to the same record — when the job ended, its state, its reason where it has one,
 and the Codex session id where the result names one — so the job's run time can be read back, its
 failures counted by cause and its Codex run found.
 
@@ -223,40 +257,56 @@ reader it replaced (→ agents-workflow.md § Fix rounds) — call `wait --max-s
 `stalled` is collected at once; `unknown` is held like a running job. At each `wait` return in the
 hold, a reader whose completion notice has not come is checked as any silent agent is — its transcript
 by its agent id first, then a resume (→ agents-workflow.md § All Agents); found finished, or with its
-stall handling ended, it is in.
+stall handling ended, it is in. The hold's calls run in the foreground in every session: a background
+wait still running when the hold begins needs nothing done, and one that returns after its job was
+collected is ignored.
 
 **At the limit** `collect` reads the job's state first: a job that finished in the meantime is taken
-as finished. Otherwise it cancels the job and keeps the job's whole log — merged into the round marked
+as finished, and a lost plugin job is returned `failed`. Otherwise it cancels the job and keeps the
+partial — the whole log on the plugin route, or the last 64 KB of agent messages on the direct route.
+Merge it into the round marked
 `partial — Codex cancelled at the limit`, levelled by that round's cut (a code review's fix-round bar, a
 critic round's action floor), each finding re-verified by the round's
 other readers or the fold like any finding — **and the fallback runs as well.** A cancelled job cannot deliver late, so
-nothing is held open for it. Where the cancel itself fails and the job is still running — judged by
-the helper from the job's own process, and on Windows only after it has tried to end the job's process
-tree itself — `collect` returns that state with `cancel failed: {why}` and the log so far: keep the log
-the same way, fall back, and ignore anything the job delivers later.
+nothing is held open for it. On the plugin route, the helper checks the job's process and on Windows
+tries to end its process tree if cancellation fails. On the direct route it asks the box to close.
+If the plugin job is still running or the direct box's closure remains unconfirmed, `collect` returns
+the known state with `cancel failed: {why}` and the partial so far. Keep it the same way, fall back,
+and ignore anything the job delivers later.
 
 **The early window** is the first 6 minutes after the job's start, or its whole limit where
-`codex.timeLimitMinutes` is under 6. A **job failure** is a `start` that returns `unavailable` with the
-surfaces present, a job ending `failed`, a job ending `cancelled` before its deadline by something
-other than the limit or the stall check, a stall, or a job ending `completed` with no usable output for
-its kind. A job cut at the limit is never an early failure, and a read error is no failure at all. The
-helper sets the flag: the call that first returns the failure carries `earlyFailure: true` when it saw
-it inside the window — for a stall, when `collect` saw it before minute 7, so the job wrote nothing
-after its first minute. The flag on that first call governs, and a later call's reading never
+`codex.timeLimitMinutes` is under 6. A **job failure** is a `start` that returns `unavailable` where
+Codex is available, a job ending `failed`, a job ending `cancelled` before its deadline by something
+other than the limit or the stall check, a stall, a lost job, or a job ending `completed` with no usable
+output for its kind. A job cut at the limit is never an early failure, and a read error is no failure
+at all, a lost job aside. The helper sets the flag: the call that first returns the failure carries
+`earlyFailure: true` when it saw it inside the window — for a stall, when `collect` saw it before the
+window plus one minute (minute 7 under a limit of 6 minutes or more), so the job wrote nothing after its
+first minute; for a lost job, when the read that found it lost came before that same time, a `watch`
+keeping the flag of its first `wait` that found it lost. The flag on that first call governs, and a later call's reading never
 overrides it; a `stalled` from `wait` is not yet a failure — the failure is `collect`'s. Key the
 fallback on the flag (`earlyFailure: true` → early), never on your own reading of minutes.
 
 **The fallback.** A job that is `unavailable`, ends `failed` or `cancelled`, is cut at its limit or by
 the stall check, is still running when `collect` gives up on it, or ends `completed` with no usable
 output — `no verdict returned` for a review or a done check, an empty result for any other job — falls
-back at once: a review by the matrix below, the done check by codex-dispatch.md § Done check, a
+back at once: a review by the preset's fallback below, the done check by codex-dispatch.md § Done check, a
 helper job by its job's Claude fallback (→ codex-dispatch.md § Helper job), any other job by its own skill's fallback. A `readError` alone is not a reason to fall back before the
-deadline. No question to the owner and no retry first: a retry spends the same wait again. The
+deadline; a lost job is a job failure and falls back at once, its reason riding the round's `Codex dropped:`
+line as the stall reason does. No question to the owner and no retry first: a retry spends the same wait again. The
 round's header note names the skipped reader and why.
+
+**Under Speed**, a failed or unavailable review job drops the Codex family for this review. The
+dispatcher runs the resolver again with every dropped family, the surviving picks and the round's
+reader count (→ agents-workflow.md § Critic rounds). Reuse readers who already read. Start a fresh
+reader for an empty slot the resolver fills, even after a late drop. The round gate's `refused`
+still stops the round with no replacement or family drop.
+
+**The pair-based presets** use the early-window matrix and late rule:
 
 | Codex outcome | Seen | Fallback, attended and unattended alike |
 |---|---|---|
-| surfaces absent | — | no Codex pair; pair 2 on by the reading rule |
+| Codex not available | — | no Codex pair; pair 2 on by the reading rule |
 | job failure | early (`earlyFailure: true`) | the reading rule from pair 2 on, reusing the readers that already ran; the round keeps its own resolved second reader where it has one, never widened by the fallback |
 | job failure, or cut at the limit | late (no flag) | the late rule |
 
@@ -266,18 +316,18 @@ The pair order is the preset's (→ pipeline-guardrails.md § Model presets).
 failure flagged early makes the round's seated third reader its main in place of the early row — promoted as a
 second reader is, at the code review by "When Codex drops" (→ codex-dispatch.md § Code-review seat),
 at a critic seat by the reuse of a reader that already ran — attended and unattended alike, and no
-fresh main starts. Where the producer is the third reader's family, the reading rule's next eligible main is
+fresh main starts. Where the third reader matches an author model, the reading rule's next eligible main is
 taken instead and the third reader's findings stay a reader section. A late drop runs the late rule unchanged,
 the third reader's findings kept as a reader section. A third reader skipped or failed before the drop is not seated.
 
 **The late rule — no held-back family.** After the early window no family the preset's late row holds
 back is spent (→ pipeline-guardrails.md § Model presets). The round's second
-reader is promoted to main when its family is neither the author's nor held back — at the code review by
+reader is promoted to main when its model differs from every writer's and its family is allowed — at the code review by
 "When Codex drops" (→ codex-dispatch.md § Code-review seat), at a critic seat by the reuse of a reader
 that already ran (→ agents-workflow.md § Critic rounds) — and the round runs on that **one reader**. On the light lane's code review, a promoted second reader that
 read only the risky steps is re-briefed with the rest of the change, and its verdict counts as the main
 reader's only after that (→ architect.md § Light Lane (standalone only)). Where the
-second reader is the author's family or held back (a repo may set `jobs.secondReader` to one),
+second reader matches an author model or belongs to a held-back family (a repo may set `jobs.secondReader` to one),
 its findings stay in the round as a reader section, and a fresh main is spawned from pair 2 on by the
 reading rule — never a held-back family. A round with no other reader
 (a critic round ≥ 2, a follow-up covering no step) takes the same fresh main, and gains no second
@@ -287,17 +337,16 @@ reader by the fallback. The round's header note keeps its opening line
 `after the early window — fresh {model} main` where a fresh main was spawned. The cut job's partial
 output is merged as at the limit — marked `partial — Codex cancelled at the limit`, or with the stall
 reason for a stalled job. A one-reader round from this rule is the second sanctioned single-reader
-case, beside the owner's pick. **Scope:** the window and the late rule govern only the replacement of
-a review primary after Codex drops; the done check and every other job keep their own fallbacks, and a
+case, beside the owner's pick. **Scope:** the matrix and late rule govern a dropped review primary in presets without job lists; the done check and every other job keep their own fallbacks, and a
 same-model replacement of a reader that cannot be resumed is unchanged.
 
 Worked examples:
-1. A second reader of another family than the author's, not held back, Codex late → the second reader is promoted; one reader.
-2. A second reader of the author's family, late → the second's findings are kept; a fresh main from pair 2 on, the first whose main is not the author's family. Every late drop on a review whose author is the second reader's family is this case.
+1. An eligible second reader whose model differs from the writer's, Codex late → the second reader is promoted; one reader.
+2. A second reader that matches a writer's model, late → keep its findings and start the first eligible main from pair 2 on.
 3. A repo-set second reader of a held-back family (attended), late → its findings are kept; a fresh main from pair 2 on.
 4. A critic round ≥ 2 (no second reader), late → a fresh main from pair 2 on, alone.
-5. A repo-set second reader of a third family, neither the author's nor held back, late → it is promoted.
-6. Early → the first pair from pair 2 on whose main is not the author's family: where that main already read the round as its second reader it becomes the main; otherwise a fresh main starts and the second reader is kept.
+5. An eligible repo-set second reader of a third family, on a different model from the writer, late → it is promoted.
+6. Early → the first pair from pair 2 on whose main matches no author model. Reuse that main if it already read the round as second reader. Otherwise start it fresh and keep the second reader.
 
 - A job that never got going, its stall seen by `collect` at about minute 6:10 →
   `earlyFailure` → example 6's outcome.
@@ -310,14 +359,16 @@ collected output, never a chat acknowledgement, is what the file is written from
 
 ## Helper job <!-- id: helper-job -->
 
-A helper job is a read-only Codex job a main session starts for a helper whose job — `discovery`,
-`audit` or `general` — has the value `codex` (→ pipeline-guardrails.md § Helper agents — model and type). It runs through the Codex job helper, as
-every Codex job does, with these differences:
+A helper job is a read-only Codex job a main session starts for `discovery`, `audit` or `general`.
+A repo's `jobs.{name}` entry governs where set. Otherwise under Speed use the head of the resolved
+job list after applying availability and the author comparison for judging work. A Codex head
+uses this helper path subject to the size, write and nested-spawn rules (→ pipeline-guardrails.md § Helper agents — model and type).
+A Claude head uses that slot for a Claude spawn.
 
-- **Start:** `start --prompt-file {brief} --kind helper --label {a label naming the job} --job-name {discovery | audit | general} --limit-minutes {n}`.
-  With no `--effort`, the job's entry in `jobs` gives the effort, after a campaign's gear and before
-  `codex.effort`. The entry's `codexModel`, where set, is the Codex model the job is started on,
-  with or without `--effort`; the start's output and the job record both name it.
+- **Start:** `start --prompt-file {brief} --kind helper --label {a label naming the job} --job-name {discovery | audit | general} --limit-minutes {n} --model {the slot's model}`.
+  A repo Codex entry without a `codexModel` gives a bare slot. Carry the model and let the helper
+  resolve its effort (→ codex-dispatch.md § Critic seat). The start and job record name both.
+
 - **Wait with `watch`, in the background:** `watch --job {jobId} --deadline {deadline} --started {startedAt} --kind helper --out {path}`,
   started with the shell tool's background option, so the session spends no context on the wait. It
   runs the `wait`-then-`collect` loop in one process — the same cut at the limit, the same
@@ -326,23 +377,32 @@ every Codex job does, with these differences:
   reason, any `earlyFailure`, and `partial` where the file holds a cut job's partial — never the output. Read only what you need from the file. Where the
   file cannot be written, the line says why; `collect` still returns the job's result, or a cut job's
   partial.
-- **Silence is not a stall:** a helper job that is silent while its worker lives runs to its limit;
-  one that reads `running` after its worker has gone fails at once, with the reason
-  `the Codex worker exited while the job was running`. Every other kind keeps the stall check above.
-- **A real report is the output:** where the companion prints only its status text, or its line that
+- **Silence is not a stall:** a helper job that is silent while its worker or keeper lives runs to its limit.
+  On the plugin route a helper that reads `running` after its worker has gone fails at once, with the reason
+  `the Codex worker exited while the job was running`. Plugin jobs follow the exceptions in the stall rule above.
+- **A real report is the output:** where the job provides no final message, or the companion prints only its status text or its line that
   Codex returned no final message, the job returned nothing and falls back to its job's Claude fallback
   (→ pipeline-guardrails.md § Helper agents — model and type).
 
 ## Seat job <!-- id: seat-job -->
 
-No role is a seat today — no row of the seat table reads yes (→ pipeline-guardrails.md § Codex seats) — so this section applies once the table opens one.
-
 A seat job is one unit of a pipeline seat's work run as a Codex job that may write inside the round's tree — the
-seat's row allows it and its entry names Codex (→ pipeline-guardrails.md § Codex seats). This section is the one
+seat's row allows it and the effective repo or preset seat entry names Codex (→ pipeline-guardrails.md § Codex seats). This section is the one
 home of that form: the coordinator's rules point here wherever a seat set to Codex takes a step they state in its
 Claude form. The coordinating main session — the team lead, or the architect in its own lanes — starts, waits on,
 checks and records every seat job through the Codex job helper; Claude Code stays the only host. No Nexus hook runs
 inside Codex, and the only Nexus script a seat calls is the test runner.
+
+**The box.** A seat job runs on Windows only, and without the Codex plugin: the helper starts `codex exec` itself
+inside a box it owns — a Windows job object that every process the job starts stays in, a test runner, a build
+server or a detached shell included — and closing the box ends them all. The job's sandbox settings are fixed on
+the command line — no writable folder added to the tree, no network, the Windows sandbox's elevated mode, no
+approval asked — and outrank every Codex config file, so a project's own Codex settings cannot widen what the job
+may write; the sandbox check's pass binds them and the Codex version, so a Codex whose version cannot be read
+gets no pass. The box's own record lives outside the tree and every temporary
+folder the job may write, or no job starts. On Linux and macOS the seats stay closed
+(→ pipeline-guardrails.md § Codex seats).
+The `codexDirect` switch selects the route for jobs outside the pipeline seats (→ codex-dispatch.md § Time limit and fallback).
 
 **Whether a seat runs on Codex.** Before each unit, `seat --role {role} --slug {slug} --tree {the round's tree}`
 answers for that unit: `engine` (`codex` or `claude`), the model and effort a job would be sent, and one disclosure
@@ -359,71 +419,86 @@ is never resumed and never messaged, and the next unit is a new job that rebuild
 `implementation.md` and the tree, as a fresh Claude developer does. There is no size check — every job starts
 fresh. Only one seat job runs in a tree at a time, and the helper refuses a second.
 
-**Start.** Write the phase token, as before any developer dispatch, then:
-`start --prompt-file {brief} --kind seat --seat {role} --unit {unit} --tree {the round's tree} --slug {slug} --skills {the mapped skills, comma-separated} --other-work {file} --limit-minutes {n}`
-from the session root. `{unit}` is `steps {a}–{b}`, `fix cycle {N}`, `fix cycle {N} part {k}`, `hand-up {n}`,
-`solo fix {n}`, `solo fix {n} attempt {k}` or `questions`; `{file}` holds the dispatch's unrelated-dirt exclusion
-list, one path per line, from a `git status` run now. The limit is yours to judge from the unit's steps; the helper
-raises it to the repo's Codex limit where shorter. A writing start checks its own conditions and the sandbox check's
-pass, and prints `refused` with the reason where one fails: the role then runs as a Claude seat, with the reason as
-its disclosure line. Before the job the helper copies every uncommitted file git shows in the tree to a safety copy
-outside it. **Wait** with `wait --job {jobId} --deadline {deadline} --started {startedAt} --max-seconds {seconds to the deadline}`,
+**Start.** Write the phase token as before any developer dispatch. From the session root run
+`codex-job.js brief --seat {role} --unit {unit} --tree {the round's tree} --slug {slug} --unit-file {unit file} --out {brief path} --skills {the mapped skills, comma-separated}`.
+`{unit}` is `steps {a}–{b}`, `fix cycle {N}`, `fix cycle {N} part {k}`, `hand-up {n}`,
+`solo fix {n}`, `solo fix {n} attempt {k}` or `questions`. Omit `--skills` when the unit maps none.
+On exit 2, disclose the helper's error and run the unit as a Claude seat. On success pass its printed `brief`,
+`otherWork` and `limitMinutes` to
+`start --prompt-file {brief} --kind seat --seat {role} --unit {unit} --tree {the round's tree} --slug {slug} --skills {the same mapped skills} --other-work {otherWork} --limit-minutes {limitMinutes}`.
+The `questions` unit selects read-only mode for a role whose seat row has a question phase. The optional `--questions`
+flag is accepted only for that unit.
+For a Codex developer build, `brief` writes the plan-derived approval paths into the session's stamp and preserves
+any live paths and facts for that feature. The coordinator owns the approval facts, deletes the stamp before a solo,
+and re-stamps the solo's added paths before the developer resumes.
+A writing start checks its own conditions and the sandbox check's pass. A refusal sends the role to the Claude seat
+with the reason as its disclosure line. A start that prints `unavailable` with `treeHeld` may have left a job running: the tree stays
+held, and the fallback waits for its end like any other's. Before a writing job the helper copies every uncommitted
+file git shows in the tree to a safety copy outside it. The other-work list excludes the plan's paths and the seat's
+own delivery records. **Wait** with `wait --job {jobId} --deadline {deadline} --started {startedAt} --max-seconds {seconds to the deadline}`,
 started with the shell tool's background option, then **collect** once it reads ended or past its deadline —
-`collect`, never `watch`, whose one line drops the lists below. Silence while the worker lives is not a stall; a
-worker gone while the job reads `running` fails it.
+`collect`, never `watch`, whose one line drops the lists below. A seat job has no stall: silence while the box's
+keeper lives runs to the limit, where `collect` cuts the job through the box — or the keeper itself, which holds the
+same limit, where no `collect` comes; a keeper gone while the job reads
+`running` fails it.
 
-**The brief — one template, written by the coordinator:**
-```
-{Role} seat for {slug}, {unit}. You are a Codex job in the {role}'s seat.
-Your rules: read {the installed agents/{role}.md} as text and follow it, save where this brief differs.
-Tree: {the round's tree} — your working folder and project root. Plan: {plan.md}. Answers: {questions.md}.
-Prior work: {implementation.md} — {the role's prior-work line, as its Claude dispatch gives it}.
-Unit: {the Claude dispatch's own lines for this unit: the step range, the fix list and its rows, or the solo's Failure}.
-Other work in the tree — never touch: {the unrelated-dirt exclusion list}.
-Tests: only through the runner's step form, in place of any other test call your rules name — `node "{verify-run.js}" --profile fast --step --attempt {1|2} --agent codex-seat-{role} --unit {the step | fix-c{N} | solo-fix-{n}} --slug {slug} --changed {files} [--files {test files}] --tree {tree} --session {session id}`.
-Verify roles: {the roles of .claude/verify.json}.
-What differs for you: no git command that writes or discards — no commit, add, stash, reset, clean, checkout or
-restore; no network; no other test or build command; questions go to questions.md and end the job; end each
-finished step's block in implementation.md with `**Step done:** {n}`; append `codex{ — {model}}` to the
-implementation.md `**Model:**` stamp, never over what is there; your last message is your hand-back, in your
-role's own phrases. You never commit — the coordinator does.
-{the text of the role's format skills, then of each skill the unit's steps map, each whole}
-```
-The format skills are those the role's agent file preloads (its `skills:` line). The skill texts are copied into
-the brief file whole, never read into the coordinator's own context; `{tree}` and `{session id}` are given outright,
-never left to the environment; the commit helper is never in the brief. A solo's brief names `agents/solo.md`, its
-`Failure:` and its fix number.
+**The brief.** `brief` fills `hooks/scripts/lib/seat-brief-template.md` from the unit file the coordinator writes with
+the Claude dispatch's step range, fix list and rows, or the solo's failure evidence and failing test files.
+The commit helper stays with the coordinator.
 
-**The question phase.** Where the lane has a Phase 1 today, the developer's first unit is a `--unit questions` start
-with `--questions`: it writes nothing, reads the whole plan and returns the questions or the all-clear. Route its
-questions as a developer's; the answers land in `questions.md`, which every later job reads. A lane with no Phase 1
-today has none.
+**The question phase.** Where the lane has a Phase 1 today, the developer's first unit is `--unit questions`.
+The read-only seat reads the whole plan and returns its questions, an all-clear, or a blocker. The confirmed
+end's `questions` stage reports where the hand-back went:
+
+- `questionsWritten` gives the file and entry count. Route those questions from `questions.md` as a developer's.
+- A questions hand-back without a marked block gives `questionsNote`. Relay the questions from the output.
+- A blocker gives `questionsNote`. Route the blocker from the output.
+- An all-clear leaves the questions file untouched.
+- A malformed block or a failed append gives `questionsNote` with the reason. Both `collect` and `seat-release`
+  include the hand-back in `output` alongside the note, including at close.
+
+The answers land in `questions.md`, which every later job reads. A lane with no Phase 1 today has none.
 
 **A blocker** — a question written to `questions.md` with a `Blocked on step {N}` hand-back, or a `Bug found` — ends
 the job early. Route it as today; once it is answered or fixed, the next job starts at that step.
 
 **After the job.** `collect` returns what the coordinator acts on:
-- `end` — `confirmed`, or `unconfirmed` with the process or proof missing: an unconfirmed end holds the unit and the
-  tree, and nothing else writes there until `seat-release --tree {tree}` finds every process of the job gone; with
-  the owner present disclose the hold, with the owner away record it as a failed build of that unit;
-- `fallback` and `fallbackReason` — the job failed, lost its worker, was cut or cancelled, or ended with no hand-back
-  of the role's own (the fallback, below);
+- `end` — `confirmed` once the box has closed with no process left in it, or — its keeper gone — once the box's job
+  object and every process it last listed are gone, read from the Windows session the keeper ran in; otherwise
+  `unconfirmed` with the reason: an unconfirmed end holds the unit and the tree, and nothing else writes there until
+  a later `collect` or `seat-release --tree {tree}` confirms it; with the owner present disclose the hold, with the
+  owner away record it as a failed build of that unit;
+- `leftovers` — what the job left running that the box's close ended;
+- `fallback` and `fallbackReason` — the job failed (its box's keeper gone included), was cut or cancelled, or ended
+  with no hand-back of the role's own (the fallback, below);
 - `finishedSteps` — the steps whose block ends with the done line and whose step-run record passes;
 - `seatChecks` — what a hook would have recorded, already written to the violations log: raw test commands and
   separate builds as test-entry lines, a `seat-unread` line where Codex's session record could not be read whole or
   git could not list the tree after the job (a disclosed miss, never a pass), the files outside the approved set, `stepRunsOverTwo`, and a fix round with no
-  class-check line — recorded and never sent back, since there is no job to send it to;
-- `safetyCopy` — other work put back, other work left changed, and feature files gone with their copies kept: put
+  class-check line. `changedByOthers` lists other roles' records in this feature's delivery folder whose only
+  violation would be ownership and whose edit the complete, readable session record does not attribute to the seat.
+  For either writing role, a completed file change naming the feature's communication log is a violation.
+  The coordinator reads these results after the job.
+- `safetyCopy` — other work put back, other work left changed, and feature files gone with their copies kept.
+  `changedByOthers` lists edits attributed to other sessions among other roles' records and the feature's communication log. Put
   back a gone feature file the unit's steps did not ask to remove;
+- `afterJobRuns` — what the seat's row runs after the job: for a solo, the project's verify commands (below);
 - `minutes`, and the carried step-run records (`stepRunsCarried`).
 
-On an unconfirmed end `seatChecks` and `safetyCopy` wait (`checksWait`): the call that confirms the end — a later
-`collect`, or `seat-release` — runs them once and returns them, with the step-run records written since.
+On an unconfirmed end the records, `seatChecks`, `safetyCopy` and the after-job runs wait (`checksWait`): the call
+that confirms the end — a later `collect`, or `seat-release` — runs them once, in order, each recorded as it finishes,
+so a call stopped part-way resumes where it stopped, and returns them, with the step-run records written since. A
+confirmed end whose tree could not be given back still reads `checksWait`, with `freeError`: the tree stays held.
 
 Then, under a per-step commit strategy, run the commit helper once for the job — the files it changed, the slice's
 last step number, the message naming the slice; a fix or hand-up round is committed as the coordinator commits one
-today. After a solo's job run the project's verify commands (`.claude/verify.json` `commands`) and append their
-verdict to `.claude/audit/verify-verdict.json`, the record a Claude solo's stop writes. In the
+today. A solo's job owes you no verify run: the call that finishes its end runs the project's verify commands
+(`.claude/verify.json` `commands`) in the tree, each in a box of its own whose keeper cuts it at 120 s, the tree held
+until each box is seen to end as a seat job's is, and appends their verdict to `.claude/audit/verify-verdict.json`
+with the tree's build-ledger lines, as a Claude solo's stop does. They run one after another, so a solo's `collect` may take up to two minutes per command and about a
+minute more per box: start it with the shell tool's background option, as you start `wait`. A call stopped during
+them leaves nothing running unseen — the next one ends their boxes first, and runs no command again whose box closed
+by itself. In the
 message table the job's row reads its minutes in the time column and `n/a — Codex` in the size column.
 
 **While a job runs, nothing else is sent to it.** A late fix item, a solo's second red, a light-lane plan change and
@@ -432,7 +507,7 @@ an answered question each wait for the running job and go as a new job of the sa
 jobs in one tree. The round's count does not move, and the round ends when its last job has handed back. In the
 light lane the handover run waits for it, as today.
 
-**The fallback, per unit.** A seat job that cannot start, fails, loses its worker, is cut at its limit, is refused
+**The fallback, per unit.** A seat job that cannot start, fails, loses its box's keeper, is cut at its limit, is refused
 for the Codex plan's usage limit, or ends with no hand-back falls back with one disclosure line and no question, in
 this order:
 1. **The end is confirmed** — never a second writer in the tree before it.
@@ -449,33 +524,57 @@ from its own reading, and the coordinator runs the fresh read-only helper pass i
 findings going to the round's fix list.
 
 **At close**, before a worktree is removed, run `seat-release --tree {tree} --close`: it ends that folder's Codex
-servers while no job runs there, and drops the tree's safety copies. Without `--close` it keeps them.
+servers while no job runs there, and drops the tree's safety copies and the box folders of its finished jobs.
+Without `--close` it keeps them; a box whose job's end is not finished is never dropped. A box that reported
+nothing — its start stopped — holds the tree for five minutes, then `seat-release` gives its job up and frees the
+tree, unless its keeper claimed the launch; `--close` then drops its folder too.
+
+**A reservation from the earlier seat design** — one made when seat jobs ran through the Codex plugin — has no box
+to read, so it holds its tree with that reason: a seat start there is refused and `collect` reads the end
+`unconfirmed`. `seat-release --tree {tree} --legacy` gives it back once no process whose command line names the
+tree runs, by the path given or the one the reservation was made with.
 
 **Not defended.** A seat's test runs take no turn in the machine's test queue; a seat reads any file the user can,
 secret files included, as read-only Codex jobs already do; more than two runs of one step are counted and reported,
-never stopped.
+never stopped. The box holds what the job starts the ordinary way, and nothing else: a process the job starts
+through a scheduled task, a Windows service or Windows' management interface, which ordinary build and test
+commands never do; a program already running outside the box before the job — a container engine, a Linux
+subsystem, a build daemon another session started — that the job's commands hand work to, as a Claude developer's
+build does today; for an earlier-design reservation, a process that names the tree some other way than on its
+command line; a solo's verify commands, which run with the user's own rights once the job has ended — boxed for
+their lifetime, not sandboxed, as a Claude solo's stop runs the same commands; an MCP server a trusted project's
+Codex config starts, which the box ends with the job but which runs with the user's own rights, as an MCP server
+Claude Code starts does; and a person who sets the helper's
+test-only settings by hand in a session, since the plugin binds agents and trusts people.
 
 ## Done check <!-- id: done-check -->
 
-**When it runs.** Where the coordinator's effective `jobs.doneCheck` is `codex` — the repo's setting,
-which an explicit owner-directed spawn parameter still outranks
-(→ pipeline-guardrails.md § Helper agents — model and type) — the Step 1 done check is a read-only
-Codex job instead of an architect spawn. Unset, it stays the architect spawn. Where the round has a Codex
-author — any family on `implementation.md`'s stamp history is `codex` — the check is the architect spawn on the
-preset's done-check model, the fallback's spawn below, with one disclosure line in the communication log, or in
-the architect's own lanes the next message to the owner: `Done check: a Codex-built round — architect spawn on {model}.`
+**When it runs.** Resolve the `doneCheck` choice with the round's author models from
+`implementation.md`. An owner-directed spawn parameter comes first, then the repo's usable
+`jobs.doneCheck` entry (→ pipeline-guardrails.md § Helper agents — model and type). A Codex entry
+with no `codexModel`, including `"codex"`, means the bare account-default slot. Where no override
+wins under Speed, use `model-preset.js readers --job doneCheck --author {models} --codex available|absent --count 1 --no-author-fill --json`.
+Run the check on Codex when its resolved first slot is Codex and differs from each author model.
+Apply the same comparison to a Codex override, including the unnamed-writer and unknown-default
+cases (→ agents-workflow.md § Critic rounds). Otherwise spawn the architect as in the presets without
+job lists. Honor a usable Claude override in the same order, then use the preset's done-check model
+and effort, else the architect's resolved model. Under Speed the list decides only whether the check
+runs on Codex and on which Codex model. If a Codex override collides or cannot be resolved against
+the authors, record the reason and take the architect fallback.
 
 **Who runs it.** The coordinating main session — the team lead, or the standalone architect at the
-fast lane's review gate — through the Codex job helper with `--kind done-check`, beside the code review
+fast lane's review gate — through the Codex job helper with `--kind done-check --model {the slot's model}`, beside the code review
 where the architect spawn would start. It keeps the plain limit: it reads no review round. A
 coordinator running as a spawned subagent neither writes `done-check.md` nor spawns an architect; it
 hands `done check owed` back to its main session, which runs the Codex check or its fallback.
 
 **Beside a Codex code review.** The done check starts first, as the architect spawn does — except in
 a typed-marker unattended run, where the code-review job starts first: there the done check has a free
-fallback, while a review job refused early needs a fresh main reader. Then alternate the two `wait` calls: the
-review's at its default, the done check's with `--max-seconds 5`, so the review job, the only one with
-an early window, is seen at the pace it would be seen alone.
+fallback, while a review job refused early needs a fresh main reader. Then, in an interactive session,
+each job gets its own background `wait`, each waking the session when its own job ends
+(→ codex-dispatch.md § Time limit and fallback). A headless session alternates the two foreground
+`wait` calls: the review's at its default, the done check's with `--max-seconds 5`, so the review job,
+the only one with an early window, is seen at the pace it would be seen alone.
 
 **The brief** points Codex at the rules and the evidence; every path is absolute, resolved by the
 dispatcher — the feature's spec and rule list through `sdd-read.js` (→ agents-workflow.md § Slug and Path Resolution):
@@ -518,16 +617,14 @@ writes none on its behalf.
 block and `Fix dispatched:`. **The light lane:** the brief reads `Lane: light`, the job starts with the lowered `--effort` the light
 lane names (→ pipeline-guardrails.md § Effort in the light lane), and there is no re-check.
 
-**The fallback.** Codex surfaces absent while the setting stays `codex`, any `unavailable` start, a job
-failure, a `readError` that lasts to the deadline, a cut at the limit or by the stall check, or an
+**The fallback.** Codex not available for a Codex choice, any `unavailable` start, a job
+failure, a `readError` that lasts to the deadline, a lost job, a cut at the limit or by the stall check, or an
 unusable block — no verdict line or two, or one naming the plan, `implementation.md` or every
-skill-log home `unreadable` — sends the check to the architect spawn on the model `doneCheck` would
-resolve to without the setting — the preset's done-check model and effort, passed on the spawn, where
-the preset names one, else the architect's resolved model — with one disclosure line in the communication
-log: `Done check: Codex dropped — {why}; architect spawn on {model}.` A cut or unusable block is never
+skill-log home `unreadable` — sends the check to the architect spawn. Use the preset's done-check model
+and effort, or the architect's resolved model. Write one disclosure line in the communication log
+as `Done check: Codex dropped — {why}; architect spawn on {model}.` A cut or unusable block is never
 persisted as a check: a done check is binary, and a cut one has not run. The early window does not
-apply here — it decides only a review's replacement reader — but the stall check does: a stalled done check
-falls back at once, not at the limit.
+apply here — it decides only a review's replacement reader. A plugin job that stalls falls back at once.
 
 ## Critic-seat verdict consumption <!-- id: verdict-critic -->
 

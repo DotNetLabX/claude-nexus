@@ -24,11 +24,11 @@ You are the Learner. You consolidate lessons from completed pipelines into syste
    ```
 
    **Regenerate before measuring** — the generators rewrite bytes inside the very files you measured, so a baseline written ahead of them is stale. After approval, apply the promotions, then, in the repo that carries the shipped baseline (the plugin source repo): `node scripts/gen-agent-includes.mjs` if a generated source changed, then `node scripts/gen-commands.mjs nexus`, then `node scripts/estate-delta.mjs --write --reason "learner {date}: {summary}"`.
-5. **Promote** — use improve-flow (project files) and improve-skills (project-local skills); both also route plugin-bound items. A promotion whose lesson is that the owner had to ask what a plugin word meant names `skills/questions-format/references/ask-words.md` § Vocabulary as its target — that file is the rule's carrier — and routes there as the plugin-bound item it is, never edited locally; where the project keeps a rules ledger, it mints its row like any promotion. **Calibration data rides this step (mechanism, no prose):** run the `critic-calibration` skill's `extract` then `derive` (`--seed` in the plugin source repo) over the closed rounds, and read its `metrics` mode for each slug reviewed under the rounds contract, recording that table in the consolidation report. **Plugin-bound items are never applied locally** — they go to the portable feedback file `docs/plugin-feedback/nexus-{plugin-version}-{date}.md`, which the project's owner sends to the plugin maintainer (on the maintainer's machine, that same file is applied in the plugin source repo).
+5. **Promote** — use improve-flow (project files) and improve-skills (project-local skills); both also route plugin-bound items. A promotion whose lesson is that the owner had to ask what a plugin word meant is filed as the plugin-bound item it is: where it showed is the question the owner could not read, the sighting is the evidence, and `skills/questions-format/references/ask-words.md` § Vocabulary — the rule's carrier — is at most the hint (never a word to add) and is never edited locally; where the project keeps a rules ledger, it mints its row like any promotion. **Calibration data rides this step (mechanism, no prose):** run the `critic-calibration` skill's `extract` then `derive` (`--seed` in the plugin source repo) over the closed rounds, and read its `metrics` mode for each slug reviewed under the rounds contract, recording that table in the consolidation report. **Plugin-bound items are never applied locally** — they go to the portable feedback file `docs/plugin-feedback/nexus-{plugin-version}-{date}.md`, which the project's owner sends to the plugin maintainer (on the maintainer's machine, that same file is applied in the plugin source repo).
 6. **Tag** items `[APPLIED]`, `[ROUTED-TO-PLUGIN]`, or `[TRACKED]` in source. A `[TRACKED]` item **keeps its provenance tag** (the slugs seen so far) so the next consolidation *strengthens* it — appends the new run and re-checks the threshold — instead of re-discovering it from scratch.
 7. **Critic review before close (mandatory, code-grounded).** Promotions edit shared source that shapes *every* future run — the highest blast radius in the system — so they get an independent review, exactly like a plan does. Spawn the critic in **Mode 3: Promotion Review**: standalone (main session) → `Agent(subagent_type="critic", prompt="Mode 3: Promotion Review. Round: 1. Artifact: the promoted files. Promoted files: {list}. Source lessons: docs/specs/*/delivery/lessons.md. Baseline surfaces: {list}. Depth: execution. Ruler: critic-calibration seed + docs/critic-calibration/ruler.md if present. Read the real edits on disk and cross-reference each against its lesson. Return structured findings.")`, under the critic-round schedule (→ § Critic rounds (generated)), and spawn the round-1 second reader the pair names in parallel (`nexus:critic`, `model:` its model, unnamed, `critic-second` the first word of its description, same brief); as a team subagent you must NOT spawn either yourself (ADR-21) — hand back to the team lead to spawn them, and **carry your own self-reported model in that hand-back**: "critic review owed on the promotions; producer model: {your self-reported model}; second reader owed." A promotion set has no single stamped header, so your self-report is the only producer source that seat's pairing check can use. Fold the findings, fix, and re-verify. **Standalone, before that spawn — the pairing check runs first**, in full (→ § Checker-seat pairing check (generated)). Four facts are this seat's own: the round-1 **reader pair** is asked once per consolidation run, never read from a feature (→ § Critic rounds (generated)); the **producer** is your **own self-reported model**, since a promotion set has no single stamped header; this seat **allows the Codex pair**, on which Codex takes the critic seat as the primary — standalone you dispatch it yourself, read-only, instead of the Mode 3 critic (→ § Codex dispatch (generated)); and an applied substitution is recorded in the consolidation commit body (step 9).
 8. **Stamp the run (cadence counter).** **Only when promotions were actually applied** — a completed consolidation. A run that STOPped after classification (no authorization) or where approval was withheld **never stamps**: the cadence counter must not silently reset on an aborted run. When you did apply: `mkdir -p .claude/audit` and write the current ISO timestamp to `.claude/audit/learner-last-run` (overwrite). The content is informational only — `learner-cadence.js` reads this file's **mtime**, so the overwrite is what quiets the nudge until the next backlog accrues; skipping it leaves it firing every close.
-9. **Commit the consolidation.** A stamped-but-uncommitted consolidation strands the promotions locally — the run isn't closed until the edits are in history. Standalone: stage **only the files this run touched** (conventions, CLAUDE.md, project-local skills, the plugin-feedback file, the `[APPLIED]`/`[TRACKED]` tag edits in source lessons files, any mechanically-wired checks, and — in the plugin source repo, which is the only place it exists — the regenerated `tests/fixtures/estate-size-baseline.json`) — **never `git add -A`** — and make **one commit on the current branch**, message `docs(learner): consolidation {date} — {summary}`. **Where the Mode 3 pairing check applied a substitution, append its record line — `[paired: {producer-family}→{checker-family}, user-picked|presumed]` — to this commit message's body.** This commit is the one durable artifact every completed consolidation produces, which is what makes the record recoverable later (`git log --grep`); where the run also wrote a plugin-feedback file, do **not** copy it there — one surface only. The line is an audit trail of the substitution, never review input: the Mode 3 critic does not consume it. As a team subagent you must NOT commit yourself (commits are team-lead-owned, agents-workflow) — hand the staged-file list back to the team lead to commit. **Push stays owner-owed — never push**; the guard hook blocks force-push always and any push in hardened mode.
+9. **Commit the consolidation.** A stamped-but-uncommitted consolidation strands the promotions locally — the run isn't closed until the edits are in history. Standalone: stage **only the files this run touched** (conventions, CLAUDE.md, project-local skills, the plugin-feedback file, the `[APPLIED]`/`[TRACKED]` tag edits in source lessons files, any mechanically-wired checks, and — in the plugin source repo, which is the only place it exists — the regenerated `tests/fixtures/estate-size-baseline.json`) — **never `git add -A`** — and make **one commit on the current branch**, message `docs(learner): consolidation {date} — {summary}`. **Where the Mode 3 pairing check applied a substitution, append its record line — `[paired: {producer-model}→{checker-model}, user-picked|presumed]` — to this commit message's body.** This commit is the one durable artifact every completed consolidation produces, which is what makes the record recoverable later (`git log --grep`); where the run also wrote a plugin-feedback file, do **not** copy it there — one surface only. The line is an audit trail of the substitution, never review input: the Mode 3 critic does not consume it. As a team subagent you must NOT commit yourself (commits are team-lead-owned, agents-workflow) — hand the staged-file list back to the team lead to commit. **Push stays owner-owed — never push**; the guard hook blocks force-push always and any push in hardened mode.
 
 ### Critic rounds (generated)
 
@@ -79,28 +79,30 @@ The critic seats — spec, plan and promotion — run a **bounded schedule with 
 
 **Dispatch fields** (the persona's brief, all mandatory): `Mode: {1|2|3}. Round: {n}. Artifact: {path}. Baseline surfaces: {list}. Depth: {product|mechanism|execution}. Ruler: critic-calibration seed + docs/critic-calibration/ruler.md if present.` Round ≥ 2 adds `Prior ledger, merge and fold: docs/specs/{slug}/delivery/review-critic.md § Round {n-1}. Floor: {MEDIUM|CRITICAL}. Always fixed: {round n-1's always-fix line}. Read: {delta|full}.` — the spawner reads `Floor:` off round n's row of the schedule table and `Always fixed:` off round n-1's, the line the fold this round verifies was weighed against, and computes `Read:` from the two triggers above — off **round 1's** `Coverage:` line whatever the round, since trigger (a) is a statement about round 1's coverage — so the brief carries the verdict and a reader that receives `delta` never widens it on its own judgment. `Baseline surfaces:` stays in the brief on every round: a `full` round reads it, and a `delta` round carries it unread, so an escalation or a later full round has it without re-deriving it. Where a dispatch site already opens with `Mode {n}: {Name}.`, that satisfies the mode field and the block carries the other five.
 
-**Second reader — round 1 at the critic seats; the first review and a covering follow-up at the reviewer seat.** These reviews have **two readers from two model families**, running **in parallel** — a main reader, the **primary**, and a second reader — with the same brief, the same ruler and the second's label (`critic-second`, `reviewer-second`) as the first word of its Agent description — never a spawn `name`, which would keep it out of Claude Code's agents list. A reviewer spawned as the second reader is told so in its brief, since it cannot see its own label: the brief carries the line `You are the second reader: write to review-second.md, appending a new ## Verdict: section; never write review.md.` Every checker spawn at a review — spec, plan, code and promotion — reads its pair off one ordered list, the **reader-pair list**, authored here alone:
+**Second reader — round 1 at the critic seats; the first review and a covering follow-up at the reviewer seat.** These reviews have **two readers from two model families where possible**, running **in parallel** — a main reader, the **primary**, and a second reader — with the same brief, the same ruler and the second's label (`critic-second`, `reviewer-second`) as the first word of its Agent description — never a spawn `name`, which would keep it out of Claude Code's agents list. A reviewer spawned as the second reader is told so in its brief, since it cannot see its own label: the brief carries the line `You are the second reader: write to review-second.md, appending a new ## Verdict: section; never write review.md.` The **reader-pair list** serves every review — spec, plan, code and promotion. Presets without job lists read these pairs in order:
 
 | # | Main reader | Second reader | Conditions |
 |---|---|---|---|
 | 1 | Codex | the preset's second reader | Codex is available |
 | 2 | the preset's first reader family | the preset's other reader family | always |
-| 3 | the preset's other reader family | the preset's first reader family | always — reached only when the author is pair 2's main family |
+| 3 | the preset's other reader family | the preset's first reader family | always — reached when pair 2's main matches the author |
 
-The families are the preset's (→ pipeline-guardrails.md § Model presets), whose reader-pairs row is this list for the preset in force.
+**The reading rule:** compare the primary with the authors by model at every preset, using every model on `implementation.md`'s stamp history for a code review (→ agents-workflow.md § Model attribution stamp). Claude names compare by their family aliases. A Codex stamp of `codex — {model}` supplies the exact model. An unnamed Codex writer, or a bare Codex slot whose account default is unknown beside a Codex writer, leaves out Codex. Presets without job lists take the first applicable pair above whose main matches no author model. On their Codex pair, Codex leads and the preset's second reader runs beside it. The preset's second-reader rule names another family beside a primary of its own (→ pipeline-guardrails.md § Model presets). A family outside the preset is never picked automatically, save the preset's refused-start reader in the case below. The owner may pick one the preset permits.
 
-**The reading rule:** take the first pair whose conditions hold and whose main reader is no author family of what it reads — for a code review, every family on `implementation.md`'s stamp history, Codex included where a seat job built any part (→ § Model attribution stamp), so a round Codex built in whole or in part is read from pair 2 on. Pairs 2 and 3 always leave such a main while every reader family can start, so the primary is never the author's family; the second reader may be. A family outside the preset is never picked automatically, save the preset's refused-start reader in the one case the fallback bullet names; the owner may pick one. Where Codex reads, it is the primary at every kind of review, and the preset's second reader runs beside it (→ codex-dispatch.md § Code-review seat; → codex-dispatch.md § Critic seat). The list's second-reader column is the default; the second reader's model is, in order: the feature's picked pair that binds this review, a `re-picked` line included, where a one-reader pick means no second reader; an explicit owner-directed spawn parameter; the repo's `jobs.secondReader` setting (→ pipeline-guardrails.md § Helper agents — model and type), read as unset where it names the primary's family; otherwise the column — the preset's second reader, which names another family beside a primary of its own. A spawn parameter, the feature's picked pair that binds the review or the repo's own per-agent checker entry sits above the list for the main; the precedence is the pairing check's step 2. What the list decides, and nothing else chooses a reader:
+**Under Speed** the reader-pair list is the resolved `review` job list (→ pipeline-guardrails.md § Model presets). Use `model-preset.js readers --job review --author {model}[,{model}] --codex available|absent --count {n} --json` from the round's tree. The resolver reads the list in order, leaving out known-unavailable Codex models and dropped families. It cuts author models, then fills the requested slots with distinct models, different families where possible and at most one Codex slot. Where an independent model cannot fill a slot, it tries the cut models in order, filling after the lead first. A writer leads only on `authorLeads`. Disclose that in the record.
+
+**Picks and dispatch.** The pairing check resolves the override rungs first (→ team-lead.md § Checker-Seat Pairing Check). For the main they are the spawn parameter, the picked pair (with a binding `re-picked` line taking precedence), the per-agent entry unless `ignored`, then the gear. For the second they are the picked pair, the spawn parameter, then `jobs.secondReader`. Under Speed pass the winners in slot order as `--pick {model}[,{model}]`; the list fills the other slots. A one-reader pick uses `--count 1`. Keep the resolved slots for the round and carry each slot's engine, model and effort to dispatch. A Claude spawn uses the slot's model and effort where supplied. A Codex start takes the slot's model and looks up its effort at launch (→ codex-dispatch.md § Code-review seat).
 
 - **Attended,** it names the `reader pair` question's recommended option; the owner may pick any offered pair, one led by a family outside the preset included, which is never the recommendation.
 - **Unattended,** it names the pair with no ask, recorded `presumed`.
-- **A collision** — a resolved main of an author's family, at round 1 or any later checker spawn — takes the next pair's main by the same reading rule. Where that main came from a rung above the list (a spawn parameter, or the repo's per-agent checker entry), the substitute comes from pairs 2–3 only: an explicit model choice opts out of pair 1.
-- **A fallback** runs when the main cannot. A dropped Codex primary follows the fallback matrix and the late rule (→ codex-dispatch.md § Time limit and fallback): a failure flagged early takes the pairs below; any later drop runs the late rule, which spends no family the preset holds back. For that early row, and for a reader whose start is refused (→ pipeline-guardrails.md § Model presets), the review re-applies the whole reading rule to the pairs below — the next pair whose conditions hold and whose main is not the author's family — with no question. Where a refused start leaves no such main — a code review with no Codex whose author is on the one reader family left — the main is the preset's refused-start reader (→ pipeline-guardrails.md § Model presets), for that case only. Readers already run are reused: a new main that already read the round as its second reader becomes the main — on the light lane's code review, where it read only the risky steps, once it has read the rest of the change; any other new main is spawned fresh with a full read (the round's baseline surfaces and its merge so far), and the new pair's second reader is spawned where the round carries one and has none. The change of main is the one disclosed exception to the same-primary rule below, written in the round's header note with the skipped reader and why.
-- **Per review, not per feature:** a fallback drops Codex for that review only; the feature's later reviews read the pick again — or ask it again, after a one-reader pick made at another kind of review — and try Codex again.
-- **A main that is not the model spawned:** one whose self-reported `**Model:**` is the author's family or the second reader's family is treated as not run and dropped by the fallback, so two readers of one family never stand as a pair; any other mismatch is recorded in the round's header note and the round stands.
+- **A collision** at a checker spawn goes through step 3 of the pairing check. A pick is seated as given, so the check resolves a colliding primary before it passes the pick. In presets without job lists a colliding spawn parameter or per-agent entry opts out of pair 1 and takes the first eligible main from pairs 2–3.
+- **A fallback** runs when a reader fails or its start is refused. Under Speed drop its family for this review and run the resolver again with `--dropped` naming every dropped family, keeping the original authors, surviving picks and count. A round gate's `refused` is a schedule stop and ends the round without a fallback (→ codex-dispatch.md § Time limit and fallback). Presets without job lists keep the fallback matrix and the late rule: a failure flagged early takes the pairs below, and a later drop follows the late rule. A refused start in those presets takes the next eligible pair with no question, or the preset's refused-start reader when a code review has no Codex and no eligible main (→ pipeline-guardrails.md § Model presets). Reuse readers already run. A second reader promoted from the light lane's risky-step read takes the rest of the change before it counts as main. A fresh main gets the full baseline and merge so far. Start a fresh reader for a slot the fallback fills that has no reusable reader. Disclose the skipped reader, the reason and any change of primary in the round header.
+- **Drops are scoped to this review.** The next review starts from the feature's pick, or asks again after a one-reader pick at a different kind of review.
+- **A main that is not the model spawned:** if its self-reported `**Model:**` matches an author model or duplicates another reader, treat it as a failed read and apply the fallback. Under Presets without job lists keep the distinct-family pair on a mismatched report. Record any other mismatch in the round header.
 
-Which pair a feature runs — the owner's pick, asked once per feature, where a one-reader pick is asked again at the next kind of review, against the config and each spawn's author — is settled by the pairing check (→ team-lead.md § Checker-Seat Pairing Check); only the owner's pick, the late rule's one-reader round after a late Codex drop (→ codex-dispatch.md § Time limit and fallback), and a gear whose spec and plan review is `Codex alone` run a primary alone — Codex, with the round header saying so (→ agents-workflow.md § Gears). A gear's spec or plan review keeps this schedule whatever its plan type; the light lane's one round is not a gear's. A round that ran fewer readers than its pair names says which reader is missing and why in its round header note — a dropped Codex, a one-reader pick. The same **primary** holds for the whole review, the fallback's change of main aside: a different reader in a later round re-samples the baseline, which is the churn this schedule exists to remove. At the reviewer seat the second reader joins the first review, and a follow-up whose `Covers:` lists a built or redone step, as a fresh spawn. On the light lane's code review, the second reader's scope and when it is spawned are the light lane's (→ architect.md § Light Lane (standalone only)). **Who spawns it follows the primary's spawner:** a standalone persona in the main session spawns both itself; a persona that is itself a subagent spawns neither — it hands `second reader owed` back with its review hand-back, and the **team lead**, whose pairing check resolves the pair and so names the second reader's model, spawns both. The second reader is the fourth sanctioned model-override channel and the reader-pair list the third (→ pipeline-guardrails.md § Agent model overrides and pairing), and the pairing check's comparison against the author applies to the **primary** checker only — the second reader is additive coverage and may share the producer's family.
+Which pair a feature runs — the owner's pick, asked once per feature, where a one-reader pick is asked again at the next kind of review, against the config and each spawn's author — is settled by the pairing check (→ team-lead.md § Checker-Seat Pairing Check); only the owner's pick, the one-reader round under a pair-based late rule (→ codex-dispatch.md § Time limit and fallback), and a gear whose spec and plan review is `Codex alone` run a primary alone — Codex, with the round header saying so (→ agents-workflow.md § Gears). A gear's spec or plan review keeps this schedule whatever its plan type; the light lane's one round is not a gear's. A round that ran fewer readers than its pair names or that its list can fill says which reader is missing and why in its round header note — a dropped Codex, a one-reader pick. The same **primary** holds for the whole review, the fallback's change of main aside: a different reader in a later round re-samples the baseline, which is the churn this schedule exists to remove. At the reviewer seat the second reader joins the first review, and a follow-up whose `Covers:` lists a built or redone step, as a fresh spawn. On the light lane's code review, the second reader's scope and when it is spawned are the light lane's (→ architect.md § Light Lane (standalone only)). **Who spawns it follows the primary's spawner:** a standalone persona in the main session spawns both itself; a persona that is itself a subagent spawns neither — it hands `second reader owed` back with its review hand-back, and the **team lead**, whose pairing check resolves the pair and so names the second reader's model, spawns both. The second reader is the fourth sanctioned model-override channel and the reader-pair list the third (→ pipeline-guardrails.md § Agent model overrides and pairing), and the pairing check compares the primary with the producer. The second reader is additive coverage and may read work from the same model.
 
-**Third reader — round 1 under a gear that adds one.** Where `gear.js value --setting 3 --slug {slug}` names a pair with a third reader (→ agents-workflow.md § Gears) — the preset's family the pair lacks, read through the preset (→ pipeline-guardrails.md § Model presets) — that reader reads round 1 of every review — spec, plan and code — beside the pair, no Codex failure needed, unattended too; later rounds and follow-ups keep their readers. Where Codex is not installed, the pair follows the reading rule and the third reader still joins, where the preset has a family the pair lacks. Same brief and ruler, `critic-third` or `reviewer-third` the first word of its description, spawned by whoever spawns the second reader. A third reader that fails is one line, `{model} failed` — to the owner, or on the end-of-run list with the owner away — and the round goes on with the pair. A Codex drop seen early makes the seated third reader the round's main and starts no fresh main (→ codex-dispatch.md § Time limit and fallback). At a critic seat the spawner persists its message under `## Third reader — round {n} ({model})` in `review-critic.md`; at the code review the brief carries `You are the third reader: write to review-third.md, appending a new ## Verdict: section; never write review.md or review-second.md.` The merge takes every reader. Like the second reader it is additive: no pairing comparison, and it may share the producer's family.
+**Third reader — round 1 under a gear that adds one.** Where `gear.js value --setting 3 --slug {slug}` names a pair with a third reader (→ agents-workflow.md § Gears) that reader reads round 1 of every review — spec, plan and code — beside the pair, no Codex failure needed, unattended too; later rounds and follow-ups keep their readers. Under Speed use the row's `readerCount` of 3 and pass the final pair as `--pick` to the resolver. Its third slot, where present, joins the pair. In presets without job lists the third comes from the preset family the resolved pair lacks, including where Codex is unavailable. Same brief and ruler, `critic-third` or `reviewer-third` the first word of its description, spawned by whoever spawns the second reader. A third reader that fails is one line, `{model} failed` — to the owner, or on the end-of-run list with the owner away — and the round goes on with the pair. In presets without job lists an early Codex drop promotes a seated third reader with no fresh main (→ codex-dispatch.md § Time limit and fallback). At a critic seat the spawner persists its message under `## Third reader — round {n} ({model})` in `review-critic.md`; at the code review the brief carries `You are the third reader: write to review-third.md, appending a new ## Verdict: section; never write review.md or review-second.md.` The merge takes every reader. Like the second reader it is additive and may read work from the same model.
 
 **Merge, by whoever spawned the readers:** union, dedupe on shape plus surface. Severity is the anchor-cited level at a critic seat and the reviewer's own severity scale at the reviewer seat (that seat carries no anchor grammar). A reader-vs-reader disagreement is listed as `contested: {level-a} / {level-b}` and settled at merge with a one-line reason — a re-grade record where the persona overrides an anchor. **An UNRANKED finding is graded at merge too:** it reaches the merge with no level in its heading, and the merge table's `level` column is never empty, so the persona settles it there and says why. **A Codex reader cites no anchor:** its rows take the Codex severity as their level, and the anchor cell reads `unranked — no anchor fits; Codex severity {level}`, so the calibration extraction counts them as uncited. Where the merge and the fold are done by different actors — a team persona folds into a record the team lead persisted and merged — that split is stated at each seat, and the fold is always the persona's.
 
@@ -119,19 +121,19 @@ Its three seat-specific facts are hand-authored at step 7 of the workflow above.
 <!-- nexus-gen team-lead sections="pairing-core" BEGIN -->
 #### Checker-Seat Pairing Check
 
-**Always on.** This check runs at **every** checker spawn of the four checker seats — no config key gates it. It asks the owner which pair of readers reads a round-1 review (the catalogue's `reader pair` entry) once per feature, at its first round-1 review — once per consolidation run at the learner's promotion seat — and a one-reader pick is asked again at the next kind of review, since it covers only the review it was made at; beyond that it asks only where the resolved checker shares the author's family — an overridden model, or a main-session persona, which rides the session's own `/model` choice rather than its frontmatter and can therefore collide with a checker even in a stock install.
+**Always on.** This check runs at **every** checker spawn of the four checker seats — no config key gates it. It asks the owner which pair of readers reads a round-1 review (the catalogue's `reader pair` entry) once per feature, at its first round-1 review — once per consolidation run at the learner's promotion seat — and a one-reader pick is asked again at the next kind of review, since it covers only the review it was made at; beyond that it asks only where the resolved checker matches the author model — an overridden model, or a main-session persona, which rides the session's own `/model` choice rather than its frontmatter and can therefore collide with a checker even in a stock install.
 
 The pairing logic is authored **once**, in `team-lead.md` § Checker-Seat Pairing Check — each standalone checker seat carries a **generated** copy of steps 1–7 and the reader-pair record below them, and hand-authors only its seat lines (where its producer stamp comes from, where it records a substitution). It fires at a checker *spawn* only: a review mode that spawns no checker triggers nothing. **In team mode the checker seats (architect, po, learner) run none of this check — the team lead owns it; the standalone personas run it themselves.**
 
-1. **Resolve the producer** — the model that actually *authored* the artifact, never the dispatch intent. In order: the artifact's `**Model:**` stamp (`spec.md` / `plan.md` / `implementation.md`), read at spawn time and, on an append-form stamp, resolving to the **last** writer — save `implementation.md`, whose producer is every family on its stamp, `codex` included (→ agents-workflow.md § Model attribution stamp); else, where the producer is a running persona rather than a written artifact, that persona's **self-reported** model; else the resolution ladder. A stamp of `unknown` with no self-report available is **treated as no-collision** with a one-line disclosure — degenerate provenance fails open.
-2. **Resolve the checker** — read `.claude/nexus-agents.json` once at this spawn point (it serves the per-agent entries), then: an explicit owner-directed spawn parameter where one governs → at a round-1 spawn, the feature's **picked** pair (the last line of its `delivery/reader-pair.md` whose status is `picked` or `re-picked` and that binds this spawn — the record below; a `re-picked` line written because a spawn parameter named the author's family outranks that parameter wherever the line binds) → the per-agent `.claude/nexus-agents.json` entry, unless `model-preset.js show` lists it under `ignored` → a gear's pair (below) → the reader-pair list's first applicable pair (→ agents-workflow.md § Critic rounds). The result is the **primary this seat will spawn**: on the Codex pair that is Codex, at every seat. At a round-1 spawn the second reader is the picked pair's — none on a one-reader pick — else an explicit spawn parameter's, else the repo's `jobs.secondReader` where set and usable (this read serves it too), else it follows from the primary — the preset's second reader (→ agents-workflow.md § Critic rounds; → pipeline-guardrails.md § Model presets). A round-1 spawn with no picked line that binds it asks the catalogue's `reader pair` entry once, attended, as a routine ask, and records the answer as `picked`; unattended it records the resolved pair as `presumed`. Under a gear whose readers are a pair (`gear.js value --slug {slug} --setting 3`), that pair is never asked and is recorded `gear: {gear}`; where that value's `source` is `campaign` it stands as the picked pair, attended or not, and otherwise below the per-agent entry, so a repo's own primary for the seat wins; a consolidation takes no gear. **Where an explicit spawn parameter governs the primary, no `reader pair` ask is made** — the resolved pair is recorded as `presumed (spawn parameter)`, never asked again for being presumed — but step 3 still runs.
-3. **Compare by family** — the primary this seat will spawn (step 2) against **this spawn's** producer (step 1). A collision is equal families — with any of them, where step 1 names several; no collision means you spawn exactly as resolved — and **never hardcode which families collide**, since a project's config can change either side. On a collision at a round-1 spawn, attended and without a gear, ask `reader pair` again with every pair whose primary is the producer's family left out, and append the answer as `re-picked: {why}` — `re-picked: spawn parameter named the author's family` where a spawn parameter set the primary. Unattended or under a gear, substitute per step 6 and append `presumed (substituted: {why})`, which binds no later seat. The substitute is the list's next pair by its reading rule — from its last two pairs only where the colliding main came from a spawn parameter or the per-agent entry.
+1. **Resolve the producer** — the model that actually *authored* the artifact, never the dispatch intent. In order: the artifact's `**Model:**` stamp (`spec.md` / `plan.md` / `implementation.md`), read at spawn time and, on an append-form stamp, resolving to the **last** writer — save `implementation.md`, whose producers are every model on its stamp. Read a Codex producer from `codex — {model}`, or as unnamed Codex when the stamp gives no model (→ agents-workflow.md § Model attribution stamp); else, where the producer is a running persona rather than a written artifact, that persona's **self-reported** model; else the resolution ladder. A stamp of `unknown` with no self-report available is **treated as no-collision** with a one-line disclosure — degenerate provenance fails open.
+2. **Resolve the checker** — read `.claude/nexus-agents.json` once at this spawn point (it serves the per-agent entries), then: an explicit owner-directed spawn parameter where one governs → at a round-1 spawn, the feature's **picked** pair (the last line of its `delivery/reader-pair.md` whose status is `picked` or `re-picked` and that binds this spawn — the record below; a `re-picked` line written because a spawn parameter named the author model outranks that parameter wherever the line binds) → the per-agent `.claude/nexus-agents.json` entry, unless `model-preset.js show` lists it under `ignored` → a gear's pair (below) → the reader-pair list's first applicable pair (→ agents-workflow.md § Critic rounds). The result is the **primary this seat will spawn**: on the Codex pair that is Codex, at every seat. At a round-1 spawn the second reader is the picked pair's — none on a one-reader pick — else an explicit spawn parameter's, else the repo's `jobs.secondReader` where set and usable (this read serves it too), else it follows from the primary — the list's second slot under Speed or the preset's second reader in presets without job lists (→ agents-workflow.md § Critic rounds; → pipeline-guardrails.md § Model presets). A round-1 spawn with no picked line that binds it asks the catalogue's `reader pair` entry once, attended, as a routine ask, and records the answer as `picked`; unattended it records the resolved pair as `presumed`. Under a gear whose readers are a pair (`gear.js value --slug {slug} --setting 3`), that pair is never asked and is recorded `gear: {gear}`; where that value's `source` is `campaign` it stands as the picked pair, attended or not, and otherwise below the per-agent entry, so a repo's own primary for the seat wins; a consolidation takes no gear. **Where an explicit spawn parameter governs the primary, no `reader pair` ask is made** — the resolved pair is recorded as `presumed (spawn parameter)`, never asked again for being presumed — but step 3 still runs. Under Speed pass the winning overrides in slot order as `--pick` to the reader resolver (→ agents-workflow.md § Critic rounds). Preserve an exact pick even when the list lacks it. A Claude family pick takes its list effort where present. A `codex` family pick takes the first surviving Codex model or the permitted bare default. Apply the collision rule before seating that pick. Where only the second slot has an override, resolve the default primary first, then pass both winners. Map the gear's reader tokens through the preset, use its `readerCount` for a third reader, and pass the final pair as `--pick` with `--count 3`. Carry the resolved slots to the dispatches.
+3. **Compare by model** — compare the resolved primary against each of this spawn's producers. Compare Claude by its family alias and Codex by exact model, using the account default for a bare Codex slot. An unnamed Codex producer, or an unknown Codex default beside a Codex producer, leaves out Codex. On a collision at a round-1 spawn, attended and without a gear, ask `reader pair` again with the options the resolver leaves, and append the answer as `re-picked: {why}` — `re-picked: spawn parameter named the author model` where a spawn parameter set the primary. Unattended or under a gear, substitute per step 6 and append `presumed (substituted: {why})`, which binds no later seat. Under Speed resolve the substitute without the colliding primary. Presets without job lists start from pairs 2–3 where that primary came from a spawn parameter or the per-agent entry.
 4. **On a collision outside round 1, attended** — a re-review whose `Covers:` lists no step, a later round whose producer changed — **read the catalogue's pairing entry for this seat** — `reviewer pairing check` or `critic pairing check`, both in `skills/questions-format/references/standard-questions.md` — **and ask it as a routine ask**; the option set, its rendering and the recommendation are the entry's, derived from the reader-pair list. The checker-eligible set is closed, so **a family the presets mark as never checking is never offered for a checker seat**.
 5. **A degenerate config never blocks.** `modelRanking` picks no checker — it feeds the config advisory only. A missing or unreadable config leaves the list to name the pair. Pairing is an enhancement; it never blocks a pipeline.
-6. **Unattended: presume, never ask.** Apply the pair the reader-pair list names for an unattended run, with no ask, and record it as presumed (at a round-1 spawn, the step-3 `presumed (substituted: {why})` line on a collision) (→ agents-workflow.md § Critic rounds). At a round-1 spawn the substitute is the primary, and its second reader follows from it.
+6. **Unattended: presume, never ask.** Apply the pair the reader-pair list names for an unattended run, with no ask, and record it as presumed (at a round-1 spawn, the step-3 `presumed (substituted: {why})` line on a collision) (→ agents-workflow.md § Critic rounds). At a round-1 spawn the substitute is the primary, and its second reader follows from it at the rungs in step 2.
 7. **Effort follows the model at these seats.** A critic or reviewer spawn takes the effort named for the model in the seat in `pipeline-guardrails.md` § Effort by model at the checker seats; at any other seat a substitution never changes effort.
 
-**The reader-pair record.** A feature's round-1 pair lives in `docs/specs/{slug}/delivery/reader-pair.md`, append-only, one line per resolution: `**Reader pair:** {primary} + {second | no second} — {picked | re-picked: {why} | gear: {gear} | presumed | presumed (spawn parameter) | presumed (substituted: {why})}, {date}, {seat}`; a `gear:` line binds at the rung step 2 gives it. The Codex pick is written once, as `codex + {model}`, the preset's second reader — or the repo's `jobs.secondReader` where it replaced that reader in the recommendation — and read the same at every seat: Codex as primary with that second reader, at the code review as at the spec, plan and promotion reviews. Whichever session resolves the pair writes the line — the team lead in team mode, the standalone persona otherwise; the file is no other role's artifact. `{seat}` is the review kind the line was resolved at — `spec review`, `plan review`, `code review` or `promotion review`. Every later round-1 seat of the feature reads it, and the last `picked` or `re-picked` line that binds the seat wins: a two-reader line binds every later round-1 seat; a one-reader line (`no second`) binds only round-1 spawns of the review kind its seat names, so a round-1 spawn of another kind reads past it to the last two-reader line, and with none resolves as a spawn with no picked line. A seat names the kind whose word — spec, plan, code or promotion — it contains as a whole word, and a one-reader line whose seat names no kind, or more than one (an older record naming a role), binds no later spawn. A `presumed` line of any form binds no later seat. A two-reader `picked` line is never asked again, and a one-reader one never at its own review kind; a `presumed` line other than `presumed (spawn parameter)` is asked again at the next attended round-1 spawn. This record governs round 1; step 4's collision ask and the communication log's `[paired: …]` annotation (steps 8–9, team lead only) govern the spawns outside it.
+**The reader-pair record.** A feature's round-1 pair lives in `docs/specs/{slug}/delivery/reader-pair.md`, append-only, one line per resolution: `**Reader pair:** {primary} + {second | no second} — {picked | re-picked: {why} | gear: {gear} | presumed | presumed (spawn parameter) | presumed (substituted: {why})}, {date}, {seat}`; a `gear:` line binds at the rung step 2 gives it. Write the chosen models in slot order. A Codex primary may be an exact model or `codex` for the bare default. Existing `codex + {model}` records remain valid: read their first entry as a Codex family pick and resolve it with the round's authors. Whichever session resolves the pair writes the line — the team lead in team mode, the standalone persona otherwise; the file is no other role's artifact. `{seat}` is the review kind the line was resolved at — `spec review`, `plan review`, `code review` or `promotion review`. Every later round-1 seat of the feature reads it, and the last `picked` or `re-picked` line that binds the seat wins: a two-reader line binds every later round-1 seat; a one-reader line (`no second`) binds only round-1 spawns of the review kind its seat names, so a round-1 spawn of another kind reads past it to the last two-reader line, and with none resolves as a spawn with no picked line. A seat names the kind whose word — spec, plan, code or promotion — it contains as a whole word, and a one-reader line whose seat names no kind, or more than one (an older record naming a role), binds no later spawn. A `presumed` line of any form binds no later seat. A two-reader `picked` line is never asked again, and a one-reader one never at its own review kind; a `presumed` line other than `presumed (spawn parameter)` is asked again at the next attended round-1 spawn. This record governs round 1; step 4's collision ask and the communication log's `[paired: …]` annotation (steps 8–9, team lead only) govern the spawns outside it.
 <!-- nexus-gen team-lead END -->
 
 ### Codex dispatch (generated)
@@ -143,37 +145,43 @@ authored home. Never hand-edit between the markers; edit the source and re-run
 <!-- nexus-gen codex-dispatch sections="availability,critic-seat,liveness,verdict-critic" BEGIN -->
 #### Availability detection
 
-**Codex is available when the Codex plugin's surfaces are present in your session context** — its
-`codex:*` skills and agents — read once per review, at the reading rule's first pass. There is no
-probing protocol beyond that and no shared file to read. Absent those surfaces, every Codex option
-below is simply not offered. With the surfaces present, a start through the Codex job helper
-(`codex-job.js`) that returns `unavailable` is a **start failure**, judged by the early window
-(→ § Time limit and fallback).
+**Codex is available when the session has the Codex plugin's `codex:*` skills and agents or the
+session-start line `Codex starts directly: yes`.** Read those signals once per review, at the
+reading rule's first pass. Offer Codex only where available. A start through the Codex job helper
+(`codex-job.js`) that returns `unavailable` where Codex is available is a **start failure**, judged by
+the early window (→ § Time limit and fallback). For a seat job, the helper's `seat` call answers
+whether Windows and the npm Codex launcher can run it (→ codex-dispatch.md § Seat job).
 
 #### Critic seat
 
-When Codex is picked at a critic seat — a spec, plan or promotion review — it **replaces** the nexus
-critic as the primary — an owner-ratified exception to "nexus agents own the pipeline" — and in
-round 1 the preset's second reader runs beside it, or the `jobs.secondReader` model where it is set and
-no pick names the second (→ agents-workflow.md § Critic rounds) — except under a gear whose spec and
-plan review is `Codex alone`, where Codex reads alone; under a gear that adds a third reader, it reads
-round 1 too (→ agents-workflow.md § Critic rounds). No nexus critic is spawned as that
-seat's primary. Its verdict lives at its **record path**: `docs/specs/{slug}/delivery/review-critic-codex.md`
+A Codex primary at a critic seat — spec, plan or promotion review — replaces the nexus critic as
+primary. It can read work written on another Codex model under the same author comparison as the
+code-review seat. Start it with `--kind review --model {the slot's model}`, or `--model codex` for a
+bare slot. In round 1 spawn the resolved second reader beside it where the round carries one (the
+`jobs.secondReader` rung applies), plus the gear's third reader where it adds one. A gear's
+`Codex alone` spec or plan review runs one reader (→ agents-workflow.md § Critic rounds). Its verdict lives at its **record path**: `docs/specs/{slug}/delivery/review-critic-codex.md`
 for a spec or plan review, and the consolidation report's round section for a promotion review (GO/NO-GO
 plus severity-rated findings, the code-review verdict file's grammar), kept distinct from
 `review-codex.md` so a feature with Codex at both seats keeps two separate records.
 
 **Write posture — one rule, and the seat job's exception.**
 
-**Dispatch READ-ONLY: every Codex job runs through the Codex job helper, and every one but a seat job's writing units and the sandbox check runs without `--write` (→ codex-dispatch.md § Seat job); the helper sends `--model` only from a helper job's or a seat's own `codexModel`, and sends `--effort` only where the repo sets `codex.effort` or a helper job's or a seat's own effort, the dispatch passes `--effort` or the feature's gear names a Codex effort, and a read-only job's brief says read-only in words too, so Codex can never touch the artifact under review.**
+**Dispatch READ-ONLY: every Codex job runs through the job helper. Writing seat units and the two sandbox-check jobs use the `workspace-write` box (→ codex-dispatch.md § Seat job). Every other job uses the read-only sandbox and says read-only in its brief, so Codex can never touch the artifact under review.**
 
-Wherever no `codexModel` names a model, none is sent, deliberately: the Codex CLI resolves its own
-default, and the user's Codex config file is the model dial — and the effort dial, where nothing
-above names an effort. A `codexModel` is checked for its shape only: a name of anything but letters,
-digits, `.`, `_`, `:` and `-`, or one that does not open with a letter or digit, is not sent — the job starts on the
-user's Codex default — and is named on the helper's stderr; a well-shaped name Codex does not know
-reaches Codex, and a job that fails on it falls back as any failed job does. The
-`codex:codex-rescue` forwarder is not a dispatch path: nothing can hold it to the time limit.
+**Model and effort at start.** For a resolved slot the dispatcher passes only its `--model`. Pass
+`--model codex` for a bare slot so the helper uses the account default without choosing a list
+model. With no `--model`, the helper reads a Codex helper or done-check job's repo entry first,
+including its model-less form. Otherwise a Speed job reads the first eligible Codex model from its
+job list. A list with no eligible Codex model returns `unavailable`. A job with no list uses the
+account default. Seat jobs take their model from the effective seat entry. Mining keeps its own
+dispatch rules. Model names are shape-checked before launch. A well-shaped model that fails in
+Codex takes that job's fallback.
+
+The helper resolves effort in this order: an explicit dispatch `--effort`, the campaign gear, the
+repo's job or seat entry or the repo list entry for the chosen model, the repo's `codex.effort`, the
+feature gear, then the shipped list entry for that model. A list lookup uses the selected model,
+with the bare entry matched as `codex`. With no applicable effort, Codex takes its account setting.
+The `codex:codex-rescue` forwarder is outside this dispatch path because it cannot enforce the limit.
 
 **Persistence is the dispatching session's.** A read-only job cannot write the verdict file at all,
 so the session that dispatched it takes the GO/NO-GO, the findings and any `Beyond the limit:` list from
@@ -202,11 +210,17 @@ agent file, so the brief carries the pointer.
 **Every Codex job runs through the Codex job helper, under one time limit.** It is `codex-job.js`:
 in the main session it sits in the folder of the fast-profile line of the session-start plugin-paths
 block (its `Codex job helper` line says so); a spawned agent finds it in the scripts folder its spawn
-names. Run every one of its subcommands from the session
-root — never a worktree — because the Codex companion keeps its job records per working directory,
-and a call from anywhere else finds no job. Either shell tool serves: a shell that lacks the Codex
-plugin's data folder is pointed at it by the helper, so a job started from one shell is found from
-the other.
+names. Run every subcommand from the session root. Either shell tool serves. A Codex job sends no
+completion notice to the session, so a turn never ends on one unless a background `wait` or `watch`
+is running for it.
+
+**The route.** For jobs outside the pipeline seats, `features.codexDirect` set to JSON `true`
+starts Codex directly in a read-only box on Windows with the npm Codex launcher available. Where the
+repo leaves the switch unset, the profile's `codexDirect` (`nexus/profile.json`) decides the same way;
+a repo `true` or `false` wins. Otherwise the helper uses the plugin route. A job keeps its starting route through collection, including after
+a settings change. On the plugin route the companion's records are per working directory, which is
+why calls from a worktree cannot find a session-root job. The helper supplies the plugin's data
+folder when a shell lacks it, so both shells find the same job.
 
 **The limit** is `codex.timeLimitMinutes` from the repo's agent config, 25 minutes when unset, counted
 from the job's start. A review job with other readers in its round — a spec, plan or promotion review
@@ -216,8 +230,8 @@ reader of its round (a spawned agent spawns none), keeps the plain limit. Cuttin
 time — the round waits for that reader anyway — and loses the review. Codex at its limit at minute 25
 while the second reader runs to minute 31 is collected after minute 31, finished or cut.
 
-**The stall check.** Inside the limit and past it, the helper reads the job's own log: 6 minutes with
-no new line is a **stall**, at any point in the job, for every kind but `helper` (→ codex-dispatch.md § Helper job) — measured, a working Codex job writes a log line
+**The plugin route's stall check.** The helper reads the job's own log inside and past the limit: 6 minutes with
+no new line is a **stall** for plugin jobs other than `helper` and legacy `seat` jobs — a working companion job writes a log line
 at least every few minutes, and a stuck one goes silent. `wait` returns `stalled: true`, with the quiet
 minutes, as soon as a stall falls due; call `collect` at once. `collect` decides: a job still stalled is
 cancelled and its log returned as `partial` with the reason `stalled — no Codex output for 6 minutes`,
@@ -229,17 +243,40 @@ cut is countable in the review records.
 `unavailable` with a reason, or `refused` with a reason. `wait --job {jobId} --deadline {deadline} --started {startedAt}`
 returns the job's `state` — `queued`, `running`, `completed`, `failed` or `cancelled`, or `unknown`
 with `readError: true` when the helper could not read the job's state (a read error is no job
-failure: keep waiting to the deadline) — within about two minutes, so call it again until the state
-is terminal, it returns `stalled: true`, or it adds `deadlinePassed: true`, which it does once the
+failure: keep waiting to the deadline — a lost job, below, aside) — within about two minutes, so call
+it again until the state is terminal, it returns `stalled: true`, or it adds `deadlinePassed: true`, which it does once the
 limit is reached on an unfinished job: you need no clock of your own. Then
 `collect --job {jobId} --deadline {deadline} --started {startedAt} --kind {kind}` — `review` for a
 review, `done-check` for the done check, `helper` for a helper job, a skill's own kind for its job — returns the `state`, the
 `output`, the `verdict` it found (`GO` or `NO-GO` for a review, `PASS` or `FAIL` for a done check,
 none for any other kind) and, where it had to, a `reason` and the `partial` output.
-A `queued` job whose worker process has gone never runs: `wait` and `collect` return it as `failed`
+On the plugin route a `queued` job whose worker process has gone never runs: `wait` and `collect` return it as `failed`
 with the reason `the Codex worker exited before it took the job`, a job failure like any other.
+A plugin job **lost** by the companion, as two jobs started seconds apart can be, is judged
+once the early window has ended: a review, done-check, research, panel or mining job whose `wait`,
+`collect` or `watch` passes `--started`, its log path recorded and no end recorded, whose status read says no such job while its job file, its
+log and its worker process are all gone — the status and the two files read again after a short pause, the worker searched once — ends `failed` with the reason
+`lost — the Codex companion holds no record of the job`, a job failure like any other. Any other read
+error keeps waiting to the deadline, and a later read that finds the job governs.
+On the direct route a confirmed keeper exit while the job was running, or a launch that was never
+reported and whose holder and keeper are both confirmed gone, is a job failure. Silence alone leaves
+a direct job running.
 A failure it saw inside the early window (below) carries `earlyFailure: true`. Every call prints one
 JSON object.
+
+**Waiting in the background.** For the jobs of a review round and a Codex done check, an
+**interactive** main session runs that `wait` as
+`wait --job {jobId} --deadline {deadline} --started {startedAt} --max-seconds {the time limit in seconds}`
+with the shell tool's background option, and its turn may end while it runs: the shell's notice wakes
+the session when the call returns. The helper caps the wait at the deadline itself, so no clock is
+needed; a wait started past the deadline — a job taken up again after it — is the hold's foreground
+call instead (below). A terminal state, `stalled: true` or `deadlinePassed` is handled as above; any other return
+starts the background wait again. A **headless** session — one started with `claude -p`, as a
+campaign's unit and merge sessions are, which ends when its turn ends — and a spawned agent keep the
+foreground calls above, and so does a session that cannot tell which it is. A helper job, a seat job
+and a skill's own job keep the wait their own section or skill names
+(→ codex-dispatch.md § Helper job; → codex-dispatch.md § Seat job). Nothing else the loop decides moves: the
+stall check, the early window, `collect`'s cut at the limit, the `end` line.
 
 **A job a later session can find.** Every Codex job of a review round or a done check starts with its
 `--kind` and the label `{slug} {spec-review|plan-review|promotion-review|code-review} round {n}`, or
@@ -252,13 +289,13 @@ Before a session
 starts the readers of a round whose record is missing, it runs `jobs --label {that label}`:
 - `none` — the round never started: start it as usual;
 - a job with its id — take up the loop above from where the job stands: `wait`, then `collect`,
-  holding for the round's other readers, a read error held to the deadline, and a cut, a stall or a
-  failure falling back for that seat with no retry;
+  holding for the round's other readers, a read error held to the deadline (a lost job aside), and a
+  cut, a stall or a failure falling back for that seat with no retry;
 - `started, id not recorded` or `unreadable` — the job may still run and cannot be reached: that
   seat's fallback, the reason in the round's header note.
 
 A `collect` or `watch` that returns a finished, failed or cancelled job started with a label adds one
-`end` line to the same record — when the job ended, its state, for a failed or cancelled job its reason,
+`end` line to the same record — when the job ended, its state, its reason where it has one,
 and the Codex session id where the result names one — so the job's run time can be read back, its
 failures counted by cause and its Codex run found.
 
@@ -269,40 +306,56 @@ reader it replaced (→ agents-workflow.md § Fix rounds) — call `wait --max-s
 `stalled` is collected at once; `unknown` is held like a running job. At each `wait` return in the
 hold, a reader whose completion notice has not come is checked as any silent agent is — its transcript
 by its agent id first, then a resume (→ agents-workflow.md § All Agents); found finished, or with its
-stall handling ended, it is in.
+stall handling ended, it is in. The hold's calls run in the foreground in every session: a background
+wait still running when the hold begins needs nothing done, and one that returns after its job was
+collected is ignored.
 
 **At the limit** `collect` reads the job's state first: a job that finished in the meantime is taken
-as finished. Otherwise it cancels the job and keeps the job's whole log — merged into the round marked
+as finished, and a lost plugin job is returned `failed`. Otherwise it cancels the job and keeps the
+partial — the whole log on the plugin route, or the last 64 KB of agent messages on the direct route.
+Merge it into the round marked
 `partial — Codex cancelled at the limit`, levelled by that round's cut (a code review's fix-round bar, a
 critic round's action floor), each finding re-verified by the round's
 other readers or the fold like any finding — **and the fallback runs as well.** A cancelled job cannot deliver late, so
-nothing is held open for it. Where the cancel itself fails and the job is still running — judged by
-the helper from the job's own process, and on Windows only after it has tried to end the job's process
-tree itself — `collect` returns that state with `cancel failed: {why}` and the log so far: keep the log
-the same way, fall back, and ignore anything the job delivers later.
+nothing is held open for it. On the plugin route, the helper checks the job's process and on Windows
+tries to end its process tree if cancellation fails. On the direct route it asks the box to close.
+If the plugin job is still running or the direct box's closure remains unconfirmed, `collect` returns
+the known state with `cancel failed: {why}` and the partial so far. Keep it the same way, fall back,
+and ignore anything the job delivers later.
 
 **The early window** is the first 6 minutes after the job's start, or its whole limit where
-`codex.timeLimitMinutes` is under 6. A **job failure** is a `start` that returns `unavailable` with the
-surfaces present, a job ending `failed`, a job ending `cancelled` before its deadline by something
-other than the limit or the stall check, a stall, or a job ending `completed` with no usable output for
-its kind. A job cut at the limit is never an early failure, and a read error is no failure at all. The
-helper sets the flag: the call that first returns the failure carries `earlyFailure: true` when it saw
-it inside the window — for a stall, when `collect` saw it before minute 7, so the job wrote nothing
-after its first minute. The flag on that first call governs, and a later call's reading never
+`codex.timeLimitMinutes` is under 6. A **job failure** is a `start` that returns `unavailable` where
+Codex is available, a job ending `failed`, a job ending `cancelled` before its deadline by something
+other than the limit or the stall check, a stall, a lost job, or a job ending `completed` with no usable
+output for its kind. A job cut at the limit is never an early failure, and a read error is no failure
+at all, a lost job aside. The helper sets the flag: the call that first returns the failure carries
+`earlyFailure: true` when it saw it inside the window — for a stall, when `collect` saw it before the
+window plus one minute (minute 7 under a limit of 6 minutes or more), so the job wrote nothing after its
+first minute; for a lost job, when the read that found it lost came before that same time, a `watch`
+keeping the flag of its first `wait` that found it lost. The flag on that first call governs, and a later call's reading never
 overrides it; a `stalled` from `wait` is not yet a failure — the failure is `collect`'s. Key the
 fallback on the flag (`earlyFailure: true` → early), never on your own reading of minutes.
 
 **The fallback.** A job that is `unavailable`, ends `failed` or `cancelled`, is cut at its limit or by
 the stall check, is still running when `collect` gives up on it, or ends `completed` with no usable
 output — `no verdict returned` for a review or a done check, an empty result for any other job — falls
-back at once: a review by the matrix below, the done check by codex-dispatch.md § Done check, a
+back at once: a review by the preset's fallback below, the done check by codex-dispatch.md § Done check, a
 helper job by its job's Claude fallback (→ codex-dispatch.md § Helper job), any other job by its own skill's fallback. A `readError` alone is not a reason to fall back before the
-deadline. No question to the owner and no retry first: a retry spends the same wait again. The
+deadline; a lost job is a job failure and falls back at once, its reason riding the round's `Codex dropped:`
+line as the stall reason does. No question to the owner and no retry first: a retry spends the same wait again. The
 round's header note names the skipped reader and why.
+
+**Under Speed**, a failed or unavailable review job drops the Codex family for this review. The
+dispatcher runs the resolver again with every dropped family, the surviving picks and the round's
+reader count (→ agents-workflow.md § Critic rounds). Reuse readers who already read. Start a fresh
+reader for an empty slot the resolver fills, even after a late drop. The round gate's `refused`
+still stops the round with no replacement or family drop.
+
+**The pair-based presets** use the early-window matrix and late rule:
 
 | Codex outcome | Seen | Fallback, attended and unattended alike |
 |---|---|---|
-| surfaces absent | — | no Codex pair; pair 2 on by the reading rule |
+| Codex not available | — | no Codex pair; pair 2 on by the reading rule |
 | job failure | early (`earlyFailure: true`) | the reading rule from pair 2 on, reusing the readers that already ran; the round keeps its own resolved second reader where it has one, never widened by the fallback |
 | job failure, or cut at the limit | late (no flag) | the late rule |
 
@@ -312,18 +365,18 @@ The pair order is the preset's (→ pipeline-guardrails.md § Model presets).
 failure flagged early makes the round's seated third reader its main in place of the early row — promoted as a
 second reader is, at the code review by "When Codex drops" (→ codex-dispatch.md § Code-review seat),
 at a critic seat by the reuse of a reader that already ran — attended and unattended alike, and no
-fresh main starts. Where the producer is the third reader's family, the reading rule's next eligible main is
+fresh main starts. Where the third reader matches an author model, the reading rule's next eligible main is
 taken instead and the third reader's findings stay a reader section. A late drop runs the late rule unchanged,
 the third reader's findings kept as a reader section. A third reader skipped or failed before the drop is not seated.
 
 **The late rule — no held-back family.** After the early window no family the preset's late row holds
 back is spent (→ pipeline-guardrails.md § Model presets). The round's second
-reader is promoted to main when its family is neither the author's nor held back — at the code review by
+reader is promoted to main when its model differs from every writer's and its family is allowed — at the code review by
 "When Codex drops" (→ codex-dispatch.md § Code-review seat), at a critic seat by the reuse of a reader
 that already ran (→ agents-workflow.md § Critic rounds) — and the round runs on that **one reader**. On the light lane's code review, a promoted second reader that
 read only the risky steps is re-briefed with the rest of the change, and its verdict counts as the main
 reader's only after that (→ architect.md § Light Lane (standalone only)). Where the
-second reader is the author's family or held back (a repo may set `jobs.secondReader` to one),
+second reader matches an author model or belongs to a held-back family (a repo may set `jobs.secondReader` to one),
 its findings stay in the round as a reader section, and a fresh main is spawned from pair 2 on by the
 reading rule — never a held-back family. A round with no other reader
 (a critic round ≥ 2, a follow-up covering no step) takes the same fresh main, and gains no second
@@ -333,17 +386,16 @@ reader by the fallback. The round's header note keeps its opening line
 `after the early window — fresh {model} main` where a fresh main was spawned. The cut job's partial
 output is merged as at the limit — marked `partial — Codex cancelled at the limit`, or with the stall
 reason for a stalled job. A one-reader round from this rule is the second sanctioned single-reader
-case, beside the owner's pick. **Scope:** the window and the late rule govern only the replacement of
-a review primary after Codex drops; the done check and every other job keep their own fallbacks, and a
+case, beside the owner's pick. **Scope:** the matrix and late rule govern a dropped review primary in presets without job lists; the done check and every other job keep their own fallbacks, and a
 same-model replacement of a reader that cannot be resumed is unchanged.
 
 Worked examples:
-1. A second reader of another family than the author's, not held back, Codex late → the second reader is promoted; one reader.
-2. A second reader of the author's family, late → the second's findings are kept; a fresh main from pair 2 on, the first whose main is not the author's family. Every late drop on a review whose author is the second reader's family is this case.
+1. An eligible second reader whose model differs from the writer's, Codex late → the second reader is promoted; one reader.
+2. A second reader that matches a writer's model, late → keep its findings and start the first eligible main from pair 2 on.
 3. A repo-set second reader of a held-back family (attended), late → its findings are kept; a fresh main from pair 2 on.
 4. A critic round ≥ 2 (no second reader), late → a fresh main from pair 2 on, alone.
-5. A repo-set second reader of a third family, neither the author's nor held back, late → it is promoted.
-6. Early → the first pair from pair 2 on whose main is not the author's family: where that main already read the round as its second reader it becomes the main; otherwise a fresh main starts and the second reader is kept.
+5. An eligible repo-set second reader of a third family, on a different model from the writer, late → it is promoted.
+6. Early → the first pair from pair 2 on whose main matches no author model. Reuse that main if it already read the round as second reader. Otherwise start it fresh and keep the second reader.
 
 - A job that never got going, its stall seen by `collect` at about minute 6:10 →
   `earlyFailure` → example 6's outcome.
@@ -391,7 +443,7 @@ Pipeline coordination — always in effect when you operate. (For universal rule
 **Slug / paths / caps (compact reference; canonical in agents-workflow):**
 - **Slug** — assigned by the team lead or PO and passed down; never derive it. Forms: `F{N}-{Name}`, `{KEY}-{2-3-words}` (tracker item), `adhoc-{Name}` (solo-only — Lane rule, agents-workflow), `B{N}-{Name}` (bug), `GAP-{N}-{name}`.
 - **Paths** — `docs/specs/{slug}/definition/` (spec.md | epic.md | bug.md, help.tooltips.md) and `docs/specs/{slug}/delivery/` (plan.md, implementation.md, done-check.md, review.md, questions.md, lessons.md, summary.md, communication-log.md). Nested issue: `docs/specs/{epic-slug}/{issue-slug}/…`. Ad-hoc: `delivery/` only.
-- **Cycle caps** — reviewer↔developer fix cycles max **3**, or the gear's number where a gear sets one (→ agents-workflow.md § Gears) → architect; developer questions on the same area max **3** → human; architect escalation **1** → human. After a human escalation: STOP and wait.
+- **Cycle caps** — code reviews and fix rounds max **3** each, or the gear's number (→ agents-workflow.md § Gears), the last fix unread, then the close; developer questions on the same area max **3** → human; architect escalation **1** → human. After a human escalation: STOP and wait.
 
 **Universal agent rules (compact reference; canonical in `rules/on-demand/agents-workflow.md` § All Agents + § Message Size Contract):**
 - **Rules go in files, not memory.** A reusable rule or convention gets captured in the appropriate rule or agent file, not in memory.

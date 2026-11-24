@@ -8,10 +8,12 @@
  * and is progress, never evidence: the stages that change the repository are skipped once finished, the others
  * read the repository again. One call at a time per slug, held by `{slug}.lock` (created exclusively, holding the
  * process id); a lock whose process is gone is never taken over — the call exits 2 naming it for the caller to remove.
+ * The tests stage's two passes are counted in `{slug}.passes.json` beside it, which `--restart` leaves (stageTests).
  *
  * The result is plain text, one line per stage and a last line, at most 40 lines; what is cut is kept beside the
- * state. A finished `after` call whose commit reached the default branch adds one line after it: the
- * `main-run.js request` the full run on that branch is owed by, with that commit as `--commit` (owedRun). Exit 0 done or ended at `--until`, 3 stopped for the caller, 2 refused with nothing changed.
+ * state. A finished `after` call whose commit reached the default branch, in a repo whose full suite is on, adds two
+ * lines after it: the owner ask, then the `main-run.js request` the full run on that branch is owed by, with that
+ * commit as `--commit` (owedRun). Exit 0 done or ended at `--until`, 3 stopped for the caller, 2 refused with nothing changed.
  */
 const fs = require('fs');
 const path = require('path');
@@ -22,6 +24,7 @@ const { pipelineWrite, sameTree, treeHash } = require('./tree-hash');
 const { globToRegExp } = require('./prose-tests');
 const { staleRegistries, advisoryMessage } = require('./registry-stamp');
 const { untouchedTimeouts } = require('./run-verdict');
+const { fullSuiteOn } = require('./full-suite');
 const { stagesOf, isAssignment } = require('./test-runners');
 
 const SCRIPTS = path.join(__dirname, '..');
@@ -35,9 +38,12 @@ const BOOL_FLAGS = new Set(['settled', 'restart', 'merge', 'push']);
 const MAX_LINES = 40;
 const CUT = 20;
 const RECORD_LIMIT_MS = 10 * 60 * 1000;
+// The handover's tied-run limit; a fast run otherwise takes verify-run.js's 90-second step default.
+const FAST_RUN_LIMIT = ['--timeout-ms', '600000'];
 const BACKLOG = 'docs/backlog.md';
 const CLOSE_GATE = 'team-lead.md § Close Gate, item 5';
 const RED_RUNS = 'agents-workflow.md § Red runs';
+const CLOSE_PASSES = 2;
 
 class Refusal extends Error {}
 const refuse = (why) => { throw new Refusal(why); };
@@ -127,7 +133,21 @@ function sharedMatcher(tree) {
 
 function stateFiles(root, slug) {
   const dir = path.join(root, '.claude', 'audit', 'close-run');
-  return { dir, state: path.join(dir, `${slug}.json`), lock: path.join(dir, `${slug}.lock`) };
+  return { dir, state: path.join(dir, `${slug}.json`), lock: path.join(dir, `${slug}.lock`), passes: path.join(dir, `${slug}.passes.json`) };
+}
+
+// The tests stage's pass record, `{ base, passes, capped }`: kept by --restart, started again on another base.
+function loadPasses(ctx, base) {
+  const saved = loadState(ctx.files.passes);
+  if (saved && saved.base === base && Number.isInteger(saved.passes)) return { base, passes: saved.passes, capped: saved.capped === true };
+  return { base, passes: 0, capped: false };
+}
+
+function savePasses(ctx, passes) {
+  fs.mkdirSync(ctx.files.dir, { recursive: true });
+  const tmp = `${ctx.files.passes}.${ctx.pid}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify(passes)}\n`);
+  fs.renameSync(tmp, ctx.files.passes);
 }
 
 function loadState(file) {
@@ -517,9 +537,13 @@ function lastRecord(stdout) {
  * failures (a gear's handover run), else a whole-unit fast run where the change has no base, one tied run over
  * the uncovered files, one run by name of the unrepaired test files, and the whole-repo checks (`premerge`).
  * Never the complete run otherwise — the full suite runs on the default branch after the merge — save in a campaign
- * unit whose marker does not accept pre-merge evidence, which the gate holds to a complete record. A run it makes
+ * unit whose marker does not accept pre-merge evidence, which the gate holds to a complete record. With the repo's
+ * full suite off (lib/full-suite.js) it never starts the complete run, whatever the gate asks. A run it makes
  * that comes back red stops the call, so a red is a fix, never a loop; after another merge-in the same stage
- * re-runs what the moved content left uncovered.
+ * re-runs what the moved content left uncovered. A call that starts a run is one pass, counted in
+ * `{slug}.passes.json` (`{ base, passes, capped }`, the base the merge-base with the default branch) when its
+ * first run starts: a red in the second pass, and any later call the gate still refuses, ends the stage `capped`
+ * — not verified, the red listed, the call going on — and the record holds `capped` for the summary gate.
  */
 function stageTests(ctx) {
   const gate = ctx.gate || require(path.join(SCRIPTS, 'pipeline-gate.js'));
@@ -530,6 +554,7 @@ function stageTests(ctx) {
   const tail = ['--slug', ctx.slug, '--session', ctx.flags.session, '--tree', ctx.tree, '--wait'];
   const env = { ...ctx.env, CLAUDE_PROJECT_DIR: ctx.root };
   const base = planBase(ctx);
+  const fullOn = fullSuiteOn(ctx.root);
   // The flaky files stand for the record they failed in, so a call that runs nothing keeps them.
   const saved = ctx.state.data;
   let flaky = Array.isArray(saved.flaky) ? saved.flaky.slice() : [];
@@ -547,6 +572,28 @@ function stageTests(ctx) {
   const redStop = (seen, label) => ({
     status: 'stopped', why: `the ${label} is red`, list: [...runs, ...recordNotes(seen.record)], next: `${RED_RUNS}, then call again`,
   });
+  const mergeBase = ctx.git(['merge-base', 'HEAD', ctx.deflt.name]);
+  const passes = loadPasses(ctx, mergeBase.status === 0 ? mergeBase.stdout.trim() : '');
+  let counted = false;
+  const capped = (seen, red) => {
+    passes.capped = true;
+    savePasses(ctx, passes);
+    return { status: 'capped', why: `the close's ${CLOSE_PASSES} passes are spent`, list: [...(red ? [`the ${red} is red`] : []), ...runs, ...recordNotes(seen.record)] };
+  };
+  // A pass is counted when its first run starts, so a pass killed mid-run still counts; past the cap no run starts.
+  const startPass = () => {
+    if (counted) return true;
+    if (passes.capped || passes.passes >= CLOSE_PASSES) return false;
+    passes.passes += 1;
+    counted = true;
+    savePasses(ctx, passes);
+    return true;
+  };
+  const attempt = (seen, label, args, red) => {
+    if (!startPass()) return capped(seen, null);
+    if (verifyRun(label, args)) return null;
+    return passes.passes >= CLOSE_PASSES ? capped(seen, red) : redStop(seen, red);
+  };
   for (;;) {
     const seen = {};
     const denial = gate.fullSuiteDenial(ctx.tree, ctx.root, data, ctx.slug, seen, { planBase: base });
@@ -562,32 +609,34 @@ function stageTests(ctx) {
     const uncovered = list(denial.uncovered);
     const unrepaired = list(denial.unrepaired).filter((f) => !made.has(`by-name ${f}`));
     let ran = false;
-    if (denial.complete && once('complete')) {
+    let stop = null;
+    if (denial.complete && fullOn && once('complete')) {
       ran = true;
-      if (!verifyRun('complete run', ['--profile', 'complete'])) return redStop(seen, 'complete run');
+      if ((stop = attempt(seen, 'complete run', ['--profile', 'complete'], 'complete run'))) return stop;
     }
     if (!denial.complete && !denial.unreadable) {
       if (denial.whole && once('whole')) {
         ran = true;
-        if (!verifyRun('whole-unit run', ['--profile', 'fast'])) return redStop(seen, 'whole-unit run');
+        if ((stop = attempt(seen, 'whole-unit run', ['--profile', 'fast', ...FAST_RUN_LIMIT], 'whole-unit run'))) return stop;
       }
       if (uncovered.length && once(`tied ${uncovered.join('\0')}`)) {
         ran = true;
-        if (!verifyRun(`tied run over ${uncovered.length} file(s)`, ['--profile', 'fast', '--tied', '--changed', ...uncovered])) return redStop(seen, 'tied run');
+        if ((stop = attempt(seen, `tied run over ${uncovered.length} file(s)`, ['--profile', 'fast', ...FAST_RUN_LIMIT, '--tied', '--changed', ...uncovered], 'tied run'))) return stop;
       }
       if (unrepaired.length) {
         ran = true;
         unrepaired.forEach((f) => made.add(`by-name ${f}`));
         if (flakyRecord !== recordId) { flaky = []; flakyRecord = recordId; }
-        if (!verifyRun(`${unrepaired.join(', ')} by name`, ['--profile', 'fast', '--files', ...unrepaired])) return redStop(seen, 'run by name');
+        if ((stop = attempt(seen, `${unrepaired.join(', ')} by name`, ['--profile', 'fast', ...FAST_RUN_LIMIT, '--files', ...unrepaired], 'run by name'))) return stop;
         for (const f of unrepaired) if (!flaky.includes(f)) flaky.push(f);
       }
       if (denial.premerge && once('premerge')) {
         ran = true;
-        if (!verifyRun('premerge run', ['--role', 'premerge'])) return redStop(seen, 'premerge run');
+        if ((stop = attempt(seen, 'premerge run', ['--role', 'premerge'], 'premerge run'))) return stop;
       }
     }
     if (ran) continue;
+    if (passes.capped || passes.passes >= CLOSE_PASSES) return capped(seen, null);
     return {
       status: 'stopped',
       why: `the summary gate refuses: ${denial.cause} — ${gate.denialGloss(denial)}`,
@@ -806,14 +855,15 @@ function madeLine(ctx) {
 }
 
 // The full run a commit that reached the default branch owes on it (main-run.js): the merge this call made, else the
-// closing commit of a close on the default branch itself, else that branch's tip; none for a campaign unit or a
-// close that did not merge.
+// closing commit of a close on the default branch itself, else that branch's tip; none for a campaign unit, a close
+// that did not merge, or a repo whose full suite is off. Owed only on the owner's yes, so the ask comes first.
 function owedRun(ctx) {
-  if (ctx.campaign) return '';
+  if (ctx.campaign || !fullSuiteOn(ctx.root)) return '';
   const d = ctx.state.data;
   const commit = d.merged ? d.mergeCommit || ctx.deflt.name : !ctx.offDefault ? d.closingCommit || ctx.deflt.name : '';
   if (!commit) return '';
-  return `next: start in the background — node "${slash(path.join(SCRIPTS, 'main-run.js'))}" request --slug ${ctx.slug} --session ${ctx.flags.session} --commit ${commit}`;
+  return 'close-run: the full suite is on in this repository (features.fullSuite) — ask the owner first (the catalogue\'s full suite after merge) and start this only on a yes\n'
+    + `next: start in the background — node "${slash(path.join(SCRIPTS, 'main-run.js'))}" request --slug ${ctx.slug} --session ${ctx.flags.session} --commit ${commit}`;
 }
 
 // ── the result ───────────────────────────────────────────────────────────────────────────────────────
@@ -825,7 +875,7 @@ function keepWhole(ctx, stage, text) {
 }
 
 function render(ctx, stage, res) {
-  const head = `${stage}: ${res.status}${res.why ? ` — ${res.why}` : ''}`;
+  const head = `${stage}: ${res.status === 'capped' ? 'not verified' : res.status}${res.why ? ` — ${res.why}` : ''}`;
   const details = [];
   const list = res.list || [];
   if (list.length > CUT) {

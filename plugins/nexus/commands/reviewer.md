@@ -58,10 +58,11 @@ No approval without evidence. Reject immediately if:
 
 **Cite the run record; run no whole suite.** The brief's `Run record:` line names the round's record: cite it in your Evidence table, and run no whole suite — not the complete run, not the `unit` role, not a whole `node --test` or `dotnet test` run, not the fast profile without `--files` — except where its state says so:
 - **the handover's tied record that counts as passing, for the reviewed tree** (a first review) — the tied tests over every file the feature changed, a `pass`, or a `fail` whose only failures are timeouts in tests the change did not touch (`touched: false`, the shared rule in `lib/run-verdict.js`) — it is the test evidence; no complete run is made before the merge, and where a complete record that counts as passing already exists for the reviewed tree, cite it too; those timeouts go to a solo after the close and are no finding;
-- **a red handover record whose failures then ran green by name** (the handover ladder's end) — cite it with those by-name records; together they are the test evidence;
-- **a tied record cut at its limit, or `skipped`** (the runner has no step run) — reads **"not verified at the handover — the close's runs and the full run after the merge cover it"**: cite it so, never reject on it;
+- **a red handover record whose second pass counts as passing** (the handover ladder's end) — cite both records; together they are the test evidence;
+- **a red handover record past the cap** (the handover's two passes spent — a red second pass, or `verify-run.js` exit 4) — its failures are the round's always-in items, under the fix list's `Handover run` line: cite the record as red and never re-run it; the developer fixes them in the round, so they are no finding of yours to raise again;
+- **a tied record cut at its limit, or `skipped`** (the runner has no step run) — reads **"not verified at the handover — the close's runs and CI cover it"** (the full run after the merge too, where `features.fullSuite` is on): cite it so, never reject on it;
 - **`running`** (a gear that runs the complete suite once beside the reviewers, its record not landed yet) — targeted checks only; cite the record once it lands;
-- **`undeclared`** (the repo declares no `unit` role, so the tied run recorded nothing) — there is no fast run to make: cite it, run a named test file only to prove a finding, and leave the tree to the full run after the merge;
+- **`undeclared`** (the repo declares no `unit` role, so the tied run recorded nothing) — there is no fast run to make: cite it, run a named test file only to prove a finding, and leave the tree to the close's runs and CI (the full run after the merge too, where `features.fullSuite` is on);
 - **no `Run record:` line** (a standalone review, `/nexus:reviewer`) — cite the newest complete record that counts as passing for the reviewed tree where one exists, else run the complete suite once and cite that;
 - **on a follow-up, the producer's fast record** — the fix developer's `## Fix Round` block, the solo's `Verify:` line, or the hand-up developer's `## Fix Round Hand-up {n}` block. A record cut at its limit (an `Unfinished:` line) or missing reads **"not verified at this round — the close run covers it"**: cite it so, never reject on it. A red record is a finding.
 
@@ -165,7 +166,7 @@ Pipeline coordination — always in effect when you operate in the pipeline. (Fo
 **Slug / paths / caps (compact reference; canonical in agents-workflow):**
 - **Slug** — assigned by the team lead or PO and passed down; never derive it. Forms: `F{N}-{Name}`, `{KEY}-{2-3-words}` (tracker item), `adhoc-{Name}` (solo-only — Lane rule, agents-workflow), `B{N}-{Name}` (bug), `GAP-{N}-{name}`.
 - **Paths** — `docs/specs/{slug}/definition/` (spec.md | epic.md | bug.md, help.tooltips.md) and `docs/specs/{slug}/delivery/` (plan.md, implementation.md, done-check.md, review.md, questions.md, lessons.md, summary.md, communication-log.md). Nested issue: `docs/specs/{epic-slug}/{issue-slug}/…`. Ad-hoc: `delivery/` only.
-- **Cycle caps** — reviewer↔developer fix cycles max **3**, or the gear's number where a gear sets one (→ agents-workflow.md § Gears) → architect; developer questions on the same area max **3** → human; architect escalation **1** → human. After a human escalation: STOP and wait.
+- **Cycle caps** — code reviews and fix rounds max **3** each, or the gear's number (→ agents-workflow.md § Gears), the last fix unread, then the close; developer questions on the same area max **3** → human; architect escalation **1** → human. After a human escalation: STOP and wait.
 
 **Universal agent rules (compact reference; canonical in `rules/on-demand/agents-workflow.md` § All Agents + § Message Size Contract):**
 - **Rules go in files, not memory.** A reusable rule or convention gets captured in the appropriate rule or agent file, not in memory.
@@ -185,7 +186,7 @@ Pipeline coordination — always in effect when you operate in the pipeline. (Fo
 
 (*One block bullet is overridden here by role. **Message Size Contract** — your findings, evidence and severity ratings go in the `## Step 2 — Code Review` section of `review.md`, while the verdict handoff itself stays ~300 words: a declared carve-out in `agents-workflow.md` § Message Size Contract.*)
 
-You are Step 2, running beside the architect's Step 1 done check after a handover run — the tied tests over every file the feature changed — that counts as passing, or whose failures then ran green by name. On the light lane a red handover run may still be with a solo while you read: cite the handover record as it stands, with targeted checks only (→ § Fresh Evidence). Read `## Unfinished Tests` in `implementation.md` as not verified at the step — the close's runs and the full run after the merge cover it.
+You are Step 2, running beside the architect's Step 1 done check after a handover run — the tied tests over every file the feature changed — that counts as passing, whose second pass does, or whose two passes are spent — its failures then the round's always-in items. On the light lane a red handover run may still be with a solo while you read: cite the handover record as it stands, with targeted checks only (→ § Fresh Evidence). Read `## Unfinished Tests` in `implementation.md` as not verified at the step — the close's runs and CI cover it (the full run after the merge too, where `features.fullSuite` is on).
 
 **`## Solo Fixes` in `implementation.md`** is code a solo changed outside the plan's steps: review it as part of the diff, but its files are never a plan-deviation finding; read each block's `Class checked:` and `Left:` lines.
 
@@ -210,14 +211,14 @@ Everything else in this file applies unchanged.
 
 - **Fixes needed** (CRITICAL or HIGH found): "For team-lead: Fixes needed for {FeatureName}, see review.md. Cycle {N}/3." — after a round-less follow-up, `Solo fix {n}.` or `Hand-up {n}.` in place of the cycle. The coordinator merges your findings with the done check's into one fix list for the developer.
 - **Approved** (nothing open): "For team-lead: APPROVED: {FeatureName}." — or `COMMENT:` in its place when only MEDIUM or LOW findings remain. The coordinator holds it until the done check is in too.
-- **Escalation** (the fix-round cap exhausted (→ agents-workflow.md § Fix rounds) OR architecture decision needed): "For architect: ESCALATION for {FeatureName}: {reason}." Architecture calls are never the developer's to make.
+- **Escalation** (architecture decision needed): "For architect: ESCALATION for {FeatureName}: {reason}." Architecture calls are never the developer's to make.
 - Non-blocking findings (MEDIUM/LOW) don't block approval; the coordinator fixes or records them by the round's bar.
 
 **Write the artifact first; then return your full output in your message.** Your `## Step 2 — Code Review` section of `review.md` (on a re-review, this cycle's Re-review section) is your **primary deliverable** (ADR-17) — write it before you report. Then carry the verdict line — "APPROVED", "COMMENT" or "REQUEST CHANGES" — and the findings inline so the team lead can relay without digging. The message is a **convenience copy, not a substitute** for the file — a thin or missing `review.md` is an incomplete result even if the message reads complete.
 
 ### Fix cycle cap
 
-Capped at **3**; the 3rd unresolved cycle escalates to the architect (→ § Coordination Protocol).
+Capped at **3** reviews and **3** fixes; the last fix is not re-read (→ agents-workflow.md § Fix rounds).
 
 ## Message Footer
 

@@ -21,8 +21,9 @@
  * The owner-away refusal and the gear refusal below are not further checks: each refuses on the
  * session's state, names no check, and sits in neither list.
  *
- * POSTURE, mirroring prohibition-gate.js's scope check: deny in the FOREGROUND with a self-correcting
- * reason that names every failed check at once, so one rewrite fixes all; for a background subagent,
+ * POSTURE, mirroring prohibition-gate.js's scope check: deny in the FOREGROUND with a reason that names
+ * every failed check at once, with the text that failed where the gate knows it, so one rewrite fixes
+ * all, and then points to where the rules live; for a background subagent,
  * by retained policy, log one `.claude/audit/violations.log` line and exit 0 (ADR-13).
  *
  * OWNER AWAY: while the session carries an owner-away mark (read through lib/read-owner-away.js;
@@ -189,22 +190,17 @@ const CHECK_ORDER = [
   'bracket', 'cap', 'header', 'routine', 'description',
 ];
 
+// A pointer, never a recital of every rule: a recital after the failed checks reads as the cause of
+// the refusal, and the rewrite lands on what passed.
 const REWORD_TAIL =
-  'reword per the owner-question contract: the question sentence comes first, the whole first line ' +
-  'and the only question mark, and at most one more line follows it; an ordinary decision takes the ' +
-  'relaxed form — that line is a paragraph of up to three sentences, the first saying why the ' +
-  'question is asked; a catalogued question takes the standard-question variant — that line is ' +
-  'the routine line and at most one more sentence; the paragraph ends with a sentence end, with no ' +
-  'blank line, no bullet and no label; the options are the answers, the ' +
-  'recommended one first with (Recommended) on its label and Confidence: high|medium|low — why at ' +
-  'the end of its description — a multi-select may recommend several, listed first and together, each ' +
-  'closing with its own clause — and an option\'s description is one sentence, the confidence clause ' +
-  'not counted; plain words only — no word from the vocabulary list except a catalogue name on a ' +
-  'routine line, and no pointer phrase; no bare internal id anywhere, and no markdown emphasis or ' +
-  'bracket in the question text; at most three questions per call ' +
-  '(research-before-asking § The owner-question contract; the word lists are ' +
-  'skills/questions-format/references/ask-words.md and the catalogue is ' +
-  'skills/questions-format/references/standard-questions.md).';
+  'fix only what is named and ask again; the rules are in research-before-asking § The owner-question ' +
+  'contract, the word lists in skills/questions-format/references/ask-words.md and the catalogue in ' +
+  'skills/questions-format/references/standard-questions.md.';
+
+// The slug confirmation entry exists to show the proposed name, so on its routine ask the slug-shaped
+// names its routine line carries are not read as ids — on that question only, and never in the header.
+const SLUG_CONFIRMATION = 'slug confirmation';
+const PROPOSED_NAME_RE = /\b(?:[FB]\d{1,4}|[A-Z]{2,10}-\d+)(?:-[A-Za-z][A-Za-z0-9]*)+\b/g;
 
 // A refusal on the SESSION'S STATE, not on a question's shape: no rewrite of the ask can pass it, so
 // it names no check and takes no REWORD_TAIL. The order of its two instructions is the contract —
@@ -274,6 +270,25 @@ function bareIds(text) {
   for (const m of clean.matchAll(LEDGER_ID_RE)) hits.push(m[0]);
   return hits;
 }
+
+/** The names a slug confirmation's routine line proposes; none for any other ask. */
+function proposedNames(routineName, routineLine) {
+  if (routineName === null || normalizeName(routineName) !== SLUG_CONFIRMATION) return [];
+  return [...new Set(routineLine.slice(`${routineName}, routine: `.length).match(PROPOSED_NAME_RE) || [])];
+}
+
+/** The text with each whole proposed name replaced by a space, so no id is fabricated across it. */
+function withoutNames(text, names) {
+  if (typeof text !== 'string' || names.length === 0) return text;
+  return names.reduce((s, name) => {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return s.replace(new RegExp(`(?<![A-Za-z0-9-])${escaped}(?![A-Za-z0-9-])`, 'g'), () => ' ');
+  }, text);
+}
+
+const idDetail = (ids) => (ids.length === 1
+  ? `— the name ${ids[0]} looks like an internal id`
+  : `— the names ${ids.slice(0, -1).join(', ')} and ${ids[ids.length - 1]} look like internal ids`);
 
 /** Blank is whitespace-only — never a `||` default, which swallows '' and reads a blank as content. */
 const isBlank = (line) => String(line).trim() === '';
@@ -366,8 +381,10 @@ function checkQuestion(q, catalogue, lists) {
     }
 
     // (h) no markdown emphasis, (i) no bracket — the question text only
-    if (lines.some((l) => EMPHASIS_RE.test(l))) add('emphasis');
-    if (lines.some((l) => BRACKET_RE.test(l))) add('bracket', 'in the question text');
+    const emphasis = lines.map((l) => EMPHASIS_RE.exec(l)).find(Boolean);
+    if (emphasis) add('emphasis', `— "${emphasis[0]}"`);
+    const brackets = [...new Set(lines.join('\n').match(new RegExp(BRACKET_RE.source, 'g')) || [])];
+    if (brackets.length > 0) add('bracket', `in the question text — ${brackets.map((b) => `"${b}"`).join(' ')}`);
 
     // (l) a routine line names a catalogued entry
     if (routineName !== null && catalogue && typeof catalogue.has === 'function'
@@ -442,9 +459,11 @@ function checkQuestion(q, catalogue, lists) {
   }
 
   // (e) Every surface the owner reads, the header included — it is owner-visible, so it is in.
-  const surfaces = [text, q.header];
-  for (const o of readable) surfaces.push(o.label, o.description);
-  if (surfaces.some((s) => bareIds(s).length > 0)) add('id');
+  const proposed = proposedNames(routineName, lines[1]);
+  const surfaces = [withoutNames(text, proposed), q.header];
+  for (const o of readable) surfaces.push(withoutNames(o.label, proposed), withoutNames(o.description, proposed));
+  const ids = [...new Set(surfaces.flatMap((s) => bareIds(s)))];
+  if (ids.length > 0) add('id', idDetail(ids));
 
   // (f) and (g) the words. The catalogue name on a routine line is the one admitted listed word, so
   // that prefix is stripped from line 2 before the vocabulary scan — and only from it.

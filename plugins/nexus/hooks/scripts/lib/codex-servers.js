@@ -30,7 +30,8 @@
  *
  * Workspaces compare by git top level (the folder itself outside a repository, as the Codex plugin
  * resolves it), case-folded with both separators on Windows, exact elsewhere. The listing is the
- * Windows CIM process table as JSON, or `ps` elsewhere; NEXUS_CODEX_PLATFORM forces the platform,
+ * Windows CIM process table as JSON, or `ps` elsewhere; NEXUS_CODEX_PLATFORM forces the platform under the test
+ * runner only (lib/codex-entry.js `testSeam`),
  * NEXUS_CODEX_LIST and NEXUS_CODEX_KILL replace the list and kill commands (a JSON array, the kill
  * receiving the platform's arguments after it). Off Windows a server, started detached, is ended by
  * its process group.
@@ -48,6 +49,7 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
+const { testSeam } = require('./codex-entry');
 
 const LIST_MS = 15000;
 const KILL_MS = 10000;
@@ -361,7 +363,7 @@ function keptBecause(stateRoots, f, stat) {
 }
 
 function closeForgotten({ workspace = null, excludeJob = null, stateRoots = [], all = false, platform, env = process.env, deps = {} } = {}) {
-  const plat = platform || env.NEXUS_CODEX_PLATFORM || process.platform;
+  const plat = platform || testSeam('NEXUS_CODEX_PLATFORM', env) || process.platform;
   const now = deps.now || Date.now;
   const list = deps.list || (() => defaultList(plat, env));
   const kill = deps.kill || ((pid) => defaultKill(pid, plat, env));

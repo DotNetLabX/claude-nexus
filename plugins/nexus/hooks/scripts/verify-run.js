@@ -3,7 +3,7 @@
  * Nexus verify-run: the runner for a declared verify role (F81, KH feedback item 2).
  *
  *   node verify-run.js --profile fast [--files <test file>...] [--light] [--timeout-ms N] [--tree <path>] [--session <id>]
- *   node verify-run.js --profile fast --tied --changed <file>... [--slug <slug>] [--light] …
+ *   node verify-run.js --profile fast --tied --changed <file>... [--slug <slug>] [--stage handover] [--light] …
  *   node verify-run.js --profile complete --slug <slug> [--timeout-ms N] [--tree <path>] [--session <id>]
  *   node verify-run.js --role <name> [--slug <slug>] …   (the same runs, addressed by role)
  *   node verify-run.js --profile fast --step --attempt <1|2> --agent <identity> --unit <unit> --slug <slug>
@@ -189,6 +189,12 @@
  * verify-gate's shape (JSON line per record, same `ts`/`session`/`token`/`tree` fields) plus `role`,
  * `source: "verify-run"` and `duration_ms`. The team lead already parses that file line by line; a
  * second file or a second shape would need a second reader for no gain.
+ *
+ * THE HANDOVER CAP. `--stage handover` marks the coordinator's handover tied run, and its record carries
+ * `stage: "handover"`. Before anything runs, the call counts the root log's records of the same `slug` and
+ * `session` with that stage, any verdict, a cut one included; at 2 it runs nothing, writes no record, prints
+ * one stderr line saying the stage ends not verified, and exits 4. Any other `--stage` value is read as no
+ * stage, with a stderr line; a step run ignores `--stage`.
  *
  * AN UNDECLARED ROLE IS RECORDED, NEVER SILENT. If the repo declared no such role the run writes
  * verdict:"undeclared" and exits 0. That is the honest outcome — nothing ran, and the close gate
@@ -563,6 +569,8 @@ function parseArgs(argv) {
 }
 
 const PROFILE_ROLES = { fast: 'unit', complete: 'full' };
+const STAGES = new Set(['handover']);
+const HANDOVER_PASSES = 2;
 
 function readLog(root) {
   let lines = [];
@@ -1105,6 +1113,18 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   const session = typeof args.session === 'string'
     ? args.session
     : String(env.CLAUDE_CODE_SESSION_ID || env.CLAUDE_SESSION_ID || '');
+  let stage = '';
+  if (args.stage !== undefined && !step) {
+    if (STAGES.has(args.stage)) stage = args.stage;
+    else process.stderr.write(`verify-run: --stage ${args.stage === true ? '' : `${args.stage} `}is not a stage (${[...STAGES].join(', ')}) — run with no stage\n`);
+  }
+  if (stage === 'handover') {
+    const passes = readLog(root).filter((r) => r && r.stage === 'handover' && (r.slug || '') === slug && (r.session || '') === session).length;
+    if (passes >= HANDOVER_PASSES) {
+      process.stderr.write(`verify-run: ${slug} has had its ${HANDOVER_PASSES} handover passes — the stage ends not verified; go on to the checks\n`);
+      return 4;
+    }
+  }
   const tree = typeof args.tree === 'string' ? args.tree : resolveDeclaredTree(root, session);
   if (typeof args.tree !== 'string' && path.relative(path.resolve(root), path.resolve(tree)) !== '' && !startedIn(tree)) {
     process.stderr.write(`verify-run: measuring the worktree published for this session: ${tree}\n`);
@@ -1319,7 +1339,7 @@ async function main(argv = process.argv.slice(2), { env = process.env, run = run
   // undischargeable, and an explicit `slug: ""` would be one `=== ''` bug away from matching.
   const base = {
     ts: new Date().toISOString(), source: 'verify-run', role, run_id: runId,
-    ...(profile ? { profile } : {}), ...(relFiles ? { files: relFiles } : {}), ...(slug ? { slug } : {}),
+    ...(profile ? { profile } : {}), ...(relFiles ? { files: relFiles } : {}), ...(slug ? { slug } : {}), ...(stage ? { stage } : {}),
     session, token, tree, ...(tiedFields || {}),
     ...(runnerMissing && !routes && (files || tied) ? { runner_missing: runnerMissing } : {}),
     ...(step ? { step_run: true, attempt: Number(args.attempt), agent: args.agent, unit: args.unit, files: relFiles, step_tests_added: stepAdded, changed: relChanged, limit_ms: STEP_RUN_MS[args.attempt] } : {}),

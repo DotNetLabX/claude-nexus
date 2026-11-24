@@ -2,8 +2,9 @@
   "seats": [
     {
       "role": "developer",
-      "codexSeat": "not yet",
-      "notYetReason": "a seat job's end cannot yet be confirmed on a real Codex server",
+      "codexSeat": "yes",
+      "platforms": ["win32"],
+      "notYetReason": "not tested on this platform yet",
       "unit": "a build slice — the whole plan where the plan cuts none — a fix round's list, or a hand-up round",
       "questionPhase": "yes, where the lane has a Phase 1 today",
       "handbackPhrases": {
@@ -14,15 +15,16 @@
       },
       "checksAfterJob": {
         "checks": ["skill-lines", "handback-rows", "step-run-carry", "test-commands", "runs-per-step", "approved-set", "class-check", "safety-copy"],
-        "coordinatorRuns": [],
+        "afterJobRuns": [],
         "note": "all of the after-job checks"
       },
       "claudeFallback": "developer"
     },
     {
       "role": "solo",
-      "codexSeat": "not yet",
-      "notYetReason": "a seat job's end cannot yet be confirmed on a real Codex server",
+      "codexSeat": "yes",
+      "platforms": ["win32"],
+      "notYetReason": "not tested on this platform yet",
       "unit": "one fix",
       "questionPhase": "no",
       "handbackPhrases": {
@@ -32,8 +34,8 @@
       },
       "checksAfterJob": {
         "checks": ["skill-lines", "handback-rows", "step-run-carry", "test-commands", "runs-per-step", "class-check", "safety-copy"],
-        "coordinatorRuns": ["the project's verify commands"],
-        "note": "all but the approved-set compare; the project's verify commands"
+        "afterJobRuns": ["verify-commands"],
+        "note": "all but the approved-set compare; the project's verify commands, run by the job helper after the job"
       },
       "claudeFallback": "solo"
     },
@@ -43,7 +45,7 @@
       "unit": null,
       "questionPhase": null,
       "handbackPhrases": null,
-      "checksAfterJob": { "checks": [], "coordinatorRuns": [], "note": "it already runs on Codex as a read-only job" },
+      "checksAfterJob": { "checks": [], "afterJobRuns": [], "note": "it already runs on Codex as a read-only job" },
       "claudeFallback": null
     },
     {
@@ -52,7 +54,7 @@
       "unit": null,
       "questionPhase": null,
       "handbackPhrases": null,
-      "checksAfterJob": { "checks": [], "coordinatorRuns": [], "note": "it already runs on Codex as a read-only job" },
+      "checksAfterJob": { "checks": [], "afterJobRuns": [], "note": "it already runs on Codex as a read-only job" },
       "claudeFallback": null
     },
     {
@@ -61,7 +63,7 @@
       "unit": null,
       "questionPhase": null,
       "handbackPhrases": null,
-      "checksAfterJob": { "checks": [], "coordinatorRuns": [], "note": "it already runs on Codex as a read-only job" },
+      "checksAfterJob": { "checks": [], "afterJobRuns": [], "note": "it already runs on Codex as a read-only job" },
       "claudeFallback": null
     },
     {
@@ -70,7 +72,7 @@
       "unit": null,
       "questionPhase": null,
       "handbackPhrases": null,
-      "checksAfterJob": { "checks": [], "coordinatorRuns": [], "note": "it interviews the owner or starts other agents, which a Codex job cannot do today" },
+      "checksAfterJob": { "checks": [], "afterJobRuns": [], "note": "it interviews the owner or starts other agents, which a Codex job cannot do today" },
       "claudeFallback": null
     },
     {
@@ -79,7 +81,7 @@
       "unit": null,
       "questionPhase": null,
       "handbackPhrases": null,
-      "checksAfterJob": { "checks": [], "coordinatorRuns": [], "note": "it interviews the owner or starts other agents, which a Codex job cannot do today" },
+      "checksAfterJob": { "checks": [], "afterJobRuns": [], "note": "it interviews the owner or starts other agents, which a Codex job cannot do today" },
       "claudeFallback": null
     },
     {
@@ -88,7 +90,7 @@
       "unit": null,
       "questionPhase": null,
       "handbackPhrases": null,
-      "checksAfterJob": { "checks": [], "coordinatorRuns": [], "note": "it interviews the owner or starts other agents, which a Codex job cannot do today" },
+      "checksAfterJob": { "checks": [], "afterJobRuns": [], "note": "it interviews the owner or starts other agents, which a Codex job cannot do today" },
       "claudeFallback": null
     },
     {
@@ -97,7 +99,7 @@
       "unit": null,
       "questionPhase": null,
       "handbackPhrases": null,
-      "checksAfterJob": { "checks": [], "coordinatorRuns": [], "note": "the coordinator is the host that starts the jobs; no main-session persona has a seat" },
+      "checksAfterJob": { "checks": [], "afterJobRuns": [], "note": "the coordinator is the host that starts the jobs; no main-session persona has a seat" },
       "claudeFallback": null
     }
   ]

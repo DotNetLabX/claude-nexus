@@ -43,16 +43,17 @@ question, attended or away, or that the question is asked as written under any g
 
 #### Shared: the model-choice option set
 
-Both entries that ask which model checks another model's work when the two share a family — the
-reviewer and critic pairing checks — derive their options the same way, from the reader-pair list
-(`agents-workflow.md` § Critic rounds): the main reader of each pair whose conditions hold in this run
-and whose main is not the author's family, in the list's order, the recommended one first — counted
-from pair 2 where the colliding checker was set explicitly, by a spawn parameter or the repo's own
-per-agent entry, since that opts out of pair 1; then each family that may check and that the model
-preset in force does not run (`pipeline-guardrails.md` § Model presets), a plain option never
-recommended, left out where it is the author's family; then keep the same model. The `reader pair` entry, which asks who reads a first-round
-review, is the one model question with its own option table. Options whose condition does not hold in a run are left out, and the set of
-models eligible to check is closed.
+The `reader pair`, `reviewer pairing check` and `critic pairing check` entries take their options from
+the reader-pair list and its resolver (`agents-workflow.md` § Critic rounds). The pairing checks offer
+primaries, and `reader pair` offers the resolved slots together. Recommend the resolver's first
+applicable choice for the round, with the pairing check's precedence and the known author models.
+Under Speed, offer other eligible models or pairs in list order, resolving the remaining slots against
+each proposed primary. Presets without job lists offer applicable pairs in order, from pair 2 where the
+collision was set by a spawn parameter or per-agent entry. A family that may check and that the model
+preset does not run (`pipeline-guardrails.md` § Model presets) remains a plain choice where its model
+differs from the author. A family outside the preset is never recommended. Offer keeping the author's
+model last as a plain option. Recommend it only where the resolver reports `authorLeads`.
+The set of models eligible to check is closed.
 
    - **Option rendering:** every option leads with its **concrete model name, resolved at ask time** (from the stamp, config, frontmatter, or the Codex config file), then its reasoning. Never hardcode a model name in an option template. When a name cannot be resolved at ask time, fall back to the ordinal labels `next 1st best` / `next 2nd best` / `Codex default`. Policy vocabulary ("next-best", "first-entry", "neighbor") never appears as option text.
    - **Cheaper picks are first-class:** every option carries an equal-weight reasoning line. Beyond the recommended option leading, that never reorders the list.
@@ -164,16 +165,16 @@ Plan overwrite or resume, routine: a plan for this feature was written on {when 
 
 ### reviewer pairing check
 
-**When asked:** asked at a review outside the first round — a re-review that covers no built step, or a later round whose author changed — when the code's author and its reviewer share a model family; a first-round match is the `reader pair` entry's.
+**When asked:** asked at a review outside the first round — a re-review that covers no built step, or a later round whose author changed — when the reviewer model matches a model that wrote the code. A first-round match uses `reader pair`.
 **Surfaces:** question box; checkpoint report.
 **Options:** derived — see the shared model-choice option set above.
-**Recommended:** the main reader of the reader-pair list's first applicable pair — the first whose conditions hold and whose main is not the author's family, from pair 2 on where the reviewer was set explicitly — never a family outside the preset.
+**Recommended:** the primary the resolver returns for this review, as specified in the shared model-choice option set.
 **With the owner away:** the pairing check runs as attended and takes the option it would have recommended, with no ask (`team-lead.md` § Checker-Seat Pairing Check).
 **Long form:**
 
 ```
 Which model reviews this step?
-A model that checks its own family's work tends to agree with it, so a blind spot in the code survives. This time {the author model} wrote the code, and the reviewer is set to {the reviewer model} too.
+A model can miss the same issues when it checks its own work. This time {the author model} wrote the code, and the reviewer is set to {the reviewer model} too.
 ```
 
 **This run:**
@@ -184,16 +185,16 @@ Reviewer pairing check, routine: {the author model} wrote the code, and the revi
 
 ### critic pairing check
 
-**When asked:** asked at a review outside the first round — a later round whose author changed — when a spec's or plan's author and its critic share a model family; a first-round match is the `reader pair` entry's.
+**When asked:** asked at a review outside the first round — a later round whose author changed — when the critic model matches the model that wrote the spec or plan. A first-round match uses `reader pair`.
 **Surfaces:** question box; checkpoint report.
 **Options:** derived — see the shared model-choice option set above.
-**Recommended:** the main reader of the reader-pair list's first applicable pair, from pair 2 on where the critic was set explicitly, never a family outside the preset.
+**Recommended:** the primary the resolver returns for this review, as specified in the shared model-choice option set.
 **With the owner away:** the pairing check runs as attended and takes the option it would have recommended, with no ask (`team-lead.md` § Checker-Seat Pairing Check).
 **Long form:**
 
 ```
 Which model reviews the {artifact}?
-A checker from the family that wrote a document agrees with it too easily, so its gaps go unreported. This time {the author model} wrote the {artifact}, and {the checker model} is set to check it. This review allows {what it allows}.
+A model can miss the same gaps when it checks its own work. This time {the author model} wrote the {artifact}, and {the checker model} is set to check it. This review allows {what it allows}.
 ```
 
 **This run:**
@@ -204,28 +205,23 @@ Critic pairing check, routine: {the author model} wrote the {artifact}, and {the
 
 ### reader pair
 
-**When asked:** asked once per feature, at its first first-round review (once per consolidation at the learner's seat), and again where the pick would lead with the author's own model family or was only presumed; a one-reader pick is asked again at the next kind of review; never where the owner has already named the checking model for that spawn.
+**When asked:** asked once per feature, at its first first-round review (once per consolidation at the learner's seat), and again where the pick would lead with the author's model or was only presumed; a one-reader pick is asked again at the next kind of review; never where the owner has already named the checking model for that spawn.
 **Surfaces:** question box; checkpoint report.
 **Options:**
 
 | label | consequence | offered when |
 |---|---|---|
-| Codex, with {the preset's second reader} reading second | Codex leads every review — spec, plan, code and promotion — and {the preset's second reader} reads beside it | Codex is installed |
-| {pair 2's main}, with {pair 2's second} reading second | two readers from two families | the author is not {pair 2's main} |
-| {pair 3's main}, with {pair 3's second} reading second | two readers from two families | the author is not {pair 3's main} |
-| {the checker model} alone | one reader, cheaper and faster than a pair, for this review only — the next kind of review asks again — and the record says the second was skipped | the configured model is not the author's family |
-| {a family the preset does not run}, with {the preset's second reader} reading second | a reader family this preset does not run leads, at that family's own cost | the family may check and is not the author's |
+| {the primary model}, with {the second model} reading second | each model brings a separate read to every review of this feature | the shared model-choice option set gives the two slots |
+| {the checker model} alone | one reader, cheaper and faster than a pair, for this review only — the next kind of review asks again — and the record says the second was skipped | the configured model is an eligible primary in the shared option set |
 
-The pairs and families are the model preset's in force (`pipeline-guardrails.md` § Model presets), and each option renders their concrete names, with one option per family the preset does not run.
-
-**Recommended:** the reader-pair list's first applicable pair (`agents-workflow.md` § Critic rounds) — the Codex option where it is offered; otherwise the first two-reader option, in the table's order, whose leading model is neither the author's family nor outside the preset. Either way, its second reader is replaced by the repo's `jobs.secondReader` model where that is set and usable, rendered under the option's concrete names — on the Codex option that is the reader beside Codex, at every review. A family outside the preset is never recommended, and where it is the configured checker its option is labelled as the configured model; the one exception is a repo-set second reader of such a family that the consent guard lets stand, which the recommended option names.
+**Recommended:** the pair the resolver returns for this review, as specified in the shared model-choice option set. Its second slot reflects the pairing check's precedence, including an eligible `jobs.secondReader` entry. When the list can fill only one slot, show the returned model and disclose the missing reader.
 **With the owner away:** the pairing check runs as attended — its precedence, its collision check and its second-reader rules unchanged — and takes its recommended option with no ask, recorded `presumed` (`team-lead.md` § Checker-Seat Pairing Check).
 **Under a gear:** not asked; the gear's pair is taken, its second reader still the repo's `jobs.secondReader` where that is set and usable, and named in the record with the gear; under `off`, or where the gear says ask me, it is asked as above. A consolidation takes no gear, so the learner asks it as before.
 **Long form:**
 
 ```
 Who should read this feature's work at this review?
-Two readers from two model families miss less than one, and the lead is never the author's family. A two-reader pick covers every review of this feature; one reader covers this review only. This time {the author model} wrote the {artifact}, and {the checker model} is set to check it.
+Two models from different families bring different perspectives to the review. A two-reader pick covers every review of this feature; one reader covers this review only. This time {the author model} wrote the {artifact}, and {the checker model} is set to check it.
 ```
 
 **This run:**
@@ -494,7 +490,7 @@ Plan type, routine: the change is {its intent class}, and I expect a full plan. 
 | label | consequence | offered when |
 |---|---|---|
 | fastest — lighter checks | it is built now, then checked once at lower effort, with one round of fixes | the plan declares no developer split |
-| fast — full checks | it is built now in this session; every fix is re-read, up to three rounds, so fewer issues slip through | the plan declares no developer split |
+| fast — full checks | it is built now in this session; up to three reviews and three fixes, so fewer issues slip through | the plan declares no developer split |
 | thorough — full team | separate roles build and review it in a new session, started from a prompt you are given; it catches the most and can run while you are away | always |
 | stop after the plan | nothing is built; the plan waits | always |
 
@@ -631,3 +627,29 @@ Plan fixes, routine: the plan's one review round found {how many} serious proble
 ```
 
 `{each fix, in a few words}` names every fix, about four words each and at most about 55 characters in all; a longer list shortens each fix, never drops one.
+
+### full suite after merge
+
+**When asked:** asked once at a close, after the closing commit, only where the repo sets `features.fullSuite` to `true` in `.claude/nexus-agents.json`; with the flag off no stage runs the full suite and this is never asked.
+**Surfaces:** question box.
+**Options:**
+
+| label | consequence | offered when |
+|---|---|---|
+| run it after the merge | every test runs once on {the default branch} after the merge, and a failure gets one fix and one more run | always |
+| skip it | nothing more runs now; the next publish and the server's checks run every test later | always |
+
+**Recommended:** `skip it` where the change touches no file on the repo's `fullChecks` list; `run it after the merge` where it touches one.
+**With the owner away:** skip it, and the skip goes on the run's list.
+**Long form:**
+
+```
+Run every test once on {the default branch} after this merge?
+The whole test set can take many minutes, and each change was already tested where it was made. This feature changes {what it changes}.
+```
+
+**This run:**
+
+```
+Full suite after merge, routine: this feature changes {what it changes}.
+```

@@ -12,16 +12,14 @@
  *
  * Why this hook does NOT read [UNATTENDED]: a hook is a separate process and cannot see the
  * launch-prompt token (it is prose the team lead reads behaviorally, not a hook-visible env
- * signal). So the gate is UNCONDITIONALLY advisory — it runs the verify set (a developer's stop
- * aside, below) and records the same verdict in both modes (AC-1.5, AC-1.2 "one
- * execution path"); the developer skip reads the stop's role and message, never the mode. The
+ * signal). The advisory gate uses the same execution and reporting rules in both modes
+ * (AC-1.5, AC-1.2 "one execution path"). The
  * mode fork (attended informs / unattended decides) lives entirely in team-lead.md, which reads
  * BOTH the prompt and this verdict.
  *
  * The three-way agent branch (HIGH-2, the false-green guard):
- *   - implementation role (developer/solo)        -> run verify, write a pass/fail verdict
- *                                                    (a developer's stop: verdict "skipped",
- *                                                    no command — see below)
+ *   - implementation role (developer/solo)        -> write a verdict, running verify at solo
+ *                                                    stops except for an edit-free proposal
  *   - a recognized NON-impl role (architect/…)    -> skip — not the impl boundary, no verdict
  *   - an ABSENT or UNRECOGNIZED agent_type        -> write a verdict marked agent:"unknown"
  *                                                    (verify NOT run, the reason recorded)
@@ -31,27 +29,27 @@
  *
  * A developer's stop runs nothing. A spawned DEVELOPER's tests are its step runs (developer.md § The step
  * test rule, held by test-entry-gate.js), at most two a step, and a run here would be a third the count
- * never sees; the full run after the merge is the check of the whole. So at every developer stop the gate
+ * never sees; the close's runs and CI are the check of the whole (the full run after the merge too, where
+ * features.fullSuite is on). So at every developer stop the gate
  * runs NO command and appends verdict:"skipped" — reason "step checkpoint" at a mid-slice
  * `Step {n} done for …` hand-back (lib/step-checkpoint.js), "developer step-run rule" at every other one:
  * "ready for Step 1", a range end, a fix round, anything else. It still WRITES, so every stop stays on
- * the audit trail. Solo never takes this branch (it keeps every run). The record uses the resolved
+ * the audit trail. The developer record uses the resolved
  * root's tree and token, like branch 3: the worktree redirect exists for decision-grade verdicts, and
  * this one decides nothing.
  *
- * Platform surface note (LOW-2, informational): SubagentStop exposes the same per-subagent
- * transcript (agent_transcript_path -> agent-{agentId}.jsonl) that salvage-transcript.js already
- * consumes by agentId. The gate keys off the lighter agent_type/agent_id/session payload, but the
- * richer transcript is available here if a future maintainer needs the full handback.
+ * After worktree target validation, a solo's proposal records "solo proposal" and skips commands
+ * only when the whole transcript is readable and contains no file-editing tool call.
  *
  * NON-EXECUTION CONTRACT — .claude/verify.json's `roles` block is NOT this gate's (F81).
  * The file now carries two independent declarations:
- *   `commands` — THIS gate's quick set, run at every solo SubagentStop, never a developer's, under a
- *                120s per-command cap (hooks.json's outer cap is 180s).
+ *   `commands` — THIS gate's quick set for solo stops that need verification, under a 120s
+ *                per-command cap (hooks.json's outer cap is 180s).
  *   `roles`    — { build, unit, premerge, full, mutation }, each an optional command string, declared
  *                for READERS OTHER THAN THIS HOOK: the spawn-time carrier (inject-verify-roles.js)
  *                delivers them to the implementation subagent, the close runs `premerge` from the
- *                main session via verify-run.js, and main-run.js runs `full` after the merge.
+ *                main session via verify-run.js, and main-run.js runs `full` after the merge where
+ *                features.fullSuite is on.
  * resolveCommands below reads `commands` and ONLY `commands`. This gate never executes a role, and
  * a `roles` key never suppresses the detection fallback: a file carrying `roles` but no `commands`
  * array is, to this gate, a file with no explicit config — it falls through to detection exactly as
@@ -91,6 +89,9 @@
  * published by the dispatching coordinator (team-lead / solo / architect fast lane). A lane that
  * publishes nothing keeps pre-F51 behavior byte-for-byte — this is inert by default, never a
  * topology heuristic.
+ *
+ * Required as a module it runs nothing: it exports its resolver, its excerpt and its writer, which a Codex seat's
+ * after-job verify run uses (lib/seat-after.js), so that run resolves and records the commands as this gate does.
  */
 'use strict';
 const fs = require('fs');
@@ -100,6 +101,7 @@ const { resolveRole } = require('./lib/resolve-role');
 const { readWorktreeTarget } = require('./lib/worktree-target');
 const { readRoundToken } = require('./lib/round-token');
 const { stepCheckpoint, handbackText } = require('./lib/step-checkpoint');
+const { isSoloProposal } = require('./lib/solo-proposal');
 const { hasBuildLedger, startBuild, endBuild } = require('./lib/build-ledger');
 
 // Roles that write application source — the gate's verify boundary. Everything else that is a
@@ -207,6 +209,16 @@ function runCommand(run, root) {
   }
 }
 
+/** Appends one verdict record to the root's `.claude/audit/verify-verdict.json`. */
+function writeVerdict(root, record) {
+  const auditDir = path.join(root, '.claude', 'audit');
+  fs.mkdirSync(auditDir, { recursive: true });
+  fs.appendFileSync(path.join(auditDir, 'verify-verdict.json'), JSON.stringify(record) + '\n');
+}
+
+module.exports = { resolveCommands, excerpt, writeVerdict };
+
+if (require.main === module) {
 let input = '';
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', (d) => (input += d));
@@ -215,8 +227,6 @@ process.stdin.on('end', () => {
     const data = JSON.parse(input || '{}');
 
     const root = process.env.CLAUDE_PROJECT_DIR || data.cwd || process.cwd();
-    const auditDir = path.join(root, '.claude', 'audit');
-    const verdictFile = path.join(auditDir, 'verify-verdict.json');
 
     const token = readRoundToken(root, data.session_id);
 
@@ -229,10 +239,7 @@ process.stdin.on('end', () => {
     const agentId = String(data.agent_id || '');
     const base = { ts: new Date().toISOString(), agent_id: agentId, session, token };
 
-    function write(record) {
-      fs.mkdirSync(auditDir, { recursive: true });
-      fs.appendFileSync(verdictFile, JSON.stringify(record) + '\n');
-    }
+    const write = (record) => writeVerdict(root, record);
 
     // Branch 2: a recognized non-implementation role — not the verify boundary. Skip, no verdict.
     if (role && NONIMPL_ROLES.has(role)) return process.exit(0);
@@ -244,8 +251,7 @@ process.stdin.on('end', () => {
       return process.exit(0);
     }
 
-    // A developer's stop: record it, run nothing (header). Developer
-    // only — solo keeps every run — and checked before the redirect, which decision-grade verdicts need.
+    // [verify-gate BR-2][verify-gate BR-5] A developer's stop is recorded before the worktree redirect.
     if (role === 'developer') {
       const reason = stepCheckpoint(handbackText(data)) ? 'step checkpoint' : 'developer step-run rule';
       write({ ...base, tree: root, agent: role, verdict: 'skipped', reason, commands: [], commands_count: 0, blocking_failed: false });
@@ -285,6 +291,12 @@ process.stdin.on('end', () => {
       if (path.resolve(declared) !== path.resolve(root)) tree = declared;
     }
 
+    if (role === 'solo' && isSoloProposal(data)) {
+      write({ ...base, tree, agent: role, verdict: 'skipped', reason: 'solo proposal',
+        ...(reason ? { worktree_target_diagnostic: reason } : {}), commands: [], commands_count: 0, blocking_failed: false });
+      return process.exit(0);
+    }
+
     const commands = resolveCommands(tree);
     // The commands may build, and a run in another session may start the tree's ledger while they do, so the start
     // line is written on every tree (lib/build-ledger.js).
@@ -306,3 +318,4 @@ process.stdin.on('end', () => {
   } catch { /* fail silent — a genuine error is zero-footprint, distinct from the unknown WRITTEN record */ }
   process.exit(0);
 });
+}

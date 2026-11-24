@@ -1,5 +1,227 @@
 # nexus — Changelog
 
+## [2.4.159] — 2026-11-24
+- Clarify how POs write criteria that exercise the change, keep unresolved scope or solution choices open, and turn feedback points into optional flows.
+  - agent instruction/behavior change
+  - shipped command changed
+  - skill change (create-feature-spec)
+  - estate raise: plugins/nexus/agents/po.md 94106→94201 B — F468-ClearerTickets: qualify criterion research and open choices, define the feedback flow, and point product skills at the resolved layout.
+  - estate raise: plugins/nexus/skills/create-feature-spec/SKILL.md 8663→8994 B — F468-ClearerTickets: qualify criterion research and open choices, define the feedback flow, and point product skills at the resolved layout.
+  - estate raise: plugins/nexus/skills/create-feature-spec/workflows/Template.md 10765→13203 B — F468-ClearerTickets: qualify criterion research and open choices, define the feedback flow, and point product skills at the resolved layout.
+
+## [2.4.158] — 2026-11-24
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 271772→271916 B — adhoc-CodexDirectProfile: the codexDirect switch can also be set in the user's profile; one sentence in codex-dispatch § Time limit and fallback, mirrored into the four agents that include it
+  - estate raise: plugins/nexus/agents/learner.md 74620→74764 B — adhoc-CodexDirectProfile: the codexDirect switch can also be set in the user's profile; one sentence in codex-dispatch § Time limit and fallback, mirrored into the four agents that include it
+  - estate raise: plugins/nexus/agents/po.md 93962→94106 B — adhoc-CodexDirectProfile: the codexDirect switch can also be set in the user's profile; one sentence in codex-dispatch § Time limit and fallback, mirrored into the four agents that include it
+  - estate raise: plugins/nexus/agents/team-lead.md 290842→290986 B — adhoc-CodexDirectProfile: the codexDirect switch can also be set in the user's profile; one sentence in codex-dispatch § Time limit and fallback, mirrored into the four agents that include it
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 56132→56276 B — adhoc-CodexDirectProfile: the codexDirect switch can also be set in the user's profile; one sentence in codex-dispatch § Time limit and fallback, mirrored into the four agents that include it
+
+## [2.4.157] — 2026-11-24
+- F471-LiveViewOneShape: a Codex job's running file (`.claude/audit/codex-running/`) also names the model the start resolved, `null` where none, at the companion, direct and seat starts — one more field; no reader loses anything.
+
+## [2.4.156] — 2026-11-24
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 271464→271772 B — F470-CodexDirectJobs: the direct Codex route in codex-dispatch.md and its generated copies in four agents
+  - estate raise: plugins/nexus/agents/learner.md 74267→74620 B — F470-CodexDirectJobs: the direct Codex route in codex-dispatch.md and its generated copies in four agents
+  - estate raise: plugins/nexus/agents/po.md 93609→93962 B — F470-CodexDirectJobs: the direct Codex route in codex-dispatch.md and its generated copies in four agents
+  - estate raise: plugins/nexus/agents/team-lead.md 290534→290842 B — F470-CodexDirectJobs: the direct Codex route in codex-dispatch.md and its generated copies in four agents
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 55623→56132 B — F470-CodexDirectJobs: the direct Codex route in codex-dispatch.md and its generated copies in four agents
+
+## [2.4.155] — 2026-11-23
+- PATCH bump.
+  - skill change (edit-shipped-plugin-skill)
+  - estate raise: plugins/nexus/skills/edit-shipped-plugin-skill/SKILL.md 15805→16272 B — adhoc-RuleBoyScout: the rule check before changing a shipped rule replaces the no-patching line
+
+## [2.4.154] — 2026-11-23
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - rule (always-on kernel — injected every session)
+  - skill change (questions-format)
+  - skill change (review-format)
+  - skill change (summary-format)
+  - estate raise: plugins/nexus/agents/reviewer.md 33759→33872 B — F465-ThreeReviewsThreeFixes: the limit is one short rule; agents, rules and skills are 3.3 KB smaller than before the feature
+  - estate raise: plugins/nexus/rules/workflow-core.md 4874→4894 B — F465-ThreeReviewsThreeFixes: the limit is one short rule; agents, rules and skills are 3.3 KB smaller than before the feature
+
+## [2.4.153] — 2026-11-23
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - rule (on-demand tier — read on trigger)
+  - rule (always-on kernel — injected every session)
+  - skill change (questions-format)
+  - skill change (review-format)
+  - skill change (summary-format)
+  - estate raise: plugins/nexus/agents/architect.md 272370→274924 B — F465-ThreeReviewsThreeFixes: the limit becomes 3 reviews and 3 fixes; dispatch sites stop at the last fix, and one catalogue entry is added
+  - estate raise: plugins/nexus/agents/critic.md 38214→38219 B — F465-ThreeReviewsThreeFixes: the limit becomes 3 reviews and 3 fixes; dispatch sites stop at the last fix, and one catalogue entry is added
+  - estate raise: plugins/nexus/agents/learner.md 74265→74270 B — F465-ThreeReviewsThreeFixes: the limit becomes 3 reviews and 3 fixes; dispatch sites stop at the last fix, and one catalogue entry is added
+  - estate raise: plugins/nexus/agents/po.md 93607→93612 B — F465-ThreeReviewsThreeFixes: the limit becomes 3 reviews and 3 fixes; dispatch sites stop at the last fix, and one catalogue entry is added
+  - estate raise: plugins/nexus/agents/solo.md 39345→39350 B — F465-ThreeReviewsThreeFixes: the limit becomes 3 reviews and 3 fixes; dispatch sites stop at the last fix, and one catalogue entry is added
+  - estate raise: plugins/nexus/agents/team-lead.md 292114→295962 B — F465-ThreeReviewsThreeFixes: the limit becomes 3 reviews and 3 fixes; dispatch sites stop at the last fix, and one catalogue entry is added
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 135674→137886 B — F465-ThreeReviewsThreeFixes: the limit becomes 3 reviews and 3 fixes; dispatch sites stop at the last fix, and one catalogue entry is added
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 55623→55806 B — F465-ThreeReviewsThreeFixes: the limit becomes 3 reviews and 3 fixes; dispatch sites stop at the last fix, and one catalogue entry is added
+  - estate raise: plugins/nexus/rules/on-demand/rule-check.md 16403→16638 B — F465-ThreeReviewsThreeFixes: the limit becomes 3 reviews and 3 fixes; dispatch sites stop at the last fix, and one catalogue entry is added
+  - estate raise: plugins/nexus/rules/workflow-core.md 4870→4874 B — F465-ThreeReviewsThreeFixes: the limit becomes 3 reviews and 3 fixes; dispatch sites stop at the last fix, and one catalogue entry is added
+  - estate raise: plugins/nexus/skills/questions-format/references/standard-questions.md 36808→38199 B — F465-ThreeReviewsThreeFixes: the limit becomes 3 reviews and 3 fixes; dispatch sites stop at the last fix, and one catalogue entry is added
+  - estate raise: plugins/nexus/skills/review-format/SKILL.md 32328→32843 B — F465-ThreeReviewsThreeFixes: the limit becomes 3 reviews and 3 fixes; dispatch sites stop at the last fix, and one catalogue entry is added
+  - estate raise: plugins/nexus/skills/summary-format/SKILL.md 13927→14104 B — F465-ThreeReviewsThreeFixes: the limit becomes 3 reviews and 3 fixes; dispatch sites stop at the last fix, and one catalogue entry is added
+
+## [2.4.152] — 2026-11-23
+- PATCH bump.
+  - rule (on-demand tier — read on trigger)
+
+## [2.4.151] — 2026-11-22
+- PATCH bump.
+  - hook behavior/enforcement change
+
+## [2.4.150] — 2026-11-22
+- PATCH bump.
+  - hook behavior/enforcement change
+
+## [2.4.149] — 2026-11-22
+- PATCH bump.
+  - hook behavior/enforcement change
+
+## [2.4.148] — 2026-11-22
+- PATCH bump.
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+
+## [2.4.147] — 2026-11-22
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - estate raise: plugins/nexus/agents/architect.md 271587→272370 B — F455-SoloPresentsFirst: a delegated solo presents its approach first and gets one answer (solo.md delegated-brief paragraph and its never-do bullets; architect.md hand-off paragraph)
+  - estate raise: plugins/nexus/agents/solo.md 37684→39345 B — F455-SoloPresentsFirst: a delegated solo presents its approach first and gets one answer (solo.md delegated-brief paragraph and its never-do bullets; architect.md hand-off paragraph)
+
+## [2.4.146] — 2026-11-22
+- PATCH bump.
+  - hook behavior/enforcement change: the summary gate's critic-record check reads the round's declared
+    worktree, as the test-evidence and registry checks do, not the main checkout's carried-over copy.
+  - hook behavior/enforcement change: `lessons-append.js` makes its temporary file beside `lessons.md`, so a
+    Codex seat in a worktree can still write the file after another role's lesson lands.
+
+## [2.4.145] — 2026-11-22
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - rule (always-on prohibitions envelope — injected every session)
+  - skill change (questions-format)
+  - estate raise: plugins/nexus/agents/architect.md 269846→271587 B — F453-SpeedModelSetup: the speed preset's ordered job lists, the author check by exact model, a Codex model on every Codex start and speed's builder seats are stated in the presets rule, the Codex dispatch rule and every reader-pair passage (agents, workflow, catalogue), plus the panel and research starts under speed; owner-approved plan, 2026-11-21
+  - estate raise: plugins/nexus/agents/learner.md 72743→74265 B — F453-SpeedModelSetup: the speed preset's ordered job lists, the author check by exact model, a Codex model on every Codex start and speed's builder seats are stated in the presets rule, the Codex dispatch rule and every reader-pair passage (agents, workflow, catalogue), plus the panel and research starts under speed; owner-approved plan, 2026-11-21
+  - estate raise: plugins/nexus/agents/po.md 92085→93607 B — F453-SpeedModelSetup: the speed preset's ordered job lists, the author check by exact model, a Codex model on every Codex start and speed's builder seats are stated in the presets rule, the Codex dispatch rule and every reader-pair passage (agents, workflow, catalogue), plus the panel and research starts under speed; owner-approved plan, 2026-11-21
+  - estate raise: plugins/nexus/agents/team-lead.md 290566→292114 B — F453-SpeedModelSetup: the speed preset's ordered job lists, the author check by exact model, a Codex model on every Codex start and speed's builder seats are stated in the presets rule, the Codex dispatch rule and every reader-pair passage (agents, workflow, catalogue), plus the panel and research starts under speed; owner-approved plan, 2026-11-21
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 135506→135747 B — F453-SpeedModelSetup: the speed preset's ordered job lists, the author check by exact model, a Codex model on every Codex start and speed's builder seats are stated in the presets rule, the Codex dispatch rule and every reader-pair passage (agents, workflow, catalogue), plus the panel and research starts under speed; owner-approved plan, 2026-11-21
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 54849→55731 B — F453-SpeedModelSetup: the speed preset's ordered job lists, the author check by exact model, a Codex model on every Codex start and speed's builder seats are stated in the presets rule, the Codex dispatch rule and every reader-pair passage (agents, workflow, catalogue), plus the panel and research starts under speed; owner-approved plan, 2026-11-21
+  - estate raise: plugins/nexus/rules/on-demand/pipeline-guardrails.md 33287→37008 B — F453-SpeedModelSetup: the speed preset's ordered job lists, the author check by exact model, a Codex model on every Codex start and speed's builder seats are stated in the presets rule, the Codex dispatch rule and every reader-pair passage (agents, workflow, catalogue), plus the panel and research starts under speed; owner-approved plan, 2026-11-21
+  - estate raise: plugins/nexus/rules/prohibitions/prohibitions.md 3940→3960 B — F453-SpeedModelSetup: the speed preset's ordered job lists, the author check by exact model, a Codex model on every Codex start and speed's builder seats are stated in the presets rule, the Codex dispatch rule and every reader-pair passage (agents, workflow, catalogue), plus the panel and research starts under speed; owner-approved plan, 2026-11-21
+
+## [2.4.144] — 2026-11-21
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 269480→269846 B — F443-SeatEndFromRealRun: the Codex developer/solo seat runs codex exec in a Windows job object (the box) - codex-dispatch.md Seat job says how the box starts, ends, holds its own limit and is cleaned up, and the generated Codex blocks in four agents carry the seat route's lines
+  - estate raise: plugins/nexus/agents/learner.md 72377→72743 B — F443-SeatEndFromRealRun: the Codex developer/solo seat runs codex exec in a Windows job object (the box) - codex-dispatch.md Seat job says how the box starts, ends, holds its own limit and is cleaned up, and the generated Codex blocks in four agents carry the seat route's lines
+  - estate raise: plugins/nexus/agents/po.md 91719→92085 B — F443-SeatEndFromRealRun: the Codex developer/solo seat runs codex exec in a Windows job object (the box) - codex-dispatch.md Seat job says how the box starts, ends, holds its own limit and is cleaned up, and the generated Codex blocks in four agents carry the seat route's lines
+  - estate raise: plugins/nexus/agents/team-lead.md 290200→290566 B — F443-SeatEndFromRealRun: the Codex developer/solo seat runs codex exec in a Windows job object (the box) - codex-dispatch.md Seat job says how the box starts, ends, holds its own limit and is cleaned up, and the generated Codex blocks in four agents carry the seat route's lines
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 50489→54849 B — F443-SeatEndFromRealRun: the Codex developer/solo seat runs codex exec in a Windows job object (the box) - codex-dispatch.md Seat job says how the box starts, ends, holds its own limit and is cleaned up, and the generated Codex blocks in four agents carry the seat route's lines
+  - estate raise: plugins/nexus/rules/on-demand/pipeline-guardrails.md 33073→33287 B — F443-SeatEndFromRealRun: Codex seat jobs run in a Windows job object — codex-dispatch § Seat job/Availability/Time limit describe the box, its end and the legacy release; the generated availability and liveness blocks carry the seat exemption into four agents; pipeline-guardrails opens the developer and solo seats on Windows
+
+## [2.4.143] — 2026-11-21
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/agents/architect.md 268300→269480 B — F451-CodexLostJobEarly: a lost Codex job fails at the early window
+  - estate raise: plugins/nexus/agents/learner.md 71209→72377 B — F451-CodexLostJobEarly: a lost Codex job fails at the early window
+  - estate raise: plugins/nexus/agents/po.md 90551→91719 B — F451-CodexLostJobEarly: a lost Codex job fails at the early window
+  - estate raise: plugins/nexus/agents/team-lead.md 289020→290200 B — F451-CodexLostJobEarly: a lost Codex job fails at the early window
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 49309→50489 B — F451-CodexLostJobEarly: a lost Codex job fails at the early window
+
+## [2.4.142] — 2026-11-21
+- PATCH bump.
+  - agent instruction/behavior change
+  - rule (always-on kernel — injected every session)
+  - skill change (improve-flow)
+  - skill change (improve-skills)
+  - skill change (plugin-feedback)
+  - skill change (questions-format)
+  - shipped command changed
+  - estate raise: plugins/nexus/agents/learner.md 71109→71209 B — F449: plugin-feedback skill; feedback entries carry the need, not a fix
+  - estate raise: plugins/nexus/skills/improve-skills/SKILL.md 14370→14441 B — F449: plugin-feedback skill; feedback entries carry the need, not a fix
+  - estate raise: plugins/nexus/skills/plugin-feedback/SKILL.md 0→5179 B — F449: plugin-feedback skill; feedback entries carry the need, not a fix
+  - estate raise: plugins/nexus/skills/questions-format/references/ask-words.md 3261→3311 B — F449: plugin-feedback skill; feedback entries carry the need, not a fix
+
+## [2.4.141] — 2026-11-21
+- PATCH bump.
+  - rule (always-on prompt-form envelope — injected every session)
+  - estate raise: plugins/nexus/rules/prompt-form/prompt-form.md 844→897 B — adhoc-PromptFenceColored: prompts use only the plain three-backtick fence the owner's screen colors; a prompt that would hold a code block goes to a file
+
+## [2.4.140] — 2026-11-20
+- PATCH bump.
+  - agent instruction/behavior change
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - skill change (implementation-format)
+  - skill change (summary-format)
+  - shipped command changed
+  - estate raise: plugins/nexus/agents/architect.md 267375→268300 B — F447-RulesInReviewWindow: rule work runs in the review window — the no-rule-list rule check, no clock inside the feature and the close's cut, draft-and-publish module summaries, the gate's committed-register read
+  - estate raise: plugins/nexus/agents/developer.md 55053→55166 B — F447-RulesInReviewWindow: rule work runs in the review window — the no-rule-list rule check, no clock inside the feature and the close's cut, draft-and-publish module summaries, the gate's committed-register read
+  - estate raise: plugins/nexus/agents/solo.md 37659→37684 B — F447-RulesInReviewWindow: rule work runs in the review window — the no-rule-list rule check, no clock inside the feature and the close's cut, draft-and-publish module summaries, the gate's committed-register read
+  - estate raise: plugins/nexus/agents/team-lead.md 287284→289020 B — F447-RulesInReviewWindow: rule work runs in the review window — the no-rule-list rule check, no clock inside the feature and the close's cut, draft-and-publish module summaries, the gate's committed-register read
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 135184→135506 B — F447-RulesInReviewWindow: rule work runs in the review window — the no-rule-list rule check, no clock inside the feature and the close's cut, draft-and-publish module summaries, the gate's committed-register read
+  - estate raise: plugins/nexus/rules/on-demand/rule-check.md 12086→16403 B — F447-RulesInReviewWindow: rule work runs in the review window — the no-rule-list rule check, no clock inside the feature and the close's cut, draft-and-publish module summaries, the gate's committed-register read
+  - estate raise: plugins/nexus/skills/implementation-format/SKILL.md 19978→20061 B — F447-RulesInReviewWindow: rule work runs in the review window — the no-rule-list rule check, no clock inside the feature and the close's cut, draft-and-publish module summaries, the gate's committed-register read
+  - estate raise: plugins/nexus/skills/summary-format/SKILL.md 13926→13927 B — F447-RulesInReviewWindow: rule work runs in the review window — the no-rule-list rule check, no clock inside the feature and the close's cut, draft-and-publish module summaries, the gate's committed-register read
+
+## [2.4.139] — 2026-11-20
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+
+## [2.4.138] — 2026-11-19
+- PATCH bump.
+  - agent instruction/behavior change
+  - shipped command changed
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - rule (always-on prohibitions envelope — injected every session)
+  - estate raise: plugins/nexus/agents/architect.md 264754→266509 B — F445-CodexWatchWakes: a Codex job wakes nothing; interactive sessions wait on Codex reviews and done checks in the background; the end-of-turn wait line only for work that wakes the session
+  - estate raise: plugins/nexus/agents/learner.md 69552→71109 B — F445-CodexWatchWakes: a Codex job wakes nothing; interactive sessions wait on Codex reviews and done checks in the background; the end-of-turn wait line only for work that wakes the session
+  - estate raise: plugins/nexus/agents/po.md 88994→90551 B — F445-CodexWatchWakes: a Codex job wakes nothing; interactive sessions wait on Codex reviews and done checks in the background; the end-of-turn wait line only for work that wakes the session
+  - estate raise: plugins/nexus/agents/team-lead.md 283223→284978 B — F445-CodexWatchWakes: a Codex job wakes nothing; interactive sessions wait on Codex reviews and done checks in the background; the end-of-turn wait line only for work that wakes the session
+  - estate raise: plugins/nexus/rules/on-demand/agents-workflow.md 134046→134357 B — F445-CodexWatchWakes: a Codex job wakes nothing; interactive sessions wait on Codex reviews and done checks in the background; the end-of-turn wait line only for work that wakes the session
+  - estate raise: plugins/nexus/rules/on-demand/codex-dispatch.md 47554→49309 B — F445-CodexWatchWakes: a Codex job wakes nothing; interactive sessions wait on Codex reviews and done checks in the background; the end-of-turn wait line only for work that wakes the session
+  - estate raise: plugins/nexus/rules/prohibitions/prohibitions.md 3850→3940 B — F445-CodexWatchWakes: a Codex job wakes nothing; interactive sessions wait on Codex reviews and done checks in the background; the end-of-turn wait line only for work that wakes the session
+
+## [2.4.137] — 2026-11-19
+- PATCH bump.
+  - hook behavior/enforcement change
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/rules/on-demand/research-before-asking.md 42623→42778 B — adhoc-AskGateNameAndReason: the contract names the slug confirmation exception and says a refusal quotes what failed
+
+## [2.4.136] — 2026-11-19
+- PATCH bump.
+  - rule (on-demand tier — read on trigger)
+  - estate raise: plugins/nexus/rules/on-demand/research-before-asking.md 42092→42623 B — adhoc-PlainOwnerQuestions: owner questions treat a sent file as unread
+
 ## [2.4.135] — 2026-11-17
 - PATCH bump.
   - F440-RuleWorkCapped: the close's rule check has one home (`rules/on-demand/rule-check.md`), a tool writes its record, and every pass ends at its time limit — 10 minutes to check and up to 5 for a ruling, and after the merge no register or summary write starts past 10 minutes. What a limit cuts stays in the feature's record and on one backlog row for a finishing run, and never blocks the close or asks the owner. The agent files point at the home instead of repeating it, `close-run.js` names the next call after `--until merge-in`, and the summary gate lets through a row a cut explains (ADR-189). It needs `nexus-miner` 0.1.17, of this release, for the tools.

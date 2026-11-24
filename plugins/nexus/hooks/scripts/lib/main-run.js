@@ -53,6 +53,19 @@
  * project, since one source file can belong to two projects; a timed test naming no project stands for none of
  * them. The red keeps its failed tests, with their projects, for that, and the trace counts a failure by name at a
  * commit only in a project the red failed in. The proven commit moves only on a green full run.
+ *
+ * TWO PASSES. A red is its feature's (the trace's slug, else the slug of the request that made the run), and the
+ * passes it has had are counted per slug in the state (`red_passes`), never on the claim, so a release, a lapsed
+ * claim or another feature's red in its place keeps them: the full run that made it is pass 1, and one retest that
+ * ran by name — or, for a red that names no failure, one new full run its feature requests with the fix's commit —
+ * is pass 2. Every full run counts a pass to the feature that requested it, and every retest that runs by name one to
+ * the red's, as its run starts — whatever the feature's count and whether a red stands — so one that dies has still
+ * spent it; a red its trace names to another feature gives that pass back and counts it there. A red at pass 2 is
+ * `capped`: its claim is released, and `claim`, `retest` and its feature's `request` start nothing and answer
+ * `capped`, its own result and exit code (4), never read as red — a request waiting when the cap lands included, and
+ * a request a finished red run of the capped red holds or answers, whenever it reads that answer. A feature that has
+ * spent both passes with no red standing (two runs that died) is answered `capped` the same way. A green full run
+ * clears the count of each feature it holds a merge of and of the red it clears; a retest that clears it, its feature's.
  */
 const fs = require('fs');
 const path = require('path');
@@ -77,6 +90,7 @@ const LOCKFILES = ['package-lock.json', 'npm-shrinkwrap.json', 'yarn.lock', 'pnp
   'poetry.lock', 'uv.lock', 'Pipfile.lock', 'composer.lock'];
 const PIPELINE_CONFIG = ['.claude/verify.json', '.claude/nexus-agents.json'];
 const SHARING = ['EPERM', 'EACCES', 'EBUSY'];
+const AFTER_MERGE_PASSES = 2;
 
 const pause = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -116,7 +130,7 @@ function fullDeclared(dir) {
 }
 
 function emptyState(branch) {
-  return { branch, proven: null, named: [], running: null, waiters: [], answers: {}, runs: [], red: null, cleared: null, copy: null, stale_copies: [] };
+  return { branch, proven: null, named: [], running: null, waiters: [], answers: {}, runs: [], red: null, red_passes: {}, cleared: null, copy: null, stale_copies: [] };
 }
 
 function readState(ctx) {
@@ -134,7 +148,38 @@ function readState(ctx) {
   const s = { ...emptyState(ctx.branch), ...saved };
   for (const list of ['named', 'waiters', 'runs', 'stale_copies']) if (!Array.isArray(s[list])) s[list] = [];
   if (!s.answers || typeof s.answers !== 'object') s.answers = {};
+  if (!s.red_passes || typeof s.red_passes !== 'object' || Array.isArray(s.red_passes)) s.red_passes = {};
   return s;
+}
+
+// The passes a feature's red has had after the merge, kept per slug so a released or lapsed claim, or another
+// feature's red in its place, never resets them; a green full run that clears the red clears them all.
+const passesOf = (s, slug) => Number(s.red_passes[slug || '']) || 0;
+function countPass(s, slug) {
+  const n = passesOf(s, slug) + 1;
+  s.red_passes[slug || ''] = n;
+  if (s.red && (s.red.slug || null) === (slug || null)) s.red.passes = n;
+  return n;
+}
+const spent = (s, red) => Boolean(red) && (red.capped === true || passesOf(s, red.slug) >= AFTER_MERGE_PASSES);
+// A red past its passes is held by a blocking backlog row: nobody holds its fix and nothing starts for it.
+function capRed(s) {
+  s.red.capped = true;
+  s.red.claim = null;
+}
+const cappedWhy = (slug) => `${slug || 'this red'} has had its ${AFTER_MERGE_PASSES} after-merge passes: the red is held by a blocking backlog row, and no run starts for it`;
+// A request of a feature whose passes are spent, a red standing or not: its `capped` answer, else null.
+function cappedRequest(s, slug) {
+  if (passesOf(s, slug) < AFTER_MERGE_PASSES) return null;
+  const own = Boolean(s.red) && (s.red.slug || null) === (slug || null);
+  if (own) capRed(s);
+  return { result: 'capped', commit: null, failed: own ? s.red.failed : null, why: cappedWhy(slug) };
+}
+// A finished run that answers a request: `capped` where it is the red run of the red that stands past its passes.
+function asCapped(s, entry) {
+  if (!entry || entry.result !== 'red' || !s.red || s.red.commit !== entry.commit || !spent(s, s.red)) return entry;
+  capRed(s);
+  return { ...entry, result: 'capped', why: cappedWhy(s.red.slug) };
 }
 
 function retrying(op) {
@@ -241,7 +286,7 @@ function decide(ctx, state, id, timing) {
   if (state.answers[id]) {
     const run = state.runs.find((r) => r.id === state.answers[id]);
     delete state.answers[id];
-    return { answer: run || { result: 'unrun', why: 'the run that answered this request is no longer kept' } };
+    return { answer: asCapped(state, run) || { result: 'unrun', why: 'the run that answered this request is no longer kept' } };
   }
   const me = state.waiters.find((w) => w.id === id);
   if (!me) return { answer: { result: 'unrun', why: 'this request was dropped from the state' } };
@@ -250,6 +295,11 @@ function decide(ctx, state, id, timing) {
   if (state.running) return {};
   const first = state.waiters.filter((w) => live(w, now, timing)).sort((a, b) => a.at - b.at)[0];
   if (!first || first.id !== id) return {};
+  const capped = cappedRequest(state, me.slug);
+  if (capped) {
+    state.waiters = state.waiters.filter((w) => w.id !== id);
+    return { answer: capped };
+  }
   const commit = tipOf(ctx);
   if (!commit) return { answer: { result: 'unrun', why: `the branch ${ctx.branch} has no commit` } };
   state.waiters = state.waiters.filter((w) => w.id !== id);
@@ -469,14 +519,28 @@ function finish(ctx, run, res) {
     if (s.running && s.running.id === run.id) s.running = null;
     if (res.result === 'green') {
       if (!s.proven || holds(ctx.main, s.proven, run.commit)) s.proven = run.commit;
-      s.named = s.named.filter((n) => !holds(ctx.main, n.commit, run.commit));
+      const held = s.named.filter((n) => holds(ctx.main, n.commit, run.commit));
+      const proven = new Set([run.slug || '', ...held.map((n) => n.slug || '')]);
+      s.named = s.named.filter((n) => !held.includes(n));
       if (s.red && holds(ctx.main, s.red.commit, run.commit)) {
         s.cleared = { commit: run.commit, by: 'full run', at: entry.at, red: s.red.commit };
+        proven.add(s.red.slug || '');
         s.red = null;
       }
+      for (const slug of proven) delete s.red_passes[slug];
     } else if (res.result === 'red') {
+      const slug = (res.trace && !res.trace.empty && res.trace.slug) || run.slug || null;
+      const counted = run.counted !== undefined;
+      if (counted && run.counted !== slug) s.red_passes[run.counted || ''] = Math.max(passesOf(s, run.counted) - 1, 0);
+      const passes = counted && run.counted === slug ? Math.max(passesOf(s, slug), 1) : passesOf(s, slug) + 1;
+      s.red_passes[slug || ''] = passes;
       s.red = { commit: run.commit, base: run.base, run_id: res.run_id || null, failed: res.failed, tests: tests || null, at: entry.at,
-        covers: s.named.filter((n) => holds(ctx.main, n.commit, run.commit)), trace: res.trace || null, claim: (s.red && s.red.claim) || null };
+        covers: s.named.filter((n) => holds(ctx.main, n.commit, run.commit)), trace: res.trace || null, claim: (s.red && s.red.claim) || null, slug, passes };
+      if (passes >= AFTER_MERGE_PASSES) {
+        capRed(s);
+        entry.result = 'capped';
+        entry.why = cappedWhy(slug);
+      }
     }
     s.waiters = s.waiters.filter((w) => {
       if (!holds(ctx.main, w.commit, run.commit)) return true;
@@ -490,11 +554,26 @@ function finish(ctx, run, res) {
   });
 }
 
+// Every full run is its feature's next pass, saved as the suite starts: the slug it was counted to, or undefined
+// where the state could not be written and it counts at its finish instead.
+function countRunPass(ctx, run) {
+  try {
+    return withState(ctx, (s) => {
+      if (!s.running || s.running.id !== run.id) return undefined;
+      countPass(s, run.slug);
+      return run.slug || null;
+    });
+  } catch {
+    return undefined;
+  }
+}
+
 async function makeRun(ctx, run, { env, session, timing }) {
   const timer = setInterval(() => beat(ctx, run.id), timing.heartbeatMs);
   let res;
   try {
     const prepared = await prepareCopy(ctx.main, run.copy, run.commit, run.stale);
+    if (prepared.ok) run.counted = countRunPass(ctx, run);
     res = prepared.ok ? await runSuite(ctx, run, { env, session }) : { result: 'unrun', why: prepared.why };
     if (res.result === 'red') res.trace = await traceRed(ctx, run, res.failed, res.tests, env, session);
   } finally {
@@ -509,7 +588,7 @@ function report(ctx, entry, requested) {
 
 /**
  * `{code, line}` for one request: `code` 0 for green, `unrun` and `undeclared`, 1 for red, 2 for a request that
- * names no commit on the branch; `line` the JSON printed.
+ * names no commit on the branch, 4 for `capped` (never read as red); `line` the JSON printed.
  */
 async function request({ root, slug, session, commit, branch, env = process.env, timing = TIMING }) {
   const ctx = contextOf({ root, branch });
@@ -518,11 +597,13 @@ async function request({ root, slug, session, commit, branch, env = process.env,
   const tip = tipOf(ctx);
   if (!sha || !tip || !holds(ctx.main, sha, tip)) return { code: 2, error: `main-run: ${commit} is not on ${ctx.branch}` };
   const id = newId();
-  const done = (entry) => ({ code: entry.result === 'red' ? 1 : 0, line: report(ctx, entry, sha) });
+  const done = (entry) => ({ code: entry.result === 'red' ? 1 : entry.result === 'capped' ? 4 : 0, line: report(ctx, entry, sha) });
   const at = withState(ctx, (s) => {
     const held = [...s.runs].reverse().find((r) => r.result !== 'unrun' && holds(ctx.main, sha, r.commit));
-    if (held) return held;
+    if (held) return asCapped(s, held);
     if (s.proven && holds(ctx.main, sha, s.proven)) return { result: 'green', commit: s.proven };
+    const capped = cappedRequest(s, slug);
+    if (capped) return capped;
     addNamed(s, sha, slug);
     const now = Date.now();
     s.waiters.push({ id, slug, session, commit: sha, at: now, heartbeat: now, pid: process.pid });
@@ -544,6 +625,10 @@ function claim({ root, session, branch, timing = TIMING }) {
   const ctx = contextOf({ root, branch });
   return withState(ctx, (s) => {
     if (!s.red) return { code: 1, line: { claimed: false, holder: null, branch: ctx.branch, red: null, why: `no red on ${ctx.branch}` } };
+    if (spent(s, s.red)) {
+      capRed(s);
+      return { code: 4, line: { claimed: false, holder: null, branch: ctx.branch, red: s.red.commit, result: 'capped', failed: s.red.failed, why: cappedWhy(s.red.slug) } };
+    }
     const now = Date.now();
     const holder = holderOf(s.red, now, timing);
     if (holder && holder !== session) {
@@ -573,11 +658,14 @@ async function retest({ root, session, branch, env = process.env, timing = TIMIN
   const ctx = contextOf({ root, branch });
   const tip = tipOf(ctx);
   const out = (code, fields) => ({ code, line: { branch: ctx.branch, commit: tip, ...fields } });
+  const capped = (red) => out(4, { result: 'capped', cleared: false, red: red.commit, failed: red.failed, why: cappedWhy(red.slug) });
   const red = withState(ctx, (s) => {
-    if (s.red && holderOf(s.red, Date.now(), timing) === session) s.red.claim.refreshed = Date.now();
+    if (spent(s, s.red)) capRed(s);
+    else if (s.red && holderOf(s.red, Date.now(), timing) === session) s.red.claim.refreshed = Date.now();
     return s.red;
   });
   if (!red) return out(0, { result: 'green', cleared: false, red: null, why: `no red on ${ctx.branch}` });
+  if (red.capped) return capped(red);
   if (!Array.isArray(red.failed) || red.failed.length === 0) {
     return out(1, { result: 'red', cleared: false, red: red.commit, failed: red.failed,
       why: 'the red does not name every failure: only a green full run clears it — request one with the fix commit' });
@@ -585,6 +673,10 @@ async function retest({ root, session, branch, env = process.env, timing = TIMIN
   if (!tip) return out(0, { result: 'unrun', cleared: false, red: red.commit, failed: red.failed, why: `the branch ${ctx.branch} has no commit` });
   const id = newId();
   const slot = withState(ctx, (s) => {
+    if (spent(s, s.red)) {
+      capRed(s);
+      return 'capped';
+    }
     const now = Date.now();
     endDeadRun(s, now, timing);
     if (s.running) return null;
@@ -592,6 +684,7 @@ async function retest({ root, session, branch, env = process.env, timing = TIMIN
     s.running = { id, kind: 'retest', commit: tip, copy: s.copy, pid: process.pid, child: null, session, slug: null, heartbeat: now, started: now };
     return { ...s.running, stale: [...s.stale_copies] };
   });
+  if (slot === 'capped') return capped(red);
   if (!slot) {
     return out(1, { result: 'busy', cleared: false, red: red.commit, failed: red.failed,
       why: `a run is going on ${ctx.branch}: the red stands until a run proves the fix — request one with the fix commit, or retest once this one ends` });
@@ -599,6 +692,7 @@ async function retest({ root, session, branch, env = process.env, timing = TIMIN
   const timer = setInterval(() => beat(ctx, id), timing.heartbeatMs);
   let verdict = 'inconclusive';
   let why = null;
+  let ran = false;
   try {
     const prepared = await prepareCopy(ctx.main, slot.copy, tip, slot.stale);
     const missing = prepared.ok ? red.failed.filter((f) => !fs.existsSync(path.join(slot.copy, f))) : [];
@@ -608,6 +702,8 @@ async function retest({ root, session, branch, env = process.env, timing = TIMIN
     } else if (missing.length) {
       why = `${missing.join(', ')} is not at the tip: only a green full run clears the red`;
     } else {
+      ran = true;
+      withState(ctx, (s) => { countPass(s, red.slug); });
       verdict = await byName(ctx, id, slot.copy, red.failed, env, session, red.tests);
       if (verdict === 'inconclusive') why = 'the run by name did not run each failed test, or was cut: only a green full run clears the red';
     }
@@ -619,7 +715,14 @@ async function retest({ root, session, branch, env = process.env, timing = TIMIN
     s.stale_copies = s.stale_copies.filter((p) => fs.existsSync(p));
     const fields = { red: red.commit, failed: red.failed };
     if (verdict === 'unrun') return out(0, { ...fields, result: 'unrun', cleared: false, why });
-    if (verdict !== 'green') return out(1, { ...fields, result: 'red', cleared: false, why });
+    if (verdict !== 'green') {
+      if (ran && passesOf(s, red.slug) >= AFTER_MERGE_PASSES) {
+        if (s.red && s.red.commit === red.commit) capRed(s);
+        return capped(red);
+      }
+      return out(1, { ...fields, result: 'red', cleared: false, why });
+    }
+    delete s.red_passes[red.slug || ''];
     if (!s.red || s.red.commit !== red.commit) return out(0, { ...fields, result: 'green', cleared: false, why: 'the red was cleared or replaced meanwhile' });
     s.cleared = { commit: tip, by: 'retest', at: new Date().toISOString(), red: red.commit, session };
     s.red = null;

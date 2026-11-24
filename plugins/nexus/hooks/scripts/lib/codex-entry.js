@@ -14,11 +14,23 @@
  * its seven fields — the role, whether its seat may run on Codex (`yes`, `not yet`, `not a seat`), the unit one
  * job takes, the question phase, the hand-back phrases, the checks after the job and the Claude fallback. A
  * `not yet` row whose seat is built but closed keeps those fields and adds `notYetReason`, the reason it is not
- * open; `seatAnswer` gives the row's answer with that reason. A role gains a seat by a change to that file alone.
- * No row reads `yes` today.
+ * open. A `yes` row may name the platforms it is open on (`platforms`, `process.platform` values) with
+ * `notYetReason` for the others; a `yes` row naming none is open everywhere. `seatState` gives a role's answer on
+ * this platform — `yes`, or the row's closed answer with its reason and, where only the platform closes it, that
+ * platform — `seatAllowed` whether it is `yes`, and `seatAnswer` the answer with its reason. A role gains a seat by
+ * a change to that file alone. The developer's and the solo's rows are open on Windows.
  *
- * TEST SEAM: `NEXUS_CODEX_SEAT_TABLE`, where set and not empty, names another table file to read in this file's
- * place, read again whenever the name changes. Tests point it at a table whose seats are open.
+ * A row's `checksAfterJob.afterJobRuns` names the runs the job helper makes after the job's end (lib/seat-after.js).
+ *
+ * TEST SEAMS, both honoured only under the test runner: `NEXUS_CODEX_SEAT_TABLE` names another table file to read
+ * in this file's place, read again whenever the name changes — tests point it at a table whose seats are open
+ * everywhere — and `seatTableFile` names that file, null for the shipped one; `NEXUS_CODEX_PLATFORM` names the
+ * platform the table is read for.
+ *
+ * `testSeam(name)` reads a test-only variable: its value only where NODE_TEST_CONTEXT is set, which `node --test`
+ * sets and a session never does; else undefined, as for an empty value. Every NEXUS_CODEX_SEAT_TABLE,
+ * NEXUS_CODEX_PLATFORM, NEXUS_CODEX_EXEC, NEXUS_CODEX_BOX, NEXUS_CODEX_VERSION_CMD, NEXUS_CODEX_TEMP_ROOTS and
+ * NEXUS_CODEX_PROFILE_READ read goes through it.
  */
 const fs = require('fs');
 const path = require('path');
@@ -26,11 +38,19 @@ const path = require('path');
 const SHIPPED_TABLE = path.join(__dirname, 'codex-seats.json');
 let loaded = { file: null, table: null };
 
+function tableFile() {
+  const named = testSeam('NEXUS_CODEX_SEAT_TABLE');
+  return named ? path.resolve(named) : SHIPPED_TABLE;
+}
 function table() {
-  const named = process.env.NEXUS_CODEX_SEAT_TABLE;
-  const file = named ? path.resolve(named) : SHIPPED_TABLE;
+  const file = tableFile();
   if (loaded.file !== file) loaded = { file, table: JSON.parse(fs.readFileSync(file, 'utf8')) };
   return loaded.table;
+}
+/** The table file read in the shipped one's place, or null where the shipped one is read. */
+function seatTableFile() {
+  const file = tableFile();
+  return file === SHIPPED_TABLE ? null : file;
 }
 const LEVELS = Object.freeze(['none', 'minimal', 'low', 'medium', 'high', 'xhigh']);
 const KEYS = Object.freeze(['model', 'effort', 'codexModel']);
@@ -61,13 +81,32 @@ function seatRow(role) {
   return row ? copy(row) : null;
 }
 
-const seatAllowed = (role) => { const row = seatRow(role); return Boolean(row && row.codexSeat === 'yes'); };
-
-/** The row's seat answer, `not yet: {reason}` where a closed row gives one; `no seat` for a role with no row. */
-function seatAnswer(role) {
-  const row = seatRow(role);
-  if (!row) return 'no seat';
-  return row.codexSeat === 'not yet' && row.notYetReason ? `not yet: ${row.notYetReason}` : row.codexSeat;
+function testSeam(name, env = process.env) {
+  if (!env.NODE_TEST_CONTEXT) return undefined;
+  const value = env[name];
+  return value === undefined || value === '' ? undefined : value;
 }
 
-module.exports = { LEVELS, KEYS, readsCodex, isCodexValue, effortLevel, modelName, codexEntry, seatRows, seatRow, seatAllowed, seatAnswer };
+const platformNow = () => testSeam('NEXUS_CODEX_PLATFORM') || process.platform;
+
+/** `{seat, reason, platform}` for a role on this platform; null for a role with no row. */
+function seatState(role) {
+  const row = seatRow(role);
+  if (!row) return null;
+  const platform = platformNow();
+  if (row.codexSeat === 'yes' && Array.isArray(row.platforms) && !row.platforms.includes(platform)) {
+    return { seat: 'not yet', reason: row.notYetReason || null, platform };
+  }
+  return { seat: row.codexSeat, reason: row.codexSeat === 'not yet' ? row.notYetReason || null : null, platform: null };
+}
+
+const seatAllowed = (role) => { const state = seatState(role); return Boolean(state && state.seat === 'yes'); };
+
+/** The role's seat answer here, `not yet: {reason}` where a closed row gives one; `no seat` for a role with no row. */
+function seatAnswer(role) {
+  const state = seatState(role);
+  if (!state) return 'no seat';
+  return state.seat === 'not yet' && state.reason ? `not yet: ${state.reason}` : state.seat;
+}
+
+module.exports = { LEVELS, KEYS, readsCodex, isCodexValue, effortLevel, modelName, codexEntry, seatRows, seatRow, seatState, seatAllowed, seatAnswer, seatTableFile, testSeam };

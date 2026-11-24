@@ -6,7 +6,7 @@
  * WHY THIS EXISTS. The declared verify roster (`.claude/verify.json` → `roles`: build / unit / premerge /
  * full / mutation) is what lets a developer close a step with ONE call instead of rediscovering the build
  * and test commands every run, and what lets the full suite run once on the default branch after a merge,
- * with a record.
+ * with a record, where features.fullSuite is on.
  * It shipped with no trigger: every consuming repo sat silently undeclared for two weeks and the
  * feature measured nothing (owner ruling 2026-09-09 — "you failed to implement a mechanic to make the
  * agent attentive to this and ask"). This hook is that mechanic's first half; the pre-flight ask in
@@ -30,7 +30,7 @@
  * and `startup` nudge again. Opt-out: `"declarationsNudge": false` in `.claude/nexus-agents.json`.
  *
  * FILTERED_FULL, OUTSIDE THE LADDER. A `roles.full` carrying a filter clause is not the complete
- * suite run once after the merge, whatever state the ladder reads — so its line is decided from
+ * suite the full run makes (after the merge where features.fullSuite is on, in CI, at publish), whatever state the ladder reads — so its line is decided from
  * `roles.full` alone and rides the same injection as the ladder's line (two lines, one output).
  * Warn-only. The clause forms belong to lib/test-runners.js's runner table; this file imports the
  * predicate and holds no list of its own.
@@ -54,7 +54,8 @@
  * THE RED LINE, FIRST. While the full run on the default branch after its merges (main-run.js, its state in the
  * main checkout) is red, every session start but `compact` and `resume` hears one line before all the others: the
  * failed test files (three at most, then a count), the feature or commit the red was traced to, and the session
- * holding its fix while that claim is live, or that nobody does. Nothing is said for a green, running, absent or
+ * holding its fix while that claim is live, or that nobody does — or, for a red past its 2 after-merge passes
+ * (`capped`), that a blocking backlog row holds it and it is no fix to take. Nothing is said for a green, running, absent or
  * unreadable state. It has no opt-out key: neither `declarationsNudge` nor `gearNudge` silences it.
  *
  * OWN CAP. A separate hook output, capped by the platform independently of the kernel envelope —
@@ -72,9 +73,9 @@ const { mainCheckout } = require('./usage-level');
 const { status: mainRunStatus } = require('./lib/main-run');
 
 const RELAY = 'Tell the user once, in your first reply, in your own words, keeping the quoted phrase exactly as written: ';
-const NUDGE = RELAY + 'This repo hasn\'t declared its verify roles (the build / unit / full test commands in .claude/verify.json) — until it does, the developer speed features stay off: every run rediscovers the build and test commands, and no full suite runs after the merge. Say "declare verify roles" and I will set them up from this repo\'s conventions, or silence this with "declarationsNudge": false in .claude/nexus-agents.json.';
+const NUDGE = RELAY + 'This repo hasn\'t declared its verify roles (the build / unit / full test commands in .claude/verify.json) — until it does, the developer speed features stay off: every run rediscovers the build and test commands, and no full suite can run after the merge where features.fullSuite turns it on. Say "declare verify roles" and I will set them up from this repo\'s conventions, or silence this with "declarationsNudge": false in .claude/nexus-agents.json.';
 const BROKEN = (why) => RELAY + 'This repo\'s .claude/verify.json exists but does not parse (' + why + ') — the verify gate is running on its detection fallback and the declared roles are unread. Say "declare verify roles" and I will repair it.';
-const FILTERED_FULL = RELAY + 'This repo\'s "full" verify role in .claude/verify.json carries a filter clause, so the suite run once after the merge is not the whole suite — the tests the clause leaves out run at no gate. Slow tests belong in the "unit" exclusion instead: the full run after the merge already covers them. Say "declare verify roles" and I will re-propose "full" without the clause, or silence this with "declarationsNudge": false in .claude/nexus-agents.json.';
+const FILTERED_FULL = RELAY + 'This repo\'s "full" verify role in .claude/verify.json carries a filter clause, so the full run (after the merge where features.fullSuite is on) is not the whole suite — the tests the clause leaves out run at no gate. Slow tests belong in the "unit" exclusion instead: the full run already covers them. Say "declare verify roles" and I will re-propose "full" without the clause, or silence this with "declarationsNudge": false in .claude/nexus-agents.json.';
 const UNMEASURED = RELAY + 'This repo declared its verify roles but never timed them: .claude/verify.json records no measurement for the "unit" role, the command a step close runs, so nothing shows whether it fits inside the step limit ("stepLimitSeconds", 90 seconds when unset) or is really the whole suite. This is a one-time re-measure after an upgrade, not a fault report. Say "declare verify roles" and I will time the declared commands and record the numbers, or silence this with "declarationsNudge": false in .claude/nexus-agents.json.';
 
 const UNSTOPPED = (roles) => RELAY + 'This repo\'s ' + roles.map((r) => '"' + r + '"').join(' and ') + ' verify role' + (roles.length > 1 ? 's run' : ' runs') + ' .NET or Flutter tests with no per-test stop in .claude/verify.json, so one stuck test holds the whole run until its time limit. Say "declare verify roles" and I will add the stop to the declared command, or silence this with "declarationsNudge": false in .claude/nexus-agents.json.';
@@ -92,7 +93,9 @@ const RED_LINE = ({ branch, red, holder }) => {
     : 'its failures are not named, so only a green full run clears it';
   const trace = red.trace && !red.trace.empty && red.trace.commit ? red.trace : null;
   const traced = trace ? (trace.slug ? `traced to ${trace.slug} (${short(trace.commit)})` : `traced to commit ${short(trace.commit)}`) : 'not traced to one commit';
-  const fix = holder ? `${holder} holds the fix.` : 'Nobody holds the fix: the session that takes it claims it with "main-run.js claim" and sends a solo.';
+  const fix = red.capped === true
+    ? 'Its 2 after-merge passes are spent: it is held by a blocking backlog row, not a fix to take.'
+    : holder ? `${holder} holds the fix.` : 'Nobody holds the fix: the session that takes it claims it with "main-run.js claim" and sends a solo.';
   return `${RELAY}The full test suite on ${branch} is red since its run at ${short(red.commit)} — ${failed}; ${traced}. ${fix}`;
 };
 

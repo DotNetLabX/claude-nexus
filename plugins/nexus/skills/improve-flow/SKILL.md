@@ -23,15 +23,7 @@ The nexus agents, rules, and skills live in the **plugin's version-keyed cache**
    b. Find the target section; final dedup check — verify the item isn't already expressed (different wording, same concept).
    c. Insert or update; preserve the file's existing style, formatting, and indentation.
 
-3. **Plugin-bound items:** append each to the feedback file as an entry:
-   ```markdown
-   ## {short title}
-   - **Suggested target:** {agent|rule|skill name} → {section, e.g. "developer.md ## Anti-patterns"}
-   - **Action:** add | update
-   - **Evidence:** {feature slug(s)}, recurrence {N}x
-   - **Lesson:** {the actionable rule, condensed}
-   ```
-   Suggest the target precisely — e.g. recurring agent mistakes map to that agent's `## Anti-patterns` section; cross-cutting rules to `rules/on-demand/agents-workflow.md` (or, when the rule is genuinely universal and must reach every session, the always-on kernel `rules/workflow-core.md` — which is budget-gated, so a kernel addition is a deliberate act).
+3. **Plugin-bound items:** append each to the feedback file in the `plugin-feedback` skill's layout, by its learner-item mapping (where it showed is where the problem was seen, not the file the lesson would change; the lesson's target and rule a one-line hint at most).
 
 4. **Verify consistency** — no duplicate entries introduced, no sections broken, files still read coherently.
 
@@ -55,7 +47,7 @@ When a promoted lesson can be enforced by something deterministic the project al
 
 - Match the target file's voice and density.
 - Don't add attribution ("learned from JiraSync") or dates — git history tracks that. (The feedback file is the exception: it carries evidence citations by design.)
-- Condense the lesson to its actionable essence. Strip the story, keep the rule.
+- Condense the lesson to its actionable essence. Strip the story, keep the rule. (Not in the feedback file, which keeps the story and states no rule — the `plugin-feedback` skill.)
 
 ## Cross-Reference Lint
 

@@ -21,7 +21,7 @@ Read-Index resolves the path.
   edits they are; not yours or unsure → name the files and ask, then follow the owner's answer.
 - **Never override a specialized agent's model** outside the five sanctioned channels, a gear in the first: the
   config ladder (per-agent and per-job entries, then the repo's gear), an explicit owner-directed spawn parameter, the
-  reader-pair list, the second reader (its job's model, additive), and the model preset in force.
+  reader-pair list (Speed's job lists), the second reader (its job's model, additive), and the model preset in force.
   Any other `model:` on a pipeline agent is the ad-hoc override this forbids.
   (→ pipeline-guardrails.md § Agent model overrides and pairing)
 - **Never ask the owner, or end a turn waiting on them while other work remains, once they say a
@@ -34,7 +34,8 @@ Read-Index resolves the path.
 - **Never end a main-session turn on background work, or on a need for the owner, without saying
   which.** Its last line before the footer is one of two:
   `Not stopped — waiting for {what is running}; I continue when it finishes. Nothing is needed from you.`
-  or `Stopped — needs you: {what}.` (→ agents-workflow § All Agents)
+  or `Stopped — needs you: {what}.` The wait line is only for work that will wake the session, never
+  a Codex job by itself. (→ agents-workflow § All Agents)
 - **Never offer or name a paid part unasked.** When the user asks by name for brainstorm mode, a
   panel, a research dive or the research library, the conventions review, skill evaluation,
   slow-test tagging, the token report, the usage record or the live agent view, and that skill is

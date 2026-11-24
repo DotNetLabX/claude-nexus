@@ -10,10 +10,11 @@
  * ONE SEAT JOB PER TREE. `reserveTree` makes the tree's file under `trees/` with an exclusive create, so of two
  * callers at the same moment exactly one makes it. The file is named from the tree's real path, case-folded on
  * Windows as lib/codex-servers.js folds a folder's name, and holds who took it; a caller that finds it made is
- * told who holds it. `releaseTree` removes it only for the holder it names.
+ * told who holds it. `releaseTree` removes it only for the holder it names, and `updateHeld` changes it only for
+ * that holder; every caller of either holds the tree's lock (codex-job.js), so of two at the same moment one acts.
  *
  * A WRITING START'S CONDITIONS. `seatDecision` answers whether a role's writing start runs on Codex: the role's
- * row allows a seat (lib/codex-entry.js), its entry is a usable seat setting (lib/model-presets.js `seats`), the
+ * row allows a seat on this platform (lib/codex-entry.js `seatState`), its entry is a usable seat setting (lib/model-presets.js `seats`), the
  * caller does not say it is a spawned agent, and no campaign gear names the role's author model — gear row 8,
  * which names the developer and never the solo. Each refusal comes back with its reason — a closed row's
  * `notYetReason` included — and one for a role whose row allows no seat is marked `closed`.
@@ -96,6 +97,16 @@ function updateReservation(file, fields) {
   }
 }
 
+/**
+ * Adds fields — or what `fields(holder)` returns — to the holder only while every field of `match` is still the
+ * holder's; true where it did. The caller holds the tree's lock, so no other caller removes or replaces it meanwhile.
+ */
+function updateHeld(file, match, fields) {
+  const held = readJson(file);
+  if (!held || !Object.entries(match).every(([k, v]) => held[k] === v)) return false;
+  return updateReservation(file, typeof fields === 'function' ? fields(held) : fields);
+}
+
 const readReservation = (tree, env = process.env) => readJson(reservationFile(tree, env));
 
 /** Gives the tree back where every field of `match` is the holder's; true where it did. */
@@ -123,8 +134,13 @@ function gearAuthor({ role, root, tree, slug, env }) {
 /** The role's seat setting `{entry, effort, codexModel}`, or `{why}` where its entry reads as unset. */
 function seatSettingOf(role, root, env = process.env) {
   const resolved = require('./model-presets').resolvePreset({ root, env });
-  if (resolved.seats && resolved.seats[role]) return { setting: resolved.seats[role] };
+  const setting = resolved.seats[role];
+  if (setting) {
+    const reason = setting.source ? `${setting.source}'s default seat` : "the repo's seat entry";
+    return { setting, reason };
+  }
   const ignored = (resolved.ignored || []).find((i) => i.key === role && i.why);
+  if (resolved.preset === 'speed' && resolved.agents[role]?.model) return { why: "the repo's seat entry names a Claude model" };
   return { why: ignored ? ignored.why : `the ${role} has no Codex entry in .claude/nexus-agents.json` };
 }
 
@@ -134,8 +150,13 @@ function seatSettingOf(role, root, env = process.env) {
  */
 function claudeSeat(role, root, env = process.env) {
   const presets = require('./model-presets');
-  let preset = null;
-  try { preset = presets.resolvePreset({ root, env }).preset; } catch { /* the agent file below */ }
+  let resolved = null;
+  try { resolved = presets.resolvePreset({ root, env }); } catch { /* the agent file below */ }
+  const preset = resolved?.preset;
+  const entry = resolved?.agents[role];
+  if (preset === 'speed' && typeof entry?.model === 'string' && entry.model) {
+    return { model: entry.model, effort: entry.effort ?? null };
+  }
   const row = preset ? presets.seatFor(preset, { role }) : null;
   if (row) return { model: row.model, effort: row.effort || null };
   const found = require('./plugin-root').findAgent(role, { plugin: 'nexus', root, env });
@@ -147,11 +168,12 @@ function claudeSeat(role, root, env = process.env) {
 
 /** `{codex: true, setting}`, or `{codex: false, reason, setting?, gear?}` for a writing start of this role's seat. */
 function seatDecision({ role, root, tree, slug, spawned = false, env = process.env }) {
-  const row = codexEntry.seatRow(role);
-  if (!row) return { codex: false, closed: true, reason: `"${role}" has no row in the seat table, so it has no Codex seat` };
-  if (row.codexSeat !== 'yes') {
-    const why = row.codexSeat === 'not yet' && row.notYetReason ? `: ${row.notYetReason}` : '';
-    return { codex: false, closed: true, reason: `the ${role}'s seat does not run on Codex — its row reads "${row.codexSeat}"${why}` };
+  const state = codexEntry.seatState(role);
+  if (!state) return { codex: false, closed: true, reason: `"${role}" has no row in the seat table, so it has no Codex seat` };
+  if (state.seat !== 'yes') {
+    const on = state.platform ? ` on ${state.platform}` : '';
+    const why = state.reason ? `: ${state.reason}` : '';
+    return { codex: false, closed: true, reason: `the ${role}'s seat does not run on Codex — its row reads "${state.seat}"${on}${why}` };
   }
   const read = seatSettingOf(role, root, env);
   if (!read.setting) return { codex: false, reason: read.why };
@@ -163,7 +185,7 @@ function seatDecision({ role, root, tree, slug, spawned = false, env = process.e
   if (gear) {
     return { codex: false, setting, gear, reason: `the campaign gear ${gear.gear} names the ${role}'s author model (${gear.model}), above the seat's Codex entry` };
   }
-  return { codex: true, setting };
+  return { codex: true, setting, reason: read.reason };
 }
 
 /** `[{path, status}]` for every uncommitted file git shows in the tree, or null where git cannot answer. */
@@ -185,6 +207,6 @@ function gitChanged(tree) {
 }
 
 module.exports = {
-  UNIT_TEXT, isUnit, seatLabel, seatDir, treeKey, reservationFile, reserveTree, updateReservation, readReservation,
+  UNIT_TEXT, isUnit, seatLabel, seatDir, treeKey, reservationFile, reserveTree, updateReservation, updateHeld, readReservation,
   releaseTree, seatSettingOf, seatDecision, claudeSeat, gitChanged,
 };

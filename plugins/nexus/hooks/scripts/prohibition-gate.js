@@ -123,7 +123,7 @@ function relPath(fp, root) {
 /**
  * Surfaces a stamp never covers. A coordinator's close edits are not "scope": the delivery folder of
  * the stamped slug at any depth under docs/specs/, any lessons file, this plugin's own local state,
- * and the closure surfaces.
+ * the closure surfaces, and the plugin feedback folder, which the main session files itself.
  *
  * CASE IS FOLDED ON BOTH SIDES HERE, on every platform — deliberately, and unlike `inScope`.
  * `relPath` folds only on win32 because a case-sensitive filesystem genuinely distinguishes
@@ -140,7 +140,7 @@ function alwaysAllowed(rel, slug) {
   if (p.startsWith('.claude/')) return true;
   if (slug && inOwnDelivery(p, String(slug).toLowerCase())) return true;
   if (/^docs\/specs\/.+\/lessons\.md$/.test(p)) return true;
-  if (p === 'docs/backlog.md' || p.startsWith('docs/programs/')) return true;
+  if (p === 'docs/backlog.md' || p.startsWith('docs/programs/') || p.startsWith('docs/plugin-feedback/')) return true;
   return base === 'changelog.md' || base === 'plugin.json';
 }
 

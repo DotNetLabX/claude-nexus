@@ -8,8 +8,8 @@
  *
  * `request` is called by the session whose commit just reached the branch, with that commit as `--commit`; it
  * prints one JSON line when the run holding that commit ends — `{result, branch, commit, requested, run_id,
- * failed, why}`, `result` one of `green`, `red`, `unrun` or `undeclared` — and exits 1 on a red, 2 when the commit
- * is not on the branch, else 0. `--branch` names the branch to prove where it is not the resolved default branch
+ * failed, why}`, `result` one of `green`, `red`, `capped`, `unrun` or `undeclared` — and exits 1 on a red, 2 when the
+ * commit is not on the branch, 4 on `capped` (the feature's 2 after-merge passes are spent, a red standing or not), else 0. `--branch` names the branch to prove where it is not the resolved default branch
  * (a campaign's branch); every branch has its own state and its own clean copy. A repo whose `.claude/verify.json`
  * declares no `full` role prints `undeclared` and exits 0. `status` prints the branch's state as JSON, with the
  * session holding the red's fix while its claim is live (`holder`).
@@ -18,7 +18,8 @@
  * (exit 1); a claim lapses 30 minutes after its last refresh — the holder's own `claim` or `retest` refreshes it —
  * and `release` gives it up. `retest` re-runs the red's failed test files by name at the branch's tip and clears a
  * red whose record names every failure when all are green (exit 0); a red it cannot clear exits 1, and so does a
- * retest made while a run is going, at once, as `busy`.
+ * retest made while a run is going, at once, as `busy`. Past a red's 2 after-merge passes, `claim` and `retest`
+ * start nothing and answer `capped` with exit 4, the claim released.
  *
  * The rules — one running and one waiting, the clean copy, a dead run, the base handed to the run, the trace — are
  * lib/main-run.js's. The project root is CLAUDE_PROJECT_DIR, else the working folder; the state lives in its main

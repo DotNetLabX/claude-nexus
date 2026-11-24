@@ -20,17 +20,16 @@
  *     `> Read when:` trigger — generated from the live directory so it cannot go stale.
  * The tier-1 enumeration is deliberately NON-RECURSIVE (pinned by test); making it recursive
  * would re-inject the whole tier-2 the kernel exists to keep out.
+ * The resolved plugin paths also tell the session when the Codex job helper starts directly.
  *
- * PROMPT-AUDIT TRIPWIRE (ADR-84). The payload's last section is a nag, appended only when this
- * project carries `docs/architecture/subagent-context-audit.md` (i.e. the plugin's own dev repo)
- * and the running Claude Code is newer than that doc's `Last-audited-cc:` pin. It makes ADR-83's
- * default-prompt re-check event-driven instead of calendar-driven; the session's agent is the
- * reader. A consuming project pays one existsSync and spawns nothing. Fail-open throughout — the
- * tripwire must never cost anyone their rules.
+ * PROMPT-AUDIT TRIPWIRE. Session start reads existing results and starts a detached check when
+ * a comparison is due. The check reads transcripts. A project without the audit doc pays one
+ * existence check. A tripwire failure must leave the kernel intact.
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { codexRoute } = require('./lib/codex-route');
 
 const pluginRoot = path.resolve(__dirname, '..', '..');
 const rulesDir = path.join(pluginRoot, 'rules');
@@ -56,9 +55,10 @@ process.stdin.on('data', d => (input += d));
 process.stdin.on('end', () => {
   // On `resume` the transcript — original injection included — is reloaded verbatim, so a
   // re-injection would duplicate ~6K tokens of rules. Skip it (restore-agent.js does the same).
+  let evt;
   try {
-    const evt = JSON.parse(input || '{}');
-    if (evt.source === 'resume') process.exit(0);
+    evt = JSON.parse(input || '{}');
+    if (evt?.source === 'resume') process.exit(0);
   } catch { /* unparseable stdin — fall through and inject (fail open) */ }
 
   // Both tiers enumerate FILES only (a symlink counts) — a *directory* named `*.md` would
@@ -134,6 +134,7 @@ process.stdin.on('end', () => {
   // from any consumer project (team-lead recovery order, roadmap C.2/C.4). They stay ABSOLUTE
   // under the ADR-91 one-root scheme: a relative `node "…"` resolves against the consumer's cwd,
   // and team-lead.md + doc-anchoring.md both promise this block carries a resolved path.
+  const projectDir = process.env.CLAUDE_PROJECT_DIR || evt?.cwd || process.cwd();
   body +=
     `\n\n--- plugin paths (resolved at session start) ---\n` +
     `Salvage script (stranded subagent reply; <config dir>/projects/…/subagents/agent-<id>.jsonl):\n` +
@@ -145,41 +146,26 @@ process.stdin.on('end', () => {
     `Fast profile (solo step close; developer: developer.md § The step test rule):\n` +
     `  node "${path.join(pluginRoot, 'hooks', 'scripts', 'verify-run.js')}" --profile fast\n` +
     `Codex job helper: codex-job.js, beside verify-run.js above\n` +
-    `Full suite (after the merge, via main-run.js; a gear's handover run):\n` +
+    (codexRoute(projectDir).route === 'direct' ? 'Codex starts directly: yes\n' : '') +
+    `Full suite (features.fullSuite on: after merge; gear's handover run):\n` +
     `  node "${path.join(pluginRoot, 'hooks', 'scripts', 'verify-run.js')}" --profile complete --slug <slug> --session <id> [--tree <path>]\n`;
 
-  // Prompt-audit tripwire (ADR-84). Appended BEFORE the size check below so the nag counts toward
-  // the size warning rather than sneaking past it. The whole feature is ONE try/catch: an
-  // unreadable doc, a missing CLI, or a banner shape that changes must all degrade to "no nag",
-  // never to a dropped kernel. A pin at or above the running version is silence by design.
   try {
     const AUDIT_DOC = 'docs/architecture/subagent-context-audit.md';
-    const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
     const auditDoc = path.join(projectDir, AUDIT_DOC);
-    if (fs.existsSync(auditDoc)) {                              // consuming repos stop here
-      // Required HERE rather than at the top of the file, unlike this repo's other hooks. Those
-      // require their lib at module scope because they cannot do their job without it; this hook
-      // can. A top-level require throws at LOAD time — before any of the payload exists and
-      // outside every try/catch below — so one missing or corrupt lib file would cost every
-      // project all of its rules to protect a reminder that only this repo ever sees.
-      const { parsePin, parseVersion, isNewer, nagText } = require('./lib/prompt-audit');
-      const { execSync } = require('child_process');
-      const pinned = parsePin(fs.readFileSync(auditDoc, 'utf8'));
-      if (pinned) {
-        // `claude --version` is UNDOCUMENTED — no hook payload field or env var carries the running
-        // version (verified against hooks.md, 2026-08-09). The command-STRING form is deliberate,
-        // matching verify-gate.js: execFileSync('claude', …) throws EINVAL against an npm `.cmd`
-        // install, and `shell: true` emits a DEP0190 warning onto this hook's stderr that `stdio`
-        // cannot suppress. The 1.5s cap bounds a hung CLI; the nag is cited by RELATIVE path
-        // because the existsSync above already proves the cwd is the repo that owns the doc.
-        const running = parseVersion(execSync('claude --version', {
-          timeout: 1500, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
-        }));
-        if (isNewer(running, pinned)) body += nagText(running, pinned, AUDIT_DOC);
-      }
+    if (fs.existsSync(auditDoc)) {
+      // A load failure must leave the kernel available.
+      const { sessionWarning } = require('./lib/prompt-audit-io');
+      body += sessionWarning({
+        project: projectDir,
+        transcripts: typeof evt?.transcript_path === 'string' && evt.transcript_path
+          ? path.dirname(evt.transcript_path) : null,
+        warningLimit: WARN_AT - body.length,
+      });
     }
-  } catch { /* no version, no doc, no CLI — the tripwire simply stays quiet (ADR-84 fail-open) */ }
+  } catch { /* Keep the kernel even if the audit cannot be loaded or run. */ }
 
+  // Measure the final payload, including any audit warning.
   // Runtime tripwire. Fail OPEN — emit the payload regardless (a dropped kernel is worse than an
   // oversize one) and warn on stderr, which the platform surfaces without breaking the hook.
   if (body.length > WARN_AT) {

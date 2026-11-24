@@ -14,7 +14,9 @@
  *      an unresolved CRITICAL or HIGH finding is an invalid verdict. Blocked.
  *   4) Test evidence before the merge (F81, ADR-96). A summary.md's existence means "the pipeline
  *      completed". When the repo DECLARED a full suite (.claude/verify.json → roles.full), that suite runs
- *      once on the default branch after the merge, and the close owes the evidence a merge needs: every
+ *      once on the default branch after the merge where the repo's switch `features.fullSuite` is on and
+ *      the owner says yes at the close, else only in CI and at publish; either way the close owes the
+ *      evidence a merge needs: every
  *      file the change holds against its base covered by a green fast run of the feature at its current
  *      content, and a green run of the whole-repo checks (`roles.premerge`) at the current tree hash where
  *      the repo declares them (lib/gear-close.js `premergeEvidence`). Writing summary.md without it is
@@ -26,7 +28,10 @@
  *      (lib/gear-close.js `closeEvidence`): each owes a green run by name, and one whose failures cannot
  *      all be named owes a complete run. A campaign unit whose marker does not accept pre-merge evidence
  *      keeps the complete record its campaign finishes it on. The deny names what is missing and the runs
- *      that supply it.
+ *      that supply it — where a close-run.js close is running for the slug (its round state at the session
+ *      root), its next `before` call instead. A close whose pass record at the session root
+ *      (`close-run/{slug}.passes.json`) reads `capped` has spent its 2 test passes: the denial is waived and
+ *      the allow prints one line naming the waiver, for summary.md's Notes.
  *      Numbered 4 because 3 is retired below and is never reused.
  *   5) Lessons evidence (F99, ADR-100 K5). "Write lessons before you close" was the one affirmative
  *      duty the always-on prohibitions envelope carried, and the W4 subagent probes measured it at
@@ -51,7 +56,8 @@
  *      a gap to close there rather than a close to break here; and a LEGACY record, written before
  *      the layout existed, is a historical fact rather than a defect — this invariant is about the
  *      NEXT record. The deny quotes the tool's own line, which already names the file, the line and
- *      the cause.
+ *      the cause. The record is read in the session's declared tree (lib/worktree-target.js), as (4)
+ *      and (7) read theirs.
  *
  *      (6) is the FIRST check here to spawn a child process, and it needs NO fail-open exception:
  *      its deny is a POSITIVE signal (the tool read the record and refused it), so it denies only on
@@ -69,7 +75,10 @@
  *   7) Unruled registry rows (F161, ADR-115). Every `pending-triage` row in a touched unit's
  *      business-rule registry is ruled before a feature closes — the close procedure's rule, and this
  *      is its backstop. A summary.md write is Blocked while a registry under docs/business-rules/
- *      that git reports modified or untracked, AND whose text names this close's slug (the
+ *      that git reports modified or untracked, or that the feature's commits since its base changed, so a
+ *      feature that commits each step still has its own rows seen (the base (4) reads, lib/gear-close.js
+ *      `changeBase`: the merge-base with the default branch; on that branch its upstream, else the plan's
+ *      `**Base:**`; with no readable base the dirty set stands alone), AND whose text names this close's slug (the
  *      promotion's and each ruling's changelog entry name it, after the entry's date), holds a row
  *      whose `status:` field is `pending-triage` and that carries no `ruling:` field. Both keys are
  *      read only where the registry grammar puts a field — at a continuation line's start, a
@@ -80,8 +89,8 @@
  *      The check is KEY-PRESENCE: the four ruling words are the close procedure's vocabulary, and
  *      parsing them here would give the grammar a second home. So a `deferred` ruling from an earlier
  *      close satisfies it; the close procedure re-rules that row, and this gate reads no dates.
- *      BOUNDS, so the blast radius is not guessed at: it sees only registries this close wrote — a
- *      touched unit's registry the close did not write is the close procedure's to cover; a dirty
+ *      BOUNDS, so the blast radius is not guessed at: it sees only registries this feature wrote — a
+ *      touched unit's registry it did not write is the close procedure's to cover; a changed
  *      registry that does not name the slug is another session's work and allows; a unit with an
  *      `-attestation.md` sibling is a code-mined, attested set whose triage is the merge ceremony's,
  *      and allows. The git read runs in (4)'s tree — the registries are evidence the round wrote in
@@ -93,14 +102,17 @@
  *      allows, while a `ruling:` there leaves the deny standing until it is re-written; the close
  *      procedure is the rule, this gate its backstop. The slug searched for is the folder holding delivery/, as in (4), the
  *      form a changelog line carries. The deny names each file and row id and the tree it read.
- *      ONE EXEMPTION (F440): a row a rule check cut at its time limit. An unruled row is let through only
- *      when BOTH hold: the newest verify row naming that exact register row (`{area}/{unit} {PREFIX}-n`)
- *      in the `rule-check.md` beside the summary reads `not checked — time limit`, and the session
- *      root holds a pass file under `.claude/audit/rule-check/` for this slug whose `deadline` has
- *      passed. The record is read by a line scan of its table rows, newest wins, and no ruling word is
- *      parsed; the pass files are read as JSON, never through the mining plugin's code. Each
- *      uncertainty here keeps the deny: a newer row of another kind, a record that never names the row,
- *      no readable record, no readable pass file or no passed deadline.
+ *      TWO EXEMPTIONS, both read from the `rule-check.md` beside the summary alone. (a) A row a closed
+ *      pass cut: the newest verify row naming that exact register row (`{area}/{unit} {PREFIX}-n`) reads
+ *      `not checked — time limit` and sits in a pass block — the head, or a `## Delta` block — that
+ *      carries its footer. A pass the coordinator cut early qualifies, since no pass file or deadline is
+ *      read, and an open later pass never borrows an earlier pass's close. (b) The close without the
+ *      mining skills: the record's footer reads `*Status: COMPLETE — not run, mining skills not
+ *      installed*` and its not-run line names the row. The record is read by a line scan, newest wins,
+ *      and no ruling word is parsed — never through the mining plugin's code. Each uncertainty here
+ *      keeps the deny: a newer row of another kind, a row in a block with no footer, a record that never
+ *      names the row, or no readable record. Both are backstops for a coordinator that forgot the
+ *      ruling, not defences against one that forges the record's lines.
  *   8) Fix-list follow-up (F221, ADR-144). A `## Step 2 — Fix list, cycle {N}` section whose follow-up
  *      line reads `due` while its rows hold no CRITICAL/HIGH (a contested range reaching HIGH counts),
  *      no missing or failed step and no skill slip is Blocked: such a round is never re-read
@@ -207,8 +219,9 @@ const { execFileSync } = require('child_process');
 const { isCodeFile } = require('./lib/is-code-file');
 const { resolveDeclaredTree } = require('./lib/worktree-target');
 const { treeHash, sameTree } = require('./lib/tree-hash');
-const { closeGear, closeEvidence, premergeEvidence, labelsOnly } = require('./lib/gear-close');
+const { closeGear, closeEvidence, premergeEvidence, labelsOnly, changeBase } = require('./lib/gear-close');
 const { countsAsPassing } = require('./lib/run-verdict');
+const { fullSuiteOn } = require('./lib/full-suite');
 const { isNonRegistry } = require('./lib/registry-stamp');
 const { checkSpec, readCommitted, isReady } = require('./lib/spec-sources');
 const { resolveFeature } = require('./sdd-read');
@@ -254,6 +267,7 @@ function gate(input) {
 
   const root = process.env.CLAUDE_PROJECT_DIR || data.cwd || process.cwd();
   refusal = { root, data, tool, fp };
+  let waiver = null;
 
   // (1) Analyze-phase collapse: source written during any analyze phase, plan.md during the architect's.
   const phase = readRoundToken(root, data.session_id).toLowerCase();
@@ -313,11 +327,13 @@ function gate(input) {
     const tree = resolveDeclaredTree(root, data.session_id);
     const planBase = planBaseOf(path.join(tree, 'docs', 'specs', ...feature.split('/'), 'delivery', 'plan.md'));
     const denial = fullSuiteDeclared(tree) ? fullSuiteDenial(tree, root, data, slug, {}, { planBase }) : null;
-    if (denial) {
-      const runs = remedyRuns(denial, slug, data.session_id);
+    if (denial && closeCapped(root, slug)) {
+      waiver = `summary.md for ${slug} goes through: the close's 2 test passes are spent (close-run.js), so its test evidence stands not verified — copy this into summary.md's Notes, with the blocking backlog row of each failure still red.`;
+    } else if (denial) {
+      const runs = remedyRuns(denial, slug, data.session_id, { closing: closeRunning(root, slug) });
       return deny('4',
         `summary.md needs passing test evidence for ${slug} before the merge (cause: ${denial.cause} — ${denialGloss(denial)}). ` +
-        'This repo declares .claude/verify.json → roles.full, which runs on the default branch after the merge. ' +
+        `This repo declares .claude/verify.json → roles.full, which runs ${fullSuiteOn(root) ? 'on the default branch after the merge, where the owner says yes at the close' : 'in CI and at publish (features.fullSuite is off)'}. ` +
         (runs.length ? `Run, each as a background call (a heavy run may wait its turn on the machine):\n${runs.map((r) => `  ${r}\n`).join('')}then write summary.md. ` : 'Fix what git names, then write summary.md. ') +
         '(A red run is a fix, not a re-run; an undeclared role is recorded and disclosed, never a pass.)'
       );
@@ -337,18 +353,21 @@ function gate(input) {
     );
   }
 
-  // (6) Critic-record measurability. By the whole path: `metrics` addresses a nested issue's record as
+  // (6) Critic-record measurability, read in (4)'s tree: a main checkout's carried-over copy of the
+  // record is not the round's. By the whole path: `metrics` addresses a nested issue's record as
   // `{epic}/{issue}` — the addressing it already documents.
   if (summaryMatch && !isSpawned(data)) {
-    const reason = unmeasurableCriticRecord(root, feature);
+    const reason = unmeasurableCriticRecord(resolveDeclaredTree(root, data.session_id), feature);
     if (reason) return deny('6', reason);
   }
 
   // (7) Unruled registry rows, read in (4)'s tree. `lib/worktree-target.js` is the only which-tree
   // rule a hook may use, so the tree is never derived from the summary.md path.
   if (summaryMatch && !isSpawned(data)) {
-    const reason = unruledRegistryRows(resolveDeclaredTree(root, data.session_id), slug, {
-      record: path.join(path.dirname(path.resolve(root, fp)), 'rule-check.md'), root,
+    const tree = resolveDeclaredTree(root, data.session_id);
+    const reason = unruledRegistryRows(tree, slug, {
+      record: path.join(path.dirname(path.resolve(root, fp)), 'rule-check.md'),
+      planBase: planBaseOf(path.join(tree, 'docs', 'specs', ...feature.split('/'), 'delivery', 'plan.md')),
     });
     if (reason) return deny('7', reason);
   }
@@ -375,7 +394,7 @@ function gate(input) {
     );
   }
 
-  return allow();
+  return allow(waiver);
 }
 
 /**
@@ -468,9 +487,10 @@ function openRecheckGroups(summaryFile, slug) {
  * the deny reason, or null to allow.
  */
 function unruledRegistryRows(tree, slug, cut = {}) {
-  const rels = dirtyRegistryPaths(tree);
-  if (!rels) return null;
-  const namesSlug = new RegExp(`(?:^|[^\\w-])${slug.replace(/[.*+?^${}()|[\]\\]/g, (c) => `\\${c}`)}(?![\\w-])`);
+  const dirty = dirtyRegistryPaths(tree);
+  if (!dirty) return null;
+  const rels = [...new Set([...dirty, ...committedRegistryPaths(tree, cut.planBase || '')])];
+  const namesSlug = new RegExp(`(?:^|[^\\w-])${escapeRe(slug)}(?![\\w-])`);
   const found = [];
   let exempt = null;
   for (const rel of rels) {
@@ -482,8 +502,8 @@ function unruledRegistryRows(tree, slug, cut = {}) {
     if (!namesSlug.test(text)) continue;
     const unit = rel.slice(`${REGISTRY_ROOT}/`.length, -'.md'.length);
     for (const id of unruledRowIds(text)) {
-      if (exempt === null) exempt = cutRows(cut.record, cut.root, slug);
-      if (!exempt.has(`${unit} ${id}`)) found.push(`${rel} ${id}`);
+      if (exempt === null) exempt = cutRows(cut.record);
+      if (!exempt(`${unit} ${id}`)) found.push(`${rel} ${id}`);
     }
   }
   if (!found.length) return null;
@@ -497,33 +517,36 @@ function unruledRegistryRows(tree, slug, cut = {}) {
 }
 
 const NOT_CHECKED_VERDICT = 'not checked — time limit';
+const NOT_RUN_FOOTER = 'not run, mining skills not installed';
+const RECORD_FOOTER_RE = /^\*Status: COMPLETE — (.+)\*[ \t]*$/;
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, (c) => `\\${c}`);
 
 /**
- * The register rows (`{area}/{unit} {PREFIX}-n`) a rule check cut at its limit: those whose newest verify
- * row in `record` reads `not checked — time limit`, while `root` holds a pass file for `slug` whose
- * deadline has passed. Empty on any read it cannot make — the exemption needs both facts read.
+ * A predicate over register rows (`{area}/{unit} {PREFIX}-n`) the rule check's record lets through: a row
+ * whose newest verify row reads `not checked — time limit` inside a pass block — the head, or a `## Delta`
+ * block — that carries its footer, so a pass the coordinator closed qualifies however early it closed and an
+ * open later pass never borrows an earlier pass's close; or, where the record's footer is the not-run one, a
+ * row the record names. False for every row on any read it cannot make.
  */
-function cutRows(record, root, slug) {
-  const none = new Set();
-  if (!record || !root) return none;
-  let names;
-  try { names = fs.readdirSync(path.join(root, '.claude', 'audit', 'rule-check')); } catch { return none; }
-  const passed = names.some((name) => {
-    if (!name.endsWith('.json')) return false;
-    try {
-      const p = JSON.parse(fs.readFileSync(path.join(root, '.claude', 'audit', 'rule-check', name), 'utf8'));
-      const deadline = Date.parse(p && p.deadline);
-      return p.slug === slug && Number.isFinite(deadline) && deadline <= Date.now();
-    } catch { return false; }
-  });
-  if (!passed) return none;
+function cutRows(record) {
+  const none = () => false;
+  if (!record) return none;
   const text = readLf(record);
   if (text === null) return none;
+  const lines = text.split('\n');
+  const footers = lines.map((l) => l.match(RECORD_FOOTER_RE)).filter(Boolean).map((m) => m[1].trim());
+  if (footers.includes(NOT_RUN_FOOTER)) {
+    const body = lines.filter((l) => !RECORD_FOOTER_RE.test(l)).join('\n');
+    return (row) => new RegExp(`(?:^|[^\\w/-])${escapeRe(row)}(?![\\w-])`).test(body);
+  }
+  const closed = [];
+  let block = 0;
   const newest = new Map();
   let verdictAt = -1;
-  const lines = text.split('\n');
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    if (/^## Delta\b/.test(line)) { block += 1; verdictAt = -1; continue; }
+    if (RECORD_FOOTER_RE.test(line)) closed[block] = true;
     if (!line.trim().startsWith('|')) { verdictAt = -1; continue; }
     const cells = line.trim().replace(/^\|/, '').replace(/\|$/, '').split(/(?<!\\)\|/).map((c) => c.trim());
     if (/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(lines[i + 1] || '')) {
@@ -534,10 +557,36 @@ function cutRows(record, root, slug) {
     }
     if (verdictAt < 0) continue;
     for (const name of cells[0].replace(/`/g, '').split(/\s*(?:,|;|<br\s*\/?>)\s*/i)) {
-      if (name) newest.set(name.trim(), cells[verdictAt] || '');
+      if (name) newest.set(name.trim(), { verdict: cells[verdictAt] || '', block });
     }
   }
-  return new Set([...newest].filter(([, v]) => v === NOT_CHECKED_VERDICT).map(([k]) => k));
+  const cut = new Set([...newest].filter(([, v]) => v.verdict === NOT_CHECKED_VERDICT && closed[v.block]).map(([k]) => k));
+  return (row) => cut.has(row);
+}
+
+/**
+ * Registry paths (repo-relative, `docs/business-rules/…`) changed in the commits since the feature's base —
+ * check (4)'s base (`changeBase`), the plan's `**Base:**` where no default-branch ref resolves. Empty when no
+ * base can be read, so the dirty set stands alone.
+ */
+function committedRegistryPaths(tree, planBase) {
+  try {
+    const from = changeBase(tree, planBase);
+    if (!from || !from.base) return [];
+    const out = execFileSync('git', ['--no-optional-locks', 'diff', '--name-only', '-z', '--no-renames', '--diff-filter=d',
+      from.base, 'HEAD', '--', REGISTRY_ROOT], {
+      cwd: tree,
+      timeout: GIT_STATUS_TIMEOUT_MS,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    const rels = [];
+    for (const p of out.split('\0').filter(Boolean)) {
+      const at = p.indexOf(`${REGISTRY_ROOT}/`);
+      if (at >= 0) rels.push(p.slice(at));
+    }
+    return rels;
+  } catch { return []; }
 }
 
 /**
@@ -799,8 +848,21 @@ function denialGloss(denial) {
   return parts.join('; ');
 }
 
-// The runs a refusal asks for, one command line each: what close-run.js runs, and what the deny prints.
-function remedyRuns(denial, slug, session) {
+// The close-run files of a slug at the session root: its round state while a close runs, and its pass record.
+const closeRunFile = (root, name) => path.join(root, '.claude', 'audit', 'close-run', name);
+const closeRunning = (root, slug) => fs.existsSync(closeRunFile(root, `${slug}.json`));
+function closeCapped(root, slug) {
+  try { return JSON.parse(fs.readFileSync(closeRunFile(root, `${slug}.passes.json`), 'utf8')).capped === true; } catch { return false; }
+}
+
+// The runs a refusal asks for, one command line each: what close-run.js runs, and what the deny prints. Where a close
+// is running for the slug, the remedy is its next `before` call, so a run made by hand never stands in for a pass;
+// the gate cannot see that call's other arguments, so the line asks for them by name.
+function remedyRuns(denial, slug, session, { closing = false } = {}) {
+  if (closing) {
+    return [`node "${path.join(__dirname, 'close-run.js')}" before --slug ${slug}${session ? ` --session ${session}` : ''}`
+      + ' — repeating every other argument the close\'s own before call carried (--message-file, --tree, --paths-file, --exclude, --record-cmd)'];
+  }
   const runner = `node "${path.join(__dirname, 'verify-run.js')}"`;
   const tail = `--slug ${slug}${session ? ` --session ${session}` : ''} --wait`;
   const quoted = (files) => files.map((f) => `"${f}"`).join(' ');
@@ -825,7 +887,7 @@ const denialOf = (fields) => ({
  * that asks (close-run.js) which record decided and how: `record` (a passing complete record), `evidence` (this
  * feature's red complete record repaired, then the pre-merge evidence) or `premerge` (the pre-merge evidence).
  *
- * In order (plan P1 — the full suite runs on the default branch after the merge, not here):
+ * In order (the full suite never runs here):
  *
  * (a) A complete record at this content that counts as passing discharges it, whatever its slug or session:
  *     content makes a record valid, so a gear's handover run or a solo's run is never paid twice. "At this
@@ -851,11 +913,16 @@ const denialOf = (fields) => ({
  * feature's own complete record stands on the close evidence, as before the full suite moved after the merge — a
  * gear's uncovered files owe tied runs — and anything else owes a complete run (`complete-kept`).
  *
+ * With the repo's full suite off (`features.fullSuite`, lib/full-suite.js, read at the root) no denial asks for a
+ * complete run: in (b) a `not-completed` record goes on to (c), and the campaign-unit exception is not read.
+ * A passing complete record still discharges, and a red one's named failures still owe their runs by name.
+ *
  * An unreadable or missing verdict file yields no records: (c) then names everything as missing.
  */
 function fullSuiteDenial(tree, root, data, slug, seen = {}, { planBase = '' } = {}) {
   const token = readRoundToken(root, data.session_id);
   const session = String(data.session_id || '');
+  const fullOn = fullSuiteOn(root);
 
   let lines = [];
   try {
@@ -888,9 +955,11 @@ function fullSuiteDenial(tree, root, data, slug, seen = {}, { planBase = '' } = 
     && (hash === null || ownRecord.tree_hash === hash || labelsOnly({ records, index: own, tree }))) {
     return judged(seen, ownRecord, null, 'record');
   }
+  let unread = false;
   if (ownRecord && !countsAsPassing(ownRecord)) {
     const evidence = closeEvidence({ records, index: own, tree, slug });
-    if (!evidence.ok && evidence.cause !== 'uncovered') {
+    unread = !evidence.ok && evidence.cause === 'not-completed' && !fullOn;
+    if (!evidence.ok && evidence.cause !== 'uncovered' && !unread) {
       const gear = closeGear(slug, { tree, root });
       const denial = evidence.cause === 'not-completed'
         ? denialOf({ cause: 'not-completed', gear, complete: true })
@@ -899,7 +968,7 @@ function fullSuiteDenial(tree, root, data, slug, seen = {}, { planBase = '' } = 
     }
   }
 
-  if (completeRunKept(tree)) {
+  if (fullOn && completeRunKept(tree)) {
     const kept = ownRecord ? closeEvidence({ records, index: own, tree, slug }) : null;
     if (kept && kept.ok) return judged(seen, ownRecord, null, 'evidence');
     const gear = closeGear(slug, { tree, root });
@@ -910,7 +979,7 @@ function fullSuiteDenial(tree, root, data, slug, seen = {}, { planBase = '' } = 
   }
 
   const ev = premergeEvidence({ records, tree, slug, planBase });
-  const by = ownRecord && !countsAsPassing(ownRecord) ? 'evidence' : 'premerge';
+  const by = ownRecord && !countsAsPassing(ownRecord) && !unread ? 'evidence' : 'premerge';
   if (ev.ok) return judged(seen, by === 'evidence' ? ownRecord : null, null, by);
   const cause = ev.unreadable ? 'unreadable' : ev.whole ? 'whole-unit' : ev.uncovered.length ? 'uncovered'
     : ev.unrepaired.length ? 'unrepaired' : 'premerge';
@@ -1128,6 +1197,9 @@ function deny(check, reason) {
   process.exit(0);
 }
 
-function allow() { process.exit(0); }
+function allow(line) {
+  if (line) process.stdout.write(JSON.stringify({ systemMessage: `Nexus pipeline gate: ${line}` }));
+  process.exit(0);
+}
 
 module.exports = { fullSuiteDeclared, fullSuiteDenial, denialGloss, remedyRuns };

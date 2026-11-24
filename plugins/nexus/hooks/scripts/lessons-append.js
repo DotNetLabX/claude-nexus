@@ -87,8 +87,10 @@ function insert(text, slug, section, body) {
   return [...lines.slice(0, end), ...gap, ...add, ...tail].join(eol) + eol;
 }
 
-function writeAtomic(file, content, tmpDir) {
-  const tmp = path.join(tmpDir, `write-${process.pid}-${Date.now()}.tmp`);
+// The temporary file sits beside the target: a renamed file keeps the permissions of the folder it was
+// made in, and a Codex seat on Windows can write only files that carry its own tree's write grant.
+function writeAtomic(file, content) {
+  const tmp = `${file}.${process.pid}.tmp`;
   try {
     fs.writeFileSync(tmp, content);
     fs.renameSync(tmp, file);
@@ -137,7 +139,7 @@ function main() {
     let text = '';
     try { text = fs.readFileSync(file, 'utf8'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    writeAtomic(file, insert(text, slug, section, body), fs.existsSync(lockDir) ? lockDir : path.dirname(file));
+    writeAtomic(file, insert(text, slug, section, body));
   } catch (e) {
     warn(`append failed (${e.code || e.message}); the lesson is lost`);
     return 0;

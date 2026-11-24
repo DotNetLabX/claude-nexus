@@ -8,9 +8,9 @@
  * code fails the name lint.
  *
  * THE PRESET IN FORCE is the repo's `modelPreset` (`.claude/nexus-agents.json`), else the profile's
- * (`{CLAUDE_CONFIG_DIR, else ~/.claude}/nexus/profile.json`), else unset, which runs `standard`. A repo
+ * (`{CLAUDE_CONFIG_DIR, else ~/.claude}/nexus/profile.json`), else unset, which runs `speed`. A repo
  * may always lower to `standard`; a repo value that would spend a family only a consenting preset uses —
- * a `modelPreset`, a `jobs` entry or a per-agent `model` — applies only where the profile's own preset uses
+ * a `modelPreset`, a `jobs` or `lists` entry, or a per-agent `model` — applies only where the profile's own preset uses
  * that family, because a committed setting is no consent of another account. Each ignored value is reported.
  *
  * A ROLE'S CODEX ENTRY (`"developer": { "model": "codex", … }`) is never a Claude model: it is kept out of
@@ -22,7 +22,7 @@
  * LOCKED WRITES. Every script writer of the profile file and of `.claude/nexus-agents.json` goes through
  * `writeProfile` or `updateRepoConfig`: a lock file beside the target, a re-read, only the change applied,
  * a temp file renamed into place. The lock (lib/file-lock.js) is each write's own, and a writer removes only its
- * own. A lock older than STALE_MS is taken over (its writer died); a lock held past WAIT_MS refuses the write
+ * own. A lock whose writer has died is taken over (one naming no writer, once older than STALE_MS); a lock held past WAIT_MS refuses the write
  * rather than waiting on.
  *
  * FAIL SOFT ON READ. A missing, unreadable or malformed profile or repo file, or an unknown preset name,
@@ -35,7 +35,8 @@ const codexEntry = require('./codex-entry');
 const fileLock = require('./file-lock');
 
 const TABLE = JSON.parse(fs.readFileSync(path.join(__dirname, 'model-presets.json'), 'utf8'));
-const DEFAULT_PRESET = 'standard';
+const DEFAULT_PRESET = 'speed';
+const CONSENT_BASELINE = 'standard';
 const AS_TODAY = 'as today';
 const SENTINELS = new Set(['as today', 'ask me']);
 const HELPER_JOBS = ['discovery', 'audit', 'general'];
@@ -183,7 +184,79 @@ function authorModel(preset, role) {
 
 /** The family a code review's first reader takes where the preset's reader family is refused and Codex is absent, or null. */
 function refusedReaderFor(preset) { return presetOf(preset).refusedReader || null; }
-function consentPresets() { return presetNames().filter((n) => presetOf(n).claudeFamilies.some((f) => !presetOf(DEFAULT_PRESET).claudeFamilies.includes(f))); }
+function consentPresets() { return presetNames().filter((n) => presetOf(n).claudeFamilies.some((f) => !presetOf(CONSENT_BASELINE).claudeFamilies.includes(f))); }
+
+const CODEX = 'codex';
+const readerFamily = (model) => familyOf(model) || CODEX;
+const readerSlot = ({ model, effort }) => {
+  const family = readerFamily(model);
+  return { engine: family === CODEX ? CODEX : 'claude', model, effort, family };
+};
+
+function codexAccount(env = process.env) {
+  const home = codexEntry.testSeam('NEXUS_CODEX_ACCOUNT_HOME', env) || env.CODEX_HOME || path.join(os.homedir(), '.codex');
+  const cache = readJsonObject(path.join(home, 'models_cache.json'));
+  const codexModels = Array.isArray(cache.models)
+    ? cache.models.filter((m) => m?.visibility === 'list' && codexEntry.modelName(m.slug)).map((m) => m.slug)
+    : [];
+  let codexDefault = null;
+  try {
+    const text = fs.readFileSync(path.join(home, 'config.toml'), 'utf8');
+    const root = text.split(/^[ \t]*\[/m)[0];
+    const model = root.match(/^[ \t]*model[ \t]*=[ \t]*(["'])([^"'\r\n]+)\1[ \t]*(?:#.*)?\r?$/m);
+    codexDefault = codexEntry.modelName(model?.[2]);
+  } catch { /* account configuration is optional */ }
+  return { codexModels: codexModels.length ? codexModels : undefined, codexDefault };
+}
+
+function eligibleCodex(entry, codexModels) {
+  return readerFamily(entry.model) === CODEX
+    && (entry.model === CODEX || !codexModels || codexModels.includes(entry.model));
+}
+
+function readersFor(resolved, job, {
+  authors = [], codex = 'available', codexModels, codexDefault, dropped = [], pick = [], count = 2, authorFill = true,
+} = {}) {
+  const { preset } = resolved;
+  const list = resolved.lists?.[job];
+  const authorFamilies = new Set(authors.map(readerFamily));
+  const modelOf = (slot) => slot.model === CODEX ? codexDefault || CODEX : slot.model;
+  const authorMatch = (slot) => slot.family === CODEX ? authors.includes(modelOf(slot)) : authorFamilies.has(slot.family);
+  const unknownCodex = authors.includes(CODEX)
+    || (authorFamilies.has(CODEX) && !codexDefault && (!list || list.some((entry) => entry.model === CODEX)));
+  const allowed = (slot) => !dropped.includes(slot.family)
+    && (slot.family !== CODEX || (codex !== 'absent' && !unknownCodex));
+  const legacySlot = (model) => readerSlot({ model, effort: effortFor(preset, readerFamily(model), { seat: true }) });
+
+  if (!resolved.lists) {
+    const pair = (job === 'review' ? pairsFor(preset) : []).map((models) => models.map(legacySlot))
+      .find((slots) => slots.every(allowed) && !authorMatch(slots[0]));
+    return { slots: pair?.slice(0, count) || [], authorLeads: false };
+  }
+
+  const candidates = (list || []).map(readerSlot).filter((slot) => allowed(slot)
+    && (slot.family !== CODEX || eligibleCodex(slot, codexModels)));
+  const independent = candidates.filter((slot) => !authorMatch(slot));
+  const slots = [];
+  const canAdd = (slot) => slots.length < count && !slots.some((seated) => seated.family === slot.family);
+  for (const model of pick) {
+    const family = readerFamily(model);
+    const slot = model === CODEX
+      ? independent.find((entry) => entry.family === CODEX) || legacySlot(CODEX)
+      : readerSlot({ model, effort: (list || []).find((entry) => entry.model === model || (family !== CODEX && entry.model === family))?.effort ?? null });
+    if (allowed(slot) && (slot.model !== CODEX || codexDefault || !authorFamilies.has(CODEX)) && canAdd(slot)) slots.push(slot);
+  }
+  for (const slot of independent) {
+    if (canAdd(slot)) slots.push(slot);
+  }
+  const authorLeads = authorFill && slots.length === 0 && candidates.some(authorMatch) && count > 0;
+  if (authorFill) {
+    for (const slot of candidates) {
+      if (authorMatch(slot) && canAdd(slot)) slots.push(slot);
+    }
+  }
+  return { slots, authorLeads };
+}
 
 function frontmatterModel(file) {
   try {
@@ -240,13 +313,14 @@ const seatRow = (setting, value, row) => ({ setting, value, need: row.need, why:
 /**
  * What a preset runs, one row per setting, in plain words built from the table: `{ setting, value }`, and
  * on a seat's row its `need` (1–10, how much a better model changes the result) and `why`. The command's
- * `show` prints these rows, and the rule section's table holds the same rows for both presets.
+ * `show` prints these rows, and the rule section's table holds the same rows for each preset.
  */
 function describeRows(preset) {
   const p = presetOf(preset);
+  const lists = p.lists;
   const effortList = Object.entries(p.effort.byFamily).map(([f, e]) => `${display(f)} ${e}`).join(', ');
   const late = p.fallback.late;
-  const never = late.neverSpend.length ? ` or ${listText(late.neverSpend)}` : '';
+  const heldBack = late.neverSpend.length ? ` (${listText(late.neverSpend)})` : '';
   const neverFresh = late.neverSpend.length ? `, never ${listText(late.neverSpend)}` : '';
   const authorGear = perRoleText(GEAR_AUTHORS, (role) => {
     const a = authorModel(preset, role);
@@ -254,22 +328,32 @@ function describeRows(preset) {
   });
   const refused = refusedReaderFor(preset);
   return [
-    ...Object.entries(p.authors).map(([role, row]) => seatRow(AUTHOR_LABELS[role] || role, seatText(row, "the agent file's model and effort"), row)),
+    ...Object.entries(p.authors).map(([role, row]) => {
+      const seat = p.seats?.[role];
+      const value = seat ? `Codex (${seat.codexModel}) at ${seat.effort} where its seat is open`
+        : seatText(row, "the agent file's model and effort");
+      return seatRow(AUTHOR_LABELS[role] || role, value, row);
+    }),
     ...Object.entries(p.readers).map(([role, row]) => seatRow(`${display(role)}, where the spawn names no model`, seatText(row, "the agent file's model"), row)),
-    seatRow('Second reader', `${display(p.secondReader.default)}, or ${Object.entries(p.secondReader.besidePrimary).map(([k, v]) => `${display(v)} beside a ${display(k)} primary`).join(', ')}`, p.secondReader),
+    seatRow('Second reader', lists ? 'the second resolved review slot' : `${display(p.secondReader.default)}, or ${Object.entries(p.secondReader.besidePrimary).map(([k, v]) => `${display(v)} beside a ${display(k)} primary`).join(', ')}`, p.secondReader),
     { setting: 'Refused-start reader: a code review\'s first reader when its reader family is refused and Codex is absent', value: refused ? display(refused) : 'none' },
-    ...HELPER_JOBS.map((j) => seatRow(`Helper job ${j}`, seatText(p.jobs[j], 'today'), p.jobs[j])),
+    ...HELPER_JOBS.map((j) => seatRow(`Helper job ${j}`, lists ? `the first resolved ${j} slot` : seatText(p.jobs[j], 'today'), p.jobs[j])),
     { setting: 'Claude fallback of a helper job on Codex', value: HELPER_JOBS.map((j) => `${j} ${seatText(p.jobs[j].codexFallback, 'today')}`).join('; ') },
     ...Object.entries(p.types).map(([type, row]) => seatRow(`Helper type ${type}`, seatText(row, "Claude Code's own default"), row)),
     { setting: "Other nexus plugins' agents", value: seatText(p.otherAgents, "the agent file's model and effort") },
-    seatRow('Done check', seatText(p.jobs.doneCheck, "the architect's resolved model"), p.jobs.doneCheck),
+    seatRow('Done check', lists ? "Codex where the doneCheck list's first slot is Codex, else the architect's resolved model"
+      : seatText(p.jobs.doneCheck, "the architect's resolved model"), p.jobs.doneCheck),
     { setting: 'Effort by model', value: `${effortList} (${p.effort.scope})` },
     { setting: 'Lowest effort on the light lane', value: p.lightLaneFloor },
-    { setting: 'Reader pairs, in order', value: p.pairs.map((pair) => pair.map(display).join(' + ')).join('; ') },
-    { setting: 'Third reader under a gear that adds one', value: `the family the pair lacks among ${listText(p.claudeFamilies)}; none where none is left` },
+    { setting: 'Reader pairs, in order', value: lists ? 'the resolved review list' : p.pairs.map((pair) => pair.map(display).join(' + ')).join('; ') },
+    ...Object.keys(presetOf(DEFAULT_PRESET).lists).map((job) => ({
+      setting: `Job list: ${job}`,
+      value: lists?.[job]?.map(({ model, effort }) => `${familyOf(model) ? display(model) : model} at ${effort}`).join('; ') ?? '—',
+    })),
+    { setting: 'Third reader under a gear that adds one', value: lists ? 'the third resolved review slot' : `the family the pair lacks among ${listText(p.claudeFamilies)}; none where none is left` },
     { setting: 'Gear reader tokens', value: `${Object.entries(p.substitute).map(([from, to]) => `${display(from)} reads as ${display(to)}`).join(', ')}; a repeat takes the family the pair lacks, or is dropped` },
-    { setting: 'After an early Codex drop', value: `the next eligible pair from pair ${p.fallback.early.freshFrom} on` },
-    { setting: 'After a late Codex drop', value: `the second reader is promoted unless it is the author's family${never}; else a fresh main from pair ${late.freshFrom} on${neverFresh}` },
+    { setting: 'After an early Codex drop', value: lists ? 'resolve the review again with Codex dropped' : `the next eligible pair from pair ${p.fallback.early.freshFrom} on` },
+    { setting: 'After a late Codex drop', value: lists ? 'resolve the review again with Codex dropped' : `promote the second reader unless its model matches a writer${heldBack ? ` or its family is held back${heldBack}` : ''}; else a fresh main from pair ${late.freshFrom} on${neverFresh}` },
     { setting: 'Author model and effort under a gear (rows 8 and 9)', value: authorGear },
     { setting: 'Never suggested by the config advisor', value: listText(p.neverSuggested) },
   ];
@@ -306,7 +390,7 @@ function resolvePreset({ root, env = process.env, config: given } = {}) {
     preset = profilePreset || DEFAULT_PRESET;
     source = profilePreset ? 'profile' : 'unset';
   }
-  const allowed = new Set(presetOf(profilePreset || DEFAULT_PRESET).claudeFamilies.concat(presetOf(DEFAULT_PRESET).claudeFamilies));
+  const allowed = new Set(presetOf(profilePreset || CONSENT_BASELINE).claudeFamilies.concat(presetOf(CONSENT_BASELINE).claudeFamilies));
   const guarded = (family) => family !== null && !allowed.has(family) && TABLE.families.some((f) => f.name === family)
     && consent.some((n) => presetOf(n).claudeFamilies.includes(family));
   const jobs = {};
@@ -330,14 +414,45 @@ function resolvePreset({ root, env = process.env, config: given } = {}) {
     if (guarded(familyOf(entry.model))) { ignored.push({ key: `${role}.model`, value: entry.model }); delete entry.model; }
     agents[role] = entry;
   }
-  return { preset, source, ignored, profilePreset, jobs, agents, seats };
+  const active = presetOf(preset);
+  for (const [role, value] of Object.entries(active.seats || {})) {
+    if (Object.hasOwn(config, role)) continue;
+    const seat = seatSetting(role, value);
+    if (seat.setting) seats[role] = { ...seat.setting, source: preset };
+  }
+  const baseLists = active.lists;
+  const lists = baseLists && Object.fromEntries(Object.entries(baseLists).map(([job, entries]) => [job, entries.map((entry) => ({ ...entry }))]));
+  const repoLists = [];
+  if (lists) {
+    for (const [job, value] of Object.entries(objectOr(config.lists) || {})) {
+      const key = `lists.${job}`;
+      if (!Object.hasOwn(lists, job) || !Array.isArray(value) || value.length === 0) {
+        ignored.push({ key, value, why: 'expected a non-empty list for a known job' });
+        continue;
+      }
+      const valid = [];
+      for (const [i, entry] of value.entries()) {
+        const model = entry?.model;
+        const family = familyOf(model);
+        const wellFormed = objectOr(entry) && Object.keys(entry).length === 2 && codexEntry.modelName(model)
+          && (!family || model === family) && codexEntry.effortLevel(entry.effort);
+        if (!wellFormed || guarded(family)) {
+          ignored.push({ key: `${key}[${i}]`, value: entry, why: wellFormed ? 'held by the profile consent guard' : 'expected a model and valid effort' });
+        } else valid.push({ model, effort: entry.effort });
+      }
+      if (valid.length) {
+        lists[job] = valid;
+        repoLists.push(job);
+      }
+    }
+  }
+  return { preset, source, ignored, profilePreset, jobs, agents, seats, ...(lists && { lists, repoLists }) };
 }
 
 /** A role's Codex entry read as its seat setting, or why it is read as unset. */
 function seatSetting(role, value) {
-  const row = codexEntry.seatRow(role);
   const read = codexEntry.codexEntry(value);
-  if (!row || row.codexSeat !== 'yes') {
+  if (!codexEntry.seatAllowed(role)) {
     return { why: `the ${role}'s seat does not run on Codex (${codexEntry.seatAnswer(role)}), so the entry is read as unset` };
   }
   if (!read || !read.textModel) {
@@ -354,7 +469,10 @@ function withLock(target, fn) {
   const token = fileLock.newToken();
   const start = Date.now();
   while (!fileLock.take(lock, { staleMs: STALE_MS, token })) {
-    if (Date.now() - start > WAIT_MS) throw new Error(`${lock} is held by another writer — try again in a moment`);
+    if (Date.now() - start > WAIT_MS) {
+      const left = fileLock.stranded(lock);
+      throw new Error(left ? `${lock} cannot be taken: ${left} was left by a writer that stopped while clearing it — remove it by hand` : `${lock} is held by another writer — try again in a moment`);
+    }
     sleep(POLL_MS);
   }
   try { return fn(); } finally { fileLock.release(lock, token); }
@@ -421,6 +539,6 @@ function setRepoKey(root, key, value) {
 module.exports = {
   AS_TODAY, table, families, familyPattern, familyOf, presetNames, presetName, pairsFor, thirdReaderFor, pairToken,
   seatFor, codexFallbackFor, effortFor, agentRole, gearEffortFamily, neverSuggested, authorModel, refusedReaderFor, standardModelFor,
-  describeRows, perRoleText, GEAR_AUTHORS, NO_ROLE_AUTHOR,
+  describeRows, perRoleText, GEAR_AUTHORS, NO_ROLE_AUTHOR, readersFor, codexAccount, eligibleCodex,
   profileDir, profileFile, readProfile, writeProfile, resolvePreset, updateRepoConfig, setRepoKey,
 };

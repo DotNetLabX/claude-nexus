@@ -124,6 +124,7 @@ const { splitChain, filesCommand, routeFiles } = require('./lib/compose-test-com
 const { RUNNERS, loadRunner, repoRunners, runnerOf } = require('./lib/test-runners');
 const { isSafeId } = require('./lib/safe-id');
 const { planFile } = require('./lib/gears');
+const { fullSuiteOn } = require('./lib/full-suite');
 const { exeName, commandsOf } = require('./lib/shell-words');
 const { readHeredocs, HERE_STRING_WORD } = require('./lib/heredocs');
 
@@ -887,11 +888,12 @@ function main(input) {
     logViolation(root, row(check));
     return deny(why);
   };
+  const goOn = `go on — ${fullSuiteOn(root) ? 'the complete run covers it' : 'the close\'s tied runs and CI cover it'}.`;
   const stepCall = (unit = '{unit}', attempt = '{1|2}', slug = '{slug}') =>
     `node "${runnerPath}" --profile fast --step --attempt ${attempt} --agent ${identity} --unit ${unit} --slug ${slug} --changed <every file the step changed> [--files <test files>], with the Bash tool's timeout at 180000 ms`;
   const developerWay = (unit, attempt, slug) => (stepRunner(cfg, root)
     ? `A developer runs tests only as a step run (developer.md § The step test rule): ${stepCall(unit, attempt, slug)}. Where no run is left, write a \`Test problem:\` line in the step block and go on.`
-    : 'This repo\'s test runner has no step run: write a `Test problem:` line in the step block and go on — the complete run covers it.');
+    : `This repo's test runner has no step run: write a \`Test problem:\` line in the step block and ${goOn}`);
   const soloWay = `Run tests through node "${runnerPath}" --profile fast --tied --changed <every file you changed> --slug <slug> (a by-name proof: --profile fast --files <test file>...).`;
 
   const mutationWhy = `a developer's test runs are its step runs; a mutation battery is the reviewer's or a solo's. ${developerWay()}`;
@@ -952,14 +954,14 @@ function main(input) {
   }
   if (args.unit !== unit) return refuse('runner', `--unit ${args.unit === true ? '' : args.unit} is not the unit you are in (${unit}). ${developerWay(unit, undefined, slug)}`);
   const used = units[unit] && Number.isInteger(units[unit].attempts) ? units[unit].attempts : 0;
-  if (used >= 2) return refuse('runner', `both step runs of unit ${unit} are used. Write a \`Test problem:\` line in the step block and go on — the complete run covers it.`);
+  if (used >= 2) return refuse('runner', `both step runs of unit ${unit} are used. Write a \`Test problem:\` line in the step block and ${goOn}`);
   if (args.attempt !== String(used + 1)) return refuse('runner', `the next step run of unit ${unit} is attempt ${used + 1}. ${developerWay(unit, used + 1, slug)}`);
 
   const rel = (f) => path.relative(tree, path.resolve(tree, f)).split(path.sep).join('/');
   if (used === 1) {
     const first = logs().filter((r) => r.source === 'verify-run' && r.step_run === true && r.agent === identity
       && String(r.unit) === unit && r.attempt === 1 && (r.slug === undefined || r.slug === slug)).at(-1);
-    const noRun = `Write a \`Test problem:\` line in the step block and go on — the complete run covers it.`;
+    const noRun = `Write a \`Test problem:\` line in the step block and ${goOn}`;
     if (!first) return refuse('runner', `attempt 1 of unit ${unit} left no record, so it counts as used and not red. ${noRun}`);
     if (!realRed(first)) return refuse('runner', `attempt 2 follows only a real red — a failing test or a failed build, never a pass, a cut or a timeout; attempt 1 of unit ${unit} read ${first.verdict}${first.reason ? ` (${first.reason})` : ''}. ${noRun}`);
     // The failed tests' files; where a failure names none, every file attempt 1 ran — the named ones and the ones

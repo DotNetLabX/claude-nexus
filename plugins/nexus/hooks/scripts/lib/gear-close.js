@@ -43,7 +43,8 @@
  *
  * A cut record is never green, and a newer red takes back an older green. Records of another slug or
  * tree never count. `closeGear` names the plan header's gear (`lib/gears.js`) only where its complete run
- * runs once beside the reviewers, for the routing: there a red joins that gear's fix round. pipeline-gate.js
+ * runs once beside the reviewers and the repo's full suite is on (lib/full-suite.js), for the routing: there a red
+ * joins that gear's fix round. pipeline-gate.js
  * invariant (4) reads the evidence, and the campaign plugin's closing check loads it from the installed
  * core. verify-run.js writes a fast record's `delta_base` and `delta_hashes` through `deltaSince`.
  *
@@ -59,6 +60,7 @@ const { treeHash, fileHashes, sameTree, isExcluded } = require('./tree-hash');
 const { isFilteredFull } = require('./test-runners');
 const { countsAsPassing, untouchedTimeouts } = require('./run-verdict');
 const { resolveDefaultBranch } = require('./default-branch');
+const { fullSuiteOn } = require('./full-suite');
 
 const GIT_TIMEOUT_MS = 10000;
 const ONCE = 'once beside the reviewers';
@@ -66,8 +68,9 @@ const COMPLETE_RUN_SETTING = 12;
 const NAME_FILTER = /--test-name-pattern|--test-only/;
 const CLASS_SELECTION = /--filter\s+"FullyQualifiedName~[^"\s|&!=~()]+(?:\|FullyQualifiedName~[^"\s|&!=~()]+)*"/g;
 
-/** The feature's gear when its complete run runs once beside the reviewers, else null. */
+/** The feature's gear when its complete run runs once beside the reviewers and the full suite is on, else null. */
 function closeGear(slug, { tree, root, env } = {}) {
+  if (!fullSuiteOn(root)) return null;
   try {
     if (!planHeader(slug, { tree, root }).gear) return null;
     const v = valueOf({ setting: COMPLETE_RUN_SETTING, slug, tree, root, env });
@@ -378,4 +381,4 @@ function labelsOnly({ records, index, tree }) {
     && labels.some((l) => l.files[p] && l.files[p].before === hashIn(complete.file_hashes, p) && l.files[p].after === hashIn(now, p)));
 }
 
-module.exports = { closeGear, closeEvidence, premergeEvidence, deltaSince, labelsOnly, failuresOf, targetOf, ranTestOf, ONCE };
+module.exports = { closeGear, closeEvidence, premergeEvidence, deltaSince, labelsOnly, failuresOf, targetOf, ranTestOf, changeBase, ONCE };

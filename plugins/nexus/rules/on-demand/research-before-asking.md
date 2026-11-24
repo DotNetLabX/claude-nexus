@@ -153,8 +153,9 @@ Off, every change and question goes by the rules below, technical ones included,
   source's only.
 - **Say it, never point at it.** In every turn on a source — the table, an answer, a critique, a
   question — never use a point number, a file name, an identifier or a finding without saying in
-  plain words what it is, in the same sentence. Check before sending: could the owner react without
-  opening any file?
+  plain words what it is, in the same sentence. A file or source the owner was handed counts as
+  unread: a question about it opens with what happens today, in one or two plain sentences, before
+  what you propose. Check before sending: could the owner react without opening any file?
 - **A topic that asks for a fact is looked up first** ("investigate whether X supports Y", "check
   what Z does"), whatever else it contains, as any fact you do not know (§ A fact you do not know) —
   before the table is shown, so every row's type is known; then take the topic as the lookup leaves
@@ -314,6 +315,11 @@ label or its description; say the thing it stands for.
 plain version does not fit the limits above, you are not ready to ask — rethink the question, never
 compress it.
 
+**The owner has read none of the files behind a question**, so the ask, or the prose above the box,
+says what happens today before what is proposed: the interview's rule to say a thing, never point at
+it, binds every ask (→ § Interview). It goes in that prose or the relaxed form's existing
+paragraph, never as a sentence added to the box, and changes no limit.
+
 **One decision per question; at most three questions per call.** Several questions in one call are
 welcome. A question bundling two decisions is two questions, and a fourth question is a second call.
 Where the `research` skill (`nexus-pro`) is in your skill list, a research companion counts as one
@@ -383,7 +389,7 @@ than refused in a spawned one**, where a refusal cannot reach the tool. The chec
 these thirteen and nothing else, each per question except (j), which is per call; a refusal on the
 session's away mark is not one of them — it is a refusal on the session's state, and it names no check
 (→ agents-workflow.md § Owner-away runs). A refusal names
-**every** check that failed, so one rewrite fixes all, ordered as below so the one named first is the
+**every** check that failed, with the text that failed where the boundary knows it, so one rewrite fixes all, ordered as below so the one named first is the
 one to fix first: (a) `line count` — at most two lines, exactly one question mark, on the question
 sentence, which is the whole first line;
 (b) `line set` — no blank line, every line ending with a sentence end, a paragraph of at most three
@@ -391,7 +397,8 @@ sentences in an ordinary ask and two in a routine ask, and no line opening with 
 word or a bullet, a routine line's `{catalogue name}, routine:` opening excepted; (c) `(Recommended) label` on exactly one option, listed first — in a multi-select
 question on one or more, listed first and together;
 (d) `confidence clause`, well-formed at the end of each recommended option's description and nowhere else;
-(e) `internal id` — in the question text, the header or an option; (f) `vocabulary word`;
+(e) `internal id` — in the question text, the header or an option, save the name a `slug confirmation`
+routine line proposes, which its question and options may show; (f) `vocabulary word`;
 (g) `pointer phrase`; (h) `markdown emphasis` in the question text; (i) `bracket` — none in the
 question text, and in an option only the `(Recommended)` label; (j) `three questions per call`;
 (k) `header` — not an internal id and not the word `routine`; (l) `routine line` — only with a
@@ -529,9 +536,9 @@ Who reviews
 Which model reviews this step?
 Reviewer pairing check, routine: Opus wrote the code, and the reviewer is set to Opus too.
   ○ Sonnet (Recommended) — A different model family, and the first reader named when Codex is not installed.
-    Confidence: high — the rule for a matching model family names the first listed reader that did not write it.
+    Confidence: high — the first eligible reader uses a different model from the writer.
   ○ Fable — A different model family and the strongest, at the highest cost.
-  ○ Keep Opus — The same family as the writer, so the check is skipped for this run.
+  ○ Keep Opus — The same model as the writer, so the check is skipped for this run.
 ```
 
 The same routine question after the owner answered `explain` — its long form, in the relaxed form,
@@ -540,9 +547,9 @@ with a why sentence the routine ask did not carry and the same options word for 
 ```
 Who reviews
 Which model reviews this step?
-A model that checks its own family's work tends to agree with it, so a blind spot in the code survives. This time Opus wrote the code, and the reviewer is set to Opus too.
+A model can miss the same issues when it checks its own work. This time Opus wrote the code, and the reviewer is set to Opus too.
   ○ Sonnet (Recommended) — A different model family, and the first reader named when Codex is not installed.
-    Confidence: high — the rule for a matching model family names the first listed reader that did not write it.
+    Confidence: high — the first eligible reader uses a different model from the writer.
   ○ Fable — A different model family and the strongest, at the highest cost.
-  ○ Keep Opus — The same family as the writer, so the check is skipped for this run.
+  ○ Keep Opus — The same model as the writer, so the check is skipped for this run.
 ```

@@ -27,8 +27,8 @@ hyphen joins the words, and a trailing `s` or `es` on the last word still matche
 
 **Who changes the lists.** The learner proposes a word for the vocabulary at consolidation when a
 sighting shows the owner had to ask what it meant — this document ships with the plugin, so a
-consuming project routes that proposal through its plugin-feedback file rather than editing here. A
-word leaves the shipped lists only by the owner's ruling. A consuming project that reads one of the
+consuming project files the sighting (the owner had to ask what a word meant) in its plugin-feedback
+file, not a word to add, and never edits here. A word leaves the shipped lists only by the owner's ruling. A consuming project that reads one of the
 **vocabulary** words as its own plain English allows it for itself, under `askWords.allow` in
 `.claude/nexus-agents.json`, and is then not refused on it; the pointer phrases carry no such
 allowance, because pointing at a fact instead of carrying it is never a project's own plain English:

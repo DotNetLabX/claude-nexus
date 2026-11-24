@@ -11,12 +11,13 @@
  *
  * THE HAND-BACK ROWS. The job's start is a `spawn` row whose target is the seat's role, its end a `handback` row
  * whose agent id is `codex-{job id}` and whose agent type is the role, both built by lib/handoff-log.js and both
- * marked `engine: "codex"`.
+ * marked `engine: "codex"`. The `handback` row is written once per job, so a finish resumed after a stop never
+ * writes a second.
  *
  * THE STEP-RUN RECORDS. A job runs the step form with the tree as its project root, so its records land in the
  * tree's `.claude/audit/verify-verdict.json`. A record is the job's only where it is a step run, its agent is the
- * seat's identity, its own `tree` is the job's tree and it was written after the job's intent: a Codex server
- * another session started can hand a job that session's environment. Each is appended to the session root's log
+ * seat's identity, its own `tree` is the job's tree and it was written after the job's intent, so a record another
+ * run left in the tree is never taken for the job's. Each is appended to the session root's log
  * once, matched by its run id, with the session and the session's token filled in where its own are empty. Where
  * the tree is the session root the records are already there and nothing is carried.
  */
@@ -28,6 +29,7 @@ const { treeKey } = require('./codex-seat');
 
 const ENGINE = 'codex';
 const VERDICTS = path.join('.claude', 'audit', 'verify-verdict.json');
+const HANDOFFS = path.join('.claude', 'audit', 'handoff.jsonl');
 
 const seatIdentity = (role) => `codex-seat-${role}`;
 
@@ -39,8 +41,12 @@ function writeStartRow({ root, role, token, session, ts = new Date().toISOString
   appendHandoff(root, { ...targetRow({ ts, event: 'spawn', target: role, token, session }), engine: ENGINE });
 }
 
+/** The job's `handback` row, once: a row already naming the job's agent id is never written again. */
 function writeEndRow({ root, role, jobId, token, session, ts = new Date().toISOString() }) {
-  appendHandoff(root, { ...handbackRow({ ts, agentId: `codex-${jobId}`, agentType: role, token, session }), engine: ENGINE });
+  const agentId = `codex-${jobId}`;
+  if (readLines(path.join(root, HANDOFFS)).some((r) => r && r.event === 'handback' && r.agent_id === agentId)) return false;
+  appendHandoff(root, { ...handbackRow({ ts, agentId, agentType: role, token, session }), engine: ENGINE });
+  return true;
 }
 
 function readLines(file) {

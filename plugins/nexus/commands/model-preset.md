@@ -1,6 +1,6 @@
 ---
-description: Show the model presets side by side and the one in force, or choose this Claude Code profile's preset (standard or fable) - add --repo to set it for this repo only
-argument-hint: "[standard | fable | set {preset} [--repo]]"
+description: Show the model presets side by side and the one in force, or choose this Claude Code profile's preset (standard, fable, or speed) - add --repo to set it for this repo only
+argument-hint: "[standard | fable | speed | set {preset} [--repo]]"
 disable-model-invocation: true
 ---
 !`node "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/model-preset.js" '$ARGUMENTS'`
@@ -11,11 +11,11 @@ it was going to make. Relay it as follows, adding nothing about models the resul
 
 - **With no argument** it shows the presets. Say which preset is in force (`preset`) and where it
   comes from (`source`): `profile` is this Claude Code profile's choice, `repo` is this repo's own
-  setting, and `unset` means nothing was chosen, so the standard preset runs. Then show `presets` as
+  setting, and `unset` means the speed preset runs by default. Then show `presets` as
   one table: a row per `runs` entry's `setting`, a column per preset in `presets` order, each cell its
   `value`, with the column of the preset in force marked, then a Need and a Why column from the row's
-  `need` and `why` (blank where the row has none). Where `ignored` lists entries, say each one
-  is a repo setting this profile has not chosen, so it is not used here. End with the profile file
+  `need` and `why` (blank where the row has none). Where `ignored` lists entries, report each setting
+  and its `why` when given. End with the profile file
   (`profilePath`) and the two ways to change: `/nexus:model-preset {preset}` for every repo this
   profile opens, and `--repo` added for this repo only.
 - **After a preset name or `set`** it names the preset written (`set`), where (`written`, the file

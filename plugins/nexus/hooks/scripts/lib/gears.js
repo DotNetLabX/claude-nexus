@@ -169,6 +169,7 @@ function presetCells(cells, o) {
       const prose = reader.text !== reader.value && parts.length === 3 ? `${parts[0]} + ${parts[1]}, plus ${parts[2]}` : mapped;
       cells[3] = { value: mapped, text: prose };
     }
+    if (ctx?.lists && reader.value.split(' + ').length === 3) cells[3].readerCount = 3;
   }
   for (const row of [8, 9]) {
     if (cells[row] && cells[row].value === PRESET_TOKEN) {
@@ -341,7 +342,8 @@ function cellAnswer(row, cell) {
 
 /**
  * `{setting, value, source, gear, gearSource, state, text?}` — the value of one row, `source` naming
- * the rung it came from (`explicit | campaign | repo | gear | default`).
+ * the rung it came from (`explicit | campaign | repo | gear | default`). Speed's three-reader gear
+ * also returns `readerCount`; the pairing check passes its winning pair to the model resolver.
  */
 function valueOf(o) {
   const row = Number(o.setting);
@@ -352,12 +354,18 @@ function valueOf(o) {
   const fg = featureGear(o);
   const g = fg.gear ? resolveGear(fg.gear, o) : null;
   let cell = g && g.gear ? g.cells[row] : null;
+  const readerCount = row === 3 ? cell?.readerCount : undefined;
+  if (readerCount) {
+    const value = cell.value.split(' + ').slice(0, 2).join(' + ');
+    cell = { value, text: `${value}, plus a reader from the review list` };
+  }
   if (cell && cell.perRole && (row === 8 || row === 9)) {
     const ctx = presetContext(o);
     const value = presetAuthorValue(ctx ? ctx.preset : presets.presetNames()[0], row, o.role);
     cell = value ? { value, text: value } : { value: 'as today', text: 'as today' };
   }
   const base = { setting: row, gear: g && g.gear ? g.gear : null, gearSource: g && g.gear ? fg.source : null, state: fg.state };
+  if (readerCount) base.readerCount = readerCount;
   if (fg.missing && fg.missing.length) base.missing = fg.missing;
   if (o.explicit !== undefined && o.explicit !== null && o.explicit !== true) return { ...base, value: String(o.explicit), source: 'explicit' };
   const names = cell && !NO_VALUE.has(cell.value);

@@ -4,7 +4,7 @@
  * never changes a setting.
  *
  * WHY AN ADVISORY AND NOT A GATE. The only warning wanted is while the user is *configuring* models:
- * check whether a producer and its checker resolve to the same family, and if so say so and suggest an
+ * check whether a producer and its checker resolve to the same model, and if so say so and suggest an
  * alternate. The user can always supersede, so no runtime model gate ships, and this is the whole
  * mechanism.
  *
@@ -18,13 +18,12 @@
  * tree: `{project}/agents/` exists in no consuming repo, so a project-relative read would fail silent
  * forever with a green test sitting over it. A pair whose two seats both come from the preset is never
  * reported: the preset's reader-pair order already seats another family at spawn. A seat's value is
- * compared by the family it names (a full model id reads as its family), and a name outside the
- * table's families is its own family — kept, compared and suggested like any other. The job checks
+ * compared by its Claude family or by its exact Codex model. Names outside the Claude table are
+ * kept as written for Codex comparisons. The job checks
  * below use the same list, since a job value must be one of the families — save `codex`:
- * usable at `doneCheck`, where a repo may name Codex as its done check, and at the helper jobs
- * (`discovery`, `audit`, `general`), where it may also be `{ "model": "codex", "effort": "{level}" }`
- * with an optional `"codexModel": "{name}"`, whose value is the Codex job helper's to check at start (the
- * entry's keys and the Codex levels are lib/codex-entry.js's, the one reader of a Codex entry);
+ * usable at `doneCheck` and the helper jobs (`discovery`, `audit`, `general`), either bare or as an
+ * object naming its effort and optional Codex model. The launcher checks the name at start, and
+ * lib/codex-entry.js owns the entry's keys and effort levels.
  * at a miner key `codex` draws a line naming nexus-miner's mining job table, where Codex already leads
  * the jobs that only read; at every other job `codex` draws the same outside-the-families line, and it
  * is never listed as a family.
@@ -38,14 +37,15 @@
  *
  * NO SECOND ADVISORY. On per-agent entries only the PAIRING is reported. A producer seat may name any
  * model — policing the value would re-impose exactly what the reversal freed. One exception is
- * the `jobs` and `codex` blocks: their keys and values are closed lists, so a typo there is worth one
+ * the `jobs`, `codex` and Speed `lists` blocks. A malformed or consent-held list entry gets a line of its own.
+ * The first two blocks have closed lists of keys and values, so a typo there is worth one
  * line each. A further exception is the top-level `fullChecks` key, the path patterns the architect
  * reads to pick a plan's check level: a value that is not a list of non-blank strings draws one line.
  * A per-agent `effort` key draws one line too, saying what it does, never that it is wrong.
  *
  * A ROLE'S CODEX ENTRY (`"developer": { "model": "codex", … }`) is a seat setting, never the seat's Claude
- * model: a seat resolves as if it were unset, and its `effort` draws no per-agent effort line, since a seat's
- * effort is sent to Codex. Where the model preset library reads the entry as unset — the role's row allows no
+ * model. Its `effort` draws no per-agent effort line, since a seat's effort is sent to Codex. Where
+ * the model preset library reads the entry as unset — the role's row allows no
  * Codex seat, or the entry carries a key outside `model`, `effort` and `codexModel` — one line names it with
  * that reason; a well-shaped entry at a seat that allows one draws nothing, whatever model it names.
  *
@@ -111,6 +111,8 @@ function family(value) {
  * unresolved.
  */
 function resolveSeat(agent, cfg, preset) {
+  const codex = preset.seats[agent];
+  if (codex) return { model: codex.codexModel || '', from: codex.source ? 'preset' : 'repo', engine: 'codex' };
   const entry = cfg && cfg[agent];
   if (entry && typeof entry.model === 'string' && entry.model.trim() && !ce.readsCodex(entry.model)) {
     return { model: entry.model.trim().toLowerCase(), from: 'repo' };
@@ -179,11 +181,18 @@ function checkJobs(jobs, cfg, preset) {
       }
       continue;
     }
-    if (HELPER_JOBS.includes(key) && (isCodex(v) || isObject(v))) {
-      if (isObject(v)) out.push(...checkCodexJob(key, v));
+    if ((HELPER_JOBS.includes(key) || key === 'doneCheck') && (isCodex(v) || isObject(v))) {
+      const problems = isObject(v) ? checkCodexJob(key, v) : [];
+      out.push(...problems);
+      const developerModel = preset.seats.developer?.codexModel;
+      if (key === 'doneCheck' && developerModel && (isCodex(v) || ce.codexEntry(v)?.textModel)) {
+        const model = ce.modelName(v.codexModel) || presets.codexAccount().codexDefault;
+        if (model === developerModel) {
+          out.push(`${PREFIX} jobs.doneCheck resolves to ${model}, the developer's Codex model — the done check would grade work from its own model. Your setting stands.`);
+        }
+      }
       continue;
     }
-    if (key === 'doneCheck' && isCodex(v)) continue;
     if (MINER_JOBS.includes(key) && isCodex(v)) {
       out.push(`${PREFIX} jobs.${key} is ${show(v)} — Codex already leads the mining jobs that only read, by nexus-miner's ` +
         `mining job table (tools/stage-models.json); a miner key names a Claude family (${FAMILIES.join(', ')}) ` +
@@ -194,7 +203,8 @@ function checkJobs(jobs, cfg, preset) {
     if (!f) { out.push(valueLine(key, v)); continue; }
     if (NOT_A_CHECKER.includes(f) && CHECKER_JOBS.includes(key)) {
       out.push(`${PREFIX} jobs.${key} is ${f}, which is not a checker — the spawn reads it as unset.`);
-    } else if (key === 'doneCheck' && family(resolveModel('developer', cfg, preset)) === f && f !== presetDoneCheckFamily(preset)) {
+    } else if (key === 'doneCheck' && !preset.seats.developer
+      && family(resolveModel('developer', cfg, preset)) === f && f !== presetDoneCheckFamily(preset)) {
       out.push(`${PREFIX} jobs.doneCheck is ${f}, the developer's family — the done check would grade work from its own family; your setting stands.`);
     }
   }
@@ -243,7 +253,7 @@ process.stdin.on('end', () => {
     const abs = path.isAbsolute(fp) ? fp : path.join(root, fp);
     const cfg = JSON.parse(fs.readFileSync(abs, 'utf8'));
     const resolved = presets.resolvePreset({ config: cfg, env: process.env });
-    const preset = { name: resolved.preset };
+    const preset = { name: resolved.preset, seats: resolved.seats };
     const NEVER_SUGGESTED = presets.neverSuggested(preset.name);
     const neverText = NEVER_SUGGESTED.join(', ');
     const notCheckerText = NOT_A_CHECKER.join(', ');
@@ -258,7 +268,7 @@ process.stdin.on('end', () => {
       const cs = resolveSeat(checker, cfg, preset);
       const pm = ps.model;
       const cm = cs.model;
-      if (!pm || !cm || family(pm) !== family(cm)) continue;
+      if (!pm || !cm || ps.engine !== cs.engine || family(pm) !== family(cm)) continue;
       if (ps.from === 'preset' && cs.from === 'preset') continue;
       const pf = family(pm);
       // The LAST eligible entry — the cheapest. A suggestion only: the reader-pair list picks every
@@ -273,8 +283,7 @@ process.stdin.on('end', () => {
           `reader-pair list puts a main reader from another family in the seat. Suggested from modelRanking ` +
           `(${ranking.join(' > ')} order): to make it explicit set ${checker} to ${alternate}; or keep it — ` +
           `your setting stands and the seat substitutes.`
-        // Nothing to suggest, so no empty slot reaches the user. The seat still pairs: the list's last
-        // two pairs always leave a main reader outside the author's family.
+        // The ranking is advisory. The spawn-time pairing rule still runs without a suggestion.
         : `nexus-agents.json: ${checker} and ${producer} both resolve to ${pf}, and the ` +
           `${ranking.join(' > ')} order leaves no eligible alternate once ${pf}, ${neverText} and ` +
           `${notCheckerText} are removed (${neverText} is never suggested — it stays the user's ` +
@@ -284,7 +293,8 @@ process.stdin.on('end', () => {
       );
     }
     for (const i of resolved.ignored) {
-      if (i.why) out.push(`${PREFIX} ${i.key} is a Codex entry, but ${i.why} — the ${i.key} runs on the model it has without it.`);
+      if (i.key.startsWith('lists.')) out.push(`${PREFIX} ${show(i.key)} is ${show(i.value)} — ${i.why}.`);
+      else if (i.why) out.push(`${PREFIX} ${i.key} is a Codex entry, but ${i.why} — the ${i.key} runs on the model it has without it.`);
     }
     if (isObject(cfg.jobs)) out.push(...checkJobs(cfg.jobs, cfg, preset));
     if (isObject(cfg.codex)) out.push(...checkCodex(cfg.codex));

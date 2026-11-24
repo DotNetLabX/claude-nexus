@@ -32,10 +32,21 @@ owner per fact — point at the split, don't restate it.)
 
 ### 1. Scope the edit
 
-Make the **smallest coherent edit** that lands the change and leaves no surface contradicting another.
-When several related fixes are in flight, apply them as one **consolidating pass** — net complexity
-flat or down, never additive patching. The consolidating-pass posture is `improve-skills`' fix-channel
-language; follow it there rather than re-deriving it here.
+**Check the rule before you change it.** Read the rule you are about to touch and the rules around
+it, then ask:
+
+1. Does it still apply?
+2. Is it still useful, or does it guard a case that no longer happens?
+3. Can I delete it, or merge it with a neighbour?
+4. Can I rewrite it so the new case fits, instead of adding an exception beside it?
+
+Add text only after that, as much as the change really needs. This is a judgement, never a size
+limit. A review finding goes through the same check before it becomes a rule. A rule the owner ruled
+on stays unless the owner agrees.
+
+Then make the **smallest coherent edit** that lands the change and leaves no surface contradicting
+another. Apply several related fixes as one **consolidating pass**, the `improve-skills` fix-channel
+posture; follow it there rather than re-deriving it here.
 
 ### 2. Pre-edit sweeps (executed, pasted — never retyped)
 

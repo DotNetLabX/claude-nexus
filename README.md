@@ -67,6 +67,7 @@ Every extension depends on `nexus`, so installing one installs the core with it.
 | [**nexus-product-jira**](#nexus-product-jira) | That lane on Jira Cloud | `DotNetLabX/claude-nexus-product-jira` |
 | [**nexus-factory**](#nexus-factory) | A whole product built while you are away — as many features as you give it | `DotNetLabX/claude-nexus-factory` |
 | [**nexus-digital-you**](#nexus-digital-you) | A digital you that learns how you decide | `DotNetLabX/claude-nexus-digital-you` |
+| [**nexus-writer**](#nexus-writer) | Articles with outside readers, original pictures and a campaign calendar | `DotNetLabX/claude-nexus-writer` |
 
 Each paid plugin lives in its own private repository, which is its own marketplace and carries its install lines.
 
@@ -87,7 +88,7 @@ Each paid plugin lives in its own private repository, which is its own marketpla
 - **Custom gears — your own pipeline gear.** A new name, a base gear, and only the settings it changes.
 - **Flow atlas — which classes run for each entry point.** One page per endpoint, route, job or consumer, down to storage, marked stale the moment the code moves.
 - **Draw mockup — the screens your design left out, drawn before anyone builds them.** One clickable page in your app's own look, every piece marked as from the design, asked for by the spec, or new — and a check refuses the page while any piece points at nothing real.
-- **Live agent view — see what every agent is doing.** One line above the prompt names each running pipeline agent, with the step a developer is building — `▶ dev-s1 step 3/7 · critic-second · reviewer · 2 helpers`.
+- **Live agent view — see what every agent is doing.** Agent rows and the band above the prompt show the role and model, followed by the job, current activity and elapsed minutes when available. The band lists running agents and this session's Codex jobs on their own lines, such as `dev-s1 (Opus) · step 3/7 · Reading files · 4m` and `critic (Astra) · plan review r1 · 3m`. Checked on Claude Code 2.1.330.
 - **Suite methods for app agents.** When your app's own agents run on a model's API, their prompts start from a tested method instead of a blank page.
 - **Slice review — a big plan read as closely as a small one.** Each build slice gets its own readers, then one merged list of findings. You choose it per repository.
 
@@ -167,6 +168,10 @@ Each paid plugin lives in its own private repository, which is its own marketpla
 - **Nothing to review.** It learns from what you answer, correct and change your mind about.
 - **A hidden guess for every question**, and an honest weekly score of how often it matched.
 - **Your data stays with you.** One folder in your home directory, outside every repository.
+
+### nexus-writer
+
+Drafts articles in your repo's voice, brings in two outside readers and checks the final text before handing it back. The campaign manager plans pieces around your channel limits and tracks what is ready to send.
 
 ## Install
 
